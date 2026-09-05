@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   X, Camera, Sparkles, Utensils, RefreshCw, Check, Plus,
-  AlertCircle, Image as ImageIcon, Lock, Crown, ArrowRight, Upload, Aperture
+  AlertCircle, Image as ImageIcon, Lock, Crown, ArrowRight, Upload
 } from 'lucide-react';
 import { MealItem, UserHealthProfile } from '../types';
 import { authedFetch } from '../utils/supabase';
@@ -45,22 +45,39 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
   // Live camera capture (real-time, not just a file picker)
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   const stopCamera = () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
     setIsCameraOpen(false);
+    setCameraStream(null); // the cleanup effect below stops the actual tracks
   };
 
-  // Always release the camera when the modal closes/unmounts.
+  // Release the camera whenever the stream changes (a new one starts, or camera
+  // closes) AND on unmount — a single source of truth instead of two.
   useEffect(() => {
     return () => {
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      cameraStream?.getTracks().forEach((track) => track.stop());
     };
-  }, []);
+  }, [cameraStream]);
+
+  // Attach the stream to the <video> element once it's actually mounted and
+  // React has committed the DOM — a setTimeout(fn, 0) guess was the previous
+  // (unreliable) approach and is exactly what caused the black screen: if
+  // play() silently rejected, nothing ever surfaced an error either.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!isCameraOpen || !cameraStream || !video) return;
+    video.srcObject = cameraStream;
+    const playPromise = video.play();
+    if (playPromise?.catch) {
+      playPromise.catch((err) => {
+        console.error('Camera preview failed to play:', err);
+        setCameraError('Could not start the camera preview. Please try again.');
+      });
+    }
+  }, [isCameraOpen, cameraStream]);
 
   const startCamera = async () => {
     setCameraError(null);
@@ -69,15 +86,8 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
         video: { facingMode: 'environment' },
         audio: false,
       });
-      streamRef.current = stream;
+      setCameraStream(stream);
       setIsCameraOpen(true);
-      // The <video> element only mounts once isCameraOpen is true, so attach the stream next tick.
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
-        }
-      }, 0);
     } catch (err) {
       console.error('Camera access failed:', err);
       setCameraError('Could not access the camera. Please allow camera permission, or upload a photo instead.');
@@ -258,6 +268,72 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
     );
   }
 
+  // FULL-SCREEN LIVE CAMERA — Google Lens style viewfinder, takes over the
+  // whole screen while active instead of a small boxed-in preview.
+  if (isCameraOpen) {
+    return (
+      <div id="food-scanner-camera-view" className="fixed inset-0 z-50 bg-black flex flex-col overflow-hidden">
+        <video
+          ref={videoRef}
+          playsInline
+          autoPlay
+          muted
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <canvas ref={canvasRef} className="hidden" />
+
+        {/* Gradient scrims so the top/bottom controls stay legible over any photo */}
+        <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/70 via-black/20 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+
+        {/* Top bar */}
+        <div className="relative z-10 flex items-center justify-between px-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
+          <button
+            type="button"
+            onClick={stopCamera}
+            className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-90 transition-transform cursor-pointer"
+            title="Close camera"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <span className="text-white text-xs font-bold bg-black/40 backdrop-blur-md px-3.5 py-2 rounded-full">
+            Point at your food
+          </span>
+          <div className="w-10 h-10" />
+        </div>
+
+        {/* Viewfinder — corner-bracket scan frame, centered */}
+        <div className="flex-1 flex items-center justify-center relative z-10 pointer-events-none px-8">
+          <div className="relative w-full max-w-xs aspect-square">
+            <div className="absolute top-0 left-0 w-10 h-10 border-t-[3px] border-l-[3px] border-white rounded-tl-3xl" />
+            <div className="absolute top-0 right-0 w-10 h-10 border-t-[3px] border-r-[3px] border-white rounded-tr-3xl" />
+            <div className="absolute bottom-0 left-0 w-10 h-10 border-b-[3px] border-l-[3px] border-white rounded-bl-3xl" />
+            <div className="absolute bottom-0 right-0 w-10 h-10 border-b-[3px] border-r-[3px] border-white rounded-br-3xl" />
+          </div>
+        </div>
+
+        {cameraError && (
+          <div className="relative z-10 mx-5 mb-3 p-3 rounded-2xl bg-red-950/80 border border-red-500/40 text-red-200 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{cameraError}</span>
+          </div>
+        )}
+
+        {/* Bottom shutter bar */}
+        <div className="relative z-10 flex items-center justify-center pb-[max(2rem,env(safe-area-inset-bottom))] pt-2">
+          <button
+            type="button"
+            onClick={handleCapturePhoto}
+            className="w-[72px] h-[72px] rounded-full bg-white/95 ring-4 ring-white/30 active:scale-90 transition-transform flex items-center justify-center shadow-2xl cursor-pointer"
+            title="Capture photo"
+          >
+            <div className="w-[58px] h-[58px] rounded-full border-2 border-black/10" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // PRO USERS: Full AI Vision & Camera Interface
   return (
     <div id="food-scanner-modal-backdrop" className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -321,32 +397,6 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
                   >
                     <X className="w-4 h-4" />
                   </button>
-                </div>
-              ) : isCameraOpen ? (
-                /* Live real-time camera preview */
-                <div className="relative rounded-2xl overflow-hidden border border-emerald-500/40 bg-black">
-                  <video ref={videoRef} playsInline muted className="w-full h-56 object-cover" />
-                  <canvas ref={canvasRef} className="hidden" />
-
-                  <button
-                    type="button"
-                    onClick={stopCamera}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white hover:bg-black"
-                    title="Close camera"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-
-                  <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={handleCapturePhoto}
-                      className="w-14 h-14 rounded-full bg-white ring-4 ring-emerald-500/60 hover:ring-emerald-400 flex items-center justify-center shadow-lg cursor-pointer active:scale-95 transition-all"
-                      title="Capture photo"
-                    >
-                      <Aperture className="w-6 h-6 text-emerald-600" />
-                    </button>
-                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">
