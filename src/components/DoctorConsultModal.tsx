@@ -1,11 +1,11 @@
-import React from 'react';
-import { 
-  X, Phone, PhoneCall, ShieldCheck, Stethoscope, 
-  Clock, Award, CheckCircle2, UserCheck, AlertTriangle, Building2
+import React, { useEffect, useState } from 'react';
+import {
+  X, Phone, PhoneCall, ShieldCheck, Stethoscope,
+  Clock, CheckCircle2, AlertTriangle, Building2, RefreshCw
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { UserHealthProfile } from '../types';
-import { VERIFIED_CLINICAL_DOCTORS } from '../utils/supabase';
+import { UserHealthProfile, DoctorContact } from '../types';
+import { getDoctors } from '../utils/supabase';
 
 interface DoctorConsultModalProps {
   isOpen: boolean;
@@ -22,6 +22,17 @@ export const DoctorConsultModal: React.FC<DoctorConsultModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const [doctors, setDoctors] = useState<DoctorContact[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    getDoctors().then((list) => {
+      setDoctors(list);
+      setLoading(false);
+    });
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -29,10 +40,7 @@ export const DoctorConsultModal: React.FC<DoctorConsultModalProps> = ({
     ? reason.trim()
     : 'Biomarker interpretation, clinical condition guidance & personalized medical prescription.';
 
-  const leadDoctor = VERIFIED_CLINICAL_DOCTORS[0];
-
   const handleCallDoctor = (phoneNumber: string) => {
-    // Initiate direct phone call
     window.location.href = `tel:${phoneNumber.replace(/[^0-9+]/g, '')}`;
   };
 
@@ -41,7 +49,7 @@ export const DoctorConsultModal: React.FC<DoctorConsultModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
       <div className={`w-full max-w-lg p-6 sm:p-8 rounded-3xl ${cardBg} space-y-6 text-left relative max-h-[90vh] overflow-y-auto`}>
-        
+
         {/* Close Button */}
         <button
           type="button"
@@ -60,7 +68,7 @@ export const DoctorConsultModal: React.FC<DoctorConsultModalProps> = ({
           </div>
           <h3 className="text-xl font-black text-zinc-950 dark:text-white">Physician Telephony Support</h3>
           <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-            Directly connect with our board-certified medical doctor via direct telephone call.
+            Directly connect with a board-certified medical doctor via direct telephone call.
           </p>
         </div>
 
@@ -77,71 +85,80 @@ export const DoctorConsultModal: React.FC<DoctorConsultModalProps> = ({
           </div>
         )}
 
-        {/* Doctor Information Card */}
-        <div className="space-y-4">
-          {VERIFIED_CLINICAL_DOCTORS.map((doc, idx) => (
-            <div 
-              key={idx} 
-              className={`p-5 rounded-2xl border ${isDark ? 'bg-zinc-900/90 border-zinc-800' : 'bg-zinc-50/80 border-zinc-200 shadow-sm'} space-y-4`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-black text-sm shrink-0 border border-emerald-200 dark:border-emerald-500/30">
-                    <Stethoscope className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-base font-black text-zinc-950 dark:text-white leading-tight">{doc.name}</h4>
-                    <span className="text-[12px] text-emerald-700 dark:text-emerald-400 font-bold block mt-0.5">{doc.qualification}</span>
-                    <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono font-medium">Reg. No: {doc.registrationNumber}</span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-black px-2.5 py-1 rounded-md bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 uppercase whitespace-nowrap shadow-xs">
-                  Verified MD
-                </span>
-              </div>
-
-              <div className="space-y-2 text-xs text-zinc-700 dark:text-zinc-300 pt-3 border-t border-zinc-200 dark:border-zinc-800">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0" />
-                  <span className="font-semibold">{doc.hospitalAffiliation}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0" />
-                  <span>{doc.availability}</span>
-                </div>
-                <div className="flex items-center gap-2 font-mono text-emerald-700 dark:text-emerald-400 font-black text-xs">
-                  <Phone className="w-4 h-4 shrink-0" />
-                  <span>Direct Hotline: {doc.phone}</span>
-                </div>
-              </div>
-
-              {/* Direct Phone Call Button */}
-              <a
-                href={`tel:${doc.phone.replace(/[^0-9+]/g, '')}`}
-                onClick={() => handleCallDoctor(doc.phone)}
-                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all text-center block cursor-pointer"
-              >
-                <PhoneCall className="w-4 h-4 stroke-[2.5]" />
-                <span>Initiate Direct Phone Call ({doc.phone})</span>
-              </a>
-            </div>
-          ))}
-        </div>
-
-        {/* Toll-Free Emergency / Clinic Support */}
-        <div className={`p-4 rounded-2xl border ${isDark ? 'bg-zinc-900 border-zinc-800' : 'bg-emerald-50/50 border-emerald-200'} flex items-center justify-between`}>
-          <div>
-            <span className="text-[11px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Clinic Toll-Free Support</span>
-            <div className="text-base font-mono font-black text-emerald-700 dark:text-emerald-400 mt-0.5">1800-202-CARE (2273)</div>
+        {/* Doctor Information Card(s) */}
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-8 text-xs text-zinc-500 dark:text-zinc-400">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            <span>Loading available doctors...</span>
           </div>
-          <a
-            href="tel:18002022273"
-            className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Phone className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Call Toll-Free</span>
-          </a>
-        </div>
+        ) : doctors.length === 0 ? (
+          <div className={`p-5 rounded-2xl border text-center space-y-2 ${isDark ? 'bg-zinc-900/90 border-zinc-800' : 'bg-zinc-50/80 border-zinc-200'}`}>
+            <Stethoscope className="w-6 h-6 mx-auto text-zinc-400" />
+            <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">No doctors available right now</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Our clinical team is being onboarded. Please check back shortly, or reach out to support for urgent concerns.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {doctors.map((doc, idx) => (
+              <div
+                key={idx}
+                className={`p-5 rounded-2xl border ${isDark ? 'bg-zinc-900/90 border-zinc-800' : 'bg-zinc-50/80 border-zinc-200 shadow-sm'} space-y-4`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-black text-sm shrink-0 border border-emerald-200 dark:border-emerald-500/30">
+                      <Stethoscope className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-black text-zinc-950 dark:text-white leading-tight">{doc.name}</h4>
+                      <span className="text-[12px] text-emerald-700 dark:text-emerald-400 font-bold block mt-0.5">{doc.qualification}</span>
+                      {doc.registrationNumber && (
+                        <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono font-medium">Reg. No: {doc.registrationNumber}</span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-black px-2.5 py-1 rounded-md bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 uppercase whitespace-nowrap shadow-xs">
+                    Verified MD
+                  </span>
+                </div>
+
+                <div className="space-y-2 text-xs text-zinc-700 dark:text-zinc-300 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+                  {doc.hospitalAffiliation && (
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0" />
+                      <span className="font-semibold">{doc.hospitalAffiliation}</span>
+                    </div>
+                  )}
+                  {doc.availability && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0" />
+                      <span>{doc.availability}</span>
+                    </div>
+                  )}
+                  {doc.phone && (
+                    <div className="flex items-center gap-2 font-mono text-emerald-700 dark:text-emerald-400 font-black text-xs">
+                      <Phone className="w-4 h-4 shrink-0" />
+                      <span>Direct Hotline: {doc.phone}</span>
+                    </div>
+                  )}
+                </div>
+
+                {doc.phone && (
+                  <a
+                    href={`tel:${doc.phone.replace(/[^0-9+]/g, '')}`}
+                    onClick={() => handleCallDoctor(doc.phone)}
+                    className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all text-center block cursor-pointer"
+                  >
+                    <PhoneCall className="w-4 h-4 stroke-[2.5]" />
+                    <span>Initiate Direct Phone Call ({doc.phone})</span>
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Notice */}
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 font-mono text-center">

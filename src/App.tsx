@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { UserHealthProfile, UserAccount } from './types';
 import { AuthScreen } from './components/AuthScreen';
 import { OnboardingFlow } from './components/OnboardingFlow';
@@ -7,6 +7,7 @@ import { Dashboard } from './components/Dashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile } from './utils/supabase';
 
 function MainApp() {
   const [profile, setProfile] = useState<UserHealthProfile | null>(null);
@@ -15,81 +16,61 @@ function MainApp() {
   const [isAdminPortalOpen, setIsAdminPortalOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Restore stored session if exists
-  useEffect(() => {
-    try {
-      const storedProfile = localStorage.getItem('urcare_user_profile');
-      const storedAccount = localStorage.getItem('urcare_user_account');
-      if (storedProfile && storedAccount) {
-        setProfile(JSON.parse(storedProfile));
-        setAccount(JSON.parse(storedAccount));
-      }
-    } catch (e) {
-      console.warn('Could not load local session:', e);
-    } finally {
-      setIsInitialized(true);
-    }
+  const loadFromSession = useCallback(async (userId: string, email: string) => {
+    const bundle = await fetchProfileBundle(userId, email);
+    setAccount(bundle.account);
+    setProfile(bundle.profile);
   }, []);
 
-  const handleAuthSuccess = (authenticatedAccount: UserAccount, existingProfile?: UserHealthProfile | null) => {
-    setAccount(authenticatedAccount);
-    try {
-      localStorage.setItem('urcare_user_account', JSON.stringify(authenticatedAccount));
-    } catch (e) {}
+  // Restore the real Supabase session on load, and react to sign-in/out anywhere
+  // in the app (including the redirect back from Google OAuth).
+  useEffect(() => {
+    let active = true;
 
-    if (existingProfile) {
-      setProfile(existingProfile);
-      try {
-        localStorage.setItem('urcare_user_profile', JSON.stringify(existingProfile));
-      } catch (e) {}
-    } else {
-      // New user or no profile yet -> will automatically transition into OnboardingFlow
-      setProfile(null);
-    }
-  };
+    (async () => {
+      const session = await getCurrentSession();
+      if (active && session?.user) {
+        await loadFromSession(session.user.id, session.user.email || '');
+      }
+      if (active) setIsInitialized(true);
+    })();
 
-  const handleOnboardingComplete = (completedProfile: UserHealthProfile, registeredAccount: UserAccount) => {
+    const subscription = onAuthStateChange((session) => {
+      if (!active) return;
+      if (session?.user) {
+        loadFromSession(session.user.id, session.user.email || '');
+      } else {
+        setAccount(null);
+        setProfile(null);
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [loadFromSession]);
+
+  const handleOnboardingComplete = async (completedProfile: UserHealthProfile, registeredAccount: UserAccount) => {
+    await upsertProfile(registeredAccount.uid, completedProfile);
     setProfile(completedProfile);
     setAccount(registeredAccount);
     setShowWowCelebration(true);
-
-    try {
-      localStorage.setItem('urcare_user_profile', JSON.stringify(completedProfile));
-      localStorage.setItem('urcare_user_account', JSON.stringify(registeredAccount));
-    } catch (e) {
-      console.warn('Could not save local session:', e);
-    }
   };
 
-  const handleUpdateProfile = (updatedProfile: UserHealthProfile) => {
+  const handleUpdateProfile = async (updatedProfile: UserHealthProfile) => {
+    if (account) await upsertProfile(account.uid, updatedProfile);
     setProfile(updatedProfile);
-    try {
-      localStorage.setItem('urcare_user_profile', JSON.stringify(updatedProfile));
-    } catch (e) {
-      console.warn('Could not save updated session:', e);
-    }
   };
 
   const handleUpdateAccount = (updatedAccount: UserAccount) => {
     setAccount(updatedAccount);
-    try {
-      localStorage.setItem('urcare_user_account', JSON.stringify(updatedAccount));
-    } catch (e) {
-      console.warn('Could not save updated account session:', e);
-    }
   };
 
   const handleResetOnboarding = () => {
     setProfile(null);
     setAccount(null);
     setShowWowCelebration(false);
-    try {
-      localStorage.removeItem('urcare_user_profile');
-      localStorage.removeItem('urcare_user_account');
-      localStorage.removeItem('urcare_lab_reports');
-    } catch (e) {
-      console.warn('Could not clear local session:', e);
-    }
   };
 
   if (!isInitialized) {
@@ -113,7 +94,6 @@ function MainApp() {
   if (!account) {
     return (
       <AuthScreen
-        onAuthSuccess={handleAuthSuccess}
         onOpenAdmin={() => setIsAdminPortalOpen(true)}
       />
     );
@@ -147,7 +127,7 @@ function MainApp() {
 
   // 5. User Authenticated without Profile -> Onboarding Flow
   return (
-    <OnboardingFlow 
+    <OnboardingFlow
       initialAccount={account}
       onComplete={handleOnboardingComplete}
       onOpenAdmin={() => setIsAdminPortalOpen(true)}

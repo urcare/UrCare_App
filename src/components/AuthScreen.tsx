@@ -1,124 +1,120 @@
 import React, { useState } from 'react';
-import { 
-  X, ShieldCheck, RefreshCw, Lock, User
+import {
+  X, ShieldCheck, RefreshCw, Lock, User, Mail, AlertCircle
 } from 'lucide-react';
-import { UserAccount, UserHealthProfile } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { playClickSound, playSuccessChime } from '../utils/soundEffects';
 import { AppSimulationVideo } from './AppSimulationVideo';
 import { Logo } from './Logo';
+import { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, isSupabaseConfigured } from '../utils/supabase';
 
 interface AuthScreenProps {
-  onAuthSuccess: (account: UserAccount, existingProfile?: UserHealthProfile | null) => void;
   onOpenAdmin?: () => void;
 }
 
-export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdmin }) => {
+export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
   const { language, setLanguage } = useLanguage();
-  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
+  const [authModal, setAuthModal] = useState<'signin' | 'signup' | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
-  // Sign In inputs
-  const [identifier, setIdentifier] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Language toggle
   const toggleLanguage = () => {
     playClickSound(650);
     setLanguage(language === 'en' ? 'hi' : 'en');
   };
 
-  // 1. GET STARTED -> Direct launch into Onboarding flow
-  const handleGetStarted = () => {
-    playClickSound(700);
-    const guestAccount: UserAccount = {
-      uid: 'usr_' + Math.random().toString(36).substring(2, 11),
-      email: 'user_' + Date.now().toString(36) + '@urcare.health',
-      displayName: 'New Member',
-      authProvider: 'email',
-      isPro: false,
-      supabaseSynced: true,
-      lastSyncedAt: new Date().toISOString(),
-    };
-    onAuthSuccess(guestAccount, null);
-  };
-
-  // 2. GOOGLE SIGN IN
-  const handleGoogleSignIn = () => {
-    playClickSound(680);
-    setGoogleLoading(true);
+  const resetFormState = () => {
     setError(null);
-
-    setTimeout(() => {
-      setGoogleLoading(false);
-      const googleAccount: UserAccount = {
-        uid: 'g_' + Date.now(),
-        email: 'singhkgajendra6276@gmail.com',
-        displayName: 'Gajendra Singh',
-        authProvider: 'google',
-        isPro: true,
-        proPlanType: 'yearly',
-        supabaseSynced: true,
-        lastSyncedAt: new Date().toISOString(),
-      };
-
-      // Load existing profile if available
-      let savedProfile: UserHealthProfile | null = null;
-      try {
-        const stored = localStorage.getItem('urcare_user_profile') || localStorage.getItem('yourcare_user_profile');
-        if (stored) {
-          savedProfile = JSON.parse(stored);
-        }
-      } catch (e) {}
-
-      playSuccessChime();
-      onAuthSuccess(googleAccount, savedProfile);
-    }, 700);
+    setInfo(null);
+    setPassword('');
   };
 
-  // 3. EXISTING ACCOUNT CREDENTIAL SIGN IN
-  const handleCredentialsSignIn = (e: React.FormEvent) => {
+  const openModal = (mode: 'signin' | 'signup') => {
+    playClickSound(600);
+    resetFormState();
+    setAuthModal(mode);
+  };
+
+  const handleGoogleSignIn = async () => {
+    playClickSound(680);
+    setError(null);
+    if (!isSupabaseConfigured()) {
+      setError('Sign-in is not configured yet. Please try again shortly.');
+      return;
+    }
+    setGoogleLoading(true);
+    const { error: err } = await signInWithGoogle();
+    setGoogleLoading(false);
+    if (err) {
+      setError(err);
+    }
+    // On success, Supabase redirects the whole page to Google and back —
+    // App.tsx's auth-state listener picks up the session automatically.
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const id = identifier.trim();
-    if (!id) {
-      setError(language === 'hi' ? 'कृपया अपना ईमेल या मोबाइल नंबर दर्ज करें' : 'Please enter your email or phone number');
+    setInfo(null);
+
+    if (!email.trim() || !password.trim()) {
+      setError(language === 'hi' ? 'कृपया ईमेल और पासवर्ड दर्ज करें' : 'Please enter your email and password');
+      return;
+    }
+    if (authModal === 'signup' && !fullName.trim()) {
+      setError(language === 'hi' ? 'कृपया अपना नाम दर्ज करें' : 'Please enter your name');
+      return;
+    }
+    if (!isSupabaseConfigured()) {
+      setError('Sign-in is not configured yet. Please try again shortly.');
       return;
     }
 
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      const isEmail = id.includes('@');
-      const account: UserAccount = {
-        uid: 'usr_' + Date.now(),
-        email: isEmail ? id : `${id.replace(/\D/g, '')}@urcare.health`,
-        displayName: isEmail ? id.split('@')[0] : `User ${id.slice(-4)}`,
-        phoneNumber: !isEmail ? id : undefined,
-        authProvider: 'email',
-        isPro: true,
-        supabaseSynced: true,
-        lastSyncedAt: new Date().toISOString(),
-      };
+    const result = authModal === 'signup'
+      ? await signUpWithEmail(email.trim(), password, fullName.trim())
+      : await signInWithEmail(email.trim(), password);
+    setLoading(false);
 
-      let savedProfile: UserHealthProfile | null = null;
-      try {
-        const stored = localStorage.getItem('urcare_user_profile') || localStorage.getItem('yourcare_user_profile');
-        if (stored) {
-          savedProfile = JSON.parse(stored);
-        }
-      } catch (e) {}
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
 
+    if (authModal === 'signup') {
+      // Supabase may require email confirmation depending on project settings.
+      setInfo(language === 'hi'
+        ? 'खाता बन गया! अगर ईमेल पुष्टिकरण चालू है, तो कृपया अपना इनबॉक्स देखें, फिर साइन इन करें।'
+        : 'Account created! If email confirmation is enabled on this project, check your inbox, then sign in.');
       playSuccessChime();
-      onAuthSuccess(account, savedProfile);
-    }, 450);
+      return;
+    }
+
+    playSuccessChime();
+    // App.tsx's global auth-state listener now loads the real profile and
+    // transitions away from this screen automatically.
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError(language === 'hi' ? 'पहले अपना ईमेल दर्ज करें' : 'Enter your email first');
+      return;
+    }
+    setError(null);
+    const { error: err } = await sendPasswordReset(email.trim());
+    if (err) setError(err);
+    else setInfo(language === 'hi' ? 'पासवर्ड रीसेट लिंक भेज दिया गया है।' : 'Password reset link sent — check your inbox.');
   };
 
   return (
     <div className="w-full min-h-screen bg-white text-zinc-900 flex flex-col justify-between items-center px-4 sm:px-6 py-4 sm:py-6 selection:bg-zinc-200">
-      
+
       {/* Top Header: Clean Branding & Language Switcher */}
       <header className="w-full max-w-md mx-auto flex items-center justify-between">
         <Logo size="sm" />
@@ -134,10 +130,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
 
       {/* Main Content Area: Phone Mockup Frame */}
       <main className="w-full max-w-sm sm:max-w-md mx-auto flex-1 flex flex-col items-center justify-center my-2 sm:my-4">
-        
+
         {/* Smartphone Realistic Mockup Frame */}
         <div className="w-[305px] sm:w-[330px] h-[530px] sm:h-[560px] bg-zinc-950 rounded-[44px] sm:rounded-[48px] p-2.5 sm:p-3 shadow-2xl shadow-zinc-950/25 border-4 border-zinc-900 ring-1 ring-zinc-300 relative overflow-hidden flex flex-col">
-          
+
           {/* Hardware Buttons on sides */}
           <div className="absolute -left-1.5 top-24 w-1 h-8 bg-zinc-800 rounded-l" />
           <div className="absolute -left-1.5 top-36 w-1 h-11 bg-zinc-800 rounded-l" />
@@ -146,11 +142,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
 
           {/* Phone Inner Display Screen */}
           <div className="w-full h-full bg-[#FAFAFA] rounded-[36px] sm:rounded-[40px] flex flex-col overflow-hidden relative text-zinc-900 select-none">
-            
+
             {/* Status Bar: Time & Dynamic Island */}
             <div className="pt-2 px-5 pb-1 flex items-center justify-between z-20 bg-white/80 backdrop-blur-xs">
-              <span className="text-[11px] font-black text-zinc-900 tracking-tight">2:10 </span>
-              
+              <span className="text-[11px] font-black text-zinc-900 tracking-tight">2:10 </span>
+
               {/* Dynamic Island Pill */}
               <div className="w-22 h-4.5 bg-black rounded-full flex items-center justify-end px-2 gap-1.5 shadow-xs">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -168,7 +164,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
 
             {/* SCREEN CONTENT: GENUINE APP SIMULATION VIDEO */}
             <div className="flex-1 w-full h-full overflow-hidden flex flex-col">
-              <AppSimulationVideo onGetStarted={handleGetStarted} />
+              <AppSimulationVideo onGetStarted={() => openModal('signup')} />
             </div>
 
             {/* Bottom Home Indicator Bar */}
@@ -183,7 +179,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
 
       {/* Bottom Hero Headline & Action Controls (Matching screenshot perfectly) */}
       <footer className="w-full max-w-sm sm:max-w-md mx-auto space-y-3.5 sm:space-y-4 pt-2 sm:pt-4 pb-2 text-center">
-        
+
         {/* Main Headline */}
         <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-950 leading-tight">
           {language === 'hi' ? 'कैलोरी ट्रैकिंग हुई बिल्कुल आसान' : 'Calorie tracking made easy'}
@@ -192,7 +188,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
         {/* Primary CTA Button: Get Started */}
         <button
           type="button"
-          onClick={handleGetStarted}
+          onClick={() => openModal('signup')}
           className="w-full py-4 sm:py-4.5 rounded-full bg-zinc-950 hover:bg-zinc-800 active:scale-[0.99] text-white font-black text-base sm:text-lg tracking-tight shadow-xl shadow-zinc-950/20 transition-all cursor-pointer"
         >
           {language === 'hi' ? 'शुरू करें (Get Started)' : 'Get Started'}
@@ -203,10 +199,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
           <span>{language === 'hi' ? 'क्या आपके पास पहले से खाता है? ' : 'Already have an account? '}</span>
           <button
             type="button"
-            onClick={() => {
-              playClickSound(600);
-              setIsSignInModalOpen(true);
-            }}
+            onClick={() => openModal('signin')}
             className="font-black text-zinc-950 underline hover:text-emerald-700 cursor-pointer ml-1"
           >
             {language === 'hi' ? 'साइन इन करें (Sign in)' : 'Sign in'}
@@ -228,16 +221,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
       </footer>
 
       {/* ========================================================================= */}
-      {/* SIGN IN / GOOGLE AUTH MODAL                                               */}
+      {/* SIGN IN / SIGN UP MODAL — real Supabase Auth (Google + email/password)     */}
       {/* ========================================================================= */}
-      {isSignInModalOpen && (
+      {authModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
           <div className="w-full max-w-sm bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 text-left relative space-y-4">
-            
+
             {/* Close */}
             <button
               type="button"
-              onClick={() => setIsSignInModalOpen(false)}
+              onClick={() => setAuthModal(null)}
               className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -245,15 +238,27 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
 
             <div>
               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                Welcome Back
+                {authModal === 'signup' ? 'Get Started' : 'Welcome Back'}
               </span>
-              <h2 className="text-xl font-black text-zinc-950 mt-1">Sign In to Your Account</h2>
-              <p className="text-xs text-zinc-500">Restore your saved health profile and data.</p>
+              <h2 className="text-xl font-black text-zinc-950 mt-1">
+                {authModal === 'signup' ? 'Create Your Account' : 'Sign In to Your Account'}
+              </h2>
+              <p className="text-xs text-zinc-500">
+                {authModal === 'signup'
+                  ? 'Your health data is saved securely to your account.'
+                  : 'Your saved health profile and data will load automatically.'}
+              </p>
             </div>
 
             {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
-                {error}
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+            {info && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+                {info}
               </div>
             )}
 
@@ -262,7 +267,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
               type="button"
               disabled={googleLoading}
               onClick={handleGoogleSignIn}
-              className="w-full py-3.5 px-4 rounded-2xl border border-zinc-300 hover:border-zinc-400 bg-white hover:bg-zinc-50 active:scale-98 font-bold text-xs sm:text-sm text-zinc-800 flex items-center justify-center gap-3 shadow-xs transition-all cursor-pointer"
+              className="w-full py-3.5 px-4 rounded-2xl border border-zinc-300 hover:border-zinc-400 bg-white hover:bg-zinc-50 active:scale-98 font-bold text-xs sm:text-sm text-zinc-800 flex items-center justify-center gap-3 shadow-xs transition-all cursor-pointer disabled:opacity-60"
             >
               {googleLoading ? (
                 <RefreshCw className="w-4 h-4 animate-spin text-zinc-600" />
@@ -286,27 +291,44 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
                   />
                 </svg>
               )}
-              <span>{googleLoading ? 'Signing in with Google...' : 'Continue with Google'}</span>
+              <span>{googleLoading ? 'Redirecting to Google...' : 'Continue with Google'}</span>
             </button>
 
             {/* Divider */}
             <div className="relative flex items-center justify-center my-1">
               <div className="border-t border-zinc-200 w-full" />
-              <span className="bg-white px-2.5 text-[10px] font-bold text-zinc-400 uppercase">or sign in with email/mobile</span>
+              <span className="bg-white px-2.5 text-[10px] font-bold text-zinc-400 uppercase">or use email</span>
             </div>
 
-            {/* Email / Mobile Form */}
-            <form onSubmit={handleCredentialsSignIn} className="space-y-3">
+            {/* Email / Password Form */}
+            <form onSubmit={handleEmailSubmit} className="space-y-3">
+              {authModal === 'signup' && (
+                <div>
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">Full Name</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Your name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-zinc-300 bg-zinc-50 focus:bg-white text-zinc-900 text-xs font-semibold focus:border-zinc-900 outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block text-xs font-bold text-zinc-700 mb-1">Email or 10-Digit Mobile</label>
+                <label className="block text-xs font-bold text-zinc-700 mb-1">Email</label>
                 <div className="relative">
-                  <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
-                    type="text"
+                    type="email"
                     required
-                    placeholder="singhkgajendra6276@gmail.com"
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-zinc-300 bg-zinc-50 focus:bg-white text-zinc-900 text-xs font-semibold focus:border-zinc-900 outline-none"
                   />
                 </div>
@@ -318,6 +340,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
                     type="password"
+                    required
+                    minLength={6}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -326,14 +350,32 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdm
                 </div>
               </div>
 
+              {authModal === 'signin' && (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-[11px] font-bold text-zinc-500 hover:text-zinc-800 cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+              )}
+
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
+                className="w-full py-3 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-60"
               >
-                {loading ? 'Signing In...' : 'Sign In'}
+                {loading ? 'Please wait...' : authModal === 'signup' ? 'Create Account' : 'Sign In'}
               </button>
             </form>
+
+            <div className="text-center text-[11px] text-zinc-500">
+              {authModal === 'signup' ? (
+                <span>Already have an account? <button type="button" onClick={() => openModal('signin')} className="font-black text-zinc-900 underline cursor-pointer">Sign in</button></span>
+              ) : (
+                <span>New here? <button type="button" onClick={() => openModal('signup')} className="font-black text-zinc-900 underline cursor-pointer">Create an account</button></span>
+              )}
+            </div>
 
             <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-400 pt-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />

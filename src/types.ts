@@ -519,8 +519,9 @@ export interface UserAccount {
   email: string;
   displayName: string;
   phoneNumber?: string;
-  authProvider: 'firebase' | 'email' | 'google';
+  authProvider: 'email' | 'google';
   supabaseSynced: boolean;
+  role?: 'user' | 'admin';
   isPro?: boolean;
   proPlanType?: 'monthly' | 'yearly' | 'trial_3day';
   proExpiry?: string;

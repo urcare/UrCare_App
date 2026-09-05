@@ -26,7 +26,7 @@ import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
-import { logoutFirebaseUser } from '../utils/firebase';
+import { signOutUser } from '../utils/supabase';
 import { calculateNutritionPlan } from '../utils/calculator';
 
 interface DashboardProps {
@@ -193,7 +193,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const handleLogout = async () => {
-    await logoutFirebaseUser();
+    await signOutUser();
     setShowLogoutConfirm(false);
     onResetOnboarding();
   };
