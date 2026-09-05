@@ -44,10 +44,10 @@ export const Logo: React.FC<LogoProps> = ({
   const isDark = theme === 'dark';
 
   const iconSizes = {
-    sm: 'w-7 h-7',
-    md: 'w-9 h-9',
-    lg: 'w-11 h-11',
-    xl: 'w-14 h-14',
+    sm: 'w-9 h-9',
+    md: 'w-12 h-12',
+    lg: 'w-16 h-16',
+    xl: 'w-20 h-20',
   };
 
   const titleSizes = {
@@ -66,10 +66,10 @@ export const Logo: React.FC<LogoProps> = ({
 
   return (
     <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
-      {/* Brand Icon: UrCare heart-circuit-cross mark on a soft plate */}
+      {/* Brand Icon: real UrCare logo artwork, always on a white plate */}
       <div className={`relative ${iconSizes[size]} shrink-0 rounded-2xl flex items-center justify-center transition-all duration-300 group`}>
-        <div className="relative w-full h-full rounded-2xl bg-white dark:bg-zinc-900 border border-emerald-100 dark:border-emerald-500/20 flex items-center justify-center shadow-md shadow-emerald-900/5 overflow-hidden">
-          <BrandMark className="w-3/5 h-3/5 text-emerald-500" />
+        <div className="relative w-full h-full rounded-2xl bg-white border border-emerald-100 flex items-center justify-center shadow-md shadow-emerald-900/5 overflow-hidden">
+          <img src="/UrCare.png" alt="UrCare" className="w-4/5 h-4/5 object-contain" />
         </div>
       </div>
 

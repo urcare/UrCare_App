@@ -7,7 +7,7 @@ import { Dashboard } from './components/Dashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
-import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, activatePremium } from './utils/supabase';
+import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile } from './utils/supabase';
 
 function MainApp() {
   const [profile, setProfile] = useState<UserHealthProfile | null>(null);
@@ -53,12 +53,6 @@ function MainApp() {
 
   const handleOnboardingComplete = async (completedProfile: UserHealthProfile, registeredAccount: UserAccount) => {
     await upsertProfile(registeredAccount.uid, completedProfile);
-    // A trial (or any Pro grant) must be saved to the DB immediately — otherwise
-    // it only lives in this local state, and the next session/token refresh
-    // re-fetches 'inactive' from Supabase and silently revokes it a moment later.
-    if (registeredAccount.isPro && registeredAccount.proExpiry) {
-      await activatePremium(registeredAccount.uid, registeredAccount.proExpiry);
-    }
     setProfile(completedProfile);
     setAccount(registeredAccount);
     setShowWowCelebration(true);

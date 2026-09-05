@@ -70,7 +70,6 @@ export const DICTIONARY: Translations = {
   dietType: { en: 'Dietary Preference', hi: 'खानपान की प्राथमिकता' },
   membershipStatus: { en: 'Membership Plan', hi: 'सदस्यता प्लान' },
   activePro: { en: 'Pro Member (Active)', hi: 'प्रो सदस्य (सक्रिय)' },
-  freeTrial: { en: '3-Day Precision Trial', hi: '3-दिन का नि:शुल्क ट्रायल' },
   switchLanguage: { en: 'App Language', hi: 'ऐप की भाषा' },
 };
 

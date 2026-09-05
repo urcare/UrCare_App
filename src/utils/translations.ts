@@ -130,8 +130,6 @@ export interface TranslationDictionary {
   calculatingDone: string;
 
   planReadyTitle: string;
-  trial3Title: string;
-  trialSubtitle: string;
   autoPayNote: string;
   continueFreeBtn: string;
 
@@ -343,8 +341,6 @@ export const translations: Record<Language, TranslationDictionary> = {
     calculatingDone: 'Protocol Generated Successfully.',
 
     planReadyTitle: 'Your Clinical Nutrition Plan is Ready',
-    trial3Title: 'Start 3-Day Complimentary Trial',
-    trialSubtitle: 'Full access to AI Dietary Scanner, Multi-Day Macro Planner, and Clinical Nutritionist Consultations.',
     autoPayNote: 'Secure authorization. Cancel anytime with 1-click. Zero charges today.',
     continueFreeBtn: 'Continue with Standard Access',
 
@@ -554,8 +550,6 @@ export const translations: Record<Language, TranslationDictionary> = {
     calculatingDone: 'योजना सफलतापूर्वक तैयार हो गई है।',
 
     planReadyTitle: 'आपकी क्लीनिकल पोषण योजना तैयार है',
-    trial3Title: '3-दिन का निःशुल्क ट्रायल शुरू करें',
-    trialSubtitle: 'AI फूड स्कैनर, बहु-दिवसीय मील प्लानर और डॉक्टर कंसल्टेशन की पूरी सुविधा।',
     autoPayNote: 'सुरक्षित प्रमाणीकरण। 1 क्लिक में कभी भी रद्द करें। आज ₹0 शुल्क।',
     continueFreeBtn: 'मानक प्लान के साथ जारी रखें',
 

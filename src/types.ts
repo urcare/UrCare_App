@@ -20,7 +20,6 @@ export interface UserPreferences {
   accomplishments: string[];
   referralCode?: string;
   customDietNote?: string;
-  trialTier?: '3_day' | 'pro_annual' | 'free';
   autoPayEnabled?: boolean;
 }
 
@@ -524,7 +523,7 @@ export interface UserAccount {
   supabaseSynced: boolean;
   role?: 'user' | 'admin';
   isPro?: boolean;
-  proPlanType?: 'monthly' | 'yearly' | 'trial_3day';
+  proPlanType?: 'monthly' | 'yearly';
   proExpiry?: string;
   hasPurchasedProducts?: boolean;
   lastSyncedAt?: string;
