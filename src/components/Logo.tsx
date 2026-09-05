@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 
 // UrCare brand mark: a heart outline with an embedded circuit trace (AI/digital health)
@@ -42,6 +42,10 @@ export const Logo: React.FC<LogoProps> = ({
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  // Some mobile browsers/first paints can fail to fetch the PNG (slow network,
+  // aggressive image caching, etc.). Fall back to the inline vector mark so the
+  // logo never silently collapses to just the alt text on any device.
+  const [imgFailed, setImgFailed] = useState(false);
 
   const iconSizes = {
     sm: 'w-11 h-11',
@@ -66,8 +70,22 @@ export const Logo: React.FC<LogoProps> = ({
 
   return (
     <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
-      {/* Brand Icon: real UrCare logo artwork, no plate/border — just the mark itself */}
-      <img src="/UrCare.png" alt="UrCare" className={`${iconSizes[size]} shrink-0 object-contain`} />
+      {/* Brand Icon: real UrCare logo artwork, no plate/border — just the mark itself.
+          If the PNG ever fails to load (flaky mobile network, cache miss, etc.),
+          fall back to the inline vector mark so the icon is never just blank/text. */}
+      {imgFailed ? (
+        <BrandMark className={`${iconSizes[size]} shrink-0 text-emerald-600`} />
+      ) : (
+        <img
+          src="/UrCare.png"
+          alt="UrCare"
+          width={96}
+          height={96}
+          decoding="async"
+          onError={() => setImgFailed(true)}
+          className={`${iconSizes[size]} shrink-0 object-contain`}
+        />
+      )}
 
       {/* Brand Typography */}
       <div className="flex flex-col text-left">

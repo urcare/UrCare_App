@@ -694,7 +694,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           onClose={() => setIsSettingsOpen(false)}
           onUpdateProfile={onUpdateProfile}
           onResetOnboarding={onResetOnboarding}
-          onOpenAdminPortal={onOpenAdminPortal}
         />
       )}
 
