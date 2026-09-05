@@ -3,6 +3,7 @@ import {
   Crown, Sparkles, Check, QrCode, CreditCard, ShieldCheck, Zap, X, Copy, ExternalLink, ArrowRight, Lock
 } from 'lucide-react';
 import { UserAccount } from '../types';
+import { authedFetch } from '../utils/supabase';
 
 interface ProUpgradeModalProps {
   isOpen: boolean;
@@ -51,12 +52,11 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
   const handleConfirmQrPayment = async () => {
     setIsProcessing(true);
     try {
-      await fetch('/api/user/upgrade-pro', {
+      await authedFetch('/api/user/upgrade-pro', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: account.uid,
           planType,
+          amount: price,
           paymentMethod: 'qr_upi',
           transactionId: transactionId || 'UPI-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
         }),
@@ -68,10 +68,6 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
         proPlanType: planType,
         proExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       };
-
-      try {
-        localStorage.setItem('urcare_user_account', JSON.stringify(updated));
-      } catch (e) {}
 
       onUpgradeSuccess(updated);
       setPaymentStep('success');
@@ -96,12 +92,11 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
   };
 
   const finalizeUpgrade = async (paymentMethod: string, extra?: Record<string, any>) => {
-    await fetch('/api/user/upgrade-pro', {
+    await authedFetch('/api/user/upgrade-pro', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userId: account.uid,
         planType,
+        amount: price,
         paymentMethod,
         ...extra,
       }),
@@ -113,10 +108,6 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
       proPlanType: planType,
       proExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     };
-
-    try {
-      localStorage.setItem('urcare_user_account', JSON.stringify(updated));
-    } catch (e) {}
 
     onUpgradeSuccess(updated);
     setIsProcessing(false);

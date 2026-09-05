@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Database, ShieldCheck, User, RefreshCw, LogOut, CheckCircle2, Sliders, Scale, Trash2 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
+import { upsertProfile } from '../utils/supabase';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -38,14 +39,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleManualSync = async () => {
     setIsSyncing(true);
     try {
-      await fetch('/api/sync-supabase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: account.uid,
-          profile,
-        }),
-      });
+      await upsertProfile(account.uid, profile);
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 2500);
     } catch (err) {

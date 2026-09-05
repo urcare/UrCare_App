@@ -383,7 +383,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
       email: finalEmail,
       displayName: finalName,
       phoneNumber: finalPhone,
-      authProvider: 'email',
+      authProvider: initialAccount?.authProvider || 'email',
       supabaseSynced: true,
       isPro: trialTier === '3_day',
       proPlanType: trialTier === '3_day' ? 'trial_3day' : undefined,
