@@ -349,8 +349,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           width, instead of a plain flex justify-between (which centers
           nothing, just spaces the two ends). */}
       <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-end gap-2">
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <Logo size="sm" showSubtitle={false} />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[54vw] sm:max-w-none">
+          <Logo size="sm" showSubtitle={true} compact />
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
@@ -693,7 +693,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           account={account}
           onClose={() => setIsSettingsOpen(false)}
           onUpdateProfile={onUpdateProfile}
-          onResetOnboarding={onResetOnboarding}
         />
       )}
 

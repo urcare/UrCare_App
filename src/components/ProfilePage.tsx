@@ -11,6 +11,7 @@ import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
 import { updateAvatar } from '../utils/supabase';
 import { Logo } from './Logo';
+import { EditHealthProfileModal } from './EditHealthProfileModal';
 
 interface ProfilePageProps {
   profile: UserHealthProfile;
@@ -71,13 +72,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onGoToDailyPlanTab,
 }) => {
   const { language, t } = useLanguage();
-  const [isEditing, setIsEditing] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   const menuItems = [
+    { label: 'Edit Health Profile', icon: Edit3, onClick: () => setIsEditProfileOpen(true) },
     { label: 'Daily Plan', icon: Lightbulb, onClick: onGoToDailyPlanTab },
     { label: 'My Reports', icon: FileText, onClick: onGoToReportsTab },
     { label: 'Assessment', icon: ClipboardCheck, onClick: onGoToAssessmentTab },
@@ -106,26 +108,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     }
   };
 
-  // Editable quick values
-  const [weight, setWeight] = useState(profile.currentWeightKg || 70);
-  const [targetWeight, setTargetWeight] = useState(profile.targetWeightKg || 65);
-  const [dietary, setDietary] = useState(profile.dietaryPreference || 'Vegetarian');
-
   const { calculatedPlan, heightCm = 170, age = 28, gender = 'male' } = profile;
-  const bmi = calculatedPlan?.bmi || Number((weight / Math.pow(heightCm / 100, 2)).toFixed(1));
+  const bmi = calculatedPlan?.bmi || Number((profile.currentWeightKg / Math.pow(heightCm / 100, 2)).toFixed(1));
   const assessment = profile.assessmentData;
-
-  const handleSave = () => {
-    const updated: UserHealthProfile = {
-      ...profile,
-      currentWeightKg: Number(weight),
-      targetWeightKg: Number(targetWeight),
-      dietaryPreference: dietary,
-      updatedAt: new Date().toISOString(),
-    };
-    onUpdateProfile(updated);
-    setIsEditing(false);
-  };
 
   return (
     <div id="urcare-profile-page" className="min-h-screen bg-[#F8FAFC] text-zinc-900 pb-16">
@@ -269,76 +254,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
             <button
               type="button"
-              onClick={() => setIsEditing(!isEditing)}
+              onClick={() => setIsEditProfileOpen(true)}
               className="px-4 py-2 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 w-full sm:w-auto justify-center"
             >
               <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{isEditing ? 'Cancel' : 'Edit Stats'}</span>
+              <span>Edit Health Profile</span>
             </button>
           </div>
 
           {avatarError && (
             <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">{avatarError}</p>
-          )}
-
-          {/* Quick Edit Drawer */}
-          {isEditing && (
-            <div className="pt-4 border-t border-zinc-100 space-y-3 bg-zinc-50 p-4 rounded-2xl">
-              <h3 className="text-xs font-black uppercase text-zinc-700">Update Weight & Food Preference</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-zinc-600 mb-1">Current Weight (kg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={weight}
-                    onChange={(e) => setWeight(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl border border-zinc-300 bg-white text-xs font-bold text-zinc-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-zinc-600 mb-1">Target Weight (kg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={targetWeight}
-                    onChange={(e) => setTargetWeight(Number(e.target.value))}
-                    className="w-full p-2.5 rounded-xl border border-zinc-300 bg-white text-xs font-bold text-zinc-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-zinc-600 mb-1">Dietary Preference</label>
-                  <select
-                    value={dietary}
-                    onChange={(e) => setDietary(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-zinc-300 bg-white text-xs font-bold text-zinc-900"
-                  >
-                    <option value="Vegetarian">Vegetarian</option>
-                    <option value="Non-Vegetarian">Non-Vegetarian</option>
-                    <option value="Eggetarian">Eggetarian</option>
-                    <option value="Vegan">Vegan</option>
-                    <option value="Jain">Jain</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(false)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-600 hover:bg-zinc-200 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="px-4 py-1.5 rounded-lg text-xs font-black bg-emerald-600 text-white shadow-sm hover:bg-emerald-500 cursor-pointer"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
           )}
         </div>
 
@@ -486,6 +411,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </div>
 
       </main>
+
+      <EditHealthProfileModal
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        profile={profile}
+        onUpdateProfile={onUpdateProfile}
+      />
     </div>
   );
 };

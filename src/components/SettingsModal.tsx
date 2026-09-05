@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, RefreshCw, Scale, Target, ShieldCheck, Mail, CheckCircle2, SlidersHorizontal, Globe2 } from 'lucide-react';
+import { X, RefreshCw, Scale, Target, ShieldCheck, Mail, CheckCircle2, SlidersHorizontal, Globe2 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { calculateNutritionPlan } from '../utils/calculator';
 import { LanguageSwitchButton } from '../context/LanguageContext';
@@ -10,7 +10,6 @@ interface SettingsModalProps {
   profile: UserHealthProfile;
   account: UserAccount;
   onUpdateProfile: (updated: UserHealthProfile) => void;
-  onResetOnboarding: () => void;
 }
 
 // Turns 'lose_weight' / 'steady' style enum values into readable labels.
@@ -27,7 +26,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   profile,
   account,
   onUpdateProfile,
-  onResetOnboarding,
 }) => {
   const [weightInput, setWeightInput] = useState(profile.currentWeightKg.toString());
   const [isSaving, setIsSaving] = useState(false);
@@ -182,20 +180,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           Your health data is private, encrypted in transit, and saved securely to your account automatically.
         </p>
 
-        {/* Retake Onboarding Flow */}
-        <div className="pt-1 border-t border-zinc-100 space-y-2">
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onResetOnboarding();
-            }}
-            className="w-full py-3 rounded-xl border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Retake UrCare Onboarding Flow</span>
-          </button>
-        </div>
+        {/* Pointer to the full profile editor, which now lives as its own
+            module on the Profile page instead of a destructive "retake
+            onboarding" reset here. */}
+        <p className="text-[10px] text-center text-zinc-400 font-medium px-2 pt-1 border-t border-zinc-100">
+          Want to update your goal, activity level, or medical history? Open{' '}
+          <span className="font-bold text-emerald-600">Profile → Edit Health Profile</span>.
+        </p>
 
       </div>
     </div>

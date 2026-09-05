@@ -33,12 +33,17 @@ interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showSubtitle?: boolean;
   className?: string;
+  /** Tighter subtitle sizing/tracking for cramped spots (e.g. the mobile
+   *  top header) so "True Healthcare Platform" never pushes into nearby
+   *  buttons — it shrinks and ellipsizes instead of colliding. */
+  compact?: boolean;
 }
 
 export const Logo: React.FC<LogoProps> = ({
   size = 'md',
   showSubtitle = true,
   className = '',
+  compact = false,
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -88,13 +93,17 @@ export const Logo: React.FC<LogoProps> = ({
       )}
 
       {/* Brand Typography */}
-      <div className="flex flex-col text-left">
+      <div className="flex flex-col text-left min-w-0">
         <div className={`font-black flex items-center tracking-tight ${titleSizes[size]}`}>
           <span className={isDark ? 'text-white' : 'text-zinc-950'}>Ur</span>
           <span className="text-emerald-500">Care</span>
         </div>
         {showSubtitle && (
-          <span className={`font-bold uppercase tracking-[0.14em] text-emerald-700/80 ${subSizes[size]}`}>
+          <span
+            className={`block truncate font-bold uppercase text-emerald-700/80 ${
+              compact ? 'text-[7px] tracking-normal' : `tracking-[0.14em] ${subSizes[size]}`
+            }`}
+          >
             True Healthcare Platform
           </span>
         )}
