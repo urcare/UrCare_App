@@ -398,11 +398,20 @@ Call the record_food_analysis tool exactly once with the complete result.`;
 
 // 3. AI Daily Plan — generates (once per day, via Claude) and persists to `ai_daily_plans`.
 //    Explicitly varies from the previous day's plan so it never repeats.
-app.post('/api/daily-plan', requireUser(async (req, res, user) => {
-  try {
-    const { date, profile } = req.body;
-    if (!date) return res.status(400).json({ error: 'A date is required.' });
+// De-dupes concurrent "generate today's plan" calls for the same user+date —
+// e.g. React StrictMode double-mounting a component, or two tabs open at
+// once — so a second caller piggybacks on the first's in-flight Claude call
+// instead of firing (and waiting out) its own redundant one. This was making
+// the "slow" complaint worse: two full generations competing for the same
+// Anthropic rate-limit slot, both taking longer than a single call would.
+const inFlightPlanGeneration = new Map<string, Promise<any>>();
 
+app.post('/api/daily-plan', requireUser(async (req, res, user) => {
+  const { date, profile } = req.body;
+  if (!date) return res.status(400).json({ error: 'A date is required.' });
+  const lockKey = `${user.id}:${date}`;
+
+  try {
     const supabase = getSupabaseAdmin();
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
 
@@ -410,8 +419,31 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
     const { data: existing } = await supabase.from('ai_daily_plans').select('*').eq('user_id', user.id).eq('plan_date', date).maybeSingle();
     if (existing) return res.json({ plan: existing });
 
+    // Someone else's request for this exact user+date is already generating —
+    // wait for that one instead of starting a second Claude call.
+    const pending = inFlightPlanGeneration.get(lockKey);
+    if (pending) {
+      const plan = await pending;
+      return res.json({ plan });
+    }
+
+    const generation = generateAndSavePlan(supabase, user, date, profile);
+    inFlightPlanGeneration.set(lockKey, generation);
+    try {
+      const plan = await generation;
+      return res.json({ plan });
+    } finally {
+      inFlightPlanGeneration.delete(lockKey);
+    }
+  } catch (error: any) {
+    console.error('Error generating daily plan:', error);
+    return res.status(500).json({ error: 'Could not generate today’s plan right now. Please try again.' });
+  }
+}));
+
+async function generateAndSavePlan(supabase: SupabaseClient, user: { id: string; email: string }, date: string, profile: any): Promise<any> {
     const ai = getClaudeClient();
-    if (!ai) return res.status(503).json({ error: 'The AI planner is not configured right now.' });
+    if (!ai) throw new Error('The AI planner is not configured right now.');
 
     // Look at the most recent previous plan so today's plan is told to differ from it.
     const { data: previous } = await supabase
@@ -501,17 +533,13 @@ Call the record_daily_plan tool exactly once with the complete structured result
       // instead of erroring — the plan itself is still correct either way.
       if (insertErr.code === '23505') {
         const { data: winner } = await supabase.from('ai_daily_plans').select('*').eq('user_id', user.id).eq('plan_date', date).maybeSingle();
-        if (winner) return res.json({ plan: winner });
+        if (winner) return winner;
       }
       throw insertErr;
     }
 
-    return res.json({ plan: inserted });
-  } catch (error: any) {
-    console.error('Error generating daily plan:', error);
-    return res.status(500).json({ error: 'Could not generate today’s plan right now. Please try again.' });
-  }
-}));
+    return inserted;
+}
 
 // ----------------------------------------------------------------------------
 // ORDERS & CHECKOUT — real `orders` + `order_items` rows.

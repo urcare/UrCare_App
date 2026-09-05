@@ -197,6 +197,21 @@ export async function updateAvatar(userId: string, dataUrl: string): Promise<{ e
   return { error: error?.message };
 }
 
+/** Persists a Pro/trial grant to the database — must be called any time isPro
+ *  is set to true locally (e.g. an onboarding trial), or the very next session
+ *  refresh will re-fetch 'inactive' from the DB and silently revoke it. */
+export async function activatePremium(userId: string, expiryIso: string): Promise<{ error?: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: 'Supabase is not configured.' };
+  const { error } = await supabase.from('profiles').update({
+    premium_status: 'active',
+    premium_started_at: new Date().toISOString(),
+    premium_expires_at: expiryIso,
+    updated_at: new Date().toISOString(),
+  }).eq('user_id', userId);
+  return { error: error?.message };
+}
+
 export async function upsertProfile(userId: string, profile: UserHealthProfile): Promise<{ error?: string }> {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: 'Supabase is not configured.' };

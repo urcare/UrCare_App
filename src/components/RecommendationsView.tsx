@@ -37,6 +37,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
   const [plan, setPlan] = useState<any | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
   const [completedToday, setCompletedToday] = useState<Record<string, boolean>>({});
   const [markedDates, setMarkedDates] = useState<Set<string>>(new Set());
@@ -56,6 +57,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     (async () => {
       let existing = await getDailyPlan(userId, dateKey);
       if (!existing && isToday) {
+        // Only the very first visit each day hits this — Claude takes ~15-20s to
+        // write a full personalized day, so show that it's genuinely working
+        // rather than just spinning silently.
+        if (!cancelled) setIsGeneratingPlan(true);
         const result = await generateDailyPlan(dateKey, profile);
         if (result.error) {
           if (!cancelled) setPlanError(result.error);
@@ -66,11 +71,32 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       if (!cancelled) {
         setPlan(existing || null);
         setPlanLoading(false);
+        setIsGeneratingPlan(false);
       }
     })();
 
     return () => { cancelled = true; };
   }, [userId, dateKey, isToday]);
+
+  // Rotating status line while the first-of-the-day plan is being generated —
+  // purely cosmetic (doesn't change actual latency), but a wait with visible
+  // progress reads very differently from a wait that looks stuck.
+  const generatingMessages = [
+    'Reviewing your goals and profile...',
+    'Planning your meals for today...',
+    'Picking the right exercises for you...',
+    'Working out your hydration & macros...',
+    'Almost ready...',
+  ];
+  const [generatingMsgIndex, setGeneratingMsgIndex] = useState(0);
+  useEffect(() => {
+    if (!isGeneratingPlan) { setGeneratingMsgIndex(0); return; }
+    const interval = setInterval(() => {
+      setGeneratingMsgIndex((i) => Math.min(i + 1, generatingMessages.length - 1));
+    }, 3000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGeneratingPlan]);
 
   // Load this day's actual logged activity (meals + task checkboxes).
   useEffect(() => {
@@ -246,9 +272,25 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
       {/* 3. THE PLAN ITSELF — loading / error / real content */}
       {planLoading ? (
-        <div className={`p-10 rounded-3xl ${cardClass} text-center space-y-3`}>
+        <div className={`p-10 rounded-3xl ${cardClass} text-center space-y-4`}>
           <RefreshCw className="w-6 h-6 mx-auto animate-spin text-emerald-500" />
-          <p className="text-sm font-bold opacity-70">{isToday ? 'Putting together today’s plan for you...' : 'Loading...'}</p>
+          {isGeneratingPlan ? (
+            <>
+              <div className="space-y-1">
+                <p className="text-sm font-bold">Building your personalized plan for today</p>
+                <p className="text-xs opacity-60 transition-all">{generatingMessages[generatingMsgIndex]}</p>
+              </div>
+              <div className={`w-full max-w-xs mx-auto h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`}>
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-[3000ms] ease-linear"
+                  style={{ width: `${((generatingMsgIndex + 1) / generatingMessages.length) * 100}%` }}
+                />
+              </div>
+              <p className="text-[11px] opacity-40">This only takes this long the first time each day — after that it loads instantly.</p>
+            </>
+          ) : (
+            <p className="text-sm font-bold opacity-70">Loading...</p>
+          )}
         </div>
       ) : planError ? (
         <div className={`p-6 rounded-3xl ${cardClass} text-center space-y-2`}>
