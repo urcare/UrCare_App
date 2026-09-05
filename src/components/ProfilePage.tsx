@@ -5,7 +5,7 @@ import {
   Target, Flame, Droplets, Edit3, Heart,
   Stethoscope, Award, ChevronRight, LogOut, RefreshCw,
   Package, FileText, CheckCircle2, Camera, BadgeCheck, Sparkles,
-  MoreVertical, X, ShoppingBag, ClipboardCheck
+  MoreVertical, X, ShoppingBag, ClipboardCheck, Lightbulb
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
@@ -26,6 +26,7 @@ interface ProfilePageProps {
   onGoToReportsTab: () => void;
   onGoToAssessmentTab: () => void;
   onGoToStoreTab: () => void;
+  onGoToDailyPlanTab: () => void;
 }
 
 /** Downscales/compresses an image file to a small square JPEG data URL before
@@ -67,6 +68,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onGoToReportsTab,
   onGoToAssessmentTab,
   onGoToStoreTab,
+  onGoToDailyPlanTab,
 }) => {
   const { language, t } = useLanguage();
   const [isEditing, setIsEditing] = useState(false);
@@ -76,6 +78,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const menuItems = [
+    { label: 'Daily Plan', icon: Lightbulb, onClick: onGoToDailyPlanTab },
     { label: 'My Reports', icon: FileText, onClick: onGoToReportsTab },
     { label: 'Assessment', icon: ClipboardCheck, onClick: onGoToAssessmentTab },
     { label: 'Store', icon: ShoppingBag, onClick: onGoToStoreTab },

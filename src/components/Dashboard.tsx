@@ -51,7 +51,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Navigation Tabs — simplified: 'profile' (Home) is the default/main screen.
   // 'premium' = AI Scan + Daily Plan (gated). 'reports', 'assessment' + 'store' are always free.
-  const [activeTab, setActiveTab] = useState<'profile' | 'premium' | 'reports' | 'assessment' | 'store'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'premium' | 'dailyplan' | 'reports' | 'assessment' | 'store'>('profile');
 
   // Without this, switching tabs while scrolled down on the previous tab
   // (e.g. scrolled through Home, then tapping Pro) opens the new tab at that
@@ -416,6 +416,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onGoToReportsTab={() => setActiveTab('reports')}
             onGoToAssessmentTab={() => setActiveTab('assessment')}
             onGoToStoreTab={() => setActiveTab('store')}
+            onGoToDailyPlanTab={() => setActiveTab('dailyplan')}
           />
         ) : (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
@@ -425,7 +426,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* ========================================================================= */}
 
           {/* ===================================================================== */}
-          {/* PREMIUM TAB — exactly 2 features: AI Food Scan + Daily Personalized Plan */}
+          {/* PRO TAB — AI Food Scan. Daily Plan moved to its own 'dailyplan' tab,   */}
+          {/* reachable from the '⋮' menu instead of living inside this one.        */}
           {/* ===================================================================== */}
           {activeTab === 'premium' && (
             <div className="space-y-6 text-left">
@@ -471,13 +473,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <span>Pro Member</span>
                   </div>
 
-                  {/* Feature 1: AI Food Scan */}
+                  {/* AI Food Scan */}
                   <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
-                    <div className="flex items-start gap-3.5">
+                    <div className="flex items-start gap-3.5 min-w-0">
                       <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
                         <Camera className="w-5 h-5" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <h3 className="text-base font-black text-zinc-950">AI Food Scan</h3>
                         <p className="text-xs text-zinc-500 max-w-md mt-0.5">
                           Snap a photo or describe your meal — the AI tells you if it's good for your health profile, or not, and why.
@@ -494,15 +496,69 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </button>
                   </div>
 
-                  {/* Feature 2: Daily Personalized Plan */}
-                  <RecommendationsView
-                    profile={profile}
-                    prescriptions={prescriptions}
-                    onOpenStore={() => setActiveTab('store')}
-                    onOpenConsultDoctor={handleOpenDoctorConsult}
-                    onOpenProModal={handleOpenProModalFor}
-                  />
+                  {/* Pointer to the Daily Plan, which now lives in its own tab */}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('dailyplan')}
+                    className={`w-full p-5 sm:p-6 rounded-3xl ${cardClass} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left cursor-pointer hover:border-emerald-400 transition-all`}
+                  >
+                    <div className="flex items-start gap-3.5 min-w-0">
+                      <div className="w-11 h-11 rounded-2xl bg-teal-50 text-teal-600 border border-teal-200 flex items-center justify-center shrink-0">
+                        <Lightbulb className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-base font-black text-zinc-950">Your Daily Health Plan</h3>
+                        <p className="text-xs text-zinc-500 max-w-md mt-0.5">
+                          A fresh plan every day — what to eat, what to avoid, and exercises made for you.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="w-full sm:w-auto shrink-0 px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-teal-500/20">
+                      <span>Open Daily Plan</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </span>
+                  </button>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ===================================================================== */}
+          {/* DAILY PLAN TAB — the full AI-generated plan, reached via the '⋮' menu */}
+          {/* (Profile page) or the pointer card on the Pro tab, not the main nav.  */}
+          {/* ===================================================================== */}
+          {activeTab === 'dailyplan' && (
+            <div className="space-y-6 text-left">
+              {!account.isPro ? (
+                <div className={`p-6 sm:p-10 rounded-3xl ${cardClass} text-center space-y-5`}>
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-emerald-500 to-green-400 p-0.5 shadow-lg mx-auto">
+                    <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
+                      <Lightbulb className="w-8 h-8 text-amber-500" />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-black text-zinc-950">Unlock Your Daily Health Plan</h3>
+                    <p className="text-sm text-zinc-500 mt-1 max-w-md mx-auto">
+                      A fresh, personalized plan every day — what to eat, what to avoid, and the right exercises for you.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenProModalFor('Daily Health Plan')}
+                    className="px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 mx-auto cursor-pointer"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>Upgrade to Premium — ₹400/mo</span>
+                  </button>
+                </div>
+              ) : (
+                <RecommendationsView
+                  profile={profile}
+                  prescriptions={prescriptions}
+                  onOpenStore={() => setActiveTab('store')}
+                  onOpenConsultDoctor={handleOpenDoctorConsult}
+                  onOpenProModal={handleOpenProModalFor}
+                />
               )}
             </div>
           )}
