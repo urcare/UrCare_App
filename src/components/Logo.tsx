@@ -100,8 +100,10 @@ export const Logo: React.FC<LogoProps> = ({
         </div>
         {showSubtitle && (
           <span
-            className={`block truncate font-bold uppercase text-emerald-700/80 ${
-              compact ? 'text-[7px] tracking-normal' : `tracking-[0.14em] ${subSizes[size]}`
+            className={`block font-bold uppercase text-emerald-700/80 ${
+              compact
+                ? 'whitespace-normal leading-[1.15] text-[7px] tracking-normal'
+                : `truncate tracking-[0.14em] ${subSizes[size]}`
             }`}
           >
             True Healthcare Platform
