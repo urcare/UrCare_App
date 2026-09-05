@@ -9,46 +9,53 @@ import {
 } from 'lucide-react';
 import {
   AdminStats, MedicalReportAnalysis, Order, Prescription,
-  UserReview, Product, Biomarker, UserHealthProfile, UserAccount
+  UserReview, Product, Biomarker, UserHealthProfile, UserAccount, GenderType, ActivityLevel, GoalType, GoalPace
 } from '../types';
-import { 
-  INITIAL_ADMIN_STATS, INITIAL_USER_REPORTS_FOR_ADMIN, 
-  INITIAL_PRESCRIPTIONS, INITIAL_REVIEWS, INITIAL_ORDERS 
-} from '../data/mockAdminData';
-import { INITIAL_PRODUCTS } from '../data/products';
 import { Logo } from './Logo';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
+import { getReviews, getProducts } from '../utils/supabase';
+import { calculateNutritionPlan } from '../utils/calculator';
+
+const EMPTY_STATS: AdminStats = {
+  totalUsers: 0, proUsers: 0, freeUsers: 0, totalBuyers: 0, nonBuyers: 0,
+  totalReviews: 0, totalRevenue: 0, totalOrders: 0, pendingReportsCount: 0,
+};
+
+/** Every admin API call needs this — verified server-side against ADMIN_EMAIL/PASSWORD. */
+function adminFetch(token: string, path: string, options: RequestInit = {}): Promise<Response> {
+  return fetch(path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
+}
 
 interface AdminDashboardProps {
   onExitAdmin: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) => {
-  // Authentication State (Admin Only Barrier)
+  // Authentication State (Admin Only Barrier) — verified server-side only.
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [adminToken, setAdminToken] = useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<'overview' | 'patients' | 'reports' | 'orders' | 'products_qr' | 'reviews'>('overview');
 
-  // Stats & Data
-  const [stats, setStats] = useState<AdminStats>(INITIAL_ADMIN_STATS);
-  const [reports, setReports] = useState<MedicalReportAnalysis[]>(INITIAL_USER_REPORTS_FOR_ADMIN);
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>(INITIAL_PRESCRIPTIONS);
-  const [reviews, setReviews] = useState<UserReview[]>(INITIAL_REVIEWS);
-  const [products, setProducts] = useState<Product[]>(() => {
-    try {
-      const stored = localStorage.getItem('urcare_products');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
-    return INITIAL_PRODUCTS;
-  });
+  // Stats & Data — all real, fetched from Supabase via the server once logged in.
+  const [stats, setStats] = useState<AdminStats>(EMPTY_STATS);
+  const [reports, setReports] = useState<MedicalReportAnalysis[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [reviews, setReviews] = useState<UserReview[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   // Product Manager Modal and Search State
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -84,14 +91,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     featured: false,
   });
 
-  const saveProducts = (newProducts: Product[]) => {
-    setProducts(newProducts);
-    try {
-      localStorage.setItem('urcare_products', JSON.stringify(newProducts));
-      window.dispatchEvent(new Event('storage'));
-    } catch (e) {
-      console.error('Failed to save products to localStorage:', e);
-    }
+  const reloadProducts = () => {
+    getProducts().then(setProducts).catch(() => {});
   };
 
   const handleOpenAddProduct = () => {
@@ -157,14 +158,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
       .map(b => b.trim())
       .filter(Boolean);
 
-    const newOrUpdatedProduct: Product = {
+    if (!adminToken) return;
+
+    const payload = {
       id: productForm.id || ('prod_' + Date.now()),
       name: productForm.name.trim() || 'UrCare Clinical Product',
       category: productForm.category,
       price: Number(productForm.price) || 999,
       discountPrice: Number(productForm.discountPrice) || Number(productForm.price) || 799,
-      rating: editingProduct ? editingProduct.rating : 4.9,
-      reviewsCount: editingProduct ? editingProduct.reviewsCount : 14,
       image: productForm.image || PRESET_PRODUCT_PHOTOS[0].url,
       description: productForm.description.trim() || 'Clinical grade nutrition formulated for optimal bioavailability and metabolic health.',
       benefits: benefitsArray.length > 0 ? benefitsArray : ['Clinical Grade Bioavailability', 'Doctor Formulated', '100% Pure & Lab Tested'],
@@ -179,28 +180,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
       featured: productForm.featured,
     };
 
-    let updatedList: Product[];
-    if (editingProduct) {
-      updatedList = products.map(p => p.id === editingProduct.id ? newOrUpdatedProduct : p);
-    } else {
-      updatedList = [newOrUpdatedProduct, ...products];
-    }
+    adminFetch(adminToken, '/api/admin/products', { method: 'POST', body: JSON.stringify(payload) })
+      .then(() => reloadProducts())
+      .catch(() => {});
 
-    saveProducts(updatedList);
     setIsProductModalOpen(false);
     setEditingProduct(null);
   };
 
   const handleDeleteProduct = (productId: string) => {
+    if (!adminToken) return;
     if (window.confirm('Are you sure you want to delete this product from the store catalog?')) {
-      const updated = products.filter(p => p.id !== productId);
-      saveProducts(updated);
+      adminFetch(adminToken, `/api/admin/products/${productId}`, { method: 'DELETE' })
+        .then(() => reloadProducts())
+        .catch(() => {});
     }
   };
 
   const handleToggleStock = (productId: string) => {
-    const updated = products.map(p => p.id === productId ? { ...p, inStock: !p.inStock } : p);
-    saveProducts(updated);
+    if (!adminToken) return;
+    const p = products.find((x) => x.id === productId);
+    if (!p) return;
+    adminFetch(adminToken, '/api/admin/products', {
+      method: 'POST',
+      body: JSON.stringify({ id: p.id, name: p.name, category: p.category, price: p.price, discountPrice: p.discountPrice, image: p.image, description: p.description, benefits: p.benefits, nutritionInfo: p.nutritionInfo, inStock: !p.inStock, featured: p.featured }),
+    }).then(() => reloadProducts()).catch(() => {});
   };
 
   // Search & Filter for Reports
@@ -228,165 +232,160 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [rxNotes, setRxNotes] = useState('');
   const [isSubmittingRx, setIsSubmittingRx] = useState(false);
 
-  // AI Scanning state
-  const [isAiScanningReport, setIsAiScanningReport] = useState<string | null>(null);
-
-  // Load user reports from localStorage + server
+  // Real lab reports, from every user, via the service-role admin endpoint.
   const loadAllReports = () => {
-    try {
-      const stored = localStorage.getItem('urcare_lab_reports');
-      const userUploaded: MedicalReportAnalysis[] = stored ? JSON.parse(stored) : [];
-
-      const mergedMap = new Map<string, MedicalReportAnalysis>();
-      userUploaded.forEach(r => { if (r.id) mergedMap.set(r.id, r); });
-      INITIAL_USER_REPORTS_FOR_ADMIN.forEach(r => { if (r.id && !mergedMap.has(r.id)) mergedMap.set(r.id, r); });
-
-      setReports(Array.from(mergedMap.values()));
-    } catch (e) {
-      console.warn('Error loading reports from store:', e);
-    }
+    if (!adminToken) return;
+    adminFetch(adminToken, '/api/admin/reports').then((res) => res.json()).then((data) => {
+      if (Array.isArray(data?.reports)) setReports(data.reports);
+    }).catch(() => {});
   };
 
-  // The real signed-up account on this device — same localStorage the live app writes to,
-  // so onboarding data, the 22-module Root-Cause Assessment, and Pro status show up here
-  // exactly as the patient sees them, instead of disconnected demo records.
+  // Real signed-up users — a picker lets admin choose which one to view/prescribe for,
+  // replacing the old "whichever localStorage this browser happens to have" hack.
+  const [patients, setPatients] = useState<any[]>([]);
+  const [selectedPatientUserId, setSelectedPatientUserId] = useState<string | null>(null);
+  const [patientSearchQuery, setPatientSearchQuery] = useState('');
   const [realPatient, setRealPatient] = useState<{ profile: UserHealthProfile; account: UserAccount } | null>(null);
   const [patientMealDays, setPatientMealDays] = useState(0);
   const [patientTasksDone, setPatientTasksDone] = useState(0);
+  const [isLoadingPatient, setIsLoadingPatient] = useState(false);
 
-  const loadRealPatient = () => {
-    try {
-      const storedProfile = localStorage.getItem('urcare_user_profile');
-      const storedAccount = localStorage.getItem('urcare_user_account');
-      if (storedProfile && storedAccount) {
-        setRealPatient({ profile: JSON.parse(storedProfile), account: JSON.parse(storedAccount) });
-      } else {
-        setRealPatient(null);
-      }
-    } catch (e) {
+  const loadPatientsList = () => {
+    if (!adminToken) return;
+    adminFetch(adminToken, '/api/admin/users').then((res) => res.json()).then((data) => {
+      if (Array.isArray(data?.users)) setPatients(data.users);
+    }).catch(() => {});
+  };
+
+  const loadRealPatient = (userId?: string | null) => {
+    const targetId = userId ?? selectedPatientUserId;
+    if (!adminToken || !targetId) {
       setRealPatient(null);
+      return;
     }
+    setIsLoadingPatient(true);
+    adminFetch(adminToken, `/api/admin/patient/${targetId}`).then((res) => res.json()).then((data) => {
+      if (!data?.profile) { setRealPatient(null); return; }
+      const p = data.profile;
+      const hp = data.healthProfile;
+      const account: UserAccount = {
+        uid: p.user_id,
+        email: p.email || '',
+        displayName: p.full_name || p.email || 'Member',
+        authProvider: 'email',
+        supabaseSynced: true,
+        isPro: p.premium_status === 'active',
+        role: p.role === 'admin' ? 'admin' : 'user',
+      };
 
-    try {
-      const mealLog = JSON.parse(localStorage.getItem('urcare_meal_log') || '{}');
-      setPatientMealDays(Object.keys(mealLog).filter((k) => mealLog[k]?.length).length);
-    } catch (e) {
-      setPatientMealDays(0);
-    }
+      if (!hp) { setRealPatient({ profile: null as any, account }); setPatientMealDays(data.mealDaysCount || 0); setPatientTasksDone(data.tasksDoneCount || 0); return; }
 
-    try {
-      const taskLog = JSON.parse(localStorage.getItem('urcare_daily_task_completion') || '{}');
-      const total = Object.values(taskLog as Record<string, Record<string, boolean>>)
-        .reduce((sum, day) => sum + Object.values(day).filter(Boolean).length, 0);
-      setPatientTasksDone(total);
-    } catch (e) {
-      setPatientTasksDone(0);
-    }
+      const gender = (hp.gender || p.gender || 'other') as GenderType;
+      const age = hp.age || p.age || 25;
+      const heightCm = hp.height || p.height || 170;
+      const currentWeightKg = hp.weight || p.weight || 70;
+      const targetWeightKg = hp.target_weight_kg || currentWeightKg;
+      const goal = (hp.goal || hp.primary_goals?.[0] || 'improve_health') as GoalType;
+      const activityLevel = (hp.activity_level || p.activity_level || 'moderately_active') as ActivityLevel;
+      const pace = (hp.pace || 'steady') as GoalPace;
+      const extra = hp.extra_data || {};
+
+      const profile: UserHealthProfile = {
+        id: p.user_id,
+        name: p.full_name || '',
+        email: p.email || '',
+        gender, age, heightCm, currentWeightKg, targetWeightKg, goal, activityLevel, pace,
+        obstacles: extra.obstacles || [],
+        dietaryPreference: hp.diet_preference || '',
+        medicalConditions: hp.existing_concerns || [],
+        calculatedPlan: calculateNutritionPlan(gender, age, heightCm, currentWeightKg, targetWeightKg, goal, activityLevel, pace),
+        preferences: extra.preferences,
+        assessmentData: extra.assessmentData,
+        healthDeepDive: extra.healthDeepDive,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      };
+
+      setRealPatient({ profile, account });
+      setPatientMealDays(data.mealDaysCount || 0);
+      setPatientTasksDone(data.tasksDoneCount || 0);
+    }).catch(() => setRealPatient(null)).finally(() => setIsLoadingPatient(false));
   };
 
-  // Load latest from backend if available
   useEffect(() => {
+    if (selectedPatientUserId) loadRealPatient(selectedPatientUserId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPatientUserId]);
+
+  // Load everything real once logged in.
+  useEffect(() => {
+    if (!adminToken) return;
     loadAllReports();
-    loadRealPatient();
+    loadPatientsList();
 
-    fetch('/api/admin/stats')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.totalUsers) setStats((prev) => ({ ...prev, ...data }));
-      })
-      .catch(() => {});
+    adminFetch(adminToken, '/api/admin/stats').then((res) => res.json()).then((data) => {
+      if (data && !data.error) setStats(data);
+    }).catch(() => {});
 
-    fetch('/api/admin/orders')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.orders && data.orders.length > 0) setOrders(data.orders);
-      })
-      .catch(() => {});
+    adminFetch(adminToken, '/api/admin/orders').then((res) => res.json()).then((data) => {
+      if (Array.isArray(data?.orders)) setOrders(data.orders);
+    }).catch(() => {});
 
-    fetch('/api/admin/qr-settings')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.qrImageUrl) setQrSettings(data);
-      })
-      .catch(() => {});
-  }, []);
+    adminFetch(adminToken, '/api/admin/qr-settings').then((res) => res.json()).then((data) => {
+      if (data && data.qr_image_url) {
+        setQrSettings({
+          qrImageUrl: data.qr_image_url, upiId: data.upi_id || '',
+          payeeName: data.payee_name || '', merchantNote: data.merchant_note || '',
+        });
+      }
+    }).catch(() => {});
 
-  const handleAdminLogin = (e?: React.FormEvent) => {
+    getReviews().then(setReviews).catch(() => {});
+    reloadProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminToken]);
+
+  const handleAdminLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const emailNorm = adminEmail.trim().toLowerCase();
-    const pass = adminPassword.trim();
-
-    // Accepted admin emails and passwords
-    const validEmails = ['admin@urcare.app', 'admin@urcare.com', 'admin@cal.ai', 'admin'];
-    const validPasswords = ['admin123', '8899', 'urcare2025', 'admin', '123456'];
-
-    if (
-      validPasswords.includes(pass) ||
-      (validEmails.includes(emailNorm) && (pass === 'admin123' || pass === '8899' || pass === 'admin')) ||
-      emailNorm.includes('admin')
-    ) {
+    setLoginError('');
+    setIsLoggingIn(true);
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: adminEmail.trim(), password: adminPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.token) {
+        setLoginError(data.error || 'Invalid admin email or password.');
+        return;
+      }
+      setAdminToken(data.token);
       setIsAdminLoggedIn(true);
-      setLoginError('');
-      loadAllReports();
-      loadRealPatient();
-    } else {
-      setLoginError('Access restricted: Invalid admin credentials. Use admin@urcare.app with password admin123 or PIN 8899.');
+      setAdminPassword('');
+    } catch {
+      setLoginError('Could not reach the server. Please try again.');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
-  const handle1ClickDemoLogin = () => {
-    setAdminEmail('admin@urcare.app');
-    setAdminPassword('admin123');
-    setIsAdminLoggedIn(true);
-    setLoginError('');
-    loadAllReports();
-    loadRealPatient();
+  const handleAdminLogout = () => {
+    setIsAdminLoggedIn(false);
+    setAdminToken(null);
   };
 
   const handleStatusChange = async (orderId: string, newStatus: 'confirmed' | 'processing' | 'shipped' | 'delivered') => {
+    if (!adminToken) return;
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, orderStatus: newStatus } : o))
     );
     try {
-      await fetch(`/api/admin/orders/${orderId}`, {
+      await adminFetch(adminToken, `/api/admin/orders/${orderId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderStatus: newStatus }),
+        body: JSON.stringify({ status: newStatus }),
       });
     } catch (e) {}
-  };
-
-  const handleScanReportWithAi = async (reportId: string) => {
-    setIsAiScanningReport(reportId);
-    try {
-      const report = reports.find((r) => r.id === reportId);
-      const res = await fetch('/api/analyze-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reportText: report?.summary || 'Comprehensive blood and lipid panel',
-          reportType: report?.reportName || 'Blood Test',
-        }),
-      });
-      const data = await res.json();
-      setReports((prev) =>
-        prev.map((r) =>
-          r.id === reportId
-            ? {
-                ...r,
-                summary: data.summary || r.summary,
-                biomarkers: data.biomarkers || r.biomarkers,
-                identifiedRisks: data.identifiedRisks || r.identifiedRisks,
-                dietaryRecommendations: data.dietaryRecommendations || r.dietaryRecommendations,
-              }
-            : r
-        )
-      );
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsAiScanningReport(null);
-    }
   };
 
   const handleOpenRxModal = (report: MedicalReportAnalysis) => {
@@ -432,14 +431,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
 
   const handleSubmitPrescription = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedReportForRx) return;
+    if (!selectedReportForRx || !adminToken) return;
     setIsSubmittingRx(true);
     try {
       const rxPayload = {
         userId: selectedReportForRx.userId,
         userName: selectedReportForRx.userName,
         reportId: selectedReportForRx.id,
-        doctorName: 'Dr. Arjun Mehta, MD Clinical Nutrition',
+        doctorName: 'UrCare Clinical Team',
         diagnosis: rxDiagnosis,
         medicines: rxMedicines.filter((m) => m.name.trim() !== ''),
         recommendedSupplements: rxSupplements.split(',').map((s) => s.trim()),
@@ -447,12 +446,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
         notes: rxNotes,
       };
 
-      const res = await fetch('/api/admin/prescribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rxPayload),
-      });
+      const res = await adminFetch(adminToken, '/api/admin/prescribe', { method: 'POST', body: JSON.stringify(rxPayload) });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not issue this prescription.');
 
       setPrescriptions((prev) => [data.prescription, ...prev]);
       setReports((prev) =>
@@ -469,13 +465,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
 
   const handleSaveQrSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!adminToken) return;
     setIsUpdatingQr(true);
     try {
-      await fetch('/api/admin/qr-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(qrSettings),
-      });
+      await adminFetch(adminToken, '/api/admin/qr-settings', { method: 'POST', body: JSON.stringify(qrSettings) });
       setQrSuccessMessage('Payment QR Code updated successfully!');
       setTimeout(() => setQrSuccessMessage(''), 3000);
     } catch (e) {
@@ -531,18 +524,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
             </p>
           </div>
 
-          {/* Quick Access Credentials Banner */}
-          <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1.5 text-xs">
-            <div className="flex items-center gap-1.5 text-emerald-900 font-extrabold text-[11px] uppercase tracking-wider">
-              <Zap className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Admin Access Credentials</span>
-            </div>
-            <div className="text-[11px] text-zinc-700 space-y-0.5 font-medium">
-              <div>Email: <strong className="font-mono text-emerald-700">admin@urcare.app</strong></div>
-              <div>Password: <strong className="font-mono text-emerald-700">admin123</strong> or PIN: <strong className="font-mono text-emerald-700">8899</strong></div>
-            </div>
-          </div>
-
           <form onSubmit={handleAdminLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-zinc-700 mb-1">Admin Email</label>
@@ -557,11 +538,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-700 mb-1">Password or Admin PIN</label>
+              <label className="block text-xs font-bold text-zinc-700 mb-1">Password</label>
               <input
                 type="password"
                 required
-                placeholder="admin123 or 8899"
+                placeholder="••••••••"
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 focus:border-emerald-600 focus:bg-white focus:outline-none text-zinc-900 text-xs font-medium transition-all"
@@ -579,20 +560,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
             <button
               id="admin-login-btn"
               type="submit"
-              className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 transition-all cursor-pointer"
+              disabled={isLoggingIn}
+              className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 transition-all cursor-pointer disabled:opacity-60"
             >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Login to Admin Dashboard</span>
-            </button>
-
-            {/* 1-Click Instant Demo Login */}
-            <button
-              type="button"
-              onClick={handle1ClickDemoLogin}
-              className="w-full py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 text-emerald-800 text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-            >
-              <Zap className="w-3.5 h-3.5 text-emerald-600" />
-              <span>1-Click Instant Demo Admin Access</span>
+              {isLoggingIn ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="w-4 h-4" />
+              )}
+              <span>{isLoggingIn ? 'Signing in...' : 'Login to Admin Dashboard'}</span>
             </button>
 
             <button
@@ -634,7 +610,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsAdminLoggedIn(false)}
+              onClick={handleAdminLogout}
               className="px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-600 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -858,33 +834,84 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           </div>
         )}
 
-        {/* TAB: REAL SIGNED-IN PATIENT — mirrors onboarding + the 22-Module Root-Cause      */}
-        {/* Assessment exactly as the patient's own Dashboard shows them (same localStorage). */}
+        {/* TAB: PATIENTS — pick any real signed-up user to view their full profile,   */}
+        {/* Root-Cause Assessment, and issue a prescription directly to them.          */}
         {activeTab === 'patients' && (
           <div className="space-y-6 text-left">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-black text-zinc-950">Patient Profile & Root-Cause Data</h2>
-                <p className="text-xs text-zinc-500 mt-0.5">Live from this device's signed-in UrCare account — same data the patient sees in their own app.</p>
+                <h2 className="text-xl font-black text-zinc-950">Patients</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">Every real signed-up account — pick one to view their profile and Root-Cause Assessment.</p>
               </div>
               <button
                 type="button"
-                onClick={loadRealPatient}
+                onClick={loadPatientsList}
                 className="px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Refresh</span>
+                <span>Refresh List</span>
               </button>
             </div>
 
-            {!realPatient ? (
+            {/* Patient picker */}
+            <div className={`p-4 rounded-3xl ${cardClass} space-y-3`}>
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={patientSearchQuery}
+                  onChange={(e) => setPatientSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 focus:border-emerald-600 focus:outline-none text-xs font-semibold"
+                />
+              </div>
+              {patients.length === 0 ? (
+                <p className="text-xs text-zinc-500 text-center py-4">No users have signed up yet.</p>
+              ) : (
+                <div className="max-h-56 overflow-y-auto space-y-1.5">
+                  {patients
+                    .filter((p) => !patientSearchQuery.trim() || `${p.full_name} ${p.email}`.toLowerCase().includes(patientSearchQuery.toLowerCase()))
+                    .map((p) => (
+                      <button
+                        key={p.user_id}
+                        type="button"
+                        onClick={() => setSelectedPatientUserId(p.user_id)}
+                        className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-left transition-colors cursor-pointer ${
+                          selectedPatientUserId === p.user_id ? 'bg-emerald-50 border border-emerald-300' : `${subCardClass} hover:bg-zinc-100`
+                        }`}
+                      >
+                        <div>
+                          <div className="text-xs font-bold text-zinc-900">{p.full_name || 'Unnamed'}</div>
+                          <div className="text-[11px] text-zinc-500">{p.email}</div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {p.premium_status === 'active' && <Crown className="w-3.5 h-3.5 text-amber-500" />}
+                          {!p.onboarding_completed && <span className="text-[9px] font-bold uppercase text-zinc-400">No onboarding</span>}
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {!selectedPatientUserId ? (
               <div className={`p-12 rounded-3xl ${cardClass} text-center space-y-3`}>
                 <div className="w-14 h-14 rounded-2xl bg-zinc-100 text-zinc-400 flex items-center justify-center mx-auto">
                   <User className="w-7 h-7" />
                 </div>
-                <p className="text-base font-black text-zinc-900">No Signed-In Patient Found</p>
+                <p className="text-base font-black text-zinc-900">Select a Patient</p>
+                <p className="text-xs max-w-sm mx-auto text-zinc-500">Pick someone from the list above to view their full profile.</p>
+              </div>
+            ) : isLoadingPatient ? (
+              <div className={`p-12 rounded-3xl ${cardClass} text-center text-sm font-bold text-zinc-500`}>Loading patient...</div>
+            ) : !realPatient || !realPatient.profile ? (
+              <div className={`p-12 rounded-3xl ${cardClass} text-center space-y-3`}>
+                <div className="w-14 h-14 rounded-2xl bg-zinc-100 text-zinc-400 flex items-center justify-center mx-auto">
+                  <User className="w-7 h-7" />
+                </div>
+                <p className="text-base font-black text-zinc-900">Onboarding Not Completed Yet</p>
                 <p className="text-xs max-w-sm mx-auto text-zinc-500">
-                  Nobody has completed onboarding on this device/browser yet. Once a patient signs up and finishes onboarding, their full profile and Root-Cause Assessment appear here automatically.
+                  This user signed up but hasn't finished onboarding, so there's no health profile to show yet.
                 </p>
               </div>
             ) : (() => {
@@ -1134,20 +1161,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                         >
                           <Eye className="w-3.5 h-3.5 text-zinc-600" />
                           <span>Read Full Dossier</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleScanReportWithAi(report.id!)}
-                          disabled={isAiScanningReport === report.id}
-                          className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
-                        >
-                          {isAiScanningReport === report.id ? (
-                            <div className="w-3.5 h-3.5 rounded-full border-2 border-emerald-600 border-t-transparent animate-spin" />
-                          ) : (
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                          )}
-                          <span>Verify Record</span>
                         </button>
 
                         <button

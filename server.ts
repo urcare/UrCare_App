@@ -768,6 +768,31 @@ app.get('/api/admin/users', requireAdmin(async (req, res) => {
   res.json({ users: data || [] });
 }));
 
+// Full detail for one patient (profile + health profile + activity counts) —
+// needs the service-role client since it reads across users, unlike the
+// patient's own RLS-scoped view of their own data.
+app.get('/api/admin/patient/:userId', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const userId = req.params.userId;
+
+  const [{ data: profileRow }, { data: healthProfileRow }, { data: dailyLogs }] = await Promise.all([
+    supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('health_profiles').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('daily_logs').select('date, meals, task_completion').eq('user_id', userId),
+  ]);
+
+  if (!profileRow) return res.status(404).json({ error: 'Patient not found.' });
+
+  const mealDaysCount = (dailyLogs || []).filter((d: any) => Array.isArray(d.meals) && d.meals.length > 0).length;
+  const tasksDoneCount = (dailyLogs || []).reduce((sum: number, d: any) => {
+    const tc = d.task_completion || {};
+    return sum + Object.values(tc).filter(Boolean).length;
+  }, 0);
+
+  res.json({ profile: profileRow, healthProfile: healthProfileRow, mealDaysCount, tasksDoneCount });
+}));
+
 app.get('/api/admin/reports', requireAdmin(async (req, res) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
