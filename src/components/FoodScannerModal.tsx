@@ -154,8 +154,19 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to analyze food');
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 401) {
+        setError('Your session expired. Please sign out and sign in again.');
+        setScannedResult(null);
+        return;
+      }
+
+      if (!res.ok) {
+        setError(data.rejectionReason || data.error || `The scanner couldn't process this (error ${res.status}). Please try again.`);
+        setScannedResult(null);
+        return;
+      }
 
       if (data.isFood === false) {
         // Scanned/uploaded item is not food — reject clearly instead of showing fake nutrition.
