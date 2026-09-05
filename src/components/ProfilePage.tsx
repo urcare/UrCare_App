@@ -127,9 +127,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   return (
     <div id="urcare-profile-page" className="min-h-screen bg-[#F8FAFC] text-zinc-900 pb-16">
       
-      {/* Top Header — the logo is absolutely centered relative to the full
-          header width (not a 1/3 grid column), so it never gets squeezed or
-          wraps oddly on narrow phones no matter how wide the side content is. */}
+      {/* Top Header — no logo here on purpose: Dashboard's own sidebar/mobile
+          header already shows the UrCare brand on every tab, so repeating it
+          here just looked like it was printed twice on the same screen. This
+          bar instead titles the page, centered the same overflow-safe way. */}
       <header className="sticky top-0 z-30 bg-white border-b border-zinc-200 px-3 sm:px-8 py-3 sm:py-3.5 shadow-xs">
         <div className="max-w-4xl mx-auto relative flex items-center justify-between gap-2">
           <button
@@ -141,15 +142,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <MoreVertical className="w-5 h-5" />
           </button>
 
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <Logo size="sm" showSubtitle={false} />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="text-xs font-black text-emerald-700 tracking-wide whitespace-nowrap">My Profile</span>
           </div>
 
-          <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 shrink-0">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="text-xs font-black text-emerald-700 tracking-wide">My Profile</span>
-            </div>
+          <div className="flex items-center justify-end shrink-0">
             <LanguageSwitchButton />
           </div>
         </div>
