@@ -495,29 +495,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <span>Scan Food Now</span>
                     </button>
                   </div>
-
-                  {/* Pointer to the Daily Plan, which now lives in its own tab */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('dailyplan')}
-                    className={`w-full p-5 sm:p-6 rounded-3xl ${cardClass} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left cursor-pointer hover:border-emerald-400 transition-all`}
-                  >
-                    <div className="flex items-start gap-3.5 min-w-0">
-                      <div className="w-11 h-11 rounded-2xl bg-teal-50 text-teal-600 border border-teal-200 flex items-center justify-center shrink-0">
-                        <Lightbulb className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-base font-black text-zinc-950">Your Daily Health Plan</h3>
-                        <p className="text-xs text-zinc-500 max-w-md mt-0.5">
-                          A fresh plan every day — what to eat, what to avoid, and exercises made for you.
-                        </p>
-                      </div>
-                    </div>
-                    <span className="w-full sm:w-auto shrink-0 px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-teal-500/20">
-                      <span>Open Daily Plan</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </span>
-                  </button>
                 </div>
               )}
             </div>
