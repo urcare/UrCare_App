@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, Settings, 
   ChevronRight, Sparkles, Trash2, Calendar, ShieldCheck, Activity, 
-  ShoppingBag, Lightbulb, Stethoscope, Crown, Camera, Lock,
+  ShoppingBag, Stethoscope, Crown, Camera, Lock,
   Package, User, Check, PhoneCall, FileText, CheckCircle2, HeartPulse,
   LogOut, MessageSquare, AlertCircle, LayoutGrid, Home,
   Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3
@@ -509,37 +509,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* ===================================================================== */}
           {activeTab === 'dailyplan' && (
             <div className="space-y-6 text-left">
-              {!account.isPro ? (
-                <div className={`p-6 sm:p-10 rounded-3xl ${cardClass} text-center space-y-5`}>
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-emerald-500 to-green-400 p-0.5 shadow-lg mx-auto">
-                    <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
-                      <Lightbulb className="w-8 h-8 text-amber-500" />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-black text-zinc-950">Unlock Your Daily Health Plan</h3>
-                    <p className="text-sm text-zinc-500 mt-1 max-w-md mx-auto">
-                      A fresh, personalized plan every day — what to eat, what to avoid, and the right exercises for you.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenProModalFor('Daily Health Plan')}
-                    className="px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 mx-auto cursor-pointer"
-                  >
-                    <Lock className="w-4 h-4" />
-                    <span>Upgrade to Premium — ₹400/mo</span>
-                  </button>
-                </div>
-              ) : (
-                <RecommendationsView
-                  profile={profile}
-                  prescriptions={prescriptions}
-                  onOpenStore={() => setActiveTab('store')}
-                  onOpenConsultDoctor={handleOpenDoctorConsult}
-                  onOpenProModal={handleOpenProModalFor}
-                />
-              )}
+              <RecommendationsView
+                profile={profile}
+                prescriptions={prescriptions}
+                onOpenStore={() => setActiveTab('store')}
+                onOpenConsultDoctor={handleOpenDoctorConsult}
+                onOpenProModal={handleOpenProModalFor}
+              />
             </div>
           )}
 
