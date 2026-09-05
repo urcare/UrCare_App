@@ -63,7 +63,7 @@ create trigger on_auth_user_created
 -- 2. DAILY LOGS — what the user actually ate/did on a given date
 -- ---------------------------------------------------------------------------
 create table if not exists public.daily_logs (
-  user_id uuid references public.profiles(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
   date date not null,
   meals jsonb default '[]',
   water_ml int default 0,
@@ -80,7 +80,7 @@ create table if not exists public.daily_logs (
 --    (so the plan actually differs day to day and history can be browsed)
 -- ---------------------------------------------------------------------------
 create table if not exists public.daily_plans (
-  user_id uuid references public.profiles(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
   date date not null,
   target_calories int,
   target_protein int,
@@ -99,7 +99,7 @@ create table if not exists public.daily_plans (
 -- ---------------------------------------------------------------------------
 create table if not exists public.lab_reports (
   id text primary key,
-  user_id uuid references public.profiles(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
   user_name text,
   report_name text,
   uploaded_at timestamptz default now(),
@@ -119,7 +119,7 @@ create table if not exists public.lab_reports (
 -- ---------------------------------------------------------------------------
 create table if not exists public.prescriptions (
   id text primary key,
-  user_id uuid references public.profiles(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
   user_name text,
   report_id text references public.lab_reports(id) on delete set null,
   doctor_name text,
@@ -172,7 +172,7 @@ create table if not exists public.products (
 -- ---------------------------------------------------------------------------
 create table if not exists public.reviews (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references public.profiles(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
   user_name text,
   product_id text references public.products(id) on delete cascade,
   product_name text,
@@ -187,7 +187,7 @@ create table if not exists public.reviews (
 -- ---------------------------------------------------------------------------
 create table if not exists public.orders (
   id text primary key,
-  user_id uuid references public.profiles(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
   user_name text,
   user_email text,
   items jsonb default '[]',
@@ -210,7 +210,7 @@ create table if not exists public.orders (
 -- ---------------------------------------------------------------------------
 create table if not exists public.clinical_feedback (
   id text primary key,
-  user_id uuid references public.profiles(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete cascade,
   user_name text,
   day_cycle_number int,
   energy_rating int,
