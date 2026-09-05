@@ -5,6 +5,13 @@
 -- Safe to re-run (uses IF NOT EXISTS / CREATE OR REPLACE everywhere).
 -- ============================================================================
 
+-- Drop any pre-existing "products"/"reviews" tables from a starter template
+-- (they usually have a uuid id, which conflicts with the text ids this app
+-- uses, e.g. 'prod_whey_iso'). Safe — this schema recreates both immediately
+-- below with the correct columns.
+drop table if exists public.reviews cascade;
+drop table if exists public.products cascade;
+
 -- ---------------------------------------------------------------------------
 -- 1. PROFILES — one row per signed-in user (extends auth.users)
 -- ---------------------------------------------------------------------------
