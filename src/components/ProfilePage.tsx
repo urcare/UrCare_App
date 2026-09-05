@@ -79,7 +79,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   const menuItems = [
-    { label: 'Edit Health Profile', icon: Edit3, onClick: () => setIsEditProfileOpen(true) },
     { label: 'Daily Plan', icon: Lightbulb, onClick: onGoToDailyPlanTab },
     { label: 'My Reports', icon: FileText, onClick: onGoToReportsTab },
     { label: 'Assessment', icon: ClipboardCheck, onClick: onGoToAssessmentTab },

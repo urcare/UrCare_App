@@ -344,13 +344,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </aside>
 
-      {/* 2. MOBILE TOP HEADER — logo absolutely centered relative to the full
-          header width so it stays centered regardless of the button group's
-          width, instead of a plain flex justify-between (which centers
-          nothing, just spaces the two ends). */}
-      <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-end gap-2">
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[54vw] sm:max-w-none">
-          <Logo size="sm" showSubtitle={true} compact />
+      {/* 2. MOBILE TOP HEADER — a real 3-track flex row (spacer / logo / buttons)
+          instead of absolute-centering the logo over the row. Absolute
+          positioning let the logo's box visually overlap the button cluster
+          on narrow phones; a dedicated flex-1 track for the logo can only
+          shrink/truncate into the space it's actually given, so it can never
+          sit on top of the buttons. The left spacer mirrors the button
+          cluster's width so the logo still lands at the true visual center. */}
+      <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2">
+        <div className="w-28 shrink-0" aria-hidden="true" />
+
+        <div className="flex-1 min-w-0 flex justify-center px-1">
+          <Logo size="sm" showSubtitle={true} compact className="min-w-0 max-w-full" />
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
