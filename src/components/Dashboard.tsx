@@ -219,7 +219,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="space-y-6">
           
           {/* Logo & Brand */}
-          <div className="pb-4 border-b border-zinc-100">
+          <div className="pb-4 border-b border-zinc-100 flex justify-center">
             <Logo size="sm" showSubtitle={true} />
           </div>
 
@@ -344,9 +344,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </aside>
 
-      {/* 2. MOBILE TOP HEADER */}
-      <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2">
-        <div className="shrink-0 min-w-0">
+      {/* 2. MOBILE TOP HEADER — logo absolutely centered relative to the full
+          header width so it stays centered regardless of the button group's
+          width, instead of a plain flex justify-between (which centers
+          nothing, just spaces the two ends). */}
+      <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-end gap-2">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           <Logo size="sm" showSubtitle={false} />
         </div>
 
