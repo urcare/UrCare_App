@@ -6,8 +6,8 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Product, CartItem, ShippingAddress, Order, UserAccount } from '../types';
-import { INITIAL_PRODUCTS } from '../data/products';
 import { useTheme } from '../context/ThemeContext';
+import { saveOrderAndReceiptToSupabase, getProducts } from '../utils/supabase';
 
 interface ProductsModuleProps {
   account: UserAccount;
@@ -23,31 +23,19 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const [products, setProducts] = useState<Product[]>(() => {
-    try {
-      const stored = localStorage.getItem('urcare_products');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
-    return INITIAL_PRODUCTS;
-  });
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
 
-  // Keep in sync if updated in admin tab
+  // Real catalog, managed by admin — no hardcoded/mock products. Ratings/review
+  // counts are computed from real reviews, never fabricated.
   useEffect(() => {
-    const handleStorageChange = () => {
-      try {
-        const stored = localStorage.getItem('urcare_products');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) setProducts(parsed);
-        }
-      } catch (e) {}
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    let cancelled = false;
+    getProducts()
+      .then((list) => { if (!cancelled) setProducts(list); })
+      .finally(() => { if (!cancelled) setProductsLoading(false); });
+    return () => { cancelled = true; };
   }, []);
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -57,12 +45,12 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   // Checkout flow states: 'none' | 'address' | 'payment' | 'order_confirmed'
   const [checkoutStep, setCheckoutStep] = useState<'none' | 'address' | 'payment' | 'order_confirmed'>('none');
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
-    fullName: account.displayName || 'Rahul Verma',
-    phone: '9876543210',
-    streetAddress: 'Flat 402, Green Valley Apartments',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    pincode: '400053',
+    fullName: account.displayName || '',
+    phone: account.phoneNumber || '',
+    streetAddress: '',
+    city: '',
+    state: '',
+    pincode: '',
   });
 
   const [paymentMethod, setPaymentMethod] = useState<'qr_upi' | 'razorpay' | 'autopay'>('qr_upi');
@@ -137,7 +125,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     setIsProcessingOrder(true);
     
     const orderPayload: Order = {
-      id: 'URC-' + Math.floor(100000 + Math.random() * 900000),
+      id: 'URC-' + Math.floor(100000 + Math.random() * 900000), // display placeholder until the server assigns the real id
       userId: account.uid,
       userName: shippingAddress.fullName,
       userEmail: account.email,
@@ -154,45 +142,29 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
       estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     };
 
-    try {
-      // The server assigns the canonical order (id, status, etc.) — use that as the
-      // single source of truth so this exact record is what Admin sees too, not a
-      // separately-shaped client copy with a different id.
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderPayload),
-      });
-      const data = await res.json();
-      const finalOrder: Order = data?.order || orderPayload;
+    // The server assigns the canonical order (real id, status, etc.) — that's what
+    // Admin sees too, so the confirmation must reflect the id it actually returned.
+    const result = await saveOrderAndReceiptToSupabase(orderPayload);
+    const finalOrder: Order = { ...orderPayload, id: result.success ? result.orderId : orderPayload.id };
 
-      setTimeout(() => {
-        setConfirmedOrder(finalOrder);
-        if (onOrderPlaced) onOrderPlaced(finalOrder);
+    setTimeout(() => {
+      setConfirmedOrder(finalOrder);
+      if (onOrderPlaced) onOrderPlaced(finalOrder);
 
-        try {
-          confetti({
-            particleCount: 70,
-            spread: 60,
-            origin: { y: 0.6 },
-            colors: ['#10b981', '#ffffff', '#059669'],
-          });
-        } catch (e) {}
+      try {
+        confetti({
+          particleCount: 70,
+          spread: 60,
+          origin: { y: 0.6 },
+          colors: ['#10b981', '#ffffff', '#059669'],
+        });
+      } catch (e) {}
 
-        setCart([]);
-        setIsCartOpen(false);
-        setCheckoutStep('order_confirmed');
-        setIsProcessingOrder(false);
-      }, 1000);
-    } catch (err) {
-      // Offline/server unreachable — fall back to the local order so checkout still completes.
-      setConfirmedOrder(orderPayload);
-      if (onOrderPlaced) onOrderPlaced(orderPayload);
       setCart([]);
       setIsCartOpen(false);
       setCheckoutStep('order_confirmed');
       setIsProcessingOrder(false);
-    }
+    }, 1000);
   };
 
   const categories = [
@@ -296,6 +268,15 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
       </div>
 
       {/* Product Cards Grid */}
+      {productsLoading ? (
+        <div className={`p-12 rounded-3xl ${cardClass} text-center text-sm font-bold opacity-60`}>Loading products...</div>
+      ) : filteredProducts.length === 0 ? (
+        <div className={`p-12 rounded-3xl ${cardClass} text-center space-y-2`}>
+          <ShoppingBag className="w-8 h-8 mx-auto opacity-40" />
+          <p className="text-sm font-bold opacity-70">No products available yet</p>
+          <p className="text-xs opacity-50">Check back soon — the store is being stocked.</p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {filteredProducts.map((product) => {
           const isAdded = addedAnimationId === product.id;
@@ -377,6 +358,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
           );
         })}
       </div>
+      )}
 
       {/* PRODUCT DETAILS MODAL (CLICK TO READ & EXPLORE FULL DETAILS) */}
       {selectedProductDetails && (
