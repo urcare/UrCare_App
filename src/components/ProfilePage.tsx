@@ -127,26 +127,25 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   return (
     <div id="urcare-profile-page" className="min-h-screen bg-[#F8FAFC] text-zinc-900 pb-16">
       
-      {/* Top Header — 3-column grid so the logo sits truly centered regardless
-          of how wide the left/right content is. */}
-      <header className="sticky top-0 z-30 bg-white border-b border-zinc-200 px-4 sm:px-8 py-3.5 shadow-xs">
-        <div className="max-w-4xl mx-auto grid grid-cols-3 items-center">
-          <div className="flex items-center justify-start">
-            <button
-              type="button"
-              onClick={() => setIsMenuOpen(true)}
-              className="p-2.5 rounded-xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 transition-all cursor-pointer"
-              title="More"
-            >
-              <MoreVertical className="w-5 h-5" />
-            </button>
-          </div>
+      {/* Top Header — the logo is absolutely centered relative to the full
+          header width (not a 1/3 grid column), so it never gets squeezed or
+          wraps oddly on narrow phones no matter how wide the side content is. */}
+      <header className="sticky top-0 z-30 bg-white border-b border-zinc-200 px-3 sm:px-8 py-3 sm:py-3.5 shadow-xs">
+        <div className="max-w-4xl mx-auto relative flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen(true)}
+            className="shrink-0 p-2.5 rounded-xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 transition-all cursor-pointer"
+            title="More"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
 
-          <div className="flex items-center justify-center">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <Logo size="sm" showSubtitle={false} />
           </div>
 
-          <div className="flex items-center justify-end gap-2.5">
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 shrink-0">
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
               <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
               <span className="text-xs font-black text-emerald-700 tracking-wide">My Profile</span>
@@ -214,8 +213,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         {/* 1. SIMPLE USER INFO CARD */}
         <div className="p-6 rounded-3xl bg-white border border-zinc-200 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            
-            <div className="flex items-center gap-4">
+
+            <div className="flex items-center gap-4 min-w-0 w-full sm:w-auto">
               <div className="relative shrink-0">
                 <input
                   ref={avatarInputRef}
@@ -246,22 +245,21 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 </button>
               </div>
 
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl font-black text-zinc-950">
+                  <h1 className="text-lg sm:text-xl font-black text-zinc-950 break-words">
                     {profile.name || account.displayName || 'UrCare Member'}
                   </h1>
-                  <span className="flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    <BadgeCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-500/15" strokeWidth={2.5} />
+                  <span className="flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                    <BadgeCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-500/15 shrink-0" strokeWidth={2.5} />
                     <span>Verified Member</span>
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500 font-medium mt-1">
-                  {profile.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" />{profile.email}</span>}
-                  {profile.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{profile.phone}</span>}
-                  <span>•</span>
-                  <span>{gender.toUpperCase()} • {age} YRS</span>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 font-medium mt-1">
+                  {profile.email && <span className="flex items-center gap-1 min-w-0 break-all"><Mail className="w-3.5 h-3.5 shrink-0" />{profile.email}</span>}
+                  {profile.phone && <span className="flex items-center gap-1 shrink-0"><Phone className="w-3.5 h-3.5" />{profile.phone}</span>}
+                  <span className="shrink-0">{gender.toUpperCase()} • {age} YRS</span>
                 </div>
               </div>
             </div>
@@ -269,7 +267,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <button
               type="button"
               onClick={() => setIsEditing(!isEditing)}
-              className="px-4 py-2 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 w-full sm:w-auto justify-center"
             >
               <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
               <span>{isEditing ? 'Cancel' : 'Edit Stats'}</span>

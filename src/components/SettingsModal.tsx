@@ -152,7 +152,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             className="w-full py-3 rounded-xl border border-rose-500/30 hover:bg-rose-950/20 text-rose-300 text-xs font-bold flex items-center justify-center gap-2 transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            <span>Retake Cal AI Onboarding Flow</span>
+            <span>Retake UrCare Onboarding Flow</span>
           </button>
         </div>
 

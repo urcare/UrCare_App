@@ -215,7 +215,7 @@ app.post('/api/analyze-report', requireUser(async (req, res, user) => {
       return res.status(503).json({ analysisFailed: true, rejectionReason: 'The AI scanner is not configured right now. Please try again later.' });
     }
 
-    const systemInstruction = `You are a world-class Clinical Nutritionist and Metabolic Health AI (like in Cal AI).
+    const systemInstruction = `You are UrCare's world-class Clinical Nutritionist and Metabolic Health AI.
 CRITICAL FIRST STEP: Decide whether the provided image/text is actually a genuine medical/health lab report or prescription (e.g. Blood test, Lipid profile, CBC, Thyroid panel, Liver panel, HbA1c/Diabetes, Vitamin test, doctor's prescription, or clearly-stated lab values as text).
 - If it is NOT a medical/health report (e.g. a random photo, an unrelated document, a screenshot, a selfie, blank/unreadable image, or text with no actual lab values/clinical content), you MUST set isValidReport to false, explain in rejectionReason what was actually provided, and leave biomarkers/risks/recommendations empty. Do NOT invent biomarkers for a non-report input.
 - Only if it IS a genuine medical/health report, set isValidReport to true, then extract meaningful biomarkers, identify potential health risks or dietary implications, and provide personalized dietary & macro adjustments.

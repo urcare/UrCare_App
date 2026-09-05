@@ -194,12 +194,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const activeTabClass = 'bg-emerald-600 text-white font-black shadow-md shadow-emerald-600/20';
   const inactiveTabClass = 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100';
 
+  // Only Home + Pro stay in the persistent nav — Reports/Assessment/Store moved
+  // into the '⋮' side menu (opened from the Profile/Home header) to avoid
+  // showing the same three destinations in two places at once.
   const navItems = [
     { id: 'profile', label: t('navHome'), icon: Home },
     { id: 'premium', label: account.isPro ? t('navPro') : t('navPremium'), icon: Crown },
-    { id: 'reports', label: t('navReports'), icon: FileText },
-    { id: 'assessment', label: t('navAssessment'), icon: Stethoscope },
-    { id: 'store', label: t('navStore'), icon: ShoppingBag },
   ];
 
   return (
@@ -336,23 +336,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </aside>
 
       {/* 2. MOBILE TOP HEADER */}
-      <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-4 py-3 flex items-center justify-between">
-        <Logo size="sm" showSubtitle={false} />
-        
-        <div className="flex items-center gap-2">
+      <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+        <div className="shrink-0 min-w-0">
+          <Logo size="sm" showSubtitle={false} />
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
-            className="p-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1"
+            className="p-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shrink-0"
           >
-            <User className="w-4 h-4 text-emerald-600" />
+            <User className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="text-[10px] font-black uppercase">Profile</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsMyOrdersOpen(true)}
-            className="p-2 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 border border-zinc-200"
+            className="p-2 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 border border-zinc-200 shrink-0"
           >
             <Package className="w-4 h-4 text-emerald-600" />
           </button>
@@ -360,7 +362,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <button
             type="button"
             onClick={() => setIsSettingsOpen(true)}
-            className="p-2 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 border border-zinc-200"
+            className="p-2 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 border border-zinc-200 shrink-0"
           >
             <Settings className="w-4 h-4" />
           </button>
