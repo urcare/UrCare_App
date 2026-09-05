@@ -113,10 +113,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-white text-zinc-900 flex flex-col justify-between items-center px-4 sm:px-6 py-4 sm:py-6 selection:bg-zinc-200">
+    <div className="w-full h-dvh overflow-hidden bg-white text-zinc-900 flex flex-col justify-between items-center px-4 sm:px-6 py-3 sm:py-4 selection:bg-zinc-200">
 
       {/* Top Header: Clean Branding & Language Switcher */}
-      <header className="w-full max-w-md mx-auto flex items-center justify-between">
+      <header className="w-full max-w-md mx-auto flex items-center justify-between shrink-0">
         <Logo size="sm" />
 
         <button
@@ -128,11 +128,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
         </button>
       </header>
 
-      {/* Main Content Area: Phone Mockup Frame */}
-      <main className="w-full max-w-sm sm:max-w-md mx-auto flex-1 flex flex-col items-center justify-center my-2 sm:my-4">
+      {/* Main Content Area: Phone Mockup Frame — sized to whatever vertical
+          space is actually left between the header and footer, so the "Get
+          Started" button below never gets pushed off-screen on short viewports. */}
+      <main className="w-full max-w-sm sm:max-w-md mx-auto flex-1 min-h-0 flex flex-col items-center justify-center">
 
         {/* Smartphone Realistic Mockup Frame */}
-        <div className="w-[305px] sm:w-[330px] h-[530px] sm:h-[560px] bg-zinc-950 rounded-[44px] sm:rounded-[48px] p-2.5 sm:p-3 shadow-2xl shadow-zinc-950/25 border-4 border-zinc-900 ring-1 ring-zinc-300 relative overflow-hidden flex flex-col">
+        <div className="w-auto aspect-305/530 h-full max-h-140 min-h-65 bg-zinc-950 rounded-[44px] sm:rounded-[48px] p-2.5 sm:p-3 shadow-2xl shadow-zinc-950/25 border-4 border-zinc-900 ring-1 ring-zinc-300 relative overflow-hidden flex flex-col">
 
           {/* Hardware Buttons on sides */}
           <div className="absolute -left-1.5 top-24 w-1 h-8 bg-zinc-800 rounded-l" />
@@ -178,18 +180,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
       </main>
 
       {/* Bottom Hero Headline & Action Controls (Matching screenshot perfectly) */}
-      <footer className="w-full max-w-sm sm:max-w-md mx-auto space-y-3.5 sm:space-y-4 pt-2 sm:pt-4 pb-2 text-center">
+      <footer className="w-full max-w-sm sm:max-w-md mx-auto space-y-2.5 sm:space-y-3.5 pt-1 sm:pt-2 pb-1 text-center shrink-0">
 
         {/* Main Headline */}
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-950 leading-tight">
-          {language === 'hi' ? 'कैलोरी ट्रैकिंग हुई बिल्कुल आसान' : 'Calorie tracking made easy'}
+        <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-zinc-950 leading-tight">
+          {language === 'hi' ? 'रिवर्सल हुआ बिल्कुल आसान' : 'Reversal made easy'}
         </h1>
 
         {/* Primary CTA Button: Get Started */}
         <button
           type="button"
           onClick={() => openModal('signup')}
-          className="w-full py-4 sm:py-4.5 rounded-full bg-zinc-950 hover:bg-zinc-800 active:scale-[0.99] text-white font-black text-base sm:text-lg tracking-tight shadow-xl shadow-zinc-950/20 transition-all cursor-pointer"
+          className="w-full py-3.5 sm:py-4.5 rounded-full bg-zinc-950 hover:bg-zinc-800 active:scale-[0.99] text-white font-black text-base sm:text-lg tracking-tight shadow-xl shadow-zinc-950/20 transition-all cursor-pointer"
         >
           {language === 'hi' ? 'शुरू करें (Get Started)' : 'Get Started'}
         </button>
