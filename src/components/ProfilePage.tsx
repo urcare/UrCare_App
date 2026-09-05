@@ -5,7 +5,7 @@ import {
   Target, Flame, Droplets, Edit3, Heart,
   Stethoscope, Award, ChevronRight, LogOut, RefreshCw,
   Package, FileText, CheckCircle2, Camera, BadgeCheck, Sparkles,
-  MoreVertical, X, ShoppingBag, ClipboardCheck, Lightbulb
+  MoreVertical, X, ShoppingBag, ClipboardCheck, Lightbulb, Crown
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
@@ -28,6 +28,7 @@ interface ProfilePageProps {
   onGoToAssessmentTab: () => void;
   onGoToStoreTab: () => void;
   onGoToDailyPlanTab: () => void;
+  onGoToPremiumTab: () => void;
 }
 
 /** Downscales/compresses an image file to a small square JPEG data URL before
@@ -70,6 +71,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onGoToAssessmentTab,
   onGoToStoreTab,
   onGoToDailyPlanTab,
+  onGoToPremiumTab,
 }) => {
   const { language, t } = useLanguage();
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -79,6 +81,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   const menuItems = [
+    { label: account.isPro ? t('navPro') : t('navPremium'), icon: Crown, onClick: onGoToPremiumTab },
     { label: 'Daily Plan', icon: Lightbulb, onClick: onGoToDailyPlanTab },
     { label: 'My Reports', icon: FileText, onClick: onGoToReportsTab },
     { label: 'Assessment', icon: ClipboardCheck, onClick: onGoToAssessmentTab },
