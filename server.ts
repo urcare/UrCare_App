@@ -476,23 +476,35 @@ Call the record_daily_plan tool exactly once with the complete structured result
       },
     });
 
+    // ai_daily_plans has NOT NULL constraints on every one of these columns —
+    // Claude's structured output occasionally omits/nulls a text field even
+    // when the schema marks it required, so fall back rather than 500ing.
     const row = {
       user_id: user.id,
       plan_date: date,
-      morning_plan: parsed.morning_plan,
-      afternoon_plan: parsed.afternoon_plan,
-      evening_plan: parsed.evening_plan,
-      night_plan: parsed.night_plan,
-      exercise_plan: parsed.exercise_plan,
-      hydration_plan: parsed.hydration_plan,
-      nutrition_guidance: parsed.nutrition_guidance,
-      general_advice: parsed.general_advice,
-      daily_quote: parsed.daily_quote,
-      medical_disclaimer: parsed.medical_disclaimer,
+      morning_plan: parsed.morning_plan || {},
+      afternoon_plan: parsed.afternoon_plan || {},
+      evening_plan: parsed.evening_plan || {},
+      night_plan: parsed.night_plan || {},
+      exercise_plan: parsed.exercise_plan || {},
+      hydration_plan: parsed.hydration_plan || {},
+      nutrition_guidance: parsed.nutrition_guidance || {},
+      general_advice: parsed.general_advice || 'Stay consistent with your meals, movement, and water today — small steady habits add up the most.',
+      daily_quote: parsed.daily_quote || 'Small daily habits build big lifelong results.',
+      medical_disclaimer: parsed.medical_disclaimer || 'This plan is general wellness guidance, not a substitute for professional medical advice. Consult your doctor before making major changes, especially if you have an existing health condition.',
     };
 
     const { data: inserted, error: insertErr } = await supabase.from('ai_daily_plans').insert(row).select().single();
-    if (insertErr) throw insertErr;
+    if (insertErr) {
+      // Two requests raced to generate the same day's plan (e.g. a double-mounted
+      // component in dev). Whoever lost the race just reads back the winner's row
+      // instead of erroring — the plan itself is still correct either way.
+      if (insertErr.code === '23505') {
+        const { data: winner } = await supabase.from('ai_daily_plans').select('*').eq('user_id', user.id).eq('plan_date', date).maybeSingle();
+        if (winner) return res.json({ plan: winner });
+      }
+      throw insertErr;
+    }
 
     return res.json({ plan: inserted });
   } catch (error: any) {

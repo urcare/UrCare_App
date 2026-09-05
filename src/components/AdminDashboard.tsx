@@ -272,6 +272,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
         uid: p.user_id,
         email: p.email || '',
         displayName: p.full_name || p.email || 'Member',
+        avatarUrl: p.avatar_url || undefined,
         authProvider: 'email',
         supabaseSynced: true,
         isPro: p.premium_status === 'active',
@@ -880,9 +881,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                           selectedPatientUserId === p.user_id ? 'bg-emerald-50 border border-emerald-300' : `${subCardClass} hover:bg-zinc-100`
                         }`}
                       >
-                        <div>
-                          <div className="text-xs font-bold text-zinc-900">{p.full_name || 'Unnamed'}</div>
-                          <div className="text-[11px] text-zinc-500">{p.email}</div>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-[10px] shrink-0 overflow-hidden">
+                            {p.avatar_url ? (
+                              <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              (p.full_name || 'U').slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-zinc-900 truncate">{p.full_name || 'Unnamed'}</div>
+                            <div className="text-[11px] text-zinc-500 truncate">{p.email}</div>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1.5">
                           {p.premium_status === 'active' && <Crown className="w-3.5 h-3.5 text-amber-500" />}
@@ -923,8 +933,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                   <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} space-y-4`}>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-xs shrink-0">
-                          {(profile.name || account.displayName || 'UC').slice(0, 2).toUpperCase()}
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-xs shrink-0 overflow-hidden">
+                          {account.avatarUrl ? (
+                            <img src={account.avatarUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            (profile.name || account.displayName || 'UC').slice(0, 2).toUpperCase()
+                          )}
                         </div>
                         <div>
                           <h3 className="text-base font-black text-zinc-950">{profile.name || account.displayName}</h3>

@@ -214,8 +214,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* User Quick Info with My Profile Button */}
           <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
-                {profile.name ? profile.name.slice(0, 2).toUpperCase() : 'UC'}
+              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs overflow-hidden">
+                {account.avatarUrl ? (
+                  <img src={account.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  profile.name ? profile.name.slice(0, 2).toUpperCase() : 'UC'
+                )}
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
@@ -389,6 +393,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             account={account}
             onBackToDashboard={() => setActiveTab('profile')}
             onUpdateProfile={onUpdateProfile}
+            onUpdateAccount={onUpdateAccount}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenOrders={() => setIsMyOrdersOpen(true)}
             onOpenReports={() => setIsHealthReportOpen(true)}

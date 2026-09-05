@@ -519,6 +519,7 @@ export interface UserAccount {
   email: string;
   displayName: string;
   phoneNumber?: string;
+  avatarUrl?: string;
   authProvider: 'email' | 'google';
   supabaseSynced: boolean;
   role?: 'user' | 'admin';

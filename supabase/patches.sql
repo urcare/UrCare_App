@@ -52,6 +52,10 @@ alter table public.reviews add constraint reviews_user_id_fkey foreign key (user
 alter table public.clinical_feedback drop constraint if exists clinical_feedback_user_id_fkey;
 alter table public.clinical_feedback add constraint clinical_feedback_user_id_fkey foreign key (user_id) references auth.users(id) on delete cascade;
 
+-- 1b. Profile photo — stored as a data URL (same pattern already used for lab
+--     report images), so no separate Storage bucket setup is needed.
+alter table public.profiles add column if not exists avatar_url text;
+
 -- 2. Additive columns on health_profiles needed to store the plan calculator's
 --    inputs and free-form onboarding data (nothing existing is touched).
 alter table public.health_profiles add column if not exists target_weight_kg numeric;

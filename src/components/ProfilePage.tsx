@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
-import { 
+import React, { useRef, useState } from 'react';
+import {
   User, Mail, Phone, Calendar, ShieldCheck, Scale,
   Target, Flame, Droplets, ArrowLeft, Edit3, Heart,
   Stethoscope, Award, ChevronRight, LogOut, RefreshCw,
-  Package, FileText, CheckCircle2
+  Package, FileText, CheckCircle2, Camera
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
+import { updateAvatar } from '../utils/supabase';
 
 interface ProfilePageProps {
   profile: UserHealthProfile;
   account: UserAccount;
   onBackToDashboard: () => void;
   onUpdateProfile: (updated: UserHealthProfile) => void;
+  onUpdateAccount?: (updated: UserAccount) => void;
   onOpenSettings: () => void;
   onOpenOrders: () => void;
   onOpenReports: () => void;
@@ -21,11 +23,38 @@ interface ProfilePageProps {
   onLogOut: () => void;
 }
 
+/** Downscales/compresses an image file to a small square JPEG data URL before
+ *  it's saved — a full-resolution photo has no business living inline in a
+ *  database row that gets fetched on every page load. */
+function resizeImageToDataUrl(file: File, maxSize = 320): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Canvas not supported'));
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => reject(new Error('Could not read this image'));
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error('Could not read this file'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export const ProfilePage: React.FC<ProfilePageProps> = ({
   profile,
   account,
   onBackToDashboard,
   onUpdateProfile,
+  onUpdateAccount,
   onOpenSettings,
   onOpenOrders,
   onOpenReports,
@@ -34,6 +63,31 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 }) => {
   const { language, t } = useLanguage();
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Please choose an image file.');
+      return;
+    }
+    setAvatarError(null);
+    setIsUploadingAvatar(true);
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      const { error } = await updateAvatar(account.uid, dataUrl);
+      if (error) throw new Error(error);
+      onUpdateAccount?.({ ...account, avatarUrl: dataUrl });
+    } catch (err: any) {
+      setAvatarError(err.message || 'Could not save your photo. Please try again.');
+    } finally {
+      setIsUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  };
 
   // Editable quick values
   const [weight, setWeight] = useState(profile.currentWeightKg || 70);
@@ -86,8 +140,34 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl font-black shadow-md shrink-0">
-                {(profile.name || account.displayName || 'U').charAt(0).toUpperCase()}
+              <div className="relative shrink-0">
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarSelected}
+                />
+                <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl font-black shadow-md overflow-hidden">
+                  {account.avatarUrl ? (
+                    <img src={account.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    (profile.name || account.displayName || 'U').charAt(0).toUpperCase()
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                  title="Change photo"
+                  className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-white border-2 border-white shadow-md flex items-center justify-center text-emerald-600 hover:text-emerald-700 cursor-pointer disabled:opacity-60"
+                >
+                  {isUploadingAvatar ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5" />
+                  )}
+                </button>
               </div>
 
               <div>
@@ -118,6 +198,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               <span>{isEditing ? 'Cancel' : 'Edit Stats'}</span>
             </button>
           </div>
+
+          {avatarError && (
+            <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">{avatarError}</p>
+          )}
 
           {/* Quick Edit Drawer */}
           {isEditing && (

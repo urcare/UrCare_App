@@ -137,6 +137,7 @@ export async function fetchProfileBundle(userId: string, email: string): Promise
   if (p) {
     account.displayName = p.full_name || account.displayName;
     account.email = p.email || account.email;
+    account.avatarUrl = p.avatar_url || undefined;
     account.isPro = p.premium_status === 'active';
     account.proExpiry = p.premium_expires_at || undefined;
     account.role = p.role === 'admin' ? 'admin' : 'user';
@@ -186,6 +187,14 @@ export async function fetchProfileBundle(userId: string, email: string): Promise
   };
 
   return { account, profile };
+}
+
+/** Saves a profile photo (already resized/compressed client-side to a data URL). */
+export async function updateAvatar(userId: string, dataUrl: string): Promise<{ error?: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: 'Supabase is not configured.' };
+  const { error } = await supabase.from('profiles').update({ avatar_url: dataUrl, updated_at: new Date().toISOString() }).eq('user_id', userId);
+  return { error: error?.message };
 }
 
 export async function upsertProfile(userId: string, profile: UserHealthProfile): Promise<{ error?: string }> {

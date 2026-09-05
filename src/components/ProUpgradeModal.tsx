@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { 
-  Crown, Sparkles, Check, QrCode, CreditCard, ShieldCheck, Zap, X, Copy, ExternalLink, ArrowRight, Lock
+import {
+  Crown, Sparkles, Check, QrCode, ShieldCheck, X, Copy, ExternalLink, ArrowRight, Lock
 } from 'lucide-react';
 import { UserAccount } from '../types';
 import { authedFetch } from '../utils/supabase';
@@ -21,9 +21,9 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
   featureTriggerName = 'AI Food Camera Scanner',
 }) => {
   // Single flat plan — no monthly/yearly choice, kept simple on purpose.
+  // UPI QR is the only payment method — Razorpay was removed on request.
   const planType: 'monthly' = 'monthly';
   const [paymentStep, setPaymentStep] = useState<'intro' | 'payment' | 'success'>('intro');
-  const [paymentMethod, setPaymentMethod] = useState<'qr_upi' | 'razorpay'>('qr_upi');
   const [transactionId, setTransactionId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
@@ -76,130 +76,6 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
       setErrorMessage('Could not confirm payment. Please try again.');
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  // Loads the official Razorpay Checkout.js script once, and reuses it on subsequent calls.
-  const loadRazorpayScript = (): Promise<boolean> => {
-    return new Promise((resolve) => {
-      if ((window as any).Razorpay) return resolve(true);
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const finalizeUpgrade = async (paymentMethod: string, extra?: Record<string, any>) => {
-    await authedFetch('/api/user/upgrade-pro', {
-      method: 'POST',
-      body: JSON.stringify({
-        planType,
-        amount: price,
-        paymentMethod,
-        ...extra,
-      }),
-    });
-
-    const updated: UserAccount = {
-      ...account,
-      isPro: true,
-      proPlanType: planType,
-      proExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    };
-
-    onUpgradeSuccess(updated);
-    setIsProcessing(false);
-    setPaymentStep('success');
-  };
-
-  const handleRazorpayPayment = async () => {
-    setIsProcessing(true);
-    setErrorMessage(null);
-    try {
-      // 1. Create a real (or simulated, if no live keys yet) order on the server
-      const res = await fetch('/api/razorpay/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: price,
-          receipt: 'urcare_premium_' + Date.now(),
-          notes: { userId: account.uid, planType },
-        }),
-      });
-      const orderData = await res.json();
-
-      // 2. If live Razorpay keys are configured, open the real Checkout.js widget
-      if (orderData.mode === 'live' && orderData.keyId) {
-        const scriptLoaded = await loadRazorpayScript();
-        if (!scriptLoaded) {
-          setIsProcessing(false);
-          setErrorMessage('Could not load Razorpay checkout. Please check your connection and try again.');
-          return;
-        }
-
-        const rzp = new (window as any).Razorpay({
-          key: orderData.keyId,
-          amount: orderData.amount,
-          currency: orderData.currency,
-          name: 'UrCare Premium',
-          description: 'UrCare Premium Subscription',
-          order_id: orderData.id,
-          prefill: {
-            name: account.displayName,
-            email: account.email,
-            contact: account.phoneNumber || '',
-          },
-          theme: { color: '#059669' },
-          handler: async (response: any) => {
-            // 3. Verify the payment signature on the server, then unlock premium
-            const verifyRes = await fetch('/api/razorpay/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              }),
-            });
-            const verifyData = await verifyRes.json();
-            if (!verifyData.verified) {
-              setIsProcessing(false);
-              setErrorMessage('Payment verification failed. If money was deducted, it will be refunded automatically.');
-              return;
-            }
-            await finalizeUpgrade('razorpay', {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-          },
-          modal: {
-            ondismiss: () => setIsProcessing(false),
-          },
-        });
-        rzp.open();
-        return;
-      }
-
-      // 3b. No live Razorpay keys configured yet — clearly-labelled simulated checkout
-      // so development / demo flows keep working end-to-end.
-      setTimeout(async () => {
-        await fetch('/api/razorpay/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razorpay_order_id: orderData.id,
-            razorpay_payment_id: 'pay_sim_' + Math.random().toString(36).substring(2, 10),
-          }),
-        });
-        await finalizeUpgrade('razorpay');
-      }, 1000);
-    } catch (e) {
-      setIsProcessing(false);
-      setErrorMessage('Something went wrong while starting the payment. Please try again.');
-      console.error(e);
     }
   };
 
@@ -299,43 +175,13 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
               </button>
             </div>
 
-            {/* Payment Method Switcher */}
-            <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-zinc-900 border border-zinc-800 mb-5">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('qr_upi')}
-                className={`py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                  paymentMethod === 'qr_upi'
-                    ? 'bg-emerald-500 text-black shadow-md'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                <QrCode className="w-4 h-4" />
-                <span>UPI QR Code</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('razorpay')}
-                className={`py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                  paymentMethod === 'razorpay'
-                    ? 'bg-emerald-500 text-black shadow-md'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>Razorpay / Cards</span>
-              </button>
-            </div>
-
             {errorMessage && (
               <div className="mb-4 p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs">
                 {errorMessage}
               </div>
             )}
 
-            {paymentMethod === 'qr_upi' ? (
-              <div className="space-y-4">
+            <div className="space-y-4">
                 {/* QR Code Container */}
                 <div className="p-4 rounded-2xl bg-white flex flex-col items-center justify-center text-center shadow-lg">
                   <img
@@ -397,36 +243,6 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
                   )}
                 </button>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 text-center">
-                  <div className="w-12 h-12 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center mx-auto mb-3">
-                    <CreditCard className="w-6 h-6" />
-                  </div>
-                  <h4 className="text-base font-bold text-white">Razorpay Secure Gateway</h4>
-                  <p className="text-xs text-zinc-400 mt-1">
-                    Pay securely using UPI Apps, Credit/Debit Cards, NetBanking, or Wallets.
-                  </p>
-                </div>
-
-                <button
-                  id="pay-razorpay-pro-btn"
-                  type="button"
-                  onClick={handleRazorpayPayment}
-                  disabled={isProcessing}
-                  className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-white font-extrabold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-lg shadow-teal-500/20"
-                >
-                  {isProcessing ? (
-                    <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                  ) : (
-                    <>
-                      <span>Pay ₹{price} with Razorpay</span>
-                      <Zap className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
           </div>
         )}
 
