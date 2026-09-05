@@ -1,18 +1,20 @@
 import React, { useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   User, Mail, Phone, Calendar, ShieldCheck, Scale,
-  Target, Flame, Droplets, ArrowLeft, Edit3, Heart,
+  Target, Flame, Droplets, Edit3, Heart,
   Stethoscope, Award, ChevronRight, LogOut, RefreshCw,
-  Package, FileText, CheckCircle2, Camera, BadgeCheck, Sparkles
+  Package, FileText, CheckCircle2, Camera, BadgeCheck, Sparkles,
+  MoreVertical, X, ShoppingBag, ClipboardCheck
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
 import { updateAvatar } from '../utils/supabase';
+import { Logo } from './Logo';
 
 interface ProfilePageProps {
   profile: UserHealthProfile;
   account: UserAccount;
-  onBackToDashboard: () => void;
   onUpdateProfile: (updated: UserHealthProfile) => void;
   onUpdateAccount?: (updated: UserAccount) => void;
   onOpenSettings: () => void;
@@ -21,6 +23,9 @@ interface ProfilePageProps {
   onOpenDoctorConsult: () => void;
   onOpenRiskAssessment: () => void;
   onLogOut: () => void;
+  onGoToReportsTab: () => void;
+  onGoToAssessmentTab: () => void;
+  onGoToStoreTab: () => void;
 }
 
 /** Downscales/compresses an image file to a small square JPEG data URL before
@@ -52,7 +57,6 @@ function resizeImageToDataUrl(file: File, maxSize = 320): Promise<string> {
 export const ProfilePage: React.FC<ProfilePageProps> = ({
   profile,
   account,
-  onBackToDashboard,
   onUpdateProfile,
   onUpdateAccount,
   onOpenSettings,
@@ -60,12 +64,22 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onOpenReports,
   onOpenDoctorConsult,
   onLogOut,
+  onGoToReportsTab,
+  onGoToAssessmentTab,
+  onGoToStoreTab,
 }) => {
   const { language, t } = useLanguage();
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const menuItems = [
+    { label: 'My Reports', icon: FileText, onClick: onGoToReportsTab },
+    { label: 'Assessment', icon: ClipboardCheck, onClick: onGoToAssessmentTab },
+    { label: 'Store', icon: ShoppingBag, onClick: onGoToStoreTab },
+  ];
 
   const handleAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,19 +127,26 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   return (
     <div id="urcare-profile-page" className="min-h-screen bg-[#F8FAFC] text-zinc-900 pb-16">
       
-      {/* Top Header */}
+      {/* Top Header — 3-column grid so the logo sits truly centered regardless
+          of how wide the left/right content is. */}
       <header className="sticky top-0 z-30 bg-white border-b border-zinc-200 px-4 sm:px-8 py-3.5 shadow-xs">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <button
-            type="button"
-            onClick={onBackToDashboard}
-            className="inline-flex items-center gap-2 text-xs font-bold text-zinc-700 hover:text-zinc-950 px-3 py-2 rounded-xl hover:bg-zinc-100 transition-all cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>{language === 'hi' ? 'डैशबोर्ड पर वापस जाएं' : 'Back to Dashboard'}</span>
-          </button>
+        <div className="max-w-4xl mx-auto grid grid-cols-3 items-center">
+          <div className="flex items-center justify-start">
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(true)}
+              className="p-2.5 rounded-xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 transition-all cursor-pointer"
+              title="More"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+          </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-center">
+            <Logo size="sm" showSubtitle={false} />
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5">
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
               <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
               <span className="text-xs font-black text-emerald-700 tracking-wide">My Profile</span>
@@ -134,6 +155,58 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </div>
       </header>
+
+      {/* Side drawer — My Reports / Assessment / Store, sliding in with animation */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMenuOpen(false)}
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 380, damping: 38 }}
+              className="fixed top-0 left-0 bottom-0 z-50 w-72 max-w-[80vw] bg-white shadow-2xl flex flex-col"
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
+                <Logo size="sm" showSubtitle={false} />
+                <button
+                  type="button"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="p-2 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
+              </div>
+              <nav className="flex-1 p-3 space-y-1">
+                {menuItems.map((item) => {
+                  const ItemIcon = item.icon;
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => { item.onClick(); setIsMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold text-zinc-800 hover:bg-emerald-50 hover:text-emerald-700 transition-all cursor-pointer group"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-zinc-100 group-hover:bg-emerald-100 text-zinc-600 group-hover:text-emerald-700 flex items-center justify-center shrink-0 transition-colors">
+                        <ItemIcon className="w-4.5 h-4.5" />
+                      </div>
+                      <span>{item.label}</span>
+                      <ChevronRight className="w-4 h-4 ml-auto opacity-40 group-hover:opacity-70 group-hover:translate-x-0.5 transition-all" />
+                    </button>
+                  );
+                })}
+              </nav>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Main Container */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 space-y-5 text-left">

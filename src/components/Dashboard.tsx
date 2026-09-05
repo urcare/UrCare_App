@@ -394,7 +394,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <ProfilePage
             profile={profile}
             account={account}
-            onBackToDashboard={() => setActiveTab('profile')}
             onUpdateProfile={onUpdateProfile}
             onUpdateAccount={onUpdateAccount}
             onOpenSettings={() => setIsSettingsOpen(true)}
@@ -403,6 +402,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onOpenDoctorConsult={handleOpenDoctorConsult}
             onOpenRiskAssessment={() => setIsRiskAssessmentOpen(true)}
             onLogOut={() => setShowLogoutConfirm(true)}
+            onGoToReportsTab={() => setActiveTab('reports')}
+            onGoToAssessmentTab={() => setActiveTab('assessment')}
+            onGoToStoreTab={() => setActiveTab('store')}
           />
         ) : (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
