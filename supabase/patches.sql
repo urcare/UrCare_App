@@ -31,6 +31,10 @@ alter table public.health_profiles add column if not exists goal text;
 alter table public.health_profiles add column if not exists pace text;
 alter table public.health_profiles add column if not exists extra_data jsonb default '{}';
 
+-- 3b. Receipt upload fields for UPI-QR orders (payment proof screenshot).
+alter table public.orders add column if not exists receipt_image_url text;
+alter table public.orders add column if not exists receipt_uploaded_at timestamptz;
+
 -- 3. QR / UPI payment settings — a single admin-editable row (replaces the
 --    old hardcoded/in-memory QR settings).
 create table if not exists public.qr_settings (

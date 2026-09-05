@@ -470,11 +470,37 @@ export async function addReview(userId: string, userName: string, productId: str
 // ORDERS — real store orders (via server, which also creates order_items)
 // ============================================================================
 
+/** Creates a new order. Returns the REAL server-generated order id — the
+ *  app's client-side 'ORD-XXXXXX' id is only a display placeholder until then. */
 export async function saveOrderAndReceiptToSupabase(order: Order): Promise<{ success: boolean; orderId: string; error?: string }> {
-  const res = await authedFetch('/api/orders', { method: 'POST', body: JSON.stringify(order) });
+  const res = await authedFetch('/api/orders', {
+    method: 'POST',
+    body: JSON.stringify({
+      items: order.items,
+      shippingAddress: order.shippingAddress,
+      subtotal: order.subtotal,
+      discount: order.discount,
+      total: order.total,
+      paymentMethod: order.paymentMethod,
+      // UPI-QR transactions carry a manually-entered reference; Razorpay
+      // transactions carry the real payment id — either way it's the one
+      // payment reference this order has, so it goes in the same slot.
+      razorpayPaymentId: order.transactionId,
+    }),
+  });
   const data = await res.json();
   if (!res.ok) return { success: false, orderId: order.id, error: data.error };
   return { success: true, orderId: data.order?.id || order.id };
+}
+
+/** Updates an existing order the caller owns — e.g. attaching a payment
+ *  reference / receipt screenshot and marking it verified. Pass the REAL id
+ *  returned by saveOrderAndReceiptToSupabase, not the display placeholder. */
+export async function updateOrderPayment(orderId: string, patch: { transactionId?: string; receiptImageUrl?: string; paymentStatus?: string }): Promise<{ success: boolean; error?: string }> {
+  const res = await authedFetch(`/api/orders/${orderId}`, { method: 'PATCH', body: JSON.stringify(patch) });
+  const data = await res.json();
+  if (!res.ok) return { success: false, error: data.error };
+  return { success: true };
 }
 
 export async function getMyOrders(userId: string): Promise<Order[]> {

@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { Order, CartItem, ShippingAddress } from '../types';
-import { saveOrderAndReceiptToSupabase } from '../utils/supabase';
+import { saveOrderAndReceiptToSupabase, updateOrderPayment } from '../utils/supabase';
 
 interface PaymentGatewayModalProps {
   isOpen: boolean;
@@ -111,8 +111,9 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
         estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       };
 
-      await saveOrderAndReceiptToSupabase(newOrder);
-      setCreatedOrder(newOrder);
+      const saveResult = await saveOrderAndReceiptToSupabase(newOrder);
+      // The server assigns the real order id — everything after this must use it.
+      setCreatedOrder({ ...newOrder, id: saveResult.orderId });
       setIsProcessing(false);
       setStep('receipt_upload');
     } catch (err: any) {
@@ -122,10 +123,12 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
   };
 
   // 2. Process UPI QR Payment & Move to Receipt Upload
-  const handleProceedQrPayment = () => {
-    const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+  const handleProceedQrPayment = async () => {
+    setIsProcessing(true);
+    setErrorMessage(null);
+    const placeholderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
     const newOrder: Order = {
-      id: orderId,
+      id: placeholderId,
       userId: userId || 'usr_active',
       userName: userName || shippingAddress.fullName || 'Valued Member',
       userEmail: userEmail || 'member@urcare.clinic',
@@ -135,14 +138,21 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
       discount: 0,
       total: totalAmount,
       paymentMethod: 'qr_upi',
-      paymentStatus: 'paid',
+      paymentStatus: 'pending',
       orderStatus: 'confirmed',
-      transactionId: transactionId || 'UPI-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+      transactionId: transactionId || undefined,
       createdAt: new Date().toISOString(),
       estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     };
 
-    setCreatedOrder(newOrder);
+    const saveResult = await saveOrderAndReceiptToSupabase(newOrder);
+    setIsProcessing(false);
+    if (!saveResult.success) {
+      setErrorMessage(saveResult.error || 'Could not create this order. Please try again.');
+      return;
+    }
+    // The server assigns the real order id — everything after this must use it.
+    setCreatedOrder({ ...newOrder, id: saveResult.orderId });
     setStep('receipt_upload');
   };
 
@@ -151,16 +161,26 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
     if (!createdOrder) return;
     setIsProcessing(true);
 
+    const finalTransactionId = transactionId || createdOrder.transactionId || 'TXN-CONFIRMED';
+    const result = await updateOrderPayment(createdOrder.id, {
+      transactionId: finalTransactionId,
+      receiptImageUrl: receiptPreview || undefined,
+      paymentStatus: 'verified',
+    });
+
+    setIsProcessing(false);
+    if (!result.success) {
+      setErrorMessage(result.error || 'Could not confirm this order. Please try again.');
+      return;
+    }
+
     const updatedOrder: Order = {
       ...createdOrder,
-      transactionId: transactionId || createdOrder.transactionId || 'TXN-CONFIRMED',
+      transactionId: finalTransactionId,
       receiptImageUrl: receiptPreview || undefined,
       receiptUploadedAt: new Date().toISOString(),
       paymentStatus: 'verified',
     };
-
-    await saveOrderAndReceiptToSupabase(updatedOrder);
-    setIsProcessing(false);
     setCreatedOrder(updatedOrder);
     setStep('confirmed');
     onPaymentComplete(updatedOrder);

@@ -3,6 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import Anthropic from '@anthropic-ai/sdk';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createServer as createViteServer } from 'vite';
 
 dotenv.config();
@@ -94,61 +95,80 @@ async function callClaudeForJson(opts: {
   return (toolUse?.input as Record<string, any>) || {};
 }
 
-// In-memory persistent database store (with Supabase schema compatibility)
-const dbStore = {
-  users: new Map<string, any>(),
-  profiles: new Map<string, any>(),
-  reports: new Map<string, any>(),
-  logs: new Map<string, any[]>(),
-  products: new Map<string, any>(),
-  orders: new Map<string, any>(),
-  prescriptions: new Map<string, any>(),
-  reviews: new Map<string, any>(),
-  qrSettings: {
-    qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=calai.official@okhdfcbank&pn=CalAI%20Nutrition&mc=5411&cu=INR',
-    upiId: 'calai.official@okhdfcbank',
-    payeeName: 'Cal AI Health & Nutrition Inc.',
-    merchantNote: 'Scan & Pay via any UPI App (GPay, PhonePe, Paytm)',
-  },
-};
+// ============================================================================
+// SUPABASE — service-role client (server-only, bypasses RLS). Every real
+// record lives in Postgres; nothing here is cached in memory.
+// ============================================================================
 
-// Seed initial orders and reports into memory
-const initialOrderSeed = {
-  id: 'ORD-98231',
-  userId: 'usr_rahul_99',
-  userName: 'Rahul Verma',
-  userEmail: 'rahul.verma@example.com',
-  items: [
-    {
-      product: {
-        id: 'prod_whey_iso',
-        name: 'Cal AI 100% Pure Whey Isolate',
-        price: 3499,
-        discountPrice: 2699,
-        image: 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=600&auto=format&fit=crop&q=80',
-      },
-      quantity: 1,
-    },
-  ],
-  shippingAddress: {
-    fullName: 'Rahul Verma',
-    phone: '+91 98765 43210',
-    streetAddress: 'Flat 402, Green Valley Heights, Andheri West',
-    city: 'Mumbai',
-    state: 'Maharashtra',
-    pincode: '400053',
-  },
-  subtotal: 2699,
-  discount: 0,
-  total: 2699,
-  paymentMethod: 'qr_upi',
-  paymentStatus: 'paid',
-  orderStatus: 'shipped',
-  transactionId: 'UPI-98321049281',
-  createdAt: new Date(Date.now() - 86400000).toISOString(),
-  estimatedDelivery: new Date(Date.now() + 172800000).toISOString().split('T')[0],
-};
-dbStore.orders.set(initialOrderSeed.id, initialOrderSeed);
+function getSupabaseAdmin(): SupabaseClient | null {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    console.warn('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not configured.');
+    return null;
+  }
+  return createClient(url, key, { auth: { persistSession: false } });
+}
+
+/** Verifies the caller's real Supabase session (Google or email login) from the Authorization header. */
+async function verifyUser(req: express.Request): Promise<{ id: string; email: string } | null> {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (!token) return null;
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return null;
+  return { id: data.user.id, email: data.user.email || '' };
+}
+
+function requireUser(handler: (req: express.Request, res: express.Response, user: { id: string; email: string }) => any) {
+  return async (req: express.Request, res: express.Response) => {
+    const user = await verifyUser(req);
+    if (!user) return res.status(401).json({ error: 'Please sign in again.' });
+    return handler(req, res, user);
+  };
+}
+
+// ============================================================================
+// ADMIN AUTH — checked ONLY here on the server against ADMIN_EMAIL/PASSWORD
+// in .env. Never shipped to the browser bundle. Issues a signed, expiring
+// session token (HMAC-SHA256) — no admin password is ever stored client-side.
+// ============================================================================
+
+function signAdminToken(email: string): string {
+  const secret = process.env.ADMIN_SESSION_SECRET || '';
+  const expiry = Date.now() + 12 * 60 * 60 * 1000; // 12 hours
+  const payload = `${email}:${expiry}`;
+  const sig = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return Buffer.from(`${payload}:${sig}`).toString('base64');
+}
+
+function verifyAdminToken(token: string): boolean {
+  try {
+    const secret = process.env.ADMIN_SESSION_SECRET || '';
+    const decoded = Buffer.from(token, 'base64').toString('utf8');
+    const [email, expiryStr, sig] = decoded.split(':');
+    const expiry = Number(expiryStr);
+    if (!email || !expiry || !sig) return false;
+    if (Date.now() > expiry) return false;
+    const expectedSig = crypto.createHmac('sha256', secret).update(`${email}:${expiry}`).digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig));
+  } catch {
+    return false;
+  }
+}
+
+function requireAdmin(handler: (req: express.Request, res: express.Response) => any) {
+  return (req: express.Request, res: express.Response) => {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!token || !verifyAdminToken(token)) {
+      return res.status(401).json({ error: 'Admin session expired or invalid. Please log in again.' });
+    }
+    return handler(req, res);
+  };
+}
 
 // ================= API ENDPOINTS =================
 
@@ -158,47 +178,41 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     claudeConfigured: !!process.env.ANTHROPIC_API_KEY,
-    supabaseConfigured: !!process.env.SUPABASE_URL,
+    supabaseConfigured: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
   });
 });
 
-// 1. Medical & Health Report AI Analysis endpoint
-app.post('/api/analyze-report', async (req, res) => {
+// ----------------------------------------------------------------------------
+// ADMIN LOGIN
+// ----------------------------------------------------------------------------
+app.post('/api/admin/login', (req, res) => {
+  const { email, password } = req.body;
+  const adminEmail = process.env.ADMIN_EMAIL || '';
+  const adminPassword = process.env.ADMIN_PASSWORD || '';
+
+  if (!adminEmail || !adminPassword) {
+    return res.status(500).json({ error: 'Admin login is not configured on the server.' });
+  }
+
+  const emailOk = typeof email === 'string' && email.trim().toLowerCase() === adminEmail.toLowerCase();
+  const passwordOk = typeof password === 'string' &&
+    Buffer.from(password).length === Buffer.from(adminPassword).length &&
+    crypto.timingSafeEqual(Buffer.from(password), Buffer.from(adminPassword));
+
+  if (!emailOk || !passwordOk) {
+    return res.status(401).json({ error: 'Invalid admin email or password.' });
+  }
+
+  res.json({ success: true, token: signAdminToken(adminEmail) });
+});
+
+// 1. Medical & Health Report AI Analysis — persists to `lab_reports`
+app.post('/api/analyze-report', requireUser(async (req, res, user) => {
   try {
     const { imageBase64, mimeType = 'image/jpeg', reportText, reportType } = req.body;
-
     const ai = getClaudeClient();
     if (!ai) {
-      // Fallback realistic smart mock if API key is not ready
-      return res.json({
-        reportName: reportType || 'Comprehensive Blood & Metabolic Panel',
-        uploadedAt: new Date().toISOString(),
-        summary: 'Metabolic panel evaluated. Mild elevated LDL cholesterol and sub-optimal Vitamin D detected; metabolism and thyroid activity are in healthy ranges.',
-        biomarkers: [
-          { name: 'Total Cholesterol', value: '215 mg/dL', status: 'high', referenceRange: '< 200 mg/dL', impactOnDiet: 'Focus on soluble fiber (oats, chia) and reduce saturated fats.' },
-          { name: 'Fasting Blood Glucose', value: '92 mg/dL', status: 'normal', referenceRange: '70 - 99 mg/dL', impactOnDiet: 'Excellent insulin sensitivity. Keep balanced complex carbohydrates.' },
-          { name: 'Hemoglobin (Hb)', value: '14.2 g/dL', status: 'normal', referenceRange: '13.5 - 17.5 g/dL', impactOnDiet: 'Good oxygen capacity; supports progressive resistance training.' },
-          { name: 'Vitamin D3', value: '22 ng/mL', status: 'low', referenceRange: '30 - 100 ng/mL', impactOnDiet: 'Mild deficiency. Incorporate fortified foods, egg yolks, and outdoor sun exposure.' },
-          { name: 'TSH (Thyroid)', value: '2.1 mIU/L', status: 'normal', referenceRange: '0.4 - 4.0 mIU/L', impactOnDiet: 'Thyroid function optimal; metabolic basal burn rate is strong.' },
-        ],
-        identifiedRisks: [
-          'Mildly elevated lipid profile (LDL)',
-          'Sub-optimal Vitamin D levels',
-        ],
-        dietaryRecommendations: [
-          'Prioritize omega-3 rich healthy fats (walnuts, flaxseed, salmon) over palm/butter fats.',
-          'Add 30-35g of daily fiber to aid lipid clearance and gut microbiome.',
-          'Maintain high protein intake (1.8-2.0g/kg) to protect lean muscle tissue.',
-          'Stay hydrated with minimum 3.0L water to support renal filtration.',
-        ],
-        macroAdjustments: {
-          proteinMultiplier: 2.0,
-          carbAdjustment: 'Moderate complex carbohydrates with low glycemic index',
-          fatAdjustment: 'Limit saturated fats to < 7% of daily calories, prioritize MUFA & PUFA',
-          keyNutrientsToBoost: ['Vitamin D3', 'Omega-3 Fatty Acids', 'Magnesium Glycinate', 'Soluble Fiber'],
-          foodsToAvoid: ['Deep fried foods', 'Trans-fat bakery items', 'Excess refined sugar beverages'],
-        },
-      });
+      return res.status(503).json({ analysisFailed: true, rejectionReason: 'The AI scanner is not configured right now. Please try again later.' });
     }
 
     const systemInstruction = `You are a world-class Clinical Nutritionist and Metabolic Health AI (like in Cal AI).
@@ -259,26 +273,44 @@ Only report biomarkers you can actually read from the provided report/text — n
       });
     }
 
-    parsed.uploadedAt = new Date().toISOString();
-    return res.json(parsed);
+    const reportId = 'rep_' + Date.now();
+    const supabase = getSupabaseAdmin();
+    if (supabase) {
+      const { data: profileRow } = await supabase.from('profiles').select('full_name').eq('user_id', user.id).maybeSingle();
+      await supabase.from('lab_reports').insert({
+        id: reportId,
+        user_id: user.id,
+        user_name: profileRow?.full_name || user.email,
+        report_name: parsed.reportName || reportType || 'Diagnostic Lab Report',
+        uploaded_at: new Date().toISOString(),
+        image_url: imageBase64 && fileMediaType(imageBase64).startsWith('image/') ? imageBase64 : null,
+        report_text: reportText || null,
+        summary: parsed.summary || '',
+        biomarkers: parsed.biomarkers || [],
+        identified_risks: parsed.identifiedRisks || [],
+        dietary_recommendations: parsed.dietaryRecommendations || [],
+        macro_adjustments: parsed.macroAdjustments || {},
+        admin_reviewed: false,
+      });
+    }
+
+    return res.json({ ...parsed, id: reportId, uploadedAt: new Date().toISOString() });
   } catch (error: any) {
     console.error('Error analyzing report with Claude:', error);
-    // Be honest on failure instead of fabricating biomarkers — let the client offer a retry.
     return res.status(200).json({
       isValidReport: null,
       analysisFailed: true,
       rejectionReason: 'Could not analyze this report right now. Please check your connection and try again.',
     });
   }
-});
+}));
 
-// 2. AI Food Scanner & Meal Analyzer
-app.post('/api/analyze-food', async (req, res) => {
+// 2. AI Food Scanner & Meal Analyzer — persists to `food_scans`
+app.post('/api/analyze-food', requireUser(async (req, res, user) => {
   try {
     const { imageBase64, description, mealCategory = 'lunch', profile } = req.body;
     const ai = getClaudeClient();
 
-    // Build a short, safe profile context string used to personalize the verdict
     const profileContext = profile
       ? [
           profile.goal ? `Goal: ${profile.goal}` : '',
@@ -293,24 +325,7 @@ app.post('/api/analyze-food', async (req, res) => {
       : '';
 
     if (!ai) {
-      // Mock accurate response (used when ANTHROPIC_API_KEY isn't configured)
-      const hasRiskCondition = Array.isArray(profile?.medicalConditions) && profile.medicalConditions.length > 0;
-      return res.json({
-        isFood: true,
-        name: description || 'Healthy Mixed Meal',
-        calories: 450,
-        protein: 34,
-        carbs: 42,
-        fats: 14,
-        fiber: 6,
-        servingSize: '1 standard bowl (320g)',
-        confidence: 0.94,
-        healthNote: 'High protein content with moderate complex carbohydrates.',
-        suitability: hasRiskCondition ? 'moderate' : 'good',
-        suitabilityReason: hasRiskCondition
-          ? 'This meal is okay in a small portion, but keep an eye on it given your reported health conditions — pair it with fiber-rich vegetables.'
-          : 'This meal fits well with your current health profile and daily calorie/protein target.',
-      });
+      return res.status(503).json({ analysisFailed: true, rejectionReason: 'The AI scanner is not configured right now. Please try again later.' });
     }
 
     const systemInstruction = `You are UrCare's food identification and nutrition vision intelligence.
@@ -350,153 +365,218 @@ Call the record_food_analysis tool exactly once with the complete result.`;
       },
     });
 
+    if (parsed.isFood) {
+      const supabase = getSupabaseAdmin();
+      if (supabase) {
+        await supabase.from('food_scans').insert({
+          user_id: user.id,
+          image_url: imageBase64 || null,
+          food_name: parsed.name || description || 'Scanned meal',
+          calories: parsed.calories || 0,
+          protein: parsed.protein || 0,
+          carbs: parsed.carbs || 0,
+          fat: parsed.fats || 0,
+          fiber: parsed.fiber || 0,
+          verdict: parsed.suitability || null,
+          explanation: parsed.suitabilityReason || parsed.healthNote || null,
+          confidence: parsed.confidence || null,
+          model_version: CLAUDE_MODEL,
+        });
+      }
+    }
+
     return res.json(parsed);
   } catch (error: any) {
     console.error('Error analyzing food:', error);
-    // Be honest on failure instead of fabricating nutrition data — let the client offer a retry.
     return res.status(200).json({
       isFood: null,
       analysisFailed: true,
       rejectionReason: 'Could not reach the AI scanner right now. Please check your connection and try scanning again.',
     });
   }
-});
+}));
 
-// 3. User Registration / Auth (Your Care Firebase + Supabase persistence)
-app.post('/api/auth/register', (req, res) => {
-  const { email, password, displayName, phoneNumber, profile } = req.body;
-  const userId = 'usr_' + Math.random().toString(36).substring(2, 10);
-
-  const user = {
-    uid: userId,
-    email: email || `${(phoneNumber || 'user').replace(/\D/g, '')}@yourcare.app`,
-    displayName: displayName || email?.split('@')[0] || 'Your Care Member',
-    phoneNumber: phoneNumber || '+91 98765 43210',
-    authProvider: 'firebase',
-    createdAt: new Date().toISOString(),
-    supabaseSynced: true,
-  };
-
-  dbStore.users.set(userId, user);
-  if (profile) {
-    dbStore.profiles.set(userId, { ...profile, userId });
-  }
-
-  res.json({
-    success: true,
-    user,
-    token: 'jwt_' + Math.random().toString(36),
-    message: 'Registered successfully in Firebase & synced to Supabase database',
-  });
-});
-
-app.post('/api/auth/login', (req, res) => {
-  const { email, phoneNumber } = req.body;
-  const identifier = email || phoneNumber || 'user@yourcare.app';
-  const user = {
-    uid: 'usr_active',
-    email: email || `${(phoneNumber || 'user').replace(/\D/g, '')}@yourcare.app`,
-    displayName: email?.split('@')[0] || (phoneNumber ? `Member ${phoneNumber.slice(-4)}` : 'Your Care User'),
-    phoneNumber: phoneNumber || '+91 98765 43210',
-    authProvider: 'firebase',
-    supabaseSynced: true,
-  };
-  res.json({
-    success: true,
-    user,
-    token: 'jwt_' + Math.random().toString(36),
-  });
-});
-
-// 4. Supabase Sync / Data Save endpoint
-app.post('/api/sync-supabase', (req, res) => {
-  const { userId = 'usr_active', profile, meals, logs } = req.body;
-  
-  if (profile) dbStore.profiles.set(userId, profile);
-  if (meals) dbStore.logs.set(userId, meals);
-
-  res.json({
-    success: true,
-    supabaseStatus: 'Synced to Supabase table `user_profiles` and `nutrition_logs`',
-    recordsUpdated: 1,
-    syncedAt: new Date().toISOString(),
-  });
-});
-
-// 5. Orders & Checkout Endpoints
-app.post('/api/orders', (req, res) => {
+// 3. AI Daily Plan — generates (once per day, via Claude) and persists to `ai_daily_plans`.
+//    Explicitly varies from the previous day's plan so it never repeats.
+app.post('/api/daily-plan', requireUser(async (req, res, user) => {
   try {
-    const { userId, userName, userEmail, items, shippingAddress, subtotal, discount, total, paymentMethod, transactionId } = req.body;
-    const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
-    const newOrder = {
-      id: orderId,
-      userId: userId || 'usr_active',
-      userName: userName || shippingAddress?.fullName || 'Valued Member',
-      userEmail: userEmail || 'user@cal.ai',
-      items: items || [],
-      shippingAddress,
-      subtotal: subtotal || total || 0,
-      discount: discount || 0,
-      total: total || 0,
-      paymentMethod: paymentMethod || 'qr_upi',
-      paymentStatus: paymentMethod === 'razorpay' ? 'paid' : 'paid', // UPI QR marked as submitted
-      orderStatus: 'confirmed',
-      transactionId: transactionId || 'TXN-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
-      createdAt: new Date().toISOString(),
-      estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    const { date, profile } = req.body;
+    if (!date) return res.status(400).json({ error: 'A date is required.' });
+
+    const supabase = getSupabaseAdmin();
+    if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+
+    // Already generated for this date? Return it as-is (never regenerate a past day).
+    const { data: existing } = await supabase.from('ai_daily_plans').select('*').eq('user_id', user.id).eq('plan_date', date).maybeSingle();
+    if (existing) return res.json({ plan: existing });
+
+    const ai = getClaudeClient();
+    if (!ai) return res.status(503).json({ error: 'The AI planner is not configured right now.' });
+
+    // Look at the most recent previous plan so today's plan is told to differ from it.
+    const { data: previous } = await supabase
+      .from('ai_daily_plans')
+      .select('plan_date, morning_plan, afternoon_plan, evening_plan, night_plan')
+      .eq('user_id', user.id)
+      .lt('plan_date', date)
+      .order('plan_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const profileContext = profile
+      ? [
+          profile.goal ? `Goal: ${profile.goal}` : '',
+          profile.gender ? `Gender: ${profile.gender}` : '',
+          profile.age ? `Age: ${profile.age}` : '',
+          profile.dietaryPreference ? `Dietary preference: ${profile.dietaryPreference}` : '',
+          Array.isArray(profile.medicalConditions) && profile.medicalConditions.length ? `Medical conditions: ${profile.medicalConditions.join(', ')}` : '',
+          profile.calculatedPlan ? `Targets — Calories: ${profile.calculatedPlan.targetCalories} kcal, Protein: ${profile.calculatedPlan.proteinGrams}g, Carbs: ${profile.calculatedPlan.carbsGrams}g, Fats: ${profile.calculatedPlan.fatsGrams}g, Water: ${profile.calculatedPlan.waterLiters}L` : '',
+        ].filter(Boolean).join('. ')
+      : '';
+
+    const systemInstruction = `You are UrCare's clinical nutrition & lifestyle planning AI. Generate ONE full day's personalized health plan for ${date}, in simple, beginner-friendly language (avoid heavy medical jargon).
+${previous ? `IMPORTANT: The user already had a plan yesterday (${previous.plan_date}). Today's plan MUST be meaningfully different — vary the specific meals, exercises, and tips — while still meeting the same nutrition targets. Do not repeat yesterday's plan verbatim.` : ''}
+Call the record_daily_plan tool exactly once with the complete structured result.`;
+
+    const parsed = await callClaudeForJson({
+      client: ai,
+      system: systemInstruction,
+      text: `Generate today's (${date}) personalized plan.${profileContext ? ` User profile: ${profileContext}.` : ''}${previous ? ` Yesterday's plan (vary from this): ${JSON.stringify({ morning: previous.morning_plan, afternoon: previous.afternoon_plan, evening: previous.evening_plan, night: previous.night_plan })}` : ''}`,
+      toolName: 'record_daily_plan',
+      toolDescription: 'Record one full day of personalized health guidance.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          morning_plan: { type: 'object', properties: { meal: { type: 'string' }, tip: { type: 'string' } }, required: ['meal', 'tip'] },
+          afternoon_plan: { type: 'object', properties: { meal: { type: 'string' }, tip: { type: 'string' } }, required: ['meal', 'tip'] },
+          evening_plan: { type: 'object', properties: { meal: { type: 'string' }, tip: { type: 'string' } }, required: ['meal', 'tip'] },
+          night_plan: { type: 'object', properties: { meal: { type: 'string' }, tip: { type: 'string' } }, required: ['meal', 'tip'] },
+          exercise_plan: {
+            type: 'object',
+            properties: {
+              activities: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, duration: { type: 'string' }, benefit: { type: 'string' } }, required: ['name', 'duration', 'benefit'] } },
+              avoid: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['activities'],
+          },
+          hydration_plan: { type: 'object', properties: { targetLiters: { type: 'number' }, tip: { type: 'string' } }, required: ['targetLiters', 'tip'] },
+          nutrition_guidance: {
+            type: 'object',
+            properties: {
+              eat: { type: 'array', items: { type: 'string' } },
+              avoid: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['eat', 'avoid'],
+          },
+          general_advice: { type: 'string' },
+          daily_quote: { type: 'string' },
+          medical_disclaimer: { type: 'string' },
+        },
+        required: ['morning_plan', 'afternoon_plan', 'evening_plan', 'night_plan', 'exercise_plan', 'hydration_plan', 'nutrition_guidance', 'general_advice', 'daily_quote', 'medical_disclaimer'],
+      },
+    });
+
+    const row = {
+      user_id: user.id,
+      plan_date: date,
+      morning_plan: parsed.morning_plan,
+      afternoon_plan: parsed.afternoon_plan,
+      evening_plan: parsed.evening_plan,
+      night_plan: parsed.night_plan,
+      exercise_plan: parsed.exercise_plan,
+      hydration_plan: parsed.hydration_plan,
+      nutrition_guidance: parsed.nutrition_guidance,
+      general_advice: parsed.general_advice,
+      daily_quote: parsed.daily_quote,
+      medical_disclaimer: parsed.medical_disclaimer,
     };
 
-    dbStore.orders.set(orderId, newOrder);
+    const { data: inserted, error: insertErr } = await supabase.from('ai_daily_plans').insert(row).select().single();
+    if (insertErr) throw insertErr;
 
-    // Update user buyer status
-    if (userId && dbStore.users.has(userId)) {
-      const user = dbStore.users.get(userId);
-      user.hasPurchasedProducts = true;
-      dbStore.users.set(userId, user);
+    return res.json({ plan: inserted });
+  } catch (error: any) {
+    console.error('Error generating daily plan:', error);
+    return res.status(500).json({ error: 'Could not generate today’s plan right now. Please try again.' });
+  }
+}));
+
+// ----------------------------------------------------------------------------
+// ORDERS & CHECKOUT — real `orders` + `order_items` rows.
+// ----------------------------------------------------------------------------
+app.post('/api/orders', requireUser(async (req, res, user) => {
+  try {
+    const { items = [], shippingAddress, subtotal, discount = 0, total, paymentMethod, transactionId, razorpayOrderId, razorpayPaymentId } = req.body;
+    const supabase = getSupabaseAdmin();
+    if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+
+    const { data: profileRow } = await supabase.from('profiles').select('full_name, email').eq('user_id', user.id).maybeSingle();
+
+    const { data: order, error: orderErr } = await supabase.from('orders').insert({
+      user_id: user.id,
+      customer_name: profileRow?.full_name || shippingAddress?.fullName || 'Member',
+      customer_email: profileRow?.email || user.email,
+      total_amount: total ?? subtotal ?? 0,
+      shipping_address: shippingAddress || null,
+      payment_status: 'paid',
+      razorpay_order_id: razorpayOrderId || null,
+      razorpay_payment_id: razorpayPaymentId || null,
+      status: 'processing',
+    }).select().single();
+    if (orderErr) throw orderErr;
+
+    if (Array.isArray(items) && items.length) {
+      const orderItems = items.map((it: any) => ({
+        order_id: order.id,
+        product_id: it.product?.id || it.productId,
+        quantity: it.quantity || 1,
+        price: it.product?.discountPrice ?? it.product?.price ?? it.price ?? 0,
+        product_name: it.product?.name,
+        product_image: it.product?.image,
+      }));
+      await supabase.from('order_items').insert(orderItems);
     }
 
-    res.json({
-      success: true,
-      order: newOrder,
-      message: 'Order placed successfully! Delivery in 2-3 business days.',
-    });
+    res.json({ success: true, order, message: 'Order placed successfully! Delivery in 2-3 business days.' });
   } catch (e: any) {
+    console.error('Order creation failed:', e);
     res.status(500).json({ error: e.message });
   }
-});
+}));
 
-// Get user orders
-app.get('/api/orders/my', (req, res) => {
-  const userId = req.query.userId as string;
-  const allOrders = Array.from(dbStore.orders.values());
-  const userOrders = userId ? allOrders.filter((o) => o.userId === userId || !o.userId) : allOrders;
-  res.json({ orders: userOrders });
-});
+// Update an order the caller owns — used to attach a UPI payment reference /
+// receipt screenshot after the order was created, and to mark it verified.
+app.patch('/api/orders/:id', requireUser(async (req, res, user) => {
+  try {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
 
-// Get all orders (for Admin)
-app.get('/api/admin/orders', (req, res) => {
-  const allOrders = Array.from(dbStore.orders.values());
-  res.json({ orders: allOrders });
-});
+    const { data: existing } = await supabase.from('orders').select('user_id').eq('id', req.params.id).maybeSingle();
+    if (!existing || existing.user_id !== user.id) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
 
-app.patch('/api/admin/orders/:id', (req, res) => {
-  const { id } = req.params;
-  const { orderStatus, paymentStatus } = req.body;
-  if (dbStore.orders.has(id)) {
-    const order = dbStore.orders.get(id);
-    if (orderStatus) order.orderStatus = orderStatus;
-    if (paymentStatus) order.paymentStatus = paymentStatus;
-    dbStore.orders.set(id, order);
-    return res.json({ success: true, order });
+    const { transactionId, receiptImageUrl, paymentStatus } = req.body;
+    const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (transactionId) patch.razorpay_payment_id = transactionId;
+    if (receiptImageUrl) {
+      patch.receipt_image_url = receiptImageUrl;
+      patch.receipt_uploaded_at = new Date().toISOString();
+    }
+    if (paymentStatus) patch.payment_status = paymentStatus;
+
+    const { data, error } = await supabase.from('orders').update(patch).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    res.json({ success: true, order: data });
+  } catch (e: any) {
+    console.error('Order update failed:', e);
+    res.status(500).json({ error: e.message });
   }
-  res.status(404).json({ error: 'Order not found' });
-});
+}));
 
-// 6. Razorpay API Integration
-// Uses the real Razorpay REST API (via Basic Auth, no SDK needed) when
-// RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET are configured in the environment.
-// Falls back to a clearly-labelled simulated order so the checkout flow keeps
-// working in dev/sandbox environments without live keys.
+// ----------------------------------------------------------------------------
+// RAZORPAY — real REST API when configured, clearly-labelled simulation otherwise.
+// ----------------------------------------------------------------------------
 function isRazorpayConfigured() {
   return !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
 }
@@ -518,7 +598,7 @@ app.post('/api/razorpay/order', async (req, res) => {
           Authorization: `Basic ${auth}`,
         },
         body: JSON.stringify({
-          amount: Math.round(amount * 100), // paise
+          amount: Math.round(amount * 100),
           currency,
           receipt: receipt || `receipt_${Date.now()}`,
           notes: notes || {},
@@ -535,11 +615,9 @@ app.post('/api/razorpay/order', async (req, res) => {
       return res.json({ ...rzpOrder, keyId: process.env.RAZORPAY_KEY_ID, mode: 'live' });
     } catch (err) {
       console.error('Falling back to simulated Razorpay order due to error:', err);
-      // fall through to simulated order below
     }
   }
 
-  // Simulated order (no live Razorpay keys configured yet)
   const rzpOrderId = 'order_sim_' + Math.random().toString(36).substring(2, 12);
   res.json({
     id: rzpOrderId,
@@ -559,23 +637,15 @@ app.post('/api/razorpay/verify', (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
   if (isRazorpayConfigured() && razorpay_order_id && razorpay_payment_id && razorpay_signature) {
-    // Real HMAC-SHA256 signature verification per Razorpay's documented scheme
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET as string)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 
     const verified = expectedSignature === razorpay_signature;
-    return res.json({
-      success: verified,
-      verified,
-      paymentId: razorpay_payment_id,
-      orderId: razorpay_order_id,
-      mode: 'live',
-    });
+    return res.json({ success: verified, verified, paymentId: razorpay_payment_id, orderId: razorpay_order_id, mode: 'live' });
   }
 
-  // Simulated verification (no live Razorpay keys configured yet, or a simulated order)
   res.json({
     success: true,
     verified: true,
@@ -585,163 +655,269 @@ app.post('/api/razorpay/verify', (req, res) => {
   });
 });
 
-// 7. Admin Analytics & Stats Endpoint
-app.get('/api/admin/stats', (req, res) => {
-  const ordersList = Array.from(dbStore.orders.values());
-  const usersList = Array.from(dbStore.users.values());
-  const reportsList = Array.from(dbStore.reports.values());
+// ----------------------------------------------------------------------------
+// PRO / PREMIUM UPGRADE — updates `profiles.premium_status` + `premium_transactions`.
+// ----------------------------------------------------------------------------
+app.post('/api/user/upgrade-pro', requireUser(async (req, res, user) => {
+  try {
+    const {
+      planType = 'yearly',
+      amount = 0,
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    } = req.body;
 
-  const totalRevenue = ordersList.reduce((acc, o) => acc + (o.total || 0), 0) + 1845000;
-  const totalOrdersCount = ordersList.length + 834;
-
-  res.json({
-    totalUsers: Math.max(2480, usersList.length + 2480),
-    proUsers: 920 + (usersList.filter(u => u.isPro).length),
-    freeUsers: 1560,
-    totalBuyers: Math.max(640, ordersList.length + 640),
-    nonBuyers: 1840,
-    totalReviews: 412,
-    totalRevenue,
-    totalOrders: totalOrdersCount,
-    pendingReportsCount: reportsList.filter(r => !r.adminReviewed).length + 3,
-  });
-});
-
-// 8. Admin Medical Reports & Prescriptions
-app.get('/api/admin/reports', (req, res) => {
-  const reports = Array.from(dbStore.reports.values());
-  res.json({ reports });
-});
-
-app.post('/api/admin/prescribe', (req, res) => {
-  const { userId, userName, reportId, doctorName, diagnosis, medicines, recommendedSupplements, dietaryAdjustments, notes } = req.body;
-  const prescriptionId = 'rx_' + Date.now();
-  const prescription = {
-    id: prescriptionId,
-    userId: userId || 'usr_active',
-    userName: userName || 'Valued Patient',
-    reportId,
-    doctorName: doctorName || 'Dr. Arjun Mehta, MD Clinical Nutrition',
-    date: new Date().toISOString().split('T')[0],
-    diagnosis: diagnosis || 'Metabolic Optimization & Nutrient Support',
-    medicines: medicines || [],
-    recommendedSupplements: recommendedSupplements || [],
-    dietaryAdjustments: dietaryAdjustments || [],
-    notes: notes || 'Prescription issued following clinical laboratory analysis.',
-  };
-
-  dbStore.prescriptions.set(prescriptionId, prescription);
-
-  // Update report status if associated
-  if (reportId && dbStore.reports.has(reportId)) {
-    const report = dbStore.reports.get(reportId);
-    report.adminReviewed = true;
-    report.adminNotes = notes;
-    dbStore.reports.set(reportId, report);
-  }
-
-  res.json({
-    success: true,
-    prescription,
-    message: 'Prescription generated & attached to user health profile.',
-  });
-});
-
-app.get('/api/user/prescriptions', (req, res) => {
-  const userId = req.query.userId as string;
-  const allRx = Array.from(dbStore.prescriptions.values());
-  const userRx = userId ? allRx.filter(r => r.userId === userId || !r.userId) : allRx;
-  res.json({ prescriptions: userRx });
-});
-
-// 9. QR Settings Endpoint (Admin upload/update QR Code)
-app.get('/api/admin/qr-settings', (req, res) => {
-  res.json(dbStore.qrSettings);
-});
-
-app.post('/api/admin/qr-settings', (req, res) => {
-  const { qrImageUrl, upiId, payeeName, merchantNote } = req.body;
-  if (qrImageUrl) dbStore.qrSettings.qrImageUrl = qrImageUrl;
-  if (upiId) dbStore.qrSettings.upiId = upiId;
-  if (payeeName) dbStore.qrSettings.payeeName = payeeName;
-  if (merchantNote) dbStore.qrSettings.merchantNote = merchantNote;
-  res.json({ success: true, qrSettings: dbStore.qrSettings });
-});
-
-// 10. Pro Membership Upgrade (Premium: AI Food Scan + Daily Personalized Plan)
-app.post('/api/user/upgrade-pro', (req, res) => {
-  const {
-    userId,
-    planType = 'yearly',
-    paymentMethod = 'razorpay',
-    transactionId,
-    razorpay_order_id,
-    razorpay_payment_id,
-    razorpay_signature,
-  } = req.body;
-
-  // If Razorpay signature details were supplied, verify them for real before granting access
-  if (isRazorpayConfigured() && razorpay_order_id && razorpay_payment_id && razorpay_signature) {
-    const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET as string)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest('hex');
-    if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({ success: false, message: 'Payment verification failed. Please try again.' });
+    if (isRazorpayConfigured() && razorpay_order_id && razorpay_payment_id && razorpay_signature) {
+      const expectedSignature = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET as string)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+        .digest('hex');
+      if (expectedSignature !== razorpay_signature) {
+        return res.status(400).json({ success: false, message: 'Payment verification failed. Please try again.' });
+      }
     }
-  }
 
-  if (userId && dbStore.users.has(userId)) {
-    const user = dbStore.users.get(userId);
-    user.isPro = true;
-    user.proPlanType = planType;
-    user.proExpiry = new Date(Date.now() + (planType === 'monthly' ? 30 : 365) * 24 * 60 * 60 * 1000).toISOString();
-    user.lastPaymentMethod = paymentMethod;
-    dbStore.users.set(userId, user);
+    const supabase = getSupabaseAdmin();
+    if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+
+    const durationDays = planType === 'monthly' ? 30 : 365;
+    const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
+
+    await supabase.from('profiles').update({
+      premium_status: 'active',
+      premium_started_at: new Date().toISOString(),
+      premium_expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', user.id);
+
+    await supabase.from('premium_transactions').insert({
+      user_id: user.id,
+      amount,
+      plan_name: planType,
+      plan_duration_days: durationDays,
+      razorpay_order_id: razorpay_order_id || null,
+      razorpay_payment_id: razorpay_payment_id || null,
+      payment_status: 'paid',
+      premium_started_at: new Date().toISOString(),
+      premium_expires_at: expiresAt,
+    });
+
+    res.json({
+      success: true,
+      isPro: true,
+      proPlanType: planType,
+      proExpiry: expiresAt,
+      message: 'Welcome to UrCare Premium! AI Food Scan & your Daily Personalized Plan are now unlocked.',
+    });
+  } catch (e: any) {
+    console.error('Upgrade failed:', e);
+    res.status(500).json({ error: e.message });
   }
-  res.json({
-    success: true,
-    isPro: true,
-    proPlanType: planType,
-    proExpiry: new Date(Date.now() + (planType === 'monthly' ? 30 : 365) * 24 * 60 * 60 * 1000).toISOString(),
-    message: 'Welcome to UrCare Premium! AI Food Scan & your Daily Personalized Plan are now unlocked.',
-  });
+}));
+
+// ----------------------------------------------------------------------------
+// PUBLIC STORE CATALOG (products, doctors, QR settings) — no auth required.
+// ----------------------------------------------------------------------------
+app.get('/api/qr-settings', async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.json({});
+  const { data } = await supabase.from('qr_settings').select('*').eq('id', 'default').maybeSingle();
+  res.json(data || {});
 });
 
-// 11. Customer Reviews
-app.get('/api/reviews', (req, res) => {
+// ============================================================================
+// ADMIN ENDPOINTS — every one behind requireAdmin, using the service-role
+// client to read/write real data across all users.
+// ============================================================================
+
+app.get('/api/admin/stats', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+
+  const [{ count: totalUsers }, { count: proUsers }, { count: totalOrders }, { count: totalReviews }, { count: pendingReports }, { data: orders }] = await Promise.all([
+    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('premium_status', 'active'),
+    supabase.from('orders').select('*', { count: 'exact', head: true }),
+    supabase.from('reviews').select('*', { count: 'exact', head: true }),
+    supabase.from('lab_reports').select('*', { count: 'exact', head: true }).eq('admin_reviewed', false),
+    supabase.from('orders').select('total_amount'),
+  ]);
+
+  const totalRevenue = (orders || []).reduce((sum: number, o: any) => sum + (Number(o.total_amount) || 0), 0);
+  const totalBuyers = new Set((orders || []).map((o: any) => o.user_id)).size;
+
   res.json({
-    reviews: [
-      {
-        id: 'rev_1',
-        userName: 'Amit Malhotra',
-        rating: 5,
-        comment: 'Lost 6.2 kg in 45 days! The AI food scan is so easy and the doctor prescription based on my cholesterol report helped normalize my lipid numbers.',
-        date: '2026-08-23',
-        productName: 'Cal AI 100% Pure Whey Isolate',
-        verified: true,
-      },
-      {
-        id: 'rev_2',
-        userName: 'Sneha Patel',
-        rating: 5,
-        comment: 'The QR payment was seamless and delivery arrived in 2 days. The plant protein tastes fantastic and doesn’t cause any stomach bloating.',
-        date: '2026-08-22',
-        productName: 'Organic Plant Protein',
-        verified: true,
-      },
-      {
-        id: 'rev_3',
-        userName: 'Vikas Kumar',
-        rating: 5,
-        comment: 'Best nutrition app in India. Both English and Hindi recommendations are crystal clear.',
-        date: '2026-08-21',
-        productName: 'Triple Strength Omega-3',
-        verified: true,
-      },
-    ],
+    totalUsers: totalUsers || 0,
+    proUsers: proUsers || 0,
+    freeUsers: (totalUsers || 0) - (proUsers || 0),
+    totalBuyers,
+    nonBuyers: (totalUsers || 0) - totalBuyers,
+    totalReviews: totalReviews || 0,
+    totalRevenue,
+    totalOrders: totalOrders || 0,
+    pendingReportsCount: pendingReports || 0,
   });
+}));
+
+app.get('/api/admin/users', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ users: data || [] });
+}));
+
+app.get('/api/admin/reports', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase.from('lab_reports').select('*').order('uploaded_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ reports: data || [] });
+}));
+
+app.post('/api/admin/prescribe', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { userId, userName, reportId, doctorName, diagnosis, medicines, recommendedSupplements, dietaryAdjustments, notes } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId is required.' });
+
+  const prescriptionId = 'rx_' + Date.now();
+  const { data: prescription, error } = await supabase.from('prescriptions').insert({
+    id: prescriptionId,
+    user_id: userId,
+    user_name: userName || null,
+    report_id: reportId || null,
+    doctor_name: doctorName || 'UrCare Clinical Team',
+    date: new Date().toISOString().split('T')[0],
+    diagnosis: diagnosis || '',
+    medicines: medicines || [],
+    recommended_supplements: recommendedSupplements || [],
+    dietary_adjustments: dietaryAdjustments || [],
+    notes: notes || '',
+  }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+
+  if (reportId) {
+    await supabase.from('lab_reports').update({ admin_reviewed: true, admin_notes: notes || null }).eq('id', reportId);
+  }
+
+  res.json({ success: true, prescription, message: 'Prescription issued and attached to the patient’s health profile.' });
+}));
+
+app.get('/api/admin/orders', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ orders: data || [] });
+}));
+
+app.patch('/api/admin/orders/:id', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { id } = req.params;
+  const { status, paymentStatus } = req.body;
+  const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+  if (status) patch.status = status;
+  if (paymentStatus) patch.payment_status = paymentStatus;
+  const { data, error } = await supabase.from('orders').update(patch).eq('id', id).select().single();
+  if (error) return res.status(404).json({ error: error.message });
+  res.json({ success: true, order: data });
+}));
+
+app.get('/api/admin/qr-settings', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data } = await supabase.from('qr_settings').select('*').eq('id', 'default').maybeSingle();
+  res.json(data || {});
+}));
+
+app.post('/api/admin/qr-settings', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { qrImageUrl, upiId, payeeName, merchantNote } = req.body;
+  const { data, error } = await supabase.from('qr_settings').upsert({
+    id: 'default',
+    qr_image_url: qrImageUrl,
+    upi_id: upiId,
+    payee_name: payeeName,
+    merchant_note: merchantNote,
+    updated_at: new Date().toISOString(),
+  }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, qrSettings: data });
+}));
+
+// ---- Doctors (admin-managed directory) ----
+app.get('/api/admin/doctors', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase.from('doctors').select('*').order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ doctors: data || [] });
+}));
+
+app.post('/api/admin/doctors', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { name, qualification, specialization, registrationNumber, phone, directDialNumber, availability, hospitalAffiliation } = req.body;
+  if (!name) return res.status(400).json({ error: 'Doctor name is required.' });
+  const { data, error } = await supabase.from('doctors').insert({
+    name, qualification, specialization, registration_number: registrationNumber,
+    phone, direct_dial_number: directDialNumber || (phone ? `tel:${phone}` : null),
+    availability, hospital_affiliation: hospitalAffiliation, active: true,
+  }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, doctor: data });
+}));
+
+app.patch('/api/admin/doctors/:id', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { active } = req.body;
+  const { data, error } = await supabase.from('doctors').update({ active }).eq('id', req.params.id).select().single();
+  if (error) return res.status(404).json({ error: error.message });
+  res.json({ success: true, doctor: data });
+}));
+
+app.delete('/api/admin/doctors/:id', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { error } = await supabase.from('doctors').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+}));
+
+// ---- Products (admin-managed catalog) ----
+app.get('/api/products', async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.json({ products: [] });
+  const { data } = await supabase.from('products').select('*').order('created_at');
+  res.json({ products: data || [] });
 });
+
+app.post('/api/admin/products', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { id, name, category, price, discountPrice, image, description, benefits, nutritionInfo, inStock, featured } = req.body;
+  if (!id || !name) return res.status(400).json({ error: 'Product id and name are required.' });
+  const { data, error } = await supabase.from('products').upsert({
+    id, name, category, price, discount_price: discountPrice, image, description,
+    benefits: benefits || [], nutrition_info: nutritionInfo || null,
+    in_stock: inStock !== false, featured: !!featured,
+  }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, product: data });
+}));
+
+app.delete('/api/admin/products/:id', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { error } = await supabase.from('products').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+}));
 
 // Start Vite / Express server
 async function startServer() {
@@ -760,7 +936,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Cal AI Full-Stack Server running on http://0.0.0.0:${PORT}`);
+    console.log(`UrCare Full-Stack Server running on http://0.0.0.0:${PORT}`);
   });
 }
 
