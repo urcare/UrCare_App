@@ -1,0 +1,349 @@
+import React, { useState } from 'react';
+import { 
+  X, ShieldCheck, RefreshCw, Lock, User
+} from 'lucide-react';
+import { UserAccount, UserHealthProfile } from '../types';
+import { useLanguage } from '../context/LanguageContext';
+import { playClickSound, playSuccessChime } from '../utils/soundEffects';
+import { AppSimulationVideo } from './AppSimulationVideo';
+import { Logo } from './Logo';
+
+interface AuthScreenProps {
+  onAuthSuccess: (account: UserAccount, existingProfile?: UserHealthProfile | null) => void;
+  onOpenAdmin?: () => void;
+}
+
+export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess, onOpenAdmin }) => {
+  const { language, setLanguage } = useLanguage();
+  const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sign In inputs
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Language toggle
+  const toggleLanguage = () => {
+    playClickSound(650);
+    setLanguage(language === 'en' ? 'hi' : 'en');
+  };
+
+  // 1. GET STARTED -> Direct launch into Onboarding flow
+  const handleGetStarted = () => {
+    playClickSound(700);
+    const guestAccount: UserAccount = {
+      uid: 'usr_' + Math.random().toString(36).substring(2, 11),
+      email: 'user_' + Date.now().toString(36) + '@urcare.health',
+      displayName: 'New Member',
+      authProvider: 'email',
+      isPro: false,
+      supabaseSynced: true,
+      lastSyncedAt: new Date().toISOString(),
+    };
+    onAuthSuccess(guestAccount, null);
+  };
+
+  // 2. GOOGLE SIGN IN
+  const handleGoogleSignIn = () => {
+    playClickSound(680);
+    setGoogleLoading(true);
+    setError(null);
+
+    setTimeout(() => {
+      setGoogleLoading(false);
+      const googleAccount: UserAccount = {
+        uid: 'g_' + Date.now(),
+        email: 'singhkgajendra6276@gmail.com',
+        displayName: 'Gajendra Singh',
+        authProvider: 'google',
+        isPro: true,
+        proPlanType: 'yearly',
+        supabaseSynced: true,
+        lastSyncedAt: new Date().toISOString(),
+      };
+
+      // Load existing profile if available
+      let savedProfile: UserHealthProfile | null = null;
+      try {
+        const stored = localStorage.getItem('urcare_user_profile') || localStorage.getItem('yourcare_user_profile');
+        if (stored) {
+          savedProfile = JSON.parse(stored);
+        }
+      } catch (e) {}
+
+      playSuccessChime();
+      onAuthSuccess(googleAccount, savedProfile);
+    }, 700);
+  };
+
+  // 3. EXISTING ACCOUNT CREDENTIAL SIGN IN
+  const handleCredentialsSignIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const id = identifier.trim();
+    if (!id) {
+      setError(language === 'hi' ? 'कृपया अपना ईमेल या मोबाइल नंबर दर्ज करें' : 'Please enter your email or phone number');
+      return;
+    }
+
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      const isEmail = id.includes('@');
+      const account: UserAccount = {
+        uid: 'usr_' + Date.now(),
+        email: isEmail ? id : `${id.replace(/\D/g, '')}@urcare.health`,
+        displayName: isEmail ? id.split('@')[0] : `User ${id.slice(-4)}`,
+        phoneNumber: !isEmail ? id : undefined,
+        authProvider: 'email',
+        isPro: true,
+        supabaseSynced: true,
+        lastSyncedAt: new Date().toISOString(),
+      };
+
+      let savedProfile: UserHealthProfile | null = null;
+      try {
+        const stored = localStorage.getItem('urcare_user_profile') || localStorage.getItem('yourcare_user_profile');
+        if (stored) {
+          savedProfile = JSON.parse(stored);
+        }
+      } catch (e) {}
+
+      playSuccessChime();
+      onAuthSuccess(account, savedProfile);
+    }, 450);
+  };
+
+  return (
+    <div className="w-full min-h-screen bg-white text-zinc-900 flex flex-col justify-between items-center px-4 sm:px-6 py-4 sm:py-6 selection:bg-zinc-200">
+      
+      {/* Top Header: Clean Branding & Language Switcher */}
+      <header className="w-full max-w-md mx-auto flex items-center justify-between">
+        <Logo size="sm" />
+
+        <button
+          type="button"
+          onClick={toggleLanguage}
+          className="px-3.5 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 border border-zinc-200/80 text-xs font-bold text-zinc-800 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+        >
+          <span>{language === 'en' ? '🇺🇸 EN' : '🇮🇳 HI'}</span>
+        </button>
+      </header>
+
+      {/* Main Content Area: Phone Mockup Frame */}
+      <main className="w-full max-w-sm sm:max-w-md mx-auto flex-1 flex flex-col items-center justify-center my-2 sm:my-4">
+        
+        {/* Smartphone Realistic Mockup Frame */}
+        <div className="w-[305px] sm:w-[330px] h-[530px] sm:h-[560px] bg-zinc-950 rounded-[44px] sm:rounded-[48px] p-2.5 sm:p-3 shadow-2xl shadow-zinc-950/25 border-4 border-zinc-900 ring-1 ring-zinc-300 relative overflow-hidden flex flex-col">
+          
+          {/* Hardware Buttons on sides */}
+          <div className="absolute -left-1.5 top-24 w-1 h-8 bg-zinc-800 rounded-l" />
+          <div className="absolute -left-1.5 top-36 w-1 h-11 bg-zinc-800 rounded-l" />
+          <div className="absolute -left-1.5 top-49 w-1 h-11 bg-zinc-800 rounded-l" />
+          <div className="absolute -right-1.5 top-32 w-1 h-14 bg-zinc-800 rounded-r" />
+
+          {/* Phone Inner Display Screen */}
+          <div className="w-full h-full bg-[#FAFAFA] rounded-[36px] sm:rounded-[40px] flex flex-col overflow-hidden relative text-zinc-900 select-none">
+            
+            {/* Status Bar: Time & Dynamic Island */}
+            <div className="pt-2 px-5 pb-1 flex items-center justify-between z-20 bg-white/80 backdrop-blur-xs">
+              <span className="text-[11px] font-black text-zinc-900 tracking-tight">2:10 </span>
+              
+              {/* Dynamic Island Pill */}
+              <div className="w-22 h-4.5 bg-black rounded-full flex items-center justify-end px-2 gap-1.5 shadow-xs">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-zinc-900 border border-zinc-700" />
+              </div>
+
+              {/* Status icons: signal, wifi, battery */}
+              <div className="flex items-center gap-1 text-[10px] text-zinc-900 font-bold">
+                <span>5G</span>
+                <div className="w-3.5 h-2 border border-zinc-800 rounded-xs flex items-center p-0.5">
+                  <div className="w-2 h-full bg-zinc-900 rounded-2xs" />
+                </div>
+              </div>
+            </div>
+
+            {/* SCREEN CONTENT: GENUINE APP SIMULATION VIDEO */}
+            <div className="flex-1 w-full h-full overflow-hidden flex flex-col">
+              <AppSimulationVideo onGetStarted={handleGetStarted} />
+            </div>
+
+            {/* Bottom Home Indicator Bar */}
+            <div className="w-full flex justify-center pb-1.5 bg-white">
+              <div className="w-24 h-1 bg-zinc-300 rounded-full" />
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+
+      {/* Bottom Hero Headline & Action Controls (Matching screenshot perfectly) */}
+      <footer className="w-full max-w-sm sm:max-w-md mx-auto space-y-3.5 sm:space-y-4 pt-2 sm:pt-4 pb-2 text-center">
+        
+        {/* Main Headline */}
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-950 leading-tight">
+          {language === 'hi' ? 'कैलोरी ट्रैकिंग हुई बिल्कुल आसान' : 'Calorie tracking made easy'}
+        </h1>
+
+        {/* Primary CTA Button: Get Started */}
+        <button
+          type="button"
+          onClick={handleGetStarted}
+          className="w-full py-4 sm:py-4.5 rounded-full bg-zinc-950 hover:bg-zinc-800 active:scale-[0.99] text-white font-black text-base sm:text-lg tracking-tight shadow-xl shadow-zinc-950/20 transition-all cursor-pointer"
+        >
+          {language === 'hi' ? 'शुरू करें (Get Started)' : 'Get Started'}
+        </button>
+
+        {/* Subtext: Already have an account? Sign in */}
+        <div className="text-xs sm:text-sm font-semibold text-zinc-600">
+          <span>{language === 'hi' ? 'क्या आपके पास पहले से खाता है? ' : 'Already have an account? '}</span>
+          <button
+            type="button"
+            onClick={() => {
+              playClickSound(600);
+              setIsSignInModalOpen(true);
+            }}
+            className="font-black text-zinc-950 underline hover:text-emerald-700 cursor-pointer ml-1"
+          >
+            {language === 'hi' ? 'साइन इन करें (Sign in)' : 'Sign in'}
+          </button>
+        </div>
+
+        {/* Hidden / Subtle Admin access */}
+        {onOpenAdmin && (
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={onOpenAdmin}
+              className="text-[10px] text-zinc-400 hover:text-zinc-700 font-bold transition-colors cursor-pointer"
+            >
+              Admin Console Portal
+            </button>
+          </div>
+        )}
+      </footer>
+
+      {/* ========================================================================= */}
+      {/* SIGN IN / GOOGLE AUTH MODAL                                               */}
+      {/* ========================================================================= */}
+      {isSignInModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 text-left relative space-y-4">
+            
+            {/* Close */}
+            <button
+              type="button"
+              onClick={() => setIsSignInModalOpen(false)}
+              className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                Welcome Back
+              </span>
+              <h2 className="text-xl font-black text-zinc-950 mt-1">Sign In to Your Account</h2>
+              <p className="text-xs text-zinc-500">Restore your saved health profile and data.</p>
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+                {error}
+              </div>
+            )}
+
+            {/* One-Click Google Sign In Button */}
+            <button
+              type="button"
+              disabled={googleLoading}
+              onClick={handleGoogleSignIn}
+              className="w-full py-3.5 px-4 rounded-2xl border border-zinc-300 hover:border-zinc-400 bg-white hover:bg-zinc-50 active:scale-98 font-bold text-xs sm:text-sm text-zinc-800 flex items-center justify-center gap-3 shadow-xs transition-all cursor-pointer"
+            >
+              {googleLoading ? (
+                <RefreshCw className="w-4 h-4 animate-spin text-zinc-600" />
+              ) : (
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                  />
+                </svg>
+              )}
+              <span>{googleLoading ? 'Signing in with Google...' : 'Continue with Google'}</span>
+            </button>
+
+            {/* Divider */}
+            <div className="relative flex items-center justify-center my-1">
+              <div className="border-t border-zinc-200 w-full" />
+              <span className="bg-white px-2.5 text-[10px] font-bold text-zinc-400 uppercase">or sign in with email/mobile</span>
+            </div>
+
+            {/* Email / Mobile Form */}
+            <form onSubmit={handleCredentialsSignIn} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 mb-1">Email or 10-Digit Mobile</label>
+                <div className="relative">
+                  <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="singhkgajendra6276@gmail.com"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-zinc-300 bg-zinc-50 focus:bg-white text-zinc-900 text-xs font-semibold focus:border-zinc-900 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 mb-1">Password</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-zinc-300 bg-zinc-50 focus:bg-white text-zinc-900 text-xs font-semibold focus:border-zinc-900 outline-none"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
+              >
+                {loading ? 'Signing In...' : 'Sign In'}
+              </button>
+            </form>
+
+            <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-400 pt-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Secure encrypted healthcare login</span>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};

@@ -1,0 +1,6 @@
+{
+  "name": "UrCare",
+  "description": "UrCare - Smart Metabolic AI for personalized root-cause health reversal, AI meal scanning, clinical biomarker tracking, and doctor-supervised nutrition planning.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
