@@ -358,9 +358,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             type="button"
             onClick={() => setActiveTab('profile')}
             className="p-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shrink-0"
+            title="Profile"
           >
             <User className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="text-[10px] font-black uppercase">Profile</span>
           </button>
 
           <button

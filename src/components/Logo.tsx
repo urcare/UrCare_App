@@ -76,8 +76,8 @@ export const Logo: React.FC<LogoProps> = ({
           <span className="text-emerald-500">Care</span>
         </div>
         {showSubtitle && (
-          <span className={`font-black uppercase tracking-wider text-emerald-600/90 ${subSizes[size]}`}>
-            METABOLIC HEALTH & CLINIC
+          <span className={`font-bold uppercase tracking-[0.14em] text-emerald-700/80 ${subSizes[size]}`}>
+            True Healthcare Platform
           </span>
         )}
       </div>

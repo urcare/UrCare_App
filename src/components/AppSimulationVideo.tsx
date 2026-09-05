@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Camera, Flame, Plus, CheckCircle2, Droplets, Activity, 
-  Sparkles, Play, Pause, ChevronRight, ChevronLeft, 
-  Stethoscope, Clock, ShieldCheck, Award, Zap, Check, ArrowRight
+import {
+  Camera, Flame, CheckCircle2, Activity,
+  Sparkles, Play, Pause, ChevronRight, ChevronLeft,
+  Stethoscope, ShieldCheck, Search, TrendingDown
 } from 'lucide-react';
-import { playClickSound, playSuccessChime } from '../utils/soundEffects';
+import { playClickSound } from '../utils/soundEffects';
 
 interface AppSimulationVideoProps {
   onGetStarted?: () => void;
@@ -15,16 +15,14 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
   const [currentScene, setCurrentScene] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [sceneProgress, setSceneProgress] = useState<number>(0);
-  const [isWaterLogged, setIsWaterLogged] = useState<boolean>(false);
   const [scanLaserPos, setScanLaserPos] = useState<number>(0);
 
-  // Genuine App Flow Scenes
+  // The 4-step reversal journey — matches how UrCare actually works end to end.
   const scenes = [
-    { id: 'onboarding', title: '1. Smart Onboarding', duration: 3800 },
-    { id: 'scan', title: '2. AI Meal Scanner', duration: 4000 },
-    { id: 'tracker', title: '3. Today Tracker & Macros', duration: 4000 },
-    { id: 'biomarkers', title: '4. Glucose & Reversal', duration: 3800 },
-    { id: 'doctor', title: '5. Doctor Protocol', duration: 4000 },
+    { id: 'rootcause', title: '1. Find Your Root Causes', duration: 3800 },
+    { id: 'plan', title: '2. Follow The Treatment Plan', duration: 4000 },
+    { id: 'progress', title: '3. Track Your Progress', duration: 3800 },
+    { id: 'scan', title: '4. AI Food Scan', duration: 4000 },
   ];
 
   // Timer loop for simulation scenes
@@ -48,9 +46,9 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
     return () => clearInterval(timer);
   }, [isPlaying, currentScene]);
 
-  // Laser scanning animation for Scene 1 (AI Meal Scan)
+  // Laser scanning animation for the AI Food Scan scene
   useEffect(() => {
-    if (currentScene === 1) {
+    if (currentScene === 3) {
       const laserTimer = setInterval(() => {
         setScanLaserPos((p) => (p >= 100 ? 0 : p + 5));
       }, 50);
@@ -83,10 +81,10 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
 
   return (
     <div className="w-full h-full flex flex-col justify-between text-zinc-900 select-none relative overflow-hidden bg-[#FAFAFC]">
-      
+
       {/* 1. TOP VIDEO SIMULATION HEADER & STORY BARS */}
       <div className="pt-2 px-4 pb-1.5 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-100">
-        
+
         {/* Story Progress Indicators */}
         <div className="flex items-center gap-1 mb-1.5">
           {scenes.map((scene, idx) => (
@@ -156,13 +154,13 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
       {/* 2. DYNAMIC SIMULATION SCENES DISPLAY */}
       <div className="flex-1 px-3.5 py-2 relative overflow-hidden flex flex-col justify-start">
         <AnimatePresence mode="wait">
-          
+
           {/* ========================================================================= */}
-          {/* SCENE 0: ONBOARDING & PRECISION METABOLIC CALIBRATION                     */}
+          {/* SCENE 0: FIND YOUR ROOT CAUSES                                             */}
           {/* ========================================================================= */}
           {currentScene === 0 && (
             <motion.div
-              key="scene-onboarding"
+              key="scene-rootcause"
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.96 }}
@@ -172,32 +170,90 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
               <div className="p-3 rounded-2xl bg-white border border-emerald-200/80 shadow-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                    Step 1: Clinical Goal Setup
+                    Step 1: Root-Cause Assessment
                   </span>
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <Search className="w-3.5 h-3.5 text-emerald-600" />
                 </div>
                 <div className="text-xs font-black text-zinc-900">
-                  Weight Loss & HbA1c Metabolic Reversal
+                  Diabetes & Other Conditions — We Find the Real Cause
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-center text-[10px]">
-                  <div className="p-2 rounded-xl bg-zinc-50 border border-zinc-200/60 font-bold">
-                    <span className="text-zinc-400 block text-[9px]">Current</span>
-                    <span className="text-xs font-black text-zinc-900">76 kg</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 font-bold">
-                    <span className="text-emerald-700 block text-[9px]">Target Goal</span>
-                    <span className="text-xs font-black text-emerald-700">68 kg (-8kg)</span>
-                  </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {['Type 2 Diabetes', 'Thyroid', 'PCOS', 'Insulin Resistance'].map((tag) => (
+                    <span key={tag} className="text-[9px] font-bold px-2 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               </div>
 
-              {/* Instant Blueprint Output */}
+              {/* Root Causes Identified Output */}
               <div className="p-3 rounded-2xl bg-white border border-zinc-200/80 shadow-xs space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-black text-zinc-900">Calibrated Daily Blueprint</span>
-                  <span className="text-[10px] font-black text-emerald-600">Calculated ✓</span>
+                  <span className="font-black text-zinc-900">Root Causes Identified</span>
+                  <span className="text-[10px] font-black text-emerald-600">Diagnosed ✓</span>
                 </div>
 
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-700">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Chronic insulin resistance from processed carbs</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-700">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Sub-optimal sleep disrupting hormone balance</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-700">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Key nutrient deficiencies (D3, Magnesium)</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 pt-1 border-t border-zinc-100">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Reviewed by a Doctor Before Your Plan Starts</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* SCENE 1: FOLLOW THE TREATMENT PLAN                                         */}
+          {/* ========================================================================= */}
+          {currentScene === 1 && (
+            <motion.div
+              key="scene-plan"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-2 h-full flex flex-col justify-between text-left"
+            >
+              {/* Doctor Review Card */}
+              <div className="p-3 rounded-2xl bg-white border border-zinc-200/80 shadow-xs space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center font-black shrink-0">
+                    <Stethoscope className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-black text-zinc-950 flex items-center gap-1">
+                      <span>Dr. Alok Sharma, MD</span>
+                      <ShieldCheck className="w-3 h-3 text-emerald-600 fill-emerald-100" />
+                    </div>
+                    <span className="text-[9px] text-zinc-500 font-medium">Chief Diabetologist • UrCare</span>
+                  </div>
+                </div>
+
+                <div className="p-2 rounded-xl bg-zinc-50 text-[9px] text-zinc-700 border border-zinc-200/70 leading-relaxed font-medium">
+                  "Your reversal treatment plan is ready — a low-carb, high-protein meal split plus daily movement targets built around your root causes."
+                </div>
+              </div>
+
+              {/* Personalized Blueprint */}
+              <div className="p-3 rounded-2xl bg-white border border-zinc-200/80 shadow-xs space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-black text-zinc-900">Your Reversal Treatment Plan</span>
+                  <span className="text-[10px] font-black text-emerald-600">Active</span>
+                </div>
                 <div className="grid grid-cols-3 gap-1.5 text-center text-[10px]">
                   <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-800 font-black">
                     <div>1,850</div>
@@ -212,19 +268,99 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
                     <span className="text-[8px] font-semibold text-teal-600">Water</span>
                   </div>
                 </div>
-                
-                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Physician Verified • Safe Metabolic Deficit</span>
+              </div>
+
+              {/* Clinical Botanical Supplement */}
+              <div className="p-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-black text-emerald-950">Botanical Protocol</span>
+                  <span className="text-[9px] font-bold text-emerald-700">Before Lunch</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[9px] text-zinc-800 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>Karela Jamun & Berberine Extract (500mg)</span>
                 </div>
               </div>
             </motion.div>
           )}
 
           {/* ========================================================================= */}
-          {/* SCENE 1: LIVE AI FOOD CAMERA VISION SCANNING                              */}
+          {/* SCENE 2: TRACK YOUR PROGRESS                                               */}
           {/* ========================================================================= */}
-          {currentScene === 1 && (
+          {currentScene === 2 && (
+            <motion.div
+              key="scene-progress"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-2 h-full flex flex-col justify-between text-left"
+            >
+              <div className="p-3 rounded-2xl bg-white border border-zinc-200/80 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Activity className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-black text-zinc-950">Glucose Reversal Curve</span>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    98 mg/dL (In Target)
+                  </span>
+                </div>
+
+                {/* Animated Waveform Graph */}
+                <div className="h-18 w-full bg-emerald-500/5 rounded-xl p-2 relative flex items-end justify-between border border-emerald-100">
+                  <svg className="w-full h-full" viewBox="0 0 100 40" preserveAspectRatio="none">
+                    <rect x="0" y="10" width="100" height="20" fill="#10b981" opacity="0.1" />
+                    <path
+                      d="M0,25 Q15,20 30,28 T60,16 T85,22 T100,20"
+                      fill="none"
+                      stroke="#059669"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    />
+                    <circle cx="85" cy="22" r="3" fill="#059669" className="animate-ping" />
+                    <circle cx="85" cy="22" r="2.5" fill="#ffffff" stroke="#059669" strokeWidth="1.5" />
+                  </svg>
+                  <div className="absolute top-1 left-2 text-[8px] font-bold text-zinc-400">Target: 70-140 mg/dL</div>
+                  <div className="absolute bottom-1 right-2 text-[8px] font-bold text-emerald-600">Zero Glycemic Spikes</div>
+                </div>
+              </div>
+
+              {/* HbA1c Reversal Status */}
+              <div className="p-2.5 rounded-2xl bg-white border border-zinc-200/80 shadow-xs space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-zinc-700">HbA1c Clinical Reversal</span>
+                  <span className="font-black text-emerald-600">7.2% → 5.6%</span>
+                </div>
+                <div className="w-full h-2 bg-zinc-100 rounded-full overflow-hidden flex">
+                  <div className="w-[75%] bg-gradient-to-r from-amber-400 via-emerald-400 to-emerald-600 rounded-full" />
+                </div>
+                <span className="text-[9px] text-zinc-500 font-medium block">
+                  Normal Non-Diabetic Range achieved within protocol.
+                </span>
+              </div>
+
+              {/* Weight Progress */}
+              <div className="p-2.5 rounded-2xl bg-white border border-zinc-200/80 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <TrendingDown className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <div className="text-xs font-black text-zinc-900">76 kg → 70.8 kg</div>
+                    <span className="text-[9px] text-zinc-400">-5.2 kg lost so far</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[9px] font-black">
+                  <Flame className="w-3 h-3" />
+                  <span>On Track</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* SCENE 3: AI FOOD SCAN                                                      */}
+          {/* ========================================================================= */}
+          {currentScene === 3 && (
             <motion.div
               key="scene-scan"
               initial={{ opacity: 0, scale: 0.96 }}
@@ -290,193 +426,6 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
                     <div>12g</div>
                     <span className="text-[8px] font-semibold text-teal-500">Fats</span>
                   </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* SCENE 2: TODAY TRACKER & DYNAMIC MACRO COUNTDOWN                          */}
-          {/* ========================================================================= */}
-          {currentScene === 2 && (
-            <motion.div
-              key="scene-tracker"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-2 h-full flex flex-col justify-between text-left"
-            >
-              <div className="p-3 rounded-2xl bg-white border border-zinc-200/80 shadow-xs flex items-center justify-between">
-                <div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-zinc-950">1,470</span>
-                    <span className="text-xs font-bold text-emerald-600">-380 logged</span>
-                  </div>
-                  <div className="text-[10px] font-bold text-zinc-400">Calories left today</div>
-                </div>
-
-                <div className="w-10 h-10 rounded-full border-3 border-zinc-100 relative flex items-center justify-center">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="15" fill="none" className="stroke-zinc-100" strokeWidth="3" />
-                    <circle cx="18" cy="18" r="15" fill="none" className="stroke-emerald-500" strokeWidth="3" strokeDasharray="94.2" strokeDashoffset="32" strokeLinecap="round" />
-                  </svg>
-                  <Flame className="w-4 h-4 text-emerald-600 fill-emerald-600 absolute" />
-                </div>
-              </div>
-
-              {/* Dynamic Macro Bars */}
-              <div className="grid grid-cols-3 gap-1.5">
-                <div className="p-2 rounded-xl bg-white border border-zinc-100 shadow-2xs">
-                  <div className="text-xs font-black text-rose-600">114g left</div>
-                  <span className="text-[8px] text-zinc-400 font-bold">Protein</span>
-                  <div className="w-full h-1.5 bg-rose-100 rounded-full mt-1 overflow-hidden">
-                    <div className="w-[60%] h-full bg-rose-500 rounded-full" />
-                  </div>
-                </div>
-
-                <div className="p-2 rounded-xl bg-white border border-zinc-100 shadow-2xs">
-                  <div className="text-xs font-black text-amber-600">168g left</div>
-                  <span className="text-[8px] text-zinc-400 font-bold">Carbs</span>
-                  <div className="w-full h-1.5 bg-amber-100 rounded-full mt-1 overflow-hidden">
-                    <div className="w-[40%] h-full bg-amber-500 rounded-full" />
-                  </div>
-                </div>
-
-                <div className="p-2 rounded-xl bg-white border border-zinc-100 shadow-2xs">
-                  <div className="text-xs font-black text-teal-600">38g left</div>
-                  <span className="text-[8px] text-zinc-400 font-bold">Fats</span>
-                  <div className="w-full h-1.5 bg-teal-100 rounded-full mt-1 overflow-hidden">
-                    <div className="w-[50%] h-full bg-teal-500 rounded-full" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Water & Fasting Mini Row */}
-              <div className="p-2.5 rounded-2xl bg-white border border-zinc-200/80 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Droplets className="w-4 h-4 text-teal-600" />
-                  <div>
-                    <div className="text-xs font-black text-zinc-900">2,500 / 3,200 ml</div>
-                    <span className="text-[9px] text-zinc-400">Hydration on track</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    playSuccessChime();
-                    setIsWaterLogged(true);
-                    setTimeout(() => setIsWaterLogged(false), 2000);
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-all active:scale-95"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>{isWaterLogged ? 'Logged!' : '+250ml'}</span>
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* SCENE 3: BLOOD GLUCOSE & CLINICAL REVERSAL CURVE                          */}
-          {/* ========================================================================= */}
-          {currentScene === 3 && (
-            <motion.div
-              key="scene-biomarkers"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-2 h-full flex flex-col justify-between text-left"
-            >
-              <div className="p-3 rounded-2xl bg-white border border-zinc-200/80 shadow-xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Activity className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-black text-zinc-950">Glucose Reversal Curve</span>
-                  </div>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                    98 mg/dL (In Target)
-                  </span>
-                </div>
-
-                {/* Animated Waveform Graph */}
-                <div className="h-18 w-full bg-emerald-500/5 rounded-xl p-2 relative flex items-end justify-between border border-emerald-100">
-                  <svg className="w-full h-full" viewBox="0 0 100 40" preserveAspectRatio="none">
-                    <rect x="0" y="10" width="100" height="20" fill="#10b981" opacity="0.1" />
-                    <path
-                      d="M0,25 Q15,20 30,28 T60,16 T85,22 T100,20"
-                      fill="none"
-                      stroke="#059669"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                    />
-                    <circle cx="85" cy="22" r="3" fill="#059669" className="animate-ping" />
-                    <circle cx="85" cy="22" r="2.5" fill="#ffffff" stroke="#059669" strokeWidth="1.5" />
-                  </svg>
-                  <div className="absolute top-1 left-2 text-[8px] font-bold text-zinc-400">Target: 70-140 mg/dL</div>
-                  <div className="absolute bottom-1 right-2 text-[8px] font-bold text-emerald-600">Zero Glycemic Spikes</div>
-                </div>
-              </div>
-
-              {/* HbA1c Reversal Status */}
-              <div className="p-2.5 rounded-2xl bg-white border border-zinc-200/80 shadow-xs space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-zinc-700">HbA1c Clinical Reversal</span>
-                  <span className="font-black text-emerald-600">7.2% → 5.6%</span>
-                </div>
-                <div className="w-full h-2 bg-zinc-100 rounded-full overflow-hidden flex">
-                  <div className="w-[75%] bg-gradient-to-r from-amber-400 via-emerald-400 to-emerald-600 rounded-full" />
-                </div>
-                <span className="text-[9px] text-zinc-500 font-medium block">
-                  Normal Non-Diabetic Range achieved within protocol.
-                </span>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* SCENE 4: DOCTOR-SUPERVISED PROTOCOL & WHATSAPP SYNC                       */}
-          {/* ========================================================================= */}
-          {currentScene === 4 && (
-            <motion.div
-              key="scene-doctor"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-2 h-full flex flex-col justify-between text-left"
-            >
-              {/* Doctor Review Card */}
-              <div className="p-3 rounded-2xl bg-white border border-zinc-200/80 shadow-xs space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center font-black shrink-0">
-                    <Stethoscope className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-black text-zinc-950 flex items-center gap-1">
-                      <span>Dr. Alok Sharma, MD</span>
-                      <ShieldCheck className="w-3 h-3 text-emerald-600 fill-emerald-100" />
-                    </div>
-                    <span className="text-[9px] text-zinc-500 font-medium">Chief Diabetologist • UrCare</span>
-                  </div>
-                </div>
-
-                <div className="p-2 rounded-xl bg-zinc-50 text-[9px] text-zinc-700 border border-zinc-200/70 leading-relaxed font-medium">
-                  "Insulin sensitivity has improved by 42%. Maintain today's low-carb high-protein meal split."
-                </div>
-              </div>
-
-              {/* Clinical Botanical Supplement */}
-              <div className="p-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-black text-emerald-950">Botanical Protocol</span>
-                  <span className="text-[9px] font-bold text-emerald-700">Before Lunch</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[9px] text-zinc-800 font-medium">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Karela Jamun & Berberine Extract (500mg)</span>
                 </div>
               </div>
             </motion.div>
