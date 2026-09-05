@@ -332,8 +332,21 @@ export async function getDailyPlan(userId: string, date: string): Promise<any | 
   return data;
 }
 
-export async function generateDailyPlan(date: string): Promise<{ plan?: any; error?: string }> {
-  const res = await authedFetch('/api/daily-plan', { method: 'POST', body: JSON.stringify({ date }) });
+export async function generateDailyPlan(date: string, profile?: UserHealthProfile): Promise<{ plan?: any; error?: string }> {
+  const res = await authedFetch('/api/daily-plan', {
+    method: 'POST',
+    body: JSON.stringify({
+      date,
+      profile: profile ? {
+        goal: profile.goal,
+        gender: profile.gender,
+        age: profile.age,
+        dietaryPreference: profile.dietaryPreference,
+        medicalConditions: profile.medicalConditions,
+        calculatedPlan: profile.calculatedPlan,
+      } : undefined,
+    }),
+  });
   const data = await res.json();
   if (!res.ok) return { error: data.error || 'Could not generate today’s plan.' };
   return { plan: data.plan };
