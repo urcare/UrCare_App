@@ -449,19 +449,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div>
                     <h3 className="text-xl sm:text-2xl font-black text-zinc-950">Unlock UrCare Premium</h3>
                     <p className="text-sm text-zinc-500 mt-1 max-w-md mx-auto">
-                      Premium gives you exactly 2 powerful things — nothing complicated.
+                      Premium gives you one powerful thing — nothing complicated.
                     </p>
                   </div>
-                  <div className="grid sm:grid-cols-2 gap-3 max-w-lg mx-auto text-left">
+                  <div className="max-w-sm mx-auto text-left">
                     <div className={`p-4 rounded-2xl ${subCardClass} space-y-1.5`}>
                       <Camera className="w-5 h-5 text-emerald-600" />
                       <h4 className="text-sm font-black text-zinc-900">AI Food Scan</h4>
                       <p className="text-xs text-zinc-500">Scan any meal — instantly know if it's good for YOUR health, or not.</p>
-                    </div>
-                    <div className={`p-4 rounded-2xl ${subCardClass} space-y-1.5`}>
-                      <Lightbulb className="w-5 h-5 text-emerald-600" />
-                      <h4 className="text-sm font-black text-zinc-900">Daily Goals</h4>
-                      <p className="text-xs text-zinc-500">Every day: what to eat, what to avoid, sleep timing & exercises for you.</p>
                     </div>
                   </div>
                   <button

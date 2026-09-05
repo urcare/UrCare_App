@@ -37,10 +37,9 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
   const upiId = 'urcare.official@okhdfcbank';
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=${upiId}&pn=UrCare%20Premium%20Subscription&am=${price}&cu=INR`;
 
-  // Premium unlocks exactly two things, as requested: AI Scan + Daily Goals.
+  // Premium unlocks exactly one thing, as requested: AI Scan.
   const proFeatures = [
     { title: 'AI Food Scan', desc: 'Scan or describe any meal and instantly know if it suits YOUR health profile — calories, macros & a personalized good/avoid verdict.' },
-    { title: 'Daily Goals', desc: 'Every day: exactly what to eat, what to avoid, sleep timing, water intake & the right exercises for you.' },
   ];
 
   const handleCopyUpi = () => {
@@ -111,7 +110,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
                 Unlock <span className="text-emerald-400">UrCare Premium</span>
               </h2>
               <p className="text-sm text-zinc-400 mt-1 max-w-sm mx-auto">
-                Pay once, unlock both Pro features below — no plans, no confusion.
+                Pay once, unlock the Pro feature below — no plans, no confusion.
               </p>
             </div>
 
@@ -257,7 +256,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
             </div>
             <h3 className="text-2xl font-black text-white">Welcome to UrCare Premium!</h3>
             <p className="text-sm text-zinc-400 mt-2 max-w-sm mx-auto">
-              Your Pro membership is now active. AI Food Scan and Daily Goals are unlocked.
+              Your Pro membership is now active. AI Food Scan is unlocked.
             </p>
             <button
               type="button"
