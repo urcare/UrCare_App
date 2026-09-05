@@ -7,6 +7,7 @@ import { MedicalReportAnalysis, Biomarker } from '../types';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { Language, translations } from '../utils/translations';
 import { playClickSound, playSuccessChime } from '../utils/soundEffects';
+import { authedFetch } from '../utils/supabase';
 
 interface ReportUploaderProps {
   onReportAnalyzed: (analysis: MedicalReportAnalysis) => void;
@@ -56,28 +57,6 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
     { title: 'Evaluating Micronutrients, Thyroid & Renal Markers', icon: Cpu },
     { title: 'Calibrating UrCare Precision Caloric & Protein Split', icon: ShieldCheck },
   ];
-
-  // Helper to persist to localStorage for Admin Portal visibility
-  const saveReportToAdminStore = (report: MedicalReportAnalysis) => {
-    try {
-      const stored = localStorage.getItem('urcare_lab_reports');
-      let reportsList: MedicalReportAnalysis[] = stored ? JSON.parse(stored) : [];
-      
-      const newEntry: MedicalReportAnalysis = {
-        ...report,
-        id: report.id || 'rep_' + Date.now(),
-        userId: userAccount?.uid || 'usr_current',
-        userName: userAccount?.displayName || 'Active Member',
-        uploadedAt: report.uploadedAt || new Date().toISOString(),
-      };
-
-      // Filter out duplicate if same ID
-      reportsList = [newEntry, ...reportsList.filter(r => r.id !== newEntry.id)];
-      localStorage.setItem('urcare_lab_reports', JSON.stringify(reportsList));
-    } catch (e) {
-      console.warn('Failed to sync report with Admin storage:', e);
-    }
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -155,9 +134,8 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       : 'Diagnostic Lab Record';
 
     try {
-      const res = await fetch('/api/analyze-report', {
+      const res = await authedFetch('/api/analyze-report', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageBase64: fileBase64 || undefined,
           mimeType: selectedFile?.type,
@@ -166,6 +144,13 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
         }),
       });
       const data = await res.json();
+
+      if (res.status === 401) {
+        setError(lang === 'hi' ? 'कृपया दोबारा साइन इन करें।' : 'Please sign in again.');
+        setScanProgress(0);
+        setIsAnalyzing(false);
+        return;
+      }
 
       clearTimeout(progressTimer1);
       clearTimeout(progressTimer2);
@@ -188,11 +173,13 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       }
 
       const finalReport: MedicalReportAnalysis = {
-        id: 'rep_' + Date.now(),
+        // The server already saved this report to Supabase under this id — reuse it,
+        // never mint a new one client-side.
+        id: data.id,
         userId: userAccount?.uid || 'usr_current',
         userName: userAccount?.displayName || 'Active Member',
         reportName: data.reportName || reportName,
-        uploadedAt: new Date().toISOString(),
+        uploadedAt: data.uploadedAt || new Date().toISOString(),
         imageUrl: previewUrl || undefined,
         reportText: reportText.trim() || undefined,
         summary: data.summary || 'Diagnostic report document uploaded and filed in clinical records.',
@@ -207,7 +194,6 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
 
       setScanProgress(100);
       setAnalysisResult(finalReport);
-      saveReportToAdminStore(finalReport);
       onReportAnalyzed(finalReport);
       playSuccessChime();
       setIsAnalyzing(false);
@@ -225,7 +211,6 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
     playSuccessChime();
     if (analysisResult) {
       onReportAnalyzed(analysisResult);
-      saveReportToAdminStore(analysisResult);
     }
     if (onDone) {
       onDone();

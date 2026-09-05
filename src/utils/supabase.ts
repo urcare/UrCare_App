@@ -94,7 +94,9 @@ export async function getAuthToken(): Promise<string | null> {
   return session?.access_token || null;
 }
 
-async function authedFetch(path: string, options: RequestInit = {}): Promise<Response> {
+/** fetch() with the caller's real Supabase access token attached — use this for any
+ *  /api/* call that needs to know who's calling (requireUser on the server). */
+export async function authedFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const token = await getAuthToken();
   return fetch(path, {
     ...options,
@@ -361,6 +363,13 @@ export async function getMyReports(userId: string): Promise<MedicalReportAnalysi
     adminReviewed: r.admin_reviewed,
     adminNotes: r.admin_notes,
   }));
+}
+
+export async function deleteReport(reportId: string): Promise<{ error?: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: 'Supabase is not configured.' };
+  const { error } = await supabase.from('lab_reports').delete().eq('id', reportId);
+  return { error: error?.message };
 }
 
 export async function getMyPrescriptions(userId: string): Promise<Prescription[]> {

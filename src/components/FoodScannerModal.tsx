@@ -4,6 +4,7 @@ import {
   AlertCircle, Image as ImageIcon, Lock, Crown, ArrowRight, Upload, Aperture
 } from 'lucide-react';
 import { MealItem, UserHealthProfile } from '../types';
+import { authedFetch } from '../utils/supabase';
 
 interface FoodScannerModalProps {
   isOpen: boolean;
@@ -124,9 +125,8 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
     setError(null);
 
     try {
-      const res = await fetch('/api/analyze-food', {
+      const res = await authedFetch('/api/analyze-food', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           description: description || 'Healthy food meal',
           imageBase64: selectedImage,

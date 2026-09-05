@@ -26,7 +26,7 @@ import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
-import { signOutUser } from '../utils/supabase';
+import { signOutUser, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport } from '../utils/supabase';
 import { calculateNutritionPlan } from '../utils/calculator';
 
 interface DashboardProps {
@@ -68,35 +68,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // User Orders — real ones placed by THIS account, fetched below + appended live on checkout.
   const [userOrders, setUserOrders] = useState<Order[]>([]);
 
-  // Pull this account's real orders & any admin-issued prescriptions from the server so
-  // Admin-side actions (issuing an Rx, order status updates) are reflected here too.
-  useEffect(() => {
+  // This user's real reports — fetched from Supabase (never seeded/mocked).
+  const [myReports, setMyReports] = useState<MedicalReportAnalysis[]>([]);
+
+  // Pull this account's real orders, admin-issued prescriptions, and lab reports
+  // straight from Supabase (respecting row-level security) so Admin-side actions
+  // (issuing an Rx, order status updates, report review) are reflected here too.
+  const refreshAccountData = () => {
     if (!account?.uid) return;
-    let cancelled = false;
+    getMyOrders(account.uid).then(setUserOrders).catch(() => {});
+    getMyPrescriptions(account.uid).then(setPrescriptions).catch(() => {});
+    getMyReports(account.uid).then(setMyReports).catch(() => {});
+  };
 
-    fetch(`/api/orders/my?userId=${encodeURIComponent(account.uid)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled && Array.isArray(data?.orders)) {
-          setUserOrders(data.orders);
-        }
-      })
-      .catch(() => {});
-
-    fetch(`/api/user/prescriptions?userId=${encodeURIComponent(account.uid)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled && Array.isArray(data?.prescriptions)) {
-          setPrescriptions(data.prescriptions);
-        }
-      })
-      .catch(() => {});
-
-    return () => { cancelled = true; };
+  useEffect(() => {
+    refreshAccountData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.uid]);
-
-  // Bumped after deleting a report to force the Reports tab to re-read localStorage.
-  const [reportsRefreshKey, setReportsRefreshKey] = useState(0);
 
   // Modals state
   const [isHealthReportOpen, setIsHealthReportOpen] = useState(false);
@@ -109,18 +97,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Handler for meals logged from the AI Food Scanner — also persisted per calendar day so
-  // the Premium tab's daily calendar can show real logged macros for any past day.
+  // Handler for meals logged from the AI Food Scanner — persisted to Supabase
+  // (daily_logs) so the Premium tab's daily calendar shows real logged macros
+  // for any past day, from any device.
   const handleAddMeal = (meal: MealItem) => {
     setMeals((prev) => [meal, ...prev]);
-    try {
-      const key = 'urcare_meal_log';
-      const stored = localStorage.getItem(key);
-      const log: Record<string, MealItem[]> = stored ? JSON.parse(stored) : {};
-      const dateKey = toDateKey(new Date());
-      log[dateKey] = [meal, ...(log[dateKey] || [])];
-      localStorage.setItem(key, JSON.stringify(log));
-    } catch (e) {}
+    if (account?.uid) {
+      addMealToLog(account.uid, toDateKey(new Date()), meal).catch(() => {});
+    }
   };
 
   // Store Order Placement
@@ -161,11 +145,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Permanently remove one uploaded report from this user's submission log.
   const handleDeleteReport = (reportId?: string) => {
     if (!reportId) return;
-    try {
-      const stored = localStorage.getItem('urcare_lab_reports');
-      const list: MedicalReportAnalysis[] = stored ? JSON.parse(stored) : [];
-      localStorage.setItem('urcare_lab_reports', JSON.stringify(list.filter((r) => r.id !== reportId)));
-    } catch (e) {}
+    deleteReport(reportId).then(() => {
+      setMyReports((prev) => prev.filter((r) => r.id !== reportId));
+    }).catch(() => {});
 
     // If the deleted report was the one currently driving the diet plan, fall back to
     // the plan calculated from onboarding answers alone (no report data).
@@ -186,9 +168,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         calculatedPlan: recalculatedPlan,
         updatedAt: new Date().toISOString(),
       });
-    } else {
-      // Force this tab to re-read the (now-updated) report log from localStorage.
-      setReportsRefreshKey((k) => k + 1);
     }
   };
 
@@ -546,26 +525,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </button>
               </div>
 
-              {/* Report Log — every report this user has ever submitted */}
+              {/* Report Log — every report this user has ever submitted (from Supabase) */}
               {(() => {
-                void reportsRefreshKey; // re-read localStorage below after a delete
-                let myReports: MedicalReportAnalysis[] = [];
-                try {
-                  const stored = localStorage.getItem('urcare_lab_reports');
-                  if (stored) {
-                    const list: MedicalReportAnalysis[] = JSON.parse(stored);
-                    myReports = list.filter((r) => r.userId === account.uid || r.userId === 'usr_current');
-                  }
-                } catch (e) {}
-                if (profile.reportAnalysis && !myReports.find((r) => r.id === profile.reportAnalysis!.id)) {
-                  myReports = [profile.reportAnalysis, ...myReports];
+                let reportsToShow = myReports;
+                if (profile.reportAnalysis && !reportsToShow.find((r) => r.id === profile.reportAnalysis!.id)) {
+                  reportsToShow = [profile.reportAnalysis, ...reportsToShow];
                 }
                 // Newest first
-                myReports = myReports.slice().sort(
+                reportsToShow = reportsToShow.slice().sort(
                   (a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime()
                 );
 
-                if (myReports.length === 0) {
+                if (reportsToShow.length === 0) {
                   return (
                     <div className={`p-12 rounded-3xl ${cardClass} text-center space-y-3`}>
                       <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto">
@@ -584,9 +555,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 return (
                   <div className="space-y-4">
                     <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500 px-1">
-                      Submission Log ({myReports.length})
+                      Submission Log ({reportsToShow.length})
                     </h4>
-                    {myReports.map((report, idx) => (
+                    {reportsToShow.map((report, idx) => (
                       <ReportPhotoViewer
                         key={report.id || idx}
                         report={report}
@@ -652,6 +623,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           reportAnalysis={profile.reportAnalysis}
           onUpdateReport={(analysis) => {
             handleUpdateReport(analysis);
+            refreshAccountData();
           }}
           userAccount={account}
         />
