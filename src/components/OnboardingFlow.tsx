@@ -580,7 +580,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             >
               <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black shadow-xs">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                <span>India's #1 Metabolic & Calorie Coach</span>
+                <span>India's #1 Reversal Platform</span>
               </div>
 
               <div className="space-y-2">
