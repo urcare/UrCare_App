@@ -3,7 +3,7 @@ import {
   User, Mail, Phone, Calendar, ShieldCheck, Scale,
   Target, Flame, Droplets, ArrowLeft, Edit3, Heart,
   Stethoscope, Award, ChevronRight, LogOut, RefreshCw,
-  Package, FileText, CheckCircle2, Camera
+  Package, FileText, CheckCircle2, Camera, BadgeCheck
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
@@ -175,8 +175,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   <h1 className="text-xl font-black text-zinc-950">
                     {profile.name || account.displayName || 'UrCare Member'}
                   </h1>
-                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    Verified Member
+                  <span className="flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    <BadgeCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-500/15" strokeWidth={2.5} />
+                    <span>Verified Member</span>
                   </span>
                 </div>
 
