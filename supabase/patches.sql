@@ -5,6 +5,34 @@
 -- drops or alters existing data.
 -- ============================================================================
 
+-- 0. CRITICAL: fix the new-user trigger, which was written against a wrong
+--    guess at the profiles schema (id/email/name) instead of the real one
+--    (user_id/full_name/onboarding_completed/premium_status/role). As shipped
+--    it silently BLOCKS EVERY NEW SIGNUP (the insert inside the trigger fails
+--    NOT NULL/column-does-not-exist, which rolls back the whole auth.users
+--    insert). Run this before testing any new signup.
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (user_id, email, full_name, onboarding_completed, premium_status, role)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
+    false,
+    'inactive',
+    'user'
+  )
+  on conflict do nothing;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
 -- 1. Fix user_id foreign keys to point at auth.users.id (consistent with the
 --    rest of the real schema — ai_daily_plans, orders, food_scans, etc. all
 --    already do this). These 5 tables were freshly created empty, so this is

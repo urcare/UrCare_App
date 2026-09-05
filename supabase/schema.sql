@@ -13,43 +13,41 @@ drop table if exists public.reviews cascade;
 drop table if exists public.products cascade;
 
 -- ---------------------------------------------------------------------------
--- 1. PROFILES — one row per signed-in user (extends auth.users)
+-- 1. PROFILES — this table ALREADY EXISTED in this project with real users
+--    and a different shape than originally assumed here (id uuid surrogate
+--    key, user_id -> auth.users.id, full_name, onboarding_completed,
+--    premium_status, role, etc.) — this block is a no-op on that real table
+--    (kept only so a truly fresh project still gets a working profiles table).
 -- ---------------------------------------------------------------------------
 create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
+  id uuid primary key default extensions.uuid_generate_v4(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  full_name text,
   email text,
-  name text,
-  phone text,
-  gender text,
-  age int,
-  height_cm numeric,
-  current_weight_kg numeric,
-  target_weight_kg numeric,
-  goal text,
-  activity_level text,
-  pace text,
-  obstacles jsonb default '[]',
-  dietary_preference text,
-  medical_conditions jsonb default '[]',
-  calculated_plan jsonb,
-  preferences jsonb,
-  assessment_data jsonb,
-  health_deep_dive jsonb,
-  is_pro boolean default false,
-  pro_plan_type text,
-  pro_expiry timestamptz,
-  is_admin boolean default false,
+  onboarding_completed boolean default false,
+  premium_status text default 'inactive',
+  premium_started_at timestamptz,
+  premium_expires_at timestamptz,
+  role text default 'user',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
--- Auto-create a profile row the moment someone signs up (Google or email)
+-- Auto-create a profile row the moment someone signs up (Google or email) —
+-- matches the REAL profiles schema (user_id + full_name), not a guessed one.
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, email, name)
-  values (new.id, new.email, coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)))
-  on conflict (id) do nothing;
+  insert into public.profiles (user_id, email, full_name, onboarding_completed, premium_status, role)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
+    false,
+    'inactive',
+    'user'
+  )
+  on conflict do nothing;
   return new;
 end;
 $$ language plpgsql security definer;
