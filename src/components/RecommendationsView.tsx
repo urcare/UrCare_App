@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { UserHealthProfile, Prescription } from '../types';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { DailyCalendar, toDateKey } from './DailyCalendar';
 import {
   getDailyPlan, generateDailyPlan, getDailyLog, getTaskCompletion,
@@ -27,6 +28,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { t } = useLanguage();
   const userId = profile.id || '';
 
   const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
@@ -174,10 +176,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-black tracking-tight">
-                Your Daily Health Plan
+                {t('dailyPlanTitle')}
               </h2>
               <p className="text-xs opacity-70 mt-1 max-w-md">
-                A fresh plan made for you every day — pick any day on the calendar to see how you did.
+                {t('dailyPlanSubtitle')}
               </p>
             </div>
           </div>
@@ -188,13 +190,13 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             className="px-3.5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-md shadow-teal-500/20 shrink-0 w-full md:w-auto justify-center"
           >
             <Stethoscope className="w-3.5 h-3.5" />
-            <span>Ask a Doctor</span>
+            <span>{t('askADoctor')}</span>
           </button>
         </div>
 
         <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between gap-3 flex-wrap">
           <div className="text-xs opacity-75 font-semibold">
-            Showing: <span className="text-emerald-500 font-black">{isToday ? `Today (${formatDate(selectedDate)})` : formatDate(selectedDate)}</span>
+            {t('showingLabel')}: <span className="text-emerald-500 font-black">{isToday ? `${t('showingToday')} (${formatDate(selectedDate)})` : formatDate(selectedDate)}</span>
           </div>
           {!isToday && (
             <button
@@ -203,7 +205,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               className="text-xs font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
             >
               <ChevronRight className="w-3.5 h-3.5" />
-              <span>Back to Today</span>
+              <span>{t('backToToday')}</span>
             </button>
           )}
         </div>
@@ -223,7 +225,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             <div className="flex items-center gap-2 text-emerald-500">
               {isToday ? <Target className="w-5 h-5" /> : <Award className="w-5 h-5" />}
               <h3 className="text-sm font-black uppercase tracking-wider">
-                {isToday ? "Today's Nutrition Goals" : "Goals vs. What You Ate"}
+                {isToday ? t('todaysNutritionGoals') : t('goalsVsWhatYouAte')}
               </h3>
             </div>
             <span className="text-xs font-extrabold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400">
@@ -318,7 +320,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40">
               <div className="flex items-center gap-2 text-emerald-500">
                 <CheckCircle2 className="w-5 h-5" />
-                <h3 className="text-base font-black tracking-tight">Today's Meals</h3>
+                <h3 className="text-base font-black tracking-tight">{t('todaysMeals')}</h3>
               </div>
               <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500">Personalized</span>
             </div>
@@ -346,7 +348,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} space-y-4`}>
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40">
-                <div className="flex items-center gap-2 text-emerald-500"><CheckCircle2 className="w-5 h-5" /><h3 className="text-base font-black tracking-tight">Foods to Eat</h3></div>
+                <div className="flex items-center gap-2 text-emerald-500"><CheckCircle2 className="w-5 h-5" /><h3 className="text-base font-black tracking-tight">{t('foodsToEat')}</h3></div>
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500">Recommended</span>
               </div>
               <ul className="space-y-2">
@@ -357,7 +359,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             </div>
             <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} space-y-4`}>
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40">
-                <div className="flex items-center gap-2 text-rose-500"><Ban className="w-5 h-5" /><h3 className="text-base font-black tracking-tight">Foods to Avoid</h3></div>
+                <div className="flex items-center gap-2 text-rose-500"><Ban className="w-5 h-5" /><h3 className="text-base font-black tracking-tight">{t('foodsToAvoid')}</h3></div>
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-rose-500/10 text-rose-500">Avoid</span>
               </div>
               <ul className="space-y-2">
@@ -372,7 +374,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} space-y-4`}>
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40">
-                <div className="flex items-center gap-2 text-teal-400"><Dumbbell className="w-5 h-5 text-teal-500" /><h3 className="text-base font-black tracking-tight">Exercise for Today</h3></div>
+                <div className="flex items-center gap-2 text-teal-400"><Dumbbell className="w-5 h-5 text-teal-500" /><h3 className="text-base font-black tracking-tight">{t('exerciseForToday')}</h3></div>
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-teal-500/10 text-teal-400">Today's Plan</span>
               </div>
               <div className="space-y-3">
@@ -402,7 +404,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
             <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} space-y-4`}>
               <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40">
-                <div className="flex items-center gap-2 text-blue-400"><Droplets className="w-5 h-5 text-blue-500" /><h3 className="text-base font-black tracking-tight">Hydration</h3></div>
+                <div className="flex items-center gap-2 text-blue-400"><Droplets className="w-5 h-5 text-blue-500" /><h3 className="text-base font-black tracking-tight">{t('hydration')}</h3></div>
               </div>
               {plan.hydration_plan && (
                 <div className="space-y-2">
@@ -431,7 +433,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       {prescriptions.length > 0 && (
         <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} space-y-4`}>
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40">
-            <div className="flex items-center gap-2 text-emerald-500"><FileText className="w-5 h-5" /><h3 className="text-base font-black tracking-tight">My Prescriptions</h3></div>
+            <div className="flex items-center gap-2 text-emerald-500"><FileText className="w-5 h-5" /><h3 className="text-base font-black tracking-tight">{t('myPrescriptions')}</h3></div>
             <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500">{prescriptions.length} Issued</span>
           </div>
           <div className="space-y-3">

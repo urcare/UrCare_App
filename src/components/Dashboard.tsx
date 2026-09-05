@@ -28,6 +28,7 @@ import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
 import { signOutUser, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport } from '../utils/supabase';
 import { calculateNutritionPlan } from '../utils/calculator';
+import { useLanguage } from '../context/LanguageContext';
 
 interface DashboardProps {
   profile: UserHealthProfile;
@@ -46,6 +47,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onResetOnboarding,
   onOpenAdminPortal,
 }) => {
+  const { t } = useLanguage();
+
   // Navigation Tabs — simplified: 'profile' (Home) is the default/main screen.
   // 'premium' = AI Scan + Daily Plan (gated). 'reports', 'assessment' + 'store' are always free.
   const [activeTab, setActiveTab] = useState<'profile' | 'premium' | 'reports' | 'assessment' | 'store'>('profile');
@@ -192,11 +195,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const inactiveTabClass = 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100';
 
   const navItems = [
-    { id: 'profile', label: 'Home', icon: Home },
-    { id: 'premium', label: account.isPro ? 'Pro' : 'Premium', icon: Crown },
-    { id: 'reports', label: 'My Reports', icon: FileText },
-    { id: 'assessment', label: 'Assessment', icon: Stethoscope },
-    { id: 'store', label: 'Store', icon: ShoppingBag },
+    { id: 'profile', label: t('navHome'), icon: Home },
+    { id: 'premium', label: account.isPro ? t('navPro') : t('navPremium'), icon: Crown },
+    { id: 'reports', label: t('navReports'), icon: FileText },
+    { id: 'assessment', label: t('navAssessment'), icon: Stethoscope },
+    { id: 'store', label: t('navStore'), icon: ShoppingBag },
   ];
 
   return (
@@ -233,7 +236,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               type="button"
               onClick={() => setActiveTab('profile')}
               className="p-1.5 rounded-xl bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition-all cursor-pointer shrink-0"
-              title="Open My Profile"
+              title={t('openMyProfile')}
             >
               <User className="w-4 h-4 text-emerald-700" />
             </button>

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 
 export type AppLanguage = 'en' | 'hi';
 
@@ -71,6 +72,33 @@ export const DICTIONARY: Translations = {
   membershipStatus: { en: 'Membership Plan', hi: 'सदस्यता प्लान' },
   activePro: { en: 'Pro Member (Active)', hi: 'प्रो सदस्य (सक्रिय)' },
   switchLanguage: { en: 'App Language', hi: 'ऐप की भाषा' },
+
+  // Dashboard bottom/side navigation
+  navHome: { en: 'Home', hi: 'होम' },
+  navPro: { en: 'Pro', hi: 'प्रो' },
+  navPremium: { en: 'Premium', hi: 'प्रीमियम' },
+  navReports: { en: 'My Reports', hi: 'मेरी रिपोर्ट्स' },
+  navAssessment: { en: 'Assessment', hi: 'मूल्यांकन' },
+  navStore: { en: 'Store', hi: 'स्टोर' },
+  openMyProfile: { en: 'Open My Profile', hi: 'मेरी प्रोफ़ाइल खोलें' },
+  backToDashboard: { en: 'Back to Dashboard', hi: 'डैशबोर्ड पर वापस जाएं' },
+
+  // Daily Plan (Pro tab)
+  dailyPlanTitle: { en: 'Your Daily Health Plan', hi: 'आपका दैनिक हेल्थ प्लान' },
+  dailyPlanSubtitle: { en: 'A fresh plan made for you every day — pick any day on the calendar to see how you did.', hi: 'हर दिन आपके लिए एक नई योजना — कैलेंडर से कोई भी दिन चुनकर देखें आपने कैसा किया।' },
+  askADoctor: { en: 'Ask a Doctor', hi: 'डॉक्टर से पूछें' },
+  showingToday: { en: 'Today', hi: 'आज' },
+  showingLabel: { en: 'Showing', hi: 'दिखा रहे हैं' },
+  backToToday: { en: 'Back to Today', hi: 'आज पर वापस जाएं' },
+  todaysNutritionGoals: { en: "Today's Nutrition Goals", hi: 'आज के पोषण लक्ष्य' },
+  goalsVsWhatYouAte: { en: 'Goals vs. What You Ate', hi: 'लक्ष्य बनाम आपने क्या खाया' },
+  todaysMeals: { en: "Today's Meals", hi: 'आज का खाना' },
+  foodsToEat: { en: 'Foods to Eat', hi: 'खाने योग्य आहार' },
+  foodsToAvoid: { en: 'Foods to Avoid', hi: 'परहेज करने योग्य आहार' },
+  exerciseForToday: { en: 'Exercise for Today', hi: 'आज की एक्सरसाइज़' },
+  exercisesToSkip: { en: 'Exercises to Skip', hi: 'ये एक्सरसाइज़ न करें' },
+  hydration: { en: 'Hydration', hi: 'पानी की मात्रा' },
+  myPrescriptions: { en: 'My Prescriptions', hi: 'मेरे पर्चे (Prescriptions)' },
 };
 
 interface LanguageContextType {
@@ -132,30 +160,46 @@ export const useLanguage = () => useContext(LanguageContext);
 export const LanguageSwitchButton: React.FC<{ className?: string }> = ({ className = '' }) => {
   const { language, setLanguage } = useLanguage();
 
+  const options: { code: AppLanguage; flag: string; label: string }[] = [
+    { code: 'en', flag: '🇬🇧', label: 'EN' },
+    { code: 'hi', flag: '🇮🇳', label: 'हिंदी' },
+  ];
+
   return (
-    <div className={`inline-flex items-center p-1 rounded-xl bg-zinc-100 border border-zinc-200/90 shadow-xs ${className}`}>
-      <button
-        type="button"
-        onClick={() => setLanguage('en')}
-        className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-          language === 'en'
-            ? 'bg-white text-emerald-700 shadow-xs'
-            : 'text-zinc-500 hover:text-zinc-900'
-        }`}
-      >
-        🇬🇧 EN
-      </button>
-      <button
-        type="button"
-        onClick={() => setLanguage('hi')}
-        className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-          language === 'hi'
-            ? 'bg-emerald-600 text-white shadow-xs'
-            : 'text-zinc-500 hover:text-zinc-900'
-        }`}
-      >
-        🇮🇳 हिंदी
-      </button>
+    <div
+      className={`relative inline-flex items-center p-1 rounded-full bg-zinc-100 border border-zinc-200/90 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)] ${className}`}
+    >
+      {options.map((opt) => {
+        const active = language === opt.code;
+        return (
+          <button
+            key={opt.code}
+            type="button"
+            onClick={() => setLanguage(opt.code)}
+            className="relative px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 cursor-pointer"
+          >
+            {active && (
+              <motion.div
+                layoutId="lang-switch-pill"
+                className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 shadow-lg shadow-emerald-600/30"
+                style={{ boxShadow: '0 3px 8px rgba(5,150,105,0.35), inset 0 1px 0 rgba(255,255,255,0.35)' }}
+                transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+              />
+            )}
+            <motion.span
+              className="relative z-10 flex items-center gap-1.5"
+              animate={{
+                color: active ? '#ffffff' : '#71717a',
+                scale: active ? 1.06 : 1,
+              }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+            >
+              <span>{opt.flag}</span>
+              <span>{opt.label}</span>
+            </motion.span>
+          </button>
+        );
+      })}
     </div>
   );
 };

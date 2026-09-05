@@ -3,7 +3,7 @@ import {
   User, Mail, Phone, Calendar, ShieldCheck, Scale,
   Target, Flame, Droplets, ArrowLeft, Edit3, Heart,
   Stethoscope, Award, ChevronRight, LogOut, RefreshCw,
-  Package, FileText, CheckCircle2, Camera, BadgeCheck
+  Package, FileText, CheckCircle2, Camera, BadgeCheck, Sparkles
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
@@ -125,8 +125,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <span>{language === 'hi' ? 'डैशबोर्ड पर वापस जाएं' : 'Back to Dashboard'}</span>
           </button>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-black text-emerald-600 tracking-wider">UrCare PROFILE</span>
+          <div className="flex items-center gap-2.5">
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="text-xs font-black text-emerald-700 tracking-wide">My Profile</span>
+            </div>
             <LanguageSwitchButton />
           </div>
         </div>
