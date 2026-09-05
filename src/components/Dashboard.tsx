@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, Settings, 
-  ChevronRight, Sparkles, Trash2, Calendar, ShieldCheck, Activity, 
-  ShoppingBag, Stethoscope, Crown, Camera, Lock,
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  Plus, Settings,
+  ChevronRight, Sparkles, Trash2, Calendar, ShieldCheck, Activity,
+  ShoppingBag, Stethoscope, Crown, Camera, Lock, Lightbulb, ClipboardCheck,
   Package, User, Check, PhoneCall, FileText, CheckCircle2, HeartPulse,
-  LogOut, MessageSquare, AlertCircle, LayoutGrid, Home,
+  LogOut, MessageSquare, AlertCircle, MoreVertical, X, Home,
   Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3
 } from 'lucide-react';
 import { 
@@ -52,6 +53,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Navigation Tabs — simplified: 'profile' (Home) is the default/main screen.
   // 'premium' = AI Scan + Daily Plan (gated). 'reports', 'assessment' + 'store' are always free.
   const [activeTab, setActiveTab] = useState<'profile' | 'premium' | 'dailyplan' | 'reports' | 'assessment' | 'store'>('profile');
+
+  // '⋮' module switcher — shown on every non-Home tab (Home has its own copy
+  // in ProfilePage) so the user can jump straight from any module to any
+  // other one, instead of having to go back to Home first.
+  const [isModuleMenuOpen, setIsModuleMenuOpen] = useState(false);
+  const moduleMenuItems = [
+    { id: 'profile' as const, label: t('navHome'), icon: Home },
+    { id: 'premium' as const, label: account.isPro ? t('navPro') : t('navPremium'), icon: Crown },
+    { id: 'dailyplan' as const, label: 'Daily Plan', icon: Lightbulb },
+    { id: 'reports' as const, label: 'My Reports', icon: FileText },
+    { id: 'assessment' as const, label: 'Assessment', icon: ClipboardCheck },
+    { id: 'store' as const, label: 'Store', icon: ShoppingBag },
+  ];
 
   // Without this, switching tabs while scrolled down on the previous tab
   // (e.g. scrolled through Home, then tapping Pro) opens the new tab at that
@@ -425,10 +439,78 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onGoToAssessmentTab={() => setActiveTab('assessment')}
             onGoToStoreTab={() => setActiveTab('store')}
             onGoToDailyPlanTab={() => setActiveTab('dailyplan')}
+            onGoToPremiumTab={() => setActiveTab('premium')}
           />
         ) : (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
-          
+
+          {/* '⋮' module switcher — same drawer pattern as the Home tab, so every
+              module can jump straight to any other one. */}
+          <button
+            type="button"
+            onClick={() => setIsModuleMenuOpen(true)}
+            className="p-2.5 rounded-xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 border border-zinc-200 bg-white transition-all cursor-pointer"
+            title="More"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
+
+          <AnimatePresence>
+            {isModuleMenuOpen && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsModuleMenuOpen(false)}
+                  className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
+                />
+                <motion.div
+                  initial={{ x: '-100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '-100%' }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 38 }}
+                  className="fixed top-0 left-0 bottom-0 z-50 w-72 max-w-[80vw] bg-white shadow-2xl flex flex-col"
+                >
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
+                    <Logo size="sm" showSubtitle={false} />
+                    <button
+                      type="button"
+                      onClick={() => setIsModuleMenuOpen(false)}
+                      className="p-2 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
+                    >
+                      <X className="w-4.5 h-4.5" />
+                    </button>
+                  </div>
+                  <nav className="flex-1 p-3 space-y-1">
+                    {moduleMenuItems.map((item) => {
+                      const ItemIcon = item.icon;
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => { setActiveTab(item.id); setIsModuleMenuOpen(false); }}
+                          className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer group ${
+                            isActive ? 'bg-emerald-50 text-emerald-700' : 'text-zinc-800 hover:bg-emerald-50 hover:text-emerald-700'
+                          }`}
+                        >
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                            isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 group-hover:bg-emerald-100 text-zinc-600 group-hover:text-emerald-700'
+                          }`}>
+                            <ItemIcon className="w-4.5 h-4.5" />
+                          </div>
+                          <span>{item.label}</span>
+                          <ChevronRight className="w-4 h-4 ml-auto opacity-40 group-hover:opacity-70 group-hover:translate-x-0.5 transition-all" />
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+
           {/* ========================================================================= */}
           {/* TAB VIEWS CONTENT                                                         */}
           {/* ========================================================================= */}
