@@ -52,6 +52,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Navigation Tabs — simplified: 'profile' (Home) is the default/main screen.
   // 'premium' = AI Scan + Daily Plan (gated). 'reports', 'assessment' + 'store' are always free.
   const [activeTab, setActiveTab] = useState<'profile' | 'premium' | 'reports' | 'assessment' | 'store'>('profile');
+
+  // Without this, switching tabs while scrolled down on the previous tab
+  // (e.g. scrolled through Home, then tapping Pro) opens the new tab at that
+  // same leftover scroll position instead of its top — looking like the old
+  // tab's content bled into the new one.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [activeTab]);
+
   const [isFoodScannerOpen, setIsFoodScannerOpen] = useState(false);
   const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
   const [isRiskAssessmentOpen, setIsRiskAssessmentOpen] = useState(false);

@@ -142,7 +142,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <MoreVertical className="w-5 h-5" />
           </button>
 
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+          {/* Hidden below sm — on narrow phones there isn't room for this next to
+              the language toggle without the two overlapping/sticking together. */}
+          <div className="hidden sm:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
             <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span className="text-xs font-black text-emerald-700 tracking-wide whitespace-nowrap">My Profile</span>
           </div>
