@@ -1,0 +1,2380 @@
+[
+  {
+    "id": "p1-0500-wake",
+    "part": 1,
+    "order_index": 10,
+    "time_label": "5:00 AM",
+    "title": "Good Morning — Wake-Up Routine",
+    "body": "Set a gentle alarm or train your body to wake naturally. Adjust every time below to your own wake-up/work/meal/exercise/sleep schedule — the sequence and gaps between steps matter more than the exact clock time.\n\n- 5:00 AM — Wake up gently. Eyes closed. Take 5 deep belly breaths lying down: inhale through the nose for 4 counts, hold 2, exhale through the mouth for 6.\n- 5:02 AM — Slowly open your eyes. Look at natural light if possible (even dim morning light through a window) — this regulates your circadian rhythm and cortisol.\n- 5:03 AM — Sit up slowly on the edge of your bed. Rub your palms together for 20 seconds until warm. Place them over your closed eyes for 20 seconds.\n- 5:04 AM — Stand up slowly, feet flat on the floor. Close your eyes, feel your weight evenly on both feet. 3 deep breaths.\n- 5:05 AM — Walk to the bathroom. Splash cold water on your face 3 times. Pat dry.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0508-elimination",
+    "part": 1,
+    "order_index": 20,
+    "time_label": "5:08 AM",
+    "title": "Morning Elimination, Tongue Cleaning & Oil Pulling",
+    "body": "Use the bathroom, empty bladder and bowels if possible.\n\nTongue Cleaning: use a stainless steel or copper tongue scraper, gently scrape back to front 7-10 times. Rinse mouth thoroughly.\n\nOil Pulling (Kavala/Gandusha): take 1 tablespoon organic sesame or coconut oil in your mouth. Swish gently for 10-15 minutes while continuing your routine. Do not swallow — spit out after 15 minutes and rinse with warm water.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0515-hydration",
+    "part": 1,
+    "order_index": 30,
+    "time_label": "5:15 AM",
+    "title": "Morning Hydration & Herbal Detox Water",
+    "body": "Drink 1 glass (250ml) of room-temperature water immediately — non-negotiable. Your body has fasted 8-10 hours; this kickstarts kidney function, flushes toxins, and preps digestion.\n\nHerbal Detox Water — in a copper vessel or glass, mix and sip slowly over 10 minutes:\n- 500ml room-temperature/lukewarm water\n- Juice of 1/2 fresh lemon\n- 1/4 tsp turmeric powder\n- 1 pinch black pepper powder\n- 1 pinch cinnamon powder\n- 5-6 fresh tulsi (holy basil) leaves\n- 1 small piece crushed fresh ginger",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0530-herbs-core",
+    "part": 1,
+    "order_index": 40,
+    "time_label": "5:30 AM",
+    "title": "Ayurvedic Morning Herbal Medicines — Core Step",
+    "body": "Step 1 — UrCare PancreReViv (Pancreatic Regeneration Formula): 1 tablespoon (15ml) mixed in 1 glass (200ml) warm water, on an empty stomach. Sit quietly for 5 minutes practicing mindful breathing. Do not eat or drink anything else for 30 minutes.\n\nStep 2 — add the classical Ayurvedic medicines below that match your specific condition profile.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0530-herbs-obesity-fattyliver",
+    "part": 1,
+    "order_index": 41,
+    "time_label": "5:30 AM",
+    "title": "For Diabetes + Obesity + Fatty Liver",
+    "body": "- Arogyavardhini Vati (detox/liver regeneration): 1 tablet (500mg) with warm water, immediately after PancreReViv.\n- Triphala Churna: 1 teaspoon (5g) in warm water, immediately after Arogyavardhini Vati.",
+    "condition_tags": [
+      "obesity",
+      "fatty_liver"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0530-herbs-bp-heart",
+    "part": 1,
+    "order_index": 42,
+    "time_label": "5:30 AM",
+    "title": "For Diabetes + Hypertension + Heart Disease",
+    "body": "- Arjuna Bark Powder or Capsules: 1 tsp (5g) powder or 2 capsules (500mg each), with warm water after PancreReViv.\n- Punarnava Churna: 1/2 tsp (2.5g) in warm water, after Arjuna.\n- Jatamansi or Sarpagandha — only if BP is above 150/100: 1 capsule (250mg), after other medicines. Caution: use only under medical supervision if already on BP medication.",
+    "condition_tags": [
+      "hypertension",
+      "heart_disease"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0530-herbs-thyroid",
+    "part": 1,
+    "order_index": 43,
+    "time_label": "5:30 AM",
+    "title": "For Diabetes + Thyroid (Hypothyroidism)",
+    "body": "- Kanchanar Guggulu: 2 tablets (500mg each) with warm water after PancreReViv.\n- Ashwagandha Churna or Capsules: 1 tsp powder (5g) or 2 capsules (300mg each), after Kanchanar Guggulu.",
+    "condition_tags": [
+      "thyroid"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0530-herbs-pcos",
+    "part": 1,
+    "order_index": 44,
+    "time_label": "5:30 AM",
+    "title": "For Diabetes + PCOS/PCOD + Hormonal Imbalance",
+    "body": "- Chandraprabha Vati: 2 tablets (500mg each) with warm water after PancreReViv.\n- Shatavari Churna or Capsules: 1 tsp powder (5g) or 2 capsules (500mg each), after Chandraprabha Vati.\n- Guduchi + Neem Capsules: 1 capsule each (500mg), after Shatavari.",
+    "condition_tags": [
+      "pcos"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0530-herbs-neuropathy",
+    "part": 1,
+    "order_index": 45,
+    "time_label": "5:30 AM",
+    "title": "For Diabetes + Neuropathy + Nerve Damage",
+    "body": "- Ashwagandha + Bala Combination: 2 capsules (500mg each) with warm water after PancreReViv.\n- Yogaraj Guggulu: 2 tablets (500mg each), after Ashwagandha-Bala.",
+    "condition_tags": [
+      "neuropathy"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0530-herbs-jointpain",
+    "part": 1,
+    "order_index": 46,
+    "time_label": "5:30 AM",
+    "title": "For Diabetes + Joint Pain + Arthritis + Back Pain",
+    "body": "- Yogaraj Guggulu or Kaishor Guggulu: 2 tablets (500mg each) with warm water after PancreReViv.\n- Dashmoola Churna: 1 tsp (5g) in warm water, after the Guggulu.\n- Nirgundi Capsules: 1 capsule (500mg), after Dashmoola.",
+    "condition_tags": [
+      "joint_pain"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0530-herbs-kidney",
+    "part": 1,
+    "order_index": 47,
+    "time_label": "5:30 AM",
+    "title": "For Diabetes + Kidney Disease (Early Stage)",
+    "body": "- Punarnava Mandur: 2 tablets (500mg each) with warm water after PancreReViv.\n- Gokshura Churna: 1 tsp (5g) in warm water, after Punarnava Mandur.\n- Varunadi Vati: 2 tablets (500mg each), after Gokshura.",
+    "condition_tags": [
+      "kidney_disease"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0530-herbs-fatigue",
+    "part": 1,
+    "order_index": 48,
+    "time_label": "5:30 AM",
+    "title": "For Diabetes + Chronic Fatigue + Weakness",
+    "body": "- Ashwagandha + Shatavari + Gokshura combination (Rasayana): 1 tsp mixed powder (5g total) or 2 combination capsules, with warm water after PancreReViv.\n- Chyawanprash: 1 tsp (10g), 30 minutes after herbal medicines, before breakfast.",
+    "condition_tags": [
+      "chronic_fatigue"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0530-herbs-sleepapnea",
+    "part": 1,
+    "order_index": 49,
+    "time_label": "5:30 AM",
+    "title": "For Diabetes + Sleep Apnea + Sleep Disorders",
+    "body": "- Brahmi Churna or Capsules: 1 tsp powder (5g) or 2 capsules (500mg each), with warm water after PancreReViv.\n- Jatamansi: 1 capsule (500mg), after Brahmi.",
+    "condition_tags": [
+      "sleep_apnea"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0530-herbs-ed",
+    "part": 1,
+    "order_index": 50,
+    "time_label": "5:30 AM",
+    "title": "For Diabetes + Erectile Dysfunction (Men)",
+    "body": "- Ashwagandha + Kaunch Beej + Gokshura combination: 2 capsules (500mg each), with warm water after PancreReViv.\n- Shilajit Resin or Capsules: 300-500mg resin dissolved in warm water, or 1 capsule, after the combination.",
+    "condition_tags": [
+      "erectile_dysfunction"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0545-pranayama",
+    "part": 1,
+    "order_index": 60,
+    "time_label": "5:45 AM",
+    "title": "Pranayama & Breathwork (20 minutes)",
+    "body": "Sit in a quiet, ventilated room or outdoors, spine straight.\n\n1. Dirgha Pranayama (Three-Part Breathing) — 5 min. Inhale in three parts (belly, mid-chest, upper chest), exhale in reverse order. ~8-10 seconds per full breath.\n2. Anulom Vilom (Alternate Nostril Breathing) — 7 min. Inhale left nostril 4 counts, hold 2, exhale right nostril 6 counts; inhale right 4, hold 2, exhale left 6 — that's 1 round. Do 15 rounds.\n3. Kapalbhati (Skull Shining Breath) — 5 min. Forceful exhale via belly contraction, passive inhale. 30 strokes, rest 30s, 50 strokes, rest 30s, 70 strokes, rest 1 min. Caution: if BP is above 160/100, have heart disease, or severe retinopathy, skip or do very gently under guidance.\n4. Bhramari (Bee Breath) — 3 min. Close ears with thumbs, hum \"mmmmmmm\" on exhale, 7-10 rounds.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0610-sun",
+    "part": 1,
+    "order_index": 70,
+    "time_label": "6:10 AM",
+    "title": "Early Morning Sun Exposure",
+    "body": "Step outside barefoot on grass/soil/concrete (earthing). Face the early sun (6:00-7:00 AM, minimal UV).\n\nSun-gazing: look at the sun for 10 seconds (eyes open, only in the first hour after sunrise), then close eyes and observe the afterimage for 20 seconds. Repeat 3 times.\n\nStand in sunlight for 15-20 minutes, exposing arms, legs and as much skin as safely possible.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0630-cardio",
+    "part": 1,
+    "order_index": 80,
+    "time_label": "6:30 AM",
+    "title": "Intensive Fasted Cardio & Movement — Choose ONE",
+    "body": "The most critical fat-burning, insulin-sensitising window — glycogen and insulin are both low after the overnight fast.\n\nOption A — High-Intensity Outdoor Brisk Walk + Intervals (45 min): 5 min warm-up, then 7 cycles of 3 min brisk walk + 1 min fast walk/light jog + 1 min slow recovery, 5 min cool-down. Burns 250-350 cal.\n\nOption B — Moderate Walk with Incline (40 min): steady 4-5 km/h with an incline, or 5 sets of stair climbing (2-3 floors) worked in. Burns 200-300 cal.\n\nOption C — Indoor Walking/Marching (30-40 min): march in place with arm swings, overhead raises (20 reps/5 min), arm circles (15 each direction/5 min). Burns 150-250 cal.\n\nOption D — Chair-Based/Seated Cardio (25-30 min, for severe joint pain/arthritis/extreme obesity): 5 rounds of seated marching (2 min), seated punches (1 min), seated leg extensions (20 reps/leg), seated torso twists (30 reps), seated arm raises (20 reps), rest 1 min. Burns 100-180 cal.\n\nOption E — Swimming/Water Aerobics (30-40 min, if pool access): continuous swim at moderate pace, or chest-deep water walking if you can't swim. Burns 250-400 cal.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0720-postexercise",
+    "part": 1,
+    "order_index": 90,
+    "time_label": "7:20 AM",
+    "title": "Post-Exercise Hydration & Recovery",
+    "body": "Drink 500ml (2 glasses) of water slowly over 10 minutes.\n\nHerbal Recovery Drink: 300ml water + juice of 1/2 lemon + 1 pinch pink Himalayan/rock salt + 1/4 tsp raw organic honey (only if blood sugar is not severely elevated). Drink slowly.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0735-stretch",
+    "part": 1,
+    "order_index": 100,
+    "time_label": "7:35 AM",
+    "title": "Full Body Stretching & Flexibility (10 minutes)",
+    "body": "Hold each stretch 30 seconds/side, don't bounce, breathe deeply:\n- Neck rolls: 5 each direction\n- Shoulder rolls: 10 back, 10 forward\n- Standing side bend (each side)\n- Standing forward fold (30-60s)\n- Standing quad stretch (each side)\n- Standing calf stretch against a wall (each side)\n- Hip circles: 10 each direction\n- Spinal twist (each side, 20s)",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0745-abhyanga",
+    "part": 1,
+    "order_index": 110,
+    "time_label": "7:45 AM",
+    "title": "Ayurvedic Self-Massage (Abhyanga) — Optional, Highly Recommended",
+    "body": "10-15 minutes, 3-4x/week. Oil by constitution: Vata (dry skin, anxiety, constipation, joint pain) — warm sesame oil. Pitta (inflammation, acidity, rashes, anger) — coconut or sunflower oil. Kapha (obesity, sluggishness, fatty liver) — mustard or sesame oil.\n\nWarm the oil slightly. Apply with long strokes on limbs, circular motions on joints: head/scalp, face/ears, neck/shoulders, arms, chest/abdomen (clockwise), back, legs, feet (soles + each toe). Let it absorb 5-10 minutes, then a warm shower with minimal soap.\n\nNo time for full body? At minimum, massage feet with warm oil for 5 minutes every night before bed — this alone meaningfully improves sleep and reduces neuropathy pain.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0800-shower",
+    "part": 1,
+    "order_index": 120,
+    "time_label": "8:00 AM",
+    "title": "Shower & Personal Hygiene",
+    "body": "Warm shower (not too hot); if possible end with 30 seconds of cool (not cold) water to improve circulation and reduce inflammation. Pat dry, dress in comfortable loose clothes.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0820-supplements-core",
+    "part": 1,
+    "order_index": 130,
+    "time_label": "8:20 AM",
+    "title": "Pre-Breakfast Herbal & Supplement Plan — Core",
+    "body": "Blood sugar & metabolic support (take together, 15 min before breakfast):\n- Berberine or Berberine Complex: 500mg — insulin sensitizer, lowers fasting sugar, improves cholesterol, activates AMPK.\n- Alpha Lipoic Acid (ALA): 300-600mg — antioxidant, improves insulin sensitivity, reduces neuropathy pain.\n- Chromium Picolinate: 200mcg — improves insulin receptor function, reduces sugar cravings.\n- Vitamin D3 + K2: D3 2000-4000 IU + K2 100mcg — insulin sensitivity, bone health, immunity.\n- Magnesium Glycinate or Citrate: 200mg — insulin sensitivity, heart health, sleep.\n- Jamun Seed Powder: 1 tablespoon (3-5g) in 100ml water (or Gudmar/Gymnema capsule 500mg as an alternative).",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0820-supplements-neuropathy",
+    "part": 1,
+    "order_index": 131,
+    "time_label": "8:20 AM",
+    "title": "For Neuropathy",
+    "body": "- Methylcobalamin (Vitamin B12): 1500mcg sublingual or oral\n- Benfotiamine (fat-soluble B1): 300mg\n- Vitamin B-Complex: 1 tablet",
+    "condition_tags": [
+      "neuropathy"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0820-supplements-heart",
+    "part": 1,
+    "order_index": 132,
+    "time_label": "8:20 AM",
+    "title": "For Heart Disease + Hypertension + High Cholesterol",
+    "body": "- Coenzyme Q10 (CoQ10): 100-200mg\n- Omega-3 Fatty Acids (EPA+DHA): 1000-2000mg\n- L-Arginine: 1000mg (nitric oxide, vasodilation, blood pressure)",
+    "condition_tags": [
+      "heart_disease",
+      "hypertension"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0820-supplements-thyroid",
+    "part": 1,
+    "order_index": 133,
+    "time_label": "8:20 AM",
+    "title": "For Thyroid (Hypothyroidism)",
+    "body": "- Selenium: 200mcg\n- Zinc: 15-30mg\n- Iodine: only if deficient and confirmed by doctor — do not supplement without testing.",
+    "condition_tags": [
+      "thyroid"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0820-supplements-pcos",
+    "part": 1,
+    "order_index": 134,
+    "time_label": "8:20 AM",
+    "title": "For PCOS + Hormonal Imbalance",
+    "body": "- Inositol (Myo-Inositol + D-Chiro-Inositol, 40:1): 2000mg\n- N-Acetyl Cysteine (NAC): 600mg\n- Evening Primrose Oil: 1000mg",
+    "condition_tags": [
+      "pcos"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0820-supplements-joint",
+    "part": 1,
+    "order_index": 135,
+    "time_label": "8:20 AM",
+    "title": "For Joint Pain + Arthritis",
+    "body": "- Glucosamine Sulfate: 1500mg\n- Chondroitin Sulfate: 1200mg\n- Curcumin (Turmeric Extract with Piperine): 500-1000mg\n- Boswellia Serrata Extract: 300mg",
+    "condition_tags": [
+      "joint_pain"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0820-supplements-fattyliver",
+    "part": 1,
+    "order_index": 136,
+    "time_label": "8:20 AM",
+    "title": "For Fatty Liver + High Cholesterol",
+    "body": "- Milk Thistle (Silymarin): 300mg\n- N-Acetyl Cysteine (NAC): 600mg\n- Omega-3: 2000mg",
+    "condition_tags": [
+      "fatty_liver"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0820-supplements-fatigue",
+    "part": 1,
+    "order_index": 137,
+    "time_label": "8:20 AM",
+    "title": "For Chronic Fatigue",
+    "body": "- Coenzyme Q10: 200mg\n- L-Carnitine: 500-1000mg\n- Ashwagandha Extract (standardised): 300mg",
+    "condition_tags": [
+      "chronic_fatigue"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0835-breakfast",
+    "part": 1,
+    "order_index": 140,
+    "time_label": "8:35 AM",
+    "title": "Breakfast — Choose ONE Option Daily",
+    "body": "Critical rules: eat within 2 hours of waking; include protein, healthy fat, fiber and complex carbs; ~25-30% of daily calories; chew 25-30 times; no screens while eating; sit at a table; keep total volume to ~2-2.5 cups; stop at 80% full.\n\n1. Moong Dal Chilla — 2 chillas + mint-coriander chutney + curd + almonds + sprout salad. (P22g F12g C38g Fiber12g ~340kcal)\n2. Vegetable Poha — poha with peas/carrots/beans/peanuts + curd + 1 boiled egg or paneer + salad. (P18g F11g C42g Fiber10g ~330kcal)\n3. South Indian Uttapam — 2 uttapams + coconut chutney + sambar + almonds. (P16g F13g C40g Fiber11g ~340kcal)\n4. Savory Oats Porridge — oats with vegetables + egg/paneer + flaxseeds + curd + nuts. (P20g F14g C38g Fiber13g ~350kcal)\n5. Besan Chilla — 2 chillas with bottle gourd/vegetables + chutney + curd + salad + almonds. (P21g F12g C35g Fiber14g ~330kcal)\n6. Quinoa Vegetable Upma + curd + egg/paneer + flaxseed powder + almonds. (P22g F13g C40g Fiber12g ~360kcal)\n7. Scrambled Eggs or Paneer + 1 small multigrain roti + salad + curd + walnuts. (P24g F16g C32g Fiber10g ~360kcal)\n8. Mixed Vegetable Daliya + curd + flaxseeds + almonds. (P18g F11g C42g Fiber14g ~340kcal)\n9. Idli-Sambhar — 3 idlis + sambhar + coconut chutney + egg/paneer + almonds. (P17g F10g C44g Fiber11g ~330kcal)\n10. Methi Paratha — 2 parathas + curd + mint chutney + salad + walnuts. (P16g F12g C40g Fiber13g ~340kcal)\n11. Ragi Dosa — 2 dosas + sambar/curry + chutney + salad + almonds. (P15g F11g C42g Fiber12g ~330kcal)\n12. Pesarattu (mixed lentil pancakes) + ginger chutney + curd + upma/salad + almonds. (P20g F10g C38g Fiber13g ~330kcal)\n\nQuick alternatives: curd + 2 tbsp ground flaxseeds + 10 soaked almonds + cucumber + apple; OR 2 boiled eggs + vegetable salad + 5 walnuts + curd.\n\nMore breakfast options: https://drive.google.com/file/d/1nHPXD7HPduDCviZooUKq1AjhKA04l_yt/view?usp=drivesdk",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0900-postbreakfast",
+    "part": 1,
+    "order_index": 150,
+    "time_label": "9:00 AM",
+    "title": "Post-Breakfast Movement (Non-Negotiable)",
+    "body": "Do NOT sit immediately after eating — pick one for 15 minutes: walk slowly indoors/outdoors; light household tasks (dishes, folding, watering plants); office workers — walk the floor or use stairs; seated/limited mobility — march legs 5 min, weight shifts 5 min, 10 slow standing knee lifts, then 20 minutes of seated calf raises.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0915-workday",
+    "part": 1,
+    "order_index": 160,
+    "time_label": "9:15 AM – 12:45 PM",
+    "title": "Work, Daily Activities & Hourly Movement Breaks",
+    "body": "Sitting is the new smoking — break up sitting every 45-60 minutes.\n\n- 9:15 AM: work begins. Water. Screen at eye level, spine straight.\n- 10:00 AM (5 min): stand, walk around, 10 standing squats, 10 shoulder rolls each way, 5 neck rotations each way, water.\n- 11:00 AM (5 min): stand, walk, 10 standing knee raises, 10 calf raises, 10 torso twists, water.\n- 12:00 PM (5 min): stand, walk, 10 wall push-ups, 10 standing side leg raises, overhead stretch + side leans, water.\n\nComplete all three movement sets plus 20 minutes of seated/standing calf raises spread across the hour — mandatory, don't skip. Total water by 12:45 PM: ~4-5 glasses (1000-1250ml).",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-1230-prelunch",
+    "part": 1,
+    "order_index": 170,
+    "time_label": "12:30 PM",
+    "title": "Pre-Lunch Herbal & Enzymatic Support",
+    "body": "Hingvastak Churna: 1/2 tsp in 1/4 cup warm water, 15 minutes before lunch — improves digestion, reduces bloating/gas, aids nutrient absorption.\n\nUrCare BetaReViv (if prescribed, for neuropathy/nerve support or beta-cell regeneration): 1.5 tablespoons 35 minutes before lunch, with 1.5 tbsp desi ghee or 5-6 soaked almonds or 1 tbsp coconut oil. Should be prescribed based on clinical assessment, not everyone needs it.\n\nPancreatic Enzyme Supplement (if poor digestion, fatty liver, or pancreatitis history): 1 capsule (lipase/protease/amylase) just before eating.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0105pm-lunch",
+    "part": 1,
+    "order_index": 180,
+    "time_label": "1:05 PM",
+    "title": "Lunch — The Largest Meal of the Day",
+    "body": "Eat between 12-2 PM (peak digestive fire), ~40-45% of daily calories. Include whole grain, dal, vegetables, salad, curd. No water during the meal (20 min before/40 min after). Stop at 70-80% full. Plate guide: 1/2 vegetables+salad, 1/4 grain, 1/4 dal, plus a small bowl of curd.\n\n1. Balanced Thali — brown rice + moong dal + mixed vegetable curry + bitter gourd stir-fry + salad + curd + 1 tsp ghee. (P24g F14g C58g Fiber18g ~450kcal)\n2. Millet Power Lunch — foxtail/barnyard millet + masoor dal + gourd curry + cabbage-peas + beetroot-carrot salad + curd + ghee. (P22g F13g C56g Fiber20g ~440kcal)\n3. Roti-Based Meal — 2 jowar/bajra rotis + chana dal + bhindi curry + sautéed spinach + salad + curd + ghee. (P23g F14g C54g Fiber19g ~440kcal)\n4. Quinoa Protein Bowl — quinoa + mixed lentils + drumstick-radish curry + sautéed methi + salad + curd + oil. (P25g F15g C56g Fiber20g ~460kcal)\n5. South Indian Sambhar Rice — brown rice + vegetable sambhar + beans-carrot poriyal + kootu + salad + curd + coconut oil. (P22g F14g C58g Fiber19g ~450kcal)\n6. Multigrain Roti Thali — 2 multigrain rotis + toor dal + lauki curry + bitter gourd + sprout salad + curd + ghee. (P24g F14g C54g Fiber21g ~445kcal)\n7. Daliya Complete Meal — vegetable daliya + moong dal + mixed vegetable curry + salad + curd + ghee. (P23g F13g C57g Fiber20g ~445kcal)\n8. Khichdi Healing Meal — moong dal khichdi + mixed vegetable sabzi + kadhi + salad + papad. (P21g F12g C56g Fiber18g ~430kcal)\n9. Ragi Mudde + Sambhar — ragi mudde + vegetable sambhar + vegetable curry + salad + curd + coconut oil. (P20g F13g C58g Fiber21g ~440kcal)\n10. Mixed Vegetable Pulao + Dal — brown rice pulao + mixed dal + cucumber-carrot raita + salad + ghee. (P22g F14g C56g Fiber18g ~445kcal)\n11. Roti with Rajma — 2 rotis + rajma curry + mixed vegetable curry + salad + curd + ghee. (P26g F14g C60g Fiber22g ~470kcal)\n12. Mixed Lentil & Vegetable Bowl — brown rice/quinoa + panchmel dal + dry vegetable sabzi + salad + curd + ghee. (P25g F14g C58g Fiber20g ~460kcal)\n\nDining out: 1 bowl dal, 1 bowl mixed vegetable curry, 1 roti or 1/2 cup rice, and salad; avoid fried items, creamy gravies, naan, white rice, desserts; ask for less oil and salt.\n\nMore lunch options: https://drive.google.com/file/d/1nHPXD7HPduDCviZooUKq1AjhKA04l_yt/view?usp=drivesdk",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0150pm-postlunch-move",
+    "part": 1,
+    "order_index": 190,
+    "time_label": "1:50 PM",
+    "title": "Post-Lunch Movement (Most Critical for Blood Sugar Control) — Choose ONE",
+    "body": "This single window can cut the post-meal blood-sugar spike by 30-50%.\n\n- Outdoor/indoor brisk walk, 20 minutes, moderate-brisk pace (recommended).\n- Stair climbing, 15 minutes, 3-5 floors, steady, use the railing if needed.\n- Household activity, 20 minutes, continuous movement (sweeping, mopping, gardening).\n- Office-friendly: 15 minutes walking the building/stairs, or stand at your desk for 20 minutes.\n- Seated/limited mobility: 10 minutes seated marching, 20 slow standing knee raises, 20 slow squats/chair squats, 10 minutes walking in place.\n\nOr 20 minutes of seated/standing calf raises.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0210pm-postlunch-herbs",
+    "part": 1,
+    "order_index": 200,
+    "time_label": "2:10 PM",
+    "title": "Post-Lunch Herbal Digestive & Metabolic Support",
+    "body": "Roasted Fennel Seeds (Saunf): 1/2 tsp chewed slowly after Triphala — improves digestion, reduces bloating/gas.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0210pm-postlunch-neuropathy",
+    "part": 1,
+    "order_index": 201,
+    "time_label": "2:10 PM",
+    "title": "For Neuropathy (If Using UrCare BetaReViv)",
+    "body": "UrCare BetaReViv — second dose: 1.5 tablespoons, 60 minutes after finishing lunch, with 1.5 tbsp desi ghee or 5-6 soaked almonds.",
+    "condition_tags": [
+      "neuropathy"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0210pm-postlunch-fattyliver",
+    "part": 1,
+    "order_index": 202,
+    "time_label": "2:10 PM",
+    "title": "For High Cholesterol + Fatty Liver",
+    "body": "- Liv52 Syrup or Tablets: 2 tablets or 2 tsp syrup after lunch — liver detox, improves fat metabolism, reduces liver enzymes.\n- Guggul medicines (Triphala Guggulu or Medohar Guggulu): 2 tablets (500mg each) with Liv52 — reduces cholesterol/triglycerides, fat metabolism, weight loss.",
+    "condition_tags": [
+      "fatty_liver"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0215pm-rest",
+    "part": 1,
+    "order_index": 210,
+    "time_label": "2:15 – 2:45 PM",
+    "title": "Post-Lunch Rest",
+    "body": "For severe fatigue, heart disease, or digestive issues: lie on your left side for 20-30 minutes (improves digestion, reduces acid reflux) — don't sleep deeply, set an alarm, this is just rest.\n\nEveryone else: sit comfortably, read, listen to calming music, or do light non-stressful work. Avoid lying down right after eating if you have acid reflux/GERD.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0245pm-afternoon",
+    "part": 1,
+    "order_index": 220,
+    "time_label": "2:45 – 5:15 PM",
+    "title": "Afternoon Work, Activity & Hydration",
+    "body": "- 3:00 PM: 1 glass unsweetened herbal tea (green/tulsi/cinnamon/ginger); stand and stretch 3 minutes.\n- 4:00 PM: 1 glass water; walk 5 minutes; 10 shoulder rolls, 10 neck rotations, 10 wrist circles.\n- 5:00 PM: 1 glass water/herbal water (cumin/coriander/lemon); 10 squats, 10 calf raises, 10 torso twists.\n\nTotal water 2-5 PM: 3-4 glasses (750-1000ml). If you have a seated job, do 20 minutes of seated calf raises every waking hour.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0515pm-snack",
+    "part": 1,
+    "order_index": 230,
+    "time_label": "5:15 PM",
+    "title": "Evening Snack — Only If Genuinely Hungry",
+    "body": "Critical: if you're not hungry, don't eat — drink warm herbal tea or water instead.\n\n1. Roasted chana salad with vegetables, lemon, chaat masala.\n2. Sprout salad (moong/chana/moth) with chopped vegetables and lemon.\n3. Plain curd with ground flaxseeds and rock salt.\n4. 10-12 soaked almonds + 5 walnuts + 1 tbsp roasted pumpkin/sunflower seeds.\n5. Steamed vegetable bowl with lemon, rock salt, chaat masala.\n6. Cucumber and roasted peanut salad with lemon and coriander.\n7. Boiled egg or 50g paneer cubes with cucumber and cherry tomatoes.\n8. Roasted makhana (fox nuts), ~30g, seasoned with rock salt, black pepper, turmeric, a little ghee.\n9. Clear vegetable soup (bottle gourd, tomato, carrot, spinach, ginger, garlic).\n10. Buttermilk with roasted cumin powder and coriander.\n11. Apple with 1 tbsp unsweetened almond/peanut butter.\n12. Unsweetened green/tulsi tea + 5 soaked almonds + 3 walnuts.\n\nMore snack options: https://drive.google.com/file/d/1nHPXD7HPduDCviZooUKq1AjhKA04l_yt/view?usp=drivesdk",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0545pm-exercise",
+    "part": 1,
+    "order_index": 240,
+    "time_label": "5:45 PM",
+    "title": "Evening Intensive Exercise & Strength Training (35-45 min) — Choose ONE",
+    "body": "The second most important window for metabolic health and weight loss.\n\nOption A — HIIT + Strength (no severe joint pain/heart disease/mobility issues): 5 min warm-up; 4 rounds of a 6-move circuit (jumping jacks, squats, push-ups, high knees, lunges, plank — 40s work/20s rest, 60s between rounds); 8 min strength (squats, push-ups, calf raises, rows); 5 min cool-down. Burns 300-450 cal.\n\nOption B — Moderate Cardio + Functional Strength: 5 min warm-up; 20 min brisk walk/cycling/swimming; 12 min functional strength (squats/chair squats, wall push-ups, standing leg raises, step-ups, plank on knees); 5 min cool-down. Burns 250-350 cal.\n\nOption C — Yoga Asana + Strength Flow (40 min): joint warm-up, 12 rounds Surya Namaskar, then Tadasana, Vrikshasana, Trikonasana, Warrior I & II, Utkatasana, Paschimottanasana, Ardha Matsyendrasana, Bhujangasana, Dhanurasana, Setu Bandhasana, Halasana (skip if neck/back issues), Sarvangasana (skip if high BP/heart/neck issues), Balasana, then pranayama/meditation and Shavasana. ~200-300 cal.\n\nOption D — Seated/Chair-Based Strength (30 min, severe obesity/arthritis/elderly): seated warm-up; 3 rounds of a seated circuit (marching, punches, leg extensions, torso twists, arm raises, side bends); standing exercises holding a chair (chair squats, calf raises, knee raises, hip abduction); seated cool-down stretch. Burns 120-200 cal.\n\nOption E — Swimming/Water Aerobics (35-45 min, pool access, ideal for obesity/joint pain/back pain): warm-up water walk, 25-30 min swimming or water aerobics, cool-down. Burns 300-500 cal.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0630pm-recovery",
+    "part": 1,
+    "order_index": 250,
+    "time_label": "6:30 PM",
+    "title": "Post-Exercise Recovery, Hydration & Protein",
+    "body": "Drink 500-750ml water slowly over 10-15 minutes.\n\nRecovery drink — choose one: protein-rich buttermilk with ground flaxseeds and roasted cumin; OR a smoothie (almond/low-fat milk + peanut butter + cucumber + spinach + flaxseeds + cinnamon, if blood sugar is well-controlled); OR a boiled egg/50g paneer with 5 soaked almonds.\n\nTurmeric Golden Milk (recommended): 1 cup warm almond/low-fat milk + 1/2 tsp turmeric + 1 pinch black pepper + 1 pinch cinnamon + crushed ginger + 1/4 tsp coconut oil or ghee. Heat gently, drink warm.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0650pm-rest",
+    "part": 1,
+    "order_index": 260,
+    "time_label": "6:50 PM",
+    "title": "Rest & Recovery",
+    "body": "Sit or lie down comfortably 10-15 minutes. Close your eyes, deep breathing, let your heart rate settle. No phone or TV — this is recovery time.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0705pm-evening-herbs",
+    "part": 1,
+    "order_index": 270,
+    "time_label": "7:05 PM",
+    "title": "Evening Herbal Plan — Core",
+    "body": "UrCare GlucoLow: 1 tablespoon (15ml) in 1 glass warm water, 30 minutes before dinner — regulates evening/night blood sugar, supports liver detox and sleep. Sit quietly 5 minutes after; nothing else to eat/drink until dinner.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0705pm-evening-herbs-sleep-stress",
+    "part": 1,
+    "order_index": 271,
+    "time_label": "7:05 PM",
+    "title": "For Sleep Issues + Stress",
+    "body": "- Ashwagandha or Brahmi: 1 tsp powder or 1 capsule (300-500mg) with GlucoLow — reduces cortisol, improves sleep.\n- Jatamansi or Tagara (Valerian) for severe sleep issues/sleep apnea: 1 capsule (500mg) with Ashwagandha — deep sleep, reduces apnea episodes.",
+    "condition_tags": [
+      "sleep_apnea"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0705pm-evening-herbs-bp",
+    "part": 1,
+    "order_index": 272,
+    "time_label": "7:05 PM",
+    "title": "For Hypertension",
+    "body": "Arjuna Bark: 1 tsp powder or 1 capsule (500mg) with GlucoLow — strengthens heart, regulates blood pressure.",
+    "condition_tags": [
+      "hypertension"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0705pm-evening-herbs-digestive",
+    "part": 1,
+    "order_index": 273,
+    "time_label": "7:05 PM",
+    "title": "For Constipation + Digestive Issues",
+    "body": "Triphala Churna or Tablets: 1 tsp in warm water or 2 tablets (500mg each) with GlucoLow — gentle laxative, colon cleansing, liver support.\n\nFor severe constipation, Isabgol (Psyllium Husk): 1 tsp in 1 glass warm water, 1 hour before bed (not now) — bulk laxative, also lowers cholesterol.",
+    "condition_tags": [
+      "digestive_issues"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0705pm-evening-herbs-pcos",
+    "part": 1,
+    "order_index": 274,
+    "time_label": "7:05 PM",
+    "title": "For PCOS/PCOD + Hormonal Issues",
+    "body": "Shatavari + Ashwagandha: 1 tsp mixed powder or 1 capsule each, with GlucoLow.",
+    "condition_tags": [
+      "pcos"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0705pm-evening-herbs-ed",
+    "part": 1,
+    "order_index": 275,
+    "time_label": "7:05 PM",
+    "title": "For Erectile Dysfunction (Men)",
+    "body": "Ashwagandha + Shilajit + Safed Musli combination: 1 combination capsule or 1 tsp mixed powder, with GlucoLow — improves testosterone, sexual function, stamina, energy.",
+    "condition_tags": [
+      "erectile_dysfunction"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0735pm-dinner",
+    "part": 1,
+    "order_index": 280,
+    "time_label": "7:35 PM",
+    "title": "Dinner — Light and Early",
+    "body": "Finish by 8:00 PM (max 8:30 PM); lightest meal of the day (~20-25% of calories); focus on soups, vegetables, minimal grain; avoid heavy/oily/fried food; nothing after dinner; keep a 12-14 hour fast to next breakfast. Volume ~1.5-2 cups; prioritise soup and fiber; max 1 small roti or 1/2 cup grain; stop at 70% full.\n\n1. Clear vegetable soup + 1 small roti + stir-fried vegetables + salad. (P12g F8g C35g Fiber14g ~260kcal)\n2. Moong dal soup + sautéed gourd + curd + cucumber. (P16g F7g C32g Fiber13g ~255kcal)\n3. Tomato spinach soup + 1 multigrain roti + steamed vegetables + salad. (P13g F7g C34g Fiber15g ~255kcal)\n4. Mixed vegetable clear soup + stir-fried bitter gourd + 1 roti + salad. (P12g F8g C33g Fiber16g ~260kcal)\n5. Masoor dal soup + bottle gourd + large salad + curd (optional). (P15g F6g C34g Fiber14g ~255kcal)\n6. Vegetable broth + cabbage-peas + 1 roti + cucumber raita. (P14g F7g C36g Fiber14g ~265kcal)\n7. Bottle gourd soup + mixed dal + sautéed spinach + 1 roti. (P15g F8g C35g Fiber13g ~270kcal)\n8. Spinach tomato soup + quinoa/daliya vegetable bowl + curd + cucumber. (P16g F9g C36g Fiber14g ~280kcal)\n9. Mixed lentil soup + steamed vegetable platter + salad. (P17g F8g C32g Fiber16g ~270kcal)\n10. Light vegetable khichdi (small) + curd + cucumber-carrot salad. (P14g F7g C38g Fiber12g ~270kcal)\n11. Clear soup + grilled/steamed paneer (100g) + sautéed vegetables + salad. (P20g F12g C22g Fiber12g ~280kcal)\n12. Sambhar (light on oil) + stir-fried cabbage-carrots + curd + cucumber. (P14g F7g C34g Fiber15g ~260kcal)\n13. Light dal + sautéed zucchini/beans + 1 very small roti + salad. (P15g F7g C36g Fiber14g ~270kcal)\n14. Soup-only dinner (max weight loss / not very hungry): 500ml mixed vegetable-lentil soup + large raw salad + curd (optional). (P12g F5g C28g Fiber16g ~210kcal)\n\nNot hungry? A large bowl of clear vegetable soup + salad, or skip dinner entirely if blood sugar is stable and you're not on insulin/sulfonylureas.\n\nMore dinner options: https://drive.google.com/file/d/1nHPXD7HPduDCviZooUKq1AjhKA04l_yt/view?usp=drivesdk",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0805pm-postdinner",
+    "part": 1,
+    "order_index": 290,
+    "time_label": "8:05 PM",
+    "title": "Post-Dinner Movement (Non-Negotiable)",
+    "body": "Critical for night-time blood sugar and sleep quality — reduces the post-dinner spike by 25-40%.\n\n- Slow outdoor walk, 20-25 minutes (recommended) — gentle, not exercise.\n- Indoor walking, 20 minutes, slow and mindful.\n- Light household tasks, 20 minutes, stay on your feet, plus 20 minutes seated/standing calf raises.\n- Seated/limited mobility: 10 min seated marching, 5 min weight shifts, 10 slow standing knee raises, plus 20 minutes calf raises.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0830pm-night-herbs",
+    "part": 1,
+    "order_index": 300,
+    "time_label": "8:30 PM",
+    "title": "Herbal Digestive & Night-Time Support",
+    "body": "Roasted Fennel Seeds: chew 1/2 tsp slowly — digestion, reduces bloating/gas.\n\nOptional herbal tea: warm chamomile, tulsi, or turmeric milk (1 cup warm almond/low-fat milk + 1/4 tsp turmeric + pinch black pepper + pinch cinnamon + 1/4 tsp ghee) — calms the nervous system, improves sleep, reduces inflammation.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0845pm-family",
+    "part": 1,
+    "order_index": 310,
+    "time_label": "8:45 – 9:30 PM",
+    "title": "Family Time & Relaxation",
+    "body": "Light conversation, reading, calming/devotional music, gentle stretching, time with children/pets, gratitude journaling, or prayer.\n\nAvoid: disturbing news, violent/horror content, work talk, heavy/stressful discussions, eating, and intense physical or mental activity.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0930pm-screens",
+    "part": 1,
+    "order_index": 320,
+    "time_label": "9:30 PM",
+    "title": "Complete Screen Shutdown & Blue Light Elimination",
+    "body": "Turn off all screens (TV, phone, laptop, tablet) — non-negotiable for sleep and hormonal balance; blue light suppresses melatonin, disrupts circadian rhythm, raises cortisol and blood sugar.\n\nDim lights, use warm yellow lights or candles. Prepare the bedroom: cool (18-20°C), completely dark (blackout curtains/eye mask), quiet (earplugs if needed), phone at least 6 feet away or in another room.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0940pm-presleep",
+    "part": 1,
+    "order_index": 330,
+    "time_label": "9:40 PM",
+    "title": "Ayurvedic Pre-Sleep Ritual — Foot Massage (Abhyanga)",
+    "body": "Warm 2-3 tbsp sesame, coconut, or castor oil. Sit comfortably. Massage the soles firmly in circular motions for 5-7 minutes, paying attention to the centre of the sole, heel, and each toe; massage ankles and lower legs gently. Wear cotton socks and go to bed.\n\nBenefits: calms the nervous system, improves sleep quality by 50-70%, reduces neuropathy pain and tingling, reduces anxiety, improves circulation.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0940pm-presleep-digestive",
+    "part": 1,
+    "order_index": 331,
+    "time_label": "9:40 PM",
+    "title": "For Constipation",
+    "body": "Isabgol (Psyllium Husk) before bed: 1 tsp in 1 glass (250ml) warm water, stir quickly and drink immediately, follow with plain water. Promotes a morning bowel movement, lowers cholesterol, improves gut health.",
+    "condition_tags": [
+      "digestive_issues"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0940pm-presleep-sleepapnea",
+    "part": 1,
+    "order_index": 332,
+    "time_label": "9:40 PM",
+    "title": "For Sleep Apnea / Severe Sleep Issues",
+    "body": "1 tablet of Brahmi Vati, Sarpagandha Vati, or Tagara (Valerian) capsule with warm milk or water — induces deep sleep, reduces sleep apnea episodes, calms the mind.",
+    "condition_tags": [
+      "sleep_apnea"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-0950pm-relax",
+    "part": 1,
+    "order_index": 340,
+    "time_label": "9:50 PM",
+    "title": "Relaxation, Meditation & Sleep Preparation",
+    "body": "Body Scan (Yoga Nidra style, 10 min): 5 deep belly breaths, then move awareness slowly up the body — feet, calves, knees, thighs, hips, abdomen, chest, shoulders, arms, hands, neck, face, head — relaxing each part for 10-15 seconds.\n\nGratitude Practice (3 min): reflect on one thing about your health/body, one supportive person, one simple pleasure.\n\nBreath/Mantra (5 min): 4-7-8 breathing (inhale 4, hold 7, exhale 8, x8 rounds) — or silently repeat a calming mantra (\"Om\", \"So Hum\", or your own affirmation/prayer).",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-1000pm-sleep",
+    "part": 1,
+    "order_index": 350,
+    "time_label": "10:00 PM",
+    "title": "Good Night 🌙 — Target 7-8 Hours",
+    "body": "Sleep is when the body heals, repairs, regenerates and rebalances hormones — poor sleep raises cortisol, blood sugar, insulin resistance and appetite.\n\nSleep position: left side for acid reflux/GERD; on your side (not back) for sleep apnea; on your back with a pillow under the knees, or on your side with a pillow between the knees, for back pain; left side or back generally.\n\nIf you wake for urination: get up, use the bathroom, return immediately, dim light only, no phone. For insomnia: repeat 4-7-8 breathing or the body scan — don't stress about not sleeping, rest is healing too.\n\nInsulin users or those at risk of night-time hypoglycemia: consider a gentle 3:00 AM alarm to check blood sugar; if low, take 15g fast-acting carbs and recheck.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-days1-2",
+    "part": 1,
+    "order_index": 400,
+    "time_label": null,
+    "title": "Days 1-2 — Establish the Routine",
+    "body": "Follow the full 24-hour plan exactly as written. Stay hydrated (3-4 litres/day minimum). If cravings hit, drink warm herbal tea or water and wait 10 minutes. Rest adequately. Track fasting and post-meal blood sugar diligently. If blood sugar drops and you're on medication, contact your doctor for a dose adjustment.",
+    "condition_tags": [],
+    "day_start": 1,
+    "day_end": 2
+  },
+  {
+    "id": "p1-days3-4",
+    "part": 1,
+    "order_index": 401,
+    "time_label": null,
+    "title": "Days 3-4 — Deeper Metabolic Healing",
+    "body": "Morning: increase the fasted morning walk by 10 minutes (total 50-55 min); add 1 more round of Kapalbhati (total 4 rounds).\nHerbal: continue all medicines as prescribed; if constipation persists, increase Triphala to 1 tsp twice daily (morning and evening).\nExercise: increase evening intensity slightly (5 more reps per strength exercise); if doing HIIT, extend each work interval to 45 seconds.\nSleep: if not improved, add 1 capsule Ashwagandha (300mg) with warm milk at 9:00 PM.",
+    "condition_tags": [],
+    "day_start": 3,
+    "day_end": 4
+  },
+  {
+    "id": "p1-days5-6",
+    "part": 1,
+    "order_index": 402,
+    "time_label": null,
+    "title": "Days 5-6 — Intensify for Faster Results",
+    "body": "Diet: reduce rice/roti by 1/4 at lunch and dinner, increase vegetables/salad; add 1 tbsp apple cider vinegar in 1 glass water, 15 min before lunch and dinner.\nHerbal: add Gymnema Sylvestre (Madhunashini) 1 capsule (500mg) before breakfast and before dinner; continue all other medicines.\nExercise: add 10 minutes to the morning walk (total 60 min); add 1 extra HIIT circuit or yoga round in the evening; include 2 minutes of plank holds daily (can be split into 4x30s).\nFasting: extend to a 14-hour window (e.g. finish dinner by 7:30 PM, breakfast at 9:30 AM) — 14:10 intermittent fasting.",
+    "condition_tags": [],
+    "day_start": 5,
+    "day_end": 6
+  },
+  {
+    "id": "p1-day7",
+    "part": 1,
+    "order_index": 403,
+    "time_label": null,
+    "title": "Day 7 — First Checkpoint",
+    "body": "Follow the plan as usual, then measure and record: fasting blood sugar, weight, waist circumference, blood pressure (if hypertensive).\n\nCompare Day 1 vs Day 7: fasting blood sugar (target: -20 to -40 mg/dL), post-lunch blood sugar (target: -30 to -60 mg/dL), weight (target: -1.5 to -3 kg). Also note energy, sleep quality, digestion, pain levels, mood, and any other changes (rate 0-10 where useful).\n\nYou've completed 7 days of intensive root-cause reversal — your body is healing and your metabolism is shifting.",
+    "condition_tags": [],
+    "day_start": 7,
+    "day_end": 7
+  },
+  {
+    "id": "p1-days8-9",
+    "part": 1,
+    "order_index": 404,
+    "time_label": null,
+    "title": "Days 8-9 — Accelerate Fat Burning & Detox",
+    "body": "Herbal upgrades: Bitter Melon (Karela) juice — 30ml fresh juice + 30ml water, empty stomach, 15 min before PancreReViv. Fenugreek (Methi) seed water — soak 1 tsp overnight, drink first thing on empty stomach. Ceylon Cinnamon — 1/2 tsp added to morning tea/warm water. Jamun seed powder — 1 tbsp in water before lunch.\n\nDiet: if stable and not on insulin/sulfonylureas, consider 16:8 intermittent fasting (e.g. dinner by 7:30 PM, breakfast at 11:30 AM; water/herbal tea/black coffee during the fast). Otherwise keep 14:10. Reduce lunch grain to 1/2 cup; reduce/eliminate dinner grain (soup + vegetables + salad only). Add 1 tbsp ground flaxseed/chia to breakfast; 10-12 almonds/walnuts as a snack; 1 tbsp desi ghee or coconut oil daily.\n\nExercise: morning walk to 60-70 min including 15 min incline/stairs, plus 50 squats and 30 push-ups after; evening HIIT to 5 rounds; add core work — plank 3x45-60s, side plank 2x30s/side, bicycle crunches 3x20, leg raises 3x15.\n\nAyurvedic addition: daily dry brushing (Garshana) for 5 minutes before showering, long strokes toward the heart, feet to legs to arms to torso.",
+    "condition_tags": [],
+    "day_start": 8,
+    "day_end": 9
+  },
+  {
+    "id": "p1-days10-11",
+    "part": 1,
+    "order_index": 405,
+    "time_label": null,
+    "title": "Days 10-11 — Liver Cleansing, Cholesterol & Detox",
+    "body": "Morning liver flush (empty stomach, before all other medicines): juice of 1/2 lemon + 1 tbsp cold-pressed olive/flaxseed oil + 1 pinch cayenne pepper (if tolerated) + 1 glass warm water.\n\nAdd Milk Thistle (300mg) or Kutki (500mg) after breakfast and after dinner. Add Punarnava (500mg or 1 tsp powder) mid-morning (10 AM) for kidney support.\n\nDiet: daily cruciferous vegetables (broccoli, cauliflower, cabbage, Brussels sprouts, kale); sulfur-rich foods (garlic, onion, eggs) for glutathione; daily beetroot (1 small raw grated, or 100ml juice).\n\nAyurvedic addition — Udwartana (herbal powder massage), 3x/week: mix 2 tbsp besan + 1 tbsp turmeric + 1 tbsp triphala powder + 1 tbsp ground flaxseed with water/rose water into a paste; massage vigorously in upward/circular motions for 10 minutes focusing on fat-accumulation areas, leave 5 minutes, shower warm.",
+    "condition_tags": [],
+    "day_start": 10,
+    "day_end": 11
+  },
+  {
+    "id": "p1-days12-13-thyroid",
+    "part": 1,
+    "order_index": 406,
+    "time_label": null,
+    "title": "Days 12-13 — Thyroid Support",
+    "body": "- Selenium 200mcg + Zinc 30mg after breakfast — essential for T4-to-T3 conversion.\n- Guggul (Commiphora mukul) 500mg before breakfast and before dinner — thyroid function, cholesterol, anti-inflammatory.\n- Increase Ashwagandha to 500mg morning + 500mg evening — adaptogenic, regulates both hypo- and hyperthyroidism, reduces stress.",
+    "condition_tags": [
+      "thyroid"
+    ],
+    "day_start": 12,
+    "day_end": 13
+  },
+  {
+    "id": "p1-days12-13-pcos",
+    "part": 1,
+    "order_index": 407,
+    "time_label": null,
+    "title": "Days 12-13 — PCOS/PCOD Support (Women)",
+    "body": "- Inositol: Myo-Inositol 2000mg + D-Chiro-Inositol 50mg (40:1) before breakfast — improves insulin sensitivity, regulates cycles, egg quality, lowers androgens.\n- Spearmint tea, 2 cups/day (morning and evening) — reduces excess androgens and facial hair growth.\n- Continue Shatavari, Guduchi and Chandraprabha Vati as in Week 1.",
+    "condition_tags": [
+      "pcos"
+    ],
+    "day_start": 12,
+    "day_end": 13
+  },
+  {
+    "id": "p1-days12-13-ed",
+    "part": 1,
+    "order_index": 408,
+    "time_label": null,
+    "title": "Days 12-13 — Erectile Dysfunction Support (Men)",
+    "body": "- Increase doses: Ashwagandha 600mg twice daily, Shilajit 500mg twice daily, Kaunch Beej 500mg twice daily, Gokshura 500mg twice daily.\n- Add L-Arginine 3000mg/day (1000mg x3).\n- Add Safed Musli 500mg twice daily.\n- Diet: daily 1 tbsp ground flaxseed, 5-6 walnuts, 1 tbsp pumpkin seeds, 1/2 avocado if available (healthy fats for hormone production).\n\nFor women with PCOS specifically: avoid dairy for these 14 days (can raise androgens/insulin resistance); replace with unsweetened almond or coconut milk.",
+    "condition_tags": [
+      "erectile_dysfunction"
+    ],
+    "day_start": 12,
+    "day_end": 13
+  },
+  {
+    "id": "p1-day14",
+    "part": 1,
+    "order_index": 409,
+    "time_label": null,
+    "title": "Day 14 — Major Transformation Checkpoint",
+    "body": "Complete the full plan as usual, then measure and record: fasting blood sugar, post-breakfast/lunch/dinner blood sugar (2h each), weight, waist circumference, blood pressure. Compare Day 1 vs Day 14 across blood sugar, weight/body composition, energy and vitality, symptom resolution, and any other health markers — and take stock of your transformation.",
+    "condition_tags": [],
+    "day_start": 14,
+    "day_end": 14
+  },
+  {
+    "id": "p1-advanced-basti",
+    "part": 1,
+    "order_index": 500,
+    "time_label": null,
+    "title": "Advanced Therapy: Basti (Medicated Enema) — Optional",
+    "body": "For severe constipation, toxin accumulation, vata disorders, neuropathy, joint pain, chronic fatigue. Do this under Ayurvedic practitioner guidance.\n\nSimplified home version (Nirooha Basti): boil 2 tbsp Triphala powder in 500ml water for 10 minutes, strain and cool to body temperature, add 2 tbsp sesame oil + 1 pinch rock salt. Using an enema kit, lie on your left side, insert the solution slowly, retain 15-30 minutes if possible, then release. Frequency: once a week during Week 2 (Days 8, 11, 14).",
+    "condition_tags": [
+      "digestive_issues",
+      "chronic_fatigue",
+      "joint_pain",
+      "neuropathy"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-advanced-nasya",
+    "part": 1,
+    "order_index": 501,
+    "time_label": null,
+    "title": "Advanced Therapy: Nasya (Nasal Oil Therapy) — Optional",
+    "body": "For headaches, migraines, sinus issues, stress, poor sleep, thyroid disorders, hormonal imbalance. Lie down with head tilted back slightly, put 2-3 drops of warm sesame oil or Anu Taila in each nostril, sniff gently, remain lying 2-3 minutes, spit out any oil draining into the throat. Timing: every morning after tongue cleaning and oil pulling.",
+    "condition_tags": [
+      "thyroid",
+      "pcos",
+      "sleep_apnea"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-advanced-katibasti",
+    "part": 1,
+    "order_index": 502,
+    "time_label": null,
+    "title": "Advanced Therapy: Kati Basti (Lower Back Oil Pooling) — Optional",
+    "body": "For back pain, sciatica, disc issues, spinal problems. Ideally done by a trained therapist; simplified home version: lie face down, have someone form a dough ring (wheat flour + water) on your lower back, pour warm sesame or medicated oil (e.g. Mahanarayan oil) into the ring, top it up every 5 minutes to keep it warm, continue 20-30 minutes, then remove the ring and massage the oil in. Rest 30 minutes. Frequency: 3x/week during Week 2.",
+    "condition_tags": [
+      "joint_pain"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-ref-diabetes-obesity",
+    "part": 1,
+    "order_index": 600,
+    "time_label": null,
+    "title": "Herbal Reference — Diabetes + Uncontrolled High Blood Sugar + Obesity",
+    "body": "- Chandraprabha Vati: 2 tablets (500mg each) twice daily, after breakfast and after dinner — regulates blood sugar, urinary function, reduces obesity.\n- Shilajeet Capsules/Resin: 300-500mg or pea-sized resin, morning and evening — adaptogen, mitochondrial function, blood sugar, stamina.\n- Medohar Guggulu or Navaka Guggulu: 2 tablets (500mg each) twice daily, before breakfast and before dinner — fat burner, cholesterol, weight loss.\n- Gymnema Sylvestre (Madhunashini): 500mg or 1 tsp powder, 30 min before breakfast and before dinner — blocks sugar absorption, kills sugar cravings, supports beta-cell regeneration, lowers HbA1c.",
+    "condition_tags": [
+      "obesity"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-ref-neuropathy-retinopathy",
+    "part": 1,
+    "order_index": 601,
+    "time_label": null,
+    "title": "Herbal Reference — Diabetes + Neuropathy + Nerve Damage + Retinopathy",
+    "body": "- Ashwagandha + Bala + Shatavari (Nerve Regeneration Formula): 2 capsules (500mg each) or 1 tsp combined powder, twice daily with warm milk and ghee — nerve regeneration, myelin repair, reduces pain.\n- Maharasnadi Kwath/Kashayam: 15ml decoction + 45ml warm water, twice daily before meals — anti-inflammatory, reduces neuropathic pain.\n- Brahmi + Shankhpushpi (Neuro-Regenerative): 1 tsp combined powder or 2 capsules each, after breakfast — brain/nerve tonic, cognitive function.\n- Alpha Lipoic Acid: 600mg/day after breakfast — proven to reduce neuropathy pain by 60-70%.\n- Methylcobalamin + Benfotiamine + Pyridoxine + Folic Acid: 1500mcg + 300mg + 100mg + 1.5mg, after breakfast — essential for nerve repair.\n- Triphala + Yashtimadhu (eye support): 2 drops medicated eye drops in each eye twice daily, OR 1 tsp Triphala + 1/2 tsp Yashtimadhu powder in water twice daily — supports vision, slows retinopathy progression.",
+    "condition_tags": [
+      "neuropathy",
+      "retinopathy"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-ref-hypertension-heart",
+    "part": 1,
+    "order_index": 602,
+    "time_label": null,
+    "title": "Herbal Reference — Diabetes + Hypertension + Heart Disease + High Cholesterol",
+    "body": "- Arjuna + Punarnava + Gokshura (CardioProtective Formula): 2 combination capsules or 1 tsp combined powder, twice daily — strengthens heart muscle, regulates BP, cholesterol, kidney-protective.\n- Lasunadi Vati (garlic-based): 2 tablets twice daily after meals — cholesterol, BP, circulation, prevents plaque.\n- Jatamansi + Sarpagandha (only for BP above 150/100, use with caution): 1 capsule (250mg) once or twice daily, evening — monitor BP closely, do not use if BP is controlled/low, can interact with BP medication.\n- Pushkarmool + Arjuna: 500mg each, twice daily — cardioprotective, reduces angina.\n- CoQ10: 200mg/day after breakfast — especially important if on statins (which deplete CoQ10).\n- Omega-3 (EPA+DHA): 2000mg/day after dinner — reduces triglycerides, anti-inflammatory, protects heart.\n- Nattokinase (2000 FU) or Serrapeptase (120,000 SPU): empty stomach, morning or before bed — dissolves arterial plaque, natural blood thinner. Caution: do not use with blood thinners without medical supervision.",
+    "condition_tags": [
+      "hypertension",
+      "heart_disease"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-ref-fattyliver",
+    "part": 1,
+    "order_index": 603,
+    "time_label": null,
+    "title": "Herbal Reference — Diabetes + Fatty Liver + High Cholesterol + Elevated Liver Enzymes",
+    "body": "- Arogyavardhini Vati: 2 tablets (500mg each) twice daily, before breakfast and before dinner — liver detox and regeneration.\n- Kutki: 500mg or 1/2 tsp powder, twice daily with warm water — hepatoprotective, reverses fatty liver.\n- Punarnava: 500mg twice daily, morning and evening — liver/kidney detox, diuretic.\n- Bhumi Amla + Kalmegh: 500mg each, twice daily after meals — liver protectants, antioxidant.\n- Milk Thistle (Silymarin, 80%): 300mg after breakfast and after dinner — gold standard for liver protection.\n- N-Acetyl Cysteine (NAC): 600mg twice daily, empty stomach — raises glutathione, liver detox.\n- Triphala Guggulu: 2 tablets twice daily, before breakfast and before dinner — cholesterol, fat metabolism, colon cleansing.",
+    "condition_tags": [
+      "fatty_liver"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-ref-kidney",
+    "part": 1,
+    "order_index": 604,
+    "time_label": null,
+    "title": "Herbal Reference — Diabetes + Kidney Disease + High Creatinine + Proteinuria",
+    "body": "- Punarnava Mandur: 2 tablets twice daily, after breakfast and after lunch — kidney regeneration, reduces creatinine, improves GFR.\n- Gokshura + Varun: 1 tsp combined powder or 2 capsules each, twice daily — kidney detox and filtration.\n- Varunadi Vati: 2 tablets twice daily, after meals — kidney stone prevention, reduces inflammation.\n- Chandraprabha Vati (renal protective): 2 tablets twice daily, after breakfast and after dinner.\n- Alpha Lipoic Acid + R-Lipoic Acid: 600mg after breakfast — protects kidneys from diabetic damage.\n- Astragalus Root (Huang Qi): 500mg twice daily — kidney protective, reduces proteinuria.\n\nDiet: reduce protein to 0.6-0.8g/kg body weight if kidney disease is Stage 3+; avoid high-potassium foods if potassium is elevated; keep salt under 2g/day; drink adequate water unless fluid-restricted.",
+    "condition_tags": [
+      "kidney_disease"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-ref-thyroid",
+    "part": 1,
+    "order_index": 605,
+    "time_label": null,
+    "title": "Herbal Reference — Diabetes + Thyroid (Hypothyroidism)",
+    "body": "- Kanchanar Guggulu: 2 tablets (500mg each) twice daily, before breakfast and before dinner — thyroid function, nodules/goiter, metabolism.\n- Ashwagandha (5% withanolides): 600mg, morning and evening — regulates hypo/hyperthyroidism, raises T3/T4, reduces stress.\n- Guggul: 500mg twice daily, before meals — thyroid hormone synthesis, T3/T4 conversion, cholesterol.\n- Selenium + Zinc + Iodine (only if deficient): 200mcg + 30mg + 150mcg, after breakfast — hormone production/conversion.\n- L-Tyrosine: 500mg, morning empty stomach — thyroid hormone precursor.\n- Vitamin D3 + K2: D3 5000 IU + K2 200mcg, after breakfast — thyroid function, reduces antibodies.",
+    "condition_tags": [
+      "thyroid"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-ref-pcos",
+    "part": 1,
+    "order_index": 606,
+    "time_label": null,
+    "title": "Herbal Reference — Diabetes + PCOS/PCOD + Hormonal Imbalance + Irregular Periods",
+    "body": "- Chandraprabha Vati: 2 tablets twice daily, after breakfast and after dinner — regulates cycles, ovarian function, cysts.\n- Shatavari + Ashoka: 1 tsp combined powder or 500mg each, twice daily with warm milk — reproductive tonic, regulates periods, fertility.\n- Guduchi + Neem: 500mg each, twice daily — blood purification, cystic acne, insulin sensitivity.\n- Lodhra + Ashoka Bark: 500mg each, twice daily — regulates menstrual bleeding, tones uterus.\n- Myo-Inositol + D-Chiro-Inositol (40:1): 4000mg + 100mg/day in 2 doses, before breakfast and before dinner — insulin sensitivity, cycles, egg quality, ovulation.\n- N-Acetyl Cysteine (NAC): 600mg twice daily — antioxidant, insulin sensitivity, egg quality.\n- Vitamin D3 + Magnesium + Zinc — most PCOS patients are deficient; improves insulin sensitivity and ovulation.\n- Spearmint Tea: 2 cups/day, morning and evening — reduces androgens/hirsutism.\n- Ceylon Cinnamon + Fenugreek: 1/2 tsp + 1 tsp soaked seeds daily — insulin sensitivity, hormonal balance.",
+    "condition_tags": [
+      "pcos"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-ref-ed",
+    "part": 1,
+    "order_index": 607,
+    "time_label": null,
+    "title": "Herbal Reference — Diabetes + Erectile Dysfunction + Low Testosterone (Men)",
+    "body": "- Kaunch Beej + Ashwagandha + Gokshura + Safed Musli combination: 500mg each or 2 tsp combined powder, twice daily with warm milk and 1 tsp ghee — testosterone, sperm quality, libido, stamina.\n- Shilajit Resin/Capsules: 300-500mg or pea-sized resin, twice daily with warm milk — raises testosterone 20-30%, energy, sperm quality.\n- Vidarikand + Shatavari: 500mg each, twice daily — aphrodisiac, hormonal balance, stamina.\n- Jaiphal (Nutmeg) + Javitri (Mace): a pinch of nutmeg powder in warm milk before bed — aphrodisiac (caution: use very small amounts, excess can be toxic).\n- L-Arginine + L-Citrulline: 3000mg + 1000mg/day in 3 doses — nitric oxide, blood flow, erections.\n- Tribulus Terrestris (Gokshura) high dose: 1000mg twice daily — testosterone, libido.\n- Fenugreek Seed Extract (Testofen): 600mg/day — free testosterone, libido, strength.\n- Zinc + Magnesium + Vitamin D3 (ZMA): critical for testosterone — most diabetic men are deficient.",
+    "condition_tags": [
+      "erectile_dysfunction"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-ref-jointpain",
+    "part": 1,
+    "order_index": 608,
+    "time_label": null,
+    "title": "Herbal Reference — Diabetes + Joint Pain + Arthritis + Inflammation",
+    "body": "- Yogaraj Guggulu or Kaishor Guggulu: 2 tablets (500mg each) twice daily, after breakfast and after dinner with warm water — anti-inflammatory, reduces swelling, eliminates uric acid, reduces gout.\n- Dashmoola Kwath or Churna: 15ml decoction in warm water, or 1 tsp powder, twice daily before meals — pain relief, strengthens bones/joints, reduces stiffness.\n- Nirgundi + Shallaki (Boswellia serrata): 500mg each, twice daily after meals — anti-inflammatory and analgesic, reduces joint swelling, comparable to NSAIDs without the side effects.\n- Maharasnadi Kwath: 15ml + 45ml warm water, twice daily — classic arthritis formula, reduces pain and inflammation, improves joint mobility.\n- Curcumin (turmeric extract with piperine): 1000mg + 10mg piperine, twice daily after meals — one of the most powerful natural anti-inflammatories, reduces joint pain and inflammatory markers (CRP, IL-6), antioxidant, neuroprotective.\n- Glucosamine Sulfate + Chondroitin Sulfate + MSM: 1500mg + 1200mg + 1000mg daily, split into 2 doses with meals — rebuilds cartilage, reduces joint pain, improves joint function, provides sulfur for joint repair.\n- Collagen Type II (undenatured UC-II): 40mg daily, empty stomach — reduces joint pain and stiffness, improves mobility, supports cartilage health.\n- Omega-3 (high dose): 3000mg EPA+DHA with meals — powerful anti-inflammatory, reduces joint pain and morning stiffness.",
+    "condition_tags": [
+      "joint_pain"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-ref-fatigue-advanced",
+    "part": 1,
+    "order_index": 609,
+    "time_label": null,
+    "title": "Herbal Reference — Diabetes + Chronic Fatigue + Weakness + Low Energy (Advanced)",
+    "body": "- Ashwagandha + Shatavari + Gokshura + Vidarikand (Rasayana formula): 1 tsp combined powder or 2 combination capsules, twice daily with warm milk and ghee — energy restoration, stamina, muscle strength, hormonal balance.\n- Chyawanprash: 1-2 tsp (10-20g), morning and evening — immune support, energy, antioxidant-rich (Amla, Ashwagandha, 40+ herbs), improves stamina and lung health.\n- Shilajit + Ashwagandha + Safed Musli combination: as prescribed above — the ultimate energy/stamina stack, dramatically increases energy within days, improves mitochondrial function and ATP production.\n- CoQ10: 200-400mg after breakfast — essential for cellular energy production, reduces fatigue, improves heart function and exercise performance.\n- L-Carnitine: 1000-2000mg before breakfast — transports fatty acids into mitochondria for energy, reduces fatigue, supports fat burning and heart health.\n- Iron + Vitamin B12 + Folic Acid (only if labs confirm deficiency — very common in diabetics, especially on long-term Metformin): after breakfast — improves energy, reduces fatigue, supports red blood cells.\n- Rhodiola Rosea: 300-500mg standardized extract, morning — adaptogen, reduces fatigue, improves stamina and mental performance, reduces stress.\n- Cordyceps Mushroom: 1000mg, morning — increases ATP production, improves oxygen utilization, enhances stamina and endurance, supports kidney function.",
+    "condition_tags": [
+      "chronic_fatigue"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-ref-sleep-advanced",
+    "part": 1,
+    "order_index": 610,
+    "time_label": null,
+    "title": "Herbal Reference — Diabetes + Sleep Disorders + Insomnia + Sleep Apnea (Advanced)",
+    "body": "- Brahmi + Jatamansi: 500mg each, 1 hour before bed — calms the nervous system, induces deep sleep, reduces anxiety, reduces sleep apnea episodes.\n- Ashwagandha (evening dose): 600mg standardized extract, 1 hour before bed with warm milk — reduces cortisol, improves sleep quality, reduces time to fall asleep, increases deep sleep.\n- Tagara (Valerian Root): 500mg, 1 hour before bed — powerful natural sedative, reduces sleep latency, increases deep sleep, reduces night-time awakenings.\n- Shankhpushpi: 500mg, evening — calms the mind, reduces anxiety/racing thoughts, brain tonic.\n- Magnesium Glycinate or Citrate: 400-500mg, 1-2 hours before bed — relaxes muscles and nervous system, reduces restless legs and anxiety, essential for deep sleep.\n- L-Theanine: 200mg, evening — promotes relaxation without sedation, reduces anxiety, increases alpha brain waves.\n- Melatonin (use carefully, start low): 0.5-3mg, 30 minutes before bed — regulates the sleep-wake cycle, especially useful for shift workers or jet lag. Caution: can affect blood sugar — monitor closely, start with the lowest dose.\n- Glycine: 3000mg before bed — improves sleep quality and efficiency, lowers core body temperature for better sleep.",
+    "condition_tags": [
+      "sleep_apnea"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-supplement-schedule",
+    "part": 1,
+    "order_index": 700,
+    "time_label": null,
+    "title": "Quick Reference — Your Full Daily Supplement Timing at a Glance",
+    "body": "A consolidated view of when everything above is taken, if you are following the complete stack for your conditions:\n\n5:30-6:00 AM (empty stomach): bitter melon juice, fenugreek seed water, UrCare PancreReViv, plus your condition-specific morning herbs.\n8:20 AM (15 min before breakfast): Berberine, Alpha Lipoic Acid, Chromium Picolinate, plus condition-specific items.\nWith breakfast (8:35 AM): Vitamin D3+K2, Magnesium, Omega-3, B-Complex, B12, Selenium, Zinc, CoQ10, Curcumin.\nAfter breakfast: condition-specific Ayurvedic medicines, probiotics if needed.\nMid-morning (10:30 AM): herbal tea, Punarnava if kidney support needed.\n12:30 PM (35 min before lunch, if using BetaReViv): UrCare BetaReViv with ghee/almonds.\nAfter lunch (2:10 PM): digestive enzymes if needed, Triphala, condition-specific liver/joint support.\nAfternoon (3:00 PM): herbal tea, adaptogens if needed for energy.\n7:05 PM (30 min before dinner): UrCare GlucoLow, Gymnema Sylvestre, condition-specific evening herbs.\nAfter dinner (8:30 PM): Omega-3 if not taken earlier, liver support, digestive support.\nBefore bed (9:40-10:00 PM): Ashwagandha, Magnesium, L-Theanine, Brahmi+Jatamansi, probiotics, Isabgol if constipated.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-intensive-bloodsugar",
+    "part": 1,
+    "order_index": 800,
+    "time_label": null,
+    "title": "Intensive Add-On — Rapid Blood Sugar Normalisation (for HbA1c above 9%)",
+    "body": "For the first 7 days, on top of your regular plan: strict 16:8 intermittent fasting (only if not on insulin/sulfonylureas); zero grains at dinner (soup + vegetables + salad only); bitter melon juice daily; Gymnema Sylvestre 500mg three times daily (before each meal); fenugreek seeds — 1 tsp soaked overnight, consumed in the morning; jamun seed powder 1 tbsp before lunch and dinner; cinnamon 1 tsp daily in divided doses; extend the morning walk to 90 minutes; post-meal walks to 25 minutes each (non-negotiable).\n\nExpected by Day 7: fasting blood sugar down 50-80 mg/dL, post-meal blood sugar down 80-120 mg/dL, HbA1c projected to drop 1-1.5% over 14 days.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-intensive-neuropathy",
+    "part": 1,
+    "order_index": 801,
+    "time_label": null,
+    "title": "Intensive Add-On — Rapid Neuropathy Reversal",
+    "body": "Supplement stack: Alpha Lipoic Acid 600mg twice daily; Benfotiamine 300mg twice daily; Methylcobalamin 1500mcg twice daily; Vitamin B6 100mg daily; Folic Acid 1.5mg daily; Acetyl-L-Carnitine 1000mg twice daily; Curcumin 1000mg twice daily.\n\nAyurvedic stack: Ashwagandha+Bala combination 1000mg twice daily; Maharasnadi Kwath 30ml decoction twice daily; Yogaraj Guggulu 1000mg twice daily.\n\nTopical: nightly foot massage with warm sesame oil + 5 drops each peppermint and lavender essential oil (15 minutes); wear cotton socks overnight.\n\nExpected by Day 14: 60-80% reduction in tingling/numbness/burning, improved sensation, reduced pain.",
+    "condition_tags": [
+      "neuropathy"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-intensive-fattyliver",
+    "part": 1,
+    "order_index": 802,
+    "time_label": null,
+    "title": "Intensive Add-On — Rapid Fatty Liver Reversal",
+    "body": "Diet: zero fried food, zero processed food, zero refined oils; 2 cups daily of cruciferous vegetables (broccoli, cauliflower, cabbage, Brussels sprouts); beetroot juice 100ml daily; garlic, onions and turmeric daily.\n\nSupplement stack: Milk Thistle (Silymarin) 300mg three times daily; NAC 600mg twice daily; Kutki 500mg twice daily; Arogyavardhini Vati 500mg three times daily; Punarnava 500mg twice daily; Omega-3 3000mg daily; Vitamin E 400 IU daily.\n\nLifestyle: morning walk 60 minutes minimum; evening exercise 45 minutes minimum; Udwartana (herbal powder massage) 3 times per week.",
+    "condition_tags": [
+      "fatty_liver"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-intensive-weightloss",
+    "part": 1,
+    "order_index": 803,
+    "time_label": null,
+    "title": "Intensive Add-On — Rapid Weight Loss & Obesity Reversal",
+    "body": "Diet: 16:8 or 18:6 intermittent fasting (only if blood sugar is stable); grains reduced to 1/2 cup at lunch only, zero at breakfast/dinner; protein raised to 1.2-1.5g/kg body weight; fiber raised to 40-50g daily; 4-5 litres water daily; apple cider vinegar 1 tbsp in water before lunch and dinner.\n\nSupplement stack: Medohar Guggulu 1000mg twice daily; Triphala Guggulu 1000mg twice daily; Green Coffee Bean Extract 400mg twice daily; Garcinia Cambogia 500mg three times daily before meals; L-Carnitine 2000mg before exercise; CLA 3000mg daily.\n\nExercise: fasted morning cardio 75 minutes (include HIIT intervals); evening strength training 45 minutes; post-meal walks 25 minutes each. Plus daily Udwartana and dry brushing.",
+    "condition_tags": [
+      "obesity"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-intensive-hypertension",
+    "part": 1,
+    "order_index": 804,
+    "time_label": null,
+    "title": "Intensive Add-On — Rapid Hypertension Control",
+    "body": "Diet: salt under 2g/day (under 1/2 tsp); potassium-rich foods if kidney function is normal (bananas, spinach, tomatoes, sweet potatoes); 2 servings of beetroot daily (lowers BP 10-15 mmHg); celery, garlic, 85%+ dark chocolate; zero caffeine, zero alcohol.\n\nSupplement stack: Arjuna 1000mg twice daily; Punarnava 500mg twice daily; Jatamansi 500mg evening; CoQ10 200mg daily; Magnesium 500mg daily; L-Arginine 3000mg daily; Omega-3 3000mg daily.\n\nLifestyle: pranayama 30 minutes daily (especially Anulom Vilom and Bhramari); meditation 20 minutes daily; walk 60 minutes daily minimum; actively reduce stress — it is critical for BP control.",
+    "condition_tags": [
+      "hypertension"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-advanced-exercise-hiit",
+    "part": 1,
+    "order_index": 810,
+    "time_label": null,
+    "title": "Advanced Optional Exercise Plan A — HIIT for Maximum Fat Burning & Insulin Sensitivity",
+    "body": "For those who want to progress beyond the daily plan: 5 days/week, 30 minutes. Warm-up 5 min (light jogging/brisk walking, dynamic stretching). HIIT circuit, repeat 5 times (20 min total), each exercise 45 seconds max effort + 15 seconds rest: burpees (or modified), jump squats (or regular), mountain climbers, push-ups (any variation), high knees, jump lunges (or regular), plank hold, jumping jacks. Rest 60 seconds between complete circuits. Cool-down 5 min (slow walking, static stretching).",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-advanced-exercise-strength",
+    "part": 1,
+    "order_index": 811,
+    "time_label": null,
+    "title": "Advanced Optional Exercise Plan B — Strength Training for Muscle Building & Metabolic Boost",
+    "body": "4 days/week (alternate days), 45-60 minutes.\n\nDay 1 — Upper Body: push-ups 4x12-15, dumbbell rows 4x12, overhead press 4x10-12, bicep curls 3x15, tricep dips 3x12, plank 3x60s.\n\nDay 2 — Lower Body: squats 4x15, lunges 4x12/leg, deadlifts (or Romanian deadlifts) 4x10, calf raises 4x20, glute bridges 3x15, wall sit 3x60s.\n\nDay 3: repeat Day 1. Day 4: repeat Day 2.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-advanced-exercise-yoga",
+    "part": 1,
+    "order_index": 812,
+    "time_label": null,
+    "title": "Advanced Optional Exercise Plan C — Yoga Intensive for Diabetes Reversal",
+    "body": "Daily, 60 minutes. Surya Namaskar (Sun Salutation): 20 rounds. Standing asanas (60-90s each): Trikonasana, Virabhadrasana I & II, Ardha Chandrasana, Utkatasana. Seated asanas: Paschimottanasana, Janu Sirsasana, Ardha Matsyendrasana (both sides), Baddha Konasana. Supine asanas: Setu Bandhasana, Halasana, Sarvangasana (if safe). Prone asanas: Bhujangasana, Dhanurasana, Shalabhasana. Core asanas: Navasana, Plank, Side plank. Pranayama: Kapalbhati 5 min, Anulom Vilom 10 min, Bhramari 5 min. Meditation 10 min. Shavasana 10 min.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-diet-mod-kidney",
+    "part": 1,
+    "order_index": 820,
+    "time_label": null,
+    "title": "Condition-Specific Dietary Modifications — Diabetic Kidney Disease",
+    "body": "Restrict: protein to 0.6-0.8g/kg body weight; sodium under 2g/day; potassium-rich foods if potassium is elevated (bananas, tomatoes, potatoes, oranges); phosphorus-rich foods (dairy, nuts, beans) if phosphorus is elevated.\n\nInclude: high-quality protein sources (egg whites, limited paneer, limited dal); low-potassium vegetables (cabbage, cucumber, bottle gourd, ridge gourd); adequate hydration unless fluid restriction is advised.",
+    "condition_tags": [
+      "kidney_disease"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-diet-mod-retinopathy",
+    "part": 1,
+    "order_index": 821,
+    "time_label": null,
+    "title": "Condition-Specific Dietary Modifications — Diabetic Retinopathy",
+    "body": "Include: high-antioxidant foods (blueberries, spinach, kale, carrots, bell peppers); lutein and zeaxanthin sources (spinach, kale, egg yolks); omega-3-rich foods (flaxseeds, walnuts, chia seeds); Vitamin A sources (carrots, sweet potatoes, spinach).\n\nSupplements: Lutein 10mg daily; Zeaxanthin 2mg daily; Bilberry extract 160mg twice daily; Vitamin A 3000 IU daily (if not pregnant).",
+    "condition_tags": [
+      "retinopathy"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-diet-mod-neuropathy",
+    "part": 1,
+    "order_index": 822,
+    "time_label": null,
+    "title": "Condition-Specific Dietary Modifications — Diabetic Neuropathy",
+    "body": "Include: B-vitamin-rich foods (whole grains, eggs, legumes, green leafy vegetables); antioxidant-rich foods (berries, 85%+ dark chocolate, green tea); anti-inflammatory foods (turmeric, ginger, fatty fish if non-vegetarian).",
+    "condition_tags": [
+      "neuropathy"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-diet-mod-fattyliver",
+    "part": 1,
+    "order_index": 823,
+    "time_label": null,
+    "title": "Condition-Specific Dietary Modifications — Fatty Liver",
+    "body": "Avoid completely: all fried foods, all refined oils, all processed/packaged foods, alcohol, high-fructose foods and beverages.\n\nInclude: cruciferous vegetables (broccoli, cauliflower, Brussels sprouts, cabbage — support liver detox pathways); beetroot (powerful liver detoxifier); garlic and onions (sulfur compounds support Phase 2 liver detox); green tea (antioxidants support liver health); bitter gourd and bitter greens.",
+    "condition_tags": [
+      "fatty_liver"
+    ],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-troubleshoot-guide",
+    "part": 1,
+    "order_index": 900,
+    "time_label": null,
+    "title": "Troubleshooting — What to Do If You Are Not Seeing Results",
+    "body": "Blood sugar not dropping fast enough: increase the morning fasted walk to 90 minutes; extend post-meal walks to 30 minutes; reduce grain portions further (1/4 cup at lunch, zero at dinner); add Gymnema Sylvestre 500mg before each meal; increase bitter melon juice to 50ml daily; double-check medication timing/adherence and hidden sugars in food; increase water to 5 litres; add apple cider vinegar before meals.\n\nLow blood sugar episodes (hypoglycemia): consume 15g fast-acting carbs immediately (3-4 glucose tablets, 1 tbsp honey, or 1/2 cup fruit juice), sit/lie down, recheck after 15 minutes and repeat if still low. Contact your doctor immediately for a medication dose review — do not skip meals, carry glucose tablets always, and monitor blood sugar 6-8 times daily until stable.\n\nExtreme fatigue or weakness: check calorie intake is adequate (min. 1200-1500 kcal for women, 1500-1800 for men); get iron, B12, Vitamin D and thyroid labs checked; add Ashwagandha 600mg twice daily, CoQ10 200mg daily, L-Carnitine 1000mg daily; ensure 1g/kg protein and 7-8 hours sleep; temporarily reduce exercise intensity; add Chyawanprash 2 tsp daily.\n\nConstipation: increase water to 4-5 litres; increase fiber (isabgol, flaxseeds, vegetables); Triphala 1 tsp twice daily; isabgol 1 tsp in warm water before bed; include prunes, figs, papaya; increase movement; practice abdominal massage and Pawanmuktasana (Wind-Relieving Pose).\n\nSleep issues persisting: increase evening Ashwagandha to 600mg; add Brahmi+Jatamansi, Magnesium Glycinate 500mg, L-Theanine 200mg before bed; consider Melatonin 0.5-1mg (start low); practice Yoga Nidra; ensure complete darkness and a cool room (65-68 F); no screens after 9 PM; nightly foot oil massage (non-negotiable).\n\nJoint pain or muscle soreness increasing: temporarily reduce exercise intensity and increase rest; add Curcumin 1000mg twice daily, Boswellia 500mg twice daily, Yogaraj Guggulu 500mg three times daily; warm oil massage on painful joints (10 min, leave 30 min before showering); Epsom salt bath 3x/week; ensure adequate protein and sleep; add collagen 10g daily; gentle daily yoga/stretching.\n\nNot losing weight: check portion sizes and hidden calories (oil, ghee, nuts); increase exercise intensity/duration and add strength training; raise protein to 1.2-1.5g/kg; try 18:6 fasting if safe; add apple cider vinegar before meals; check thyroid and cortisol; ensure adequate sleep; add green coffee bean extract, L-Carnitine before exercise, green tea 3x daily.\n\nIncreased hunger or cravings: increase protein and fiber at each meal; drink 2 glasses of water before assuming you are hungry (thirst is often mistaken for hunger); add Gymnema Sylvestre 500mg (kills sweet cravings); ensure adequate sleep and manage stress; drink herbal tea when cravings hit and wait 10 minutes (it passes); check if any medication (insulin, sulfonylureas) is increasing appetite.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p1-safety-reminders",
+    "part": 1,
+    "order_index": 901,
+    "time_label": null,
+    "title": "Important Safety Reminders — Read Before Following This Plan",
+    "body": "If you are on insulin or sulfonylureas: monitor blood sugar 6-8 times daily; contact your doctor immediately if blood sugar repeatedly drops below 80 mg/dL — a medication dose reduction will likely be needed within 3-7 days of starting this plan.\n\nIf you have severe kidney disease (Stage 4-5): do not follow this plan without nephrologist approval — protein and potassium restrictions may be needed.\n\nIf you have severe heart disease: consult your cardiologist before starting intensive exercise; start low-intensity and increase gradually.\n\nIf you have active diabetic foot ulcers: avoid prolonged walking, focus on upper-body and seated exercises, and seek immediate medical treatment for the ulcer.\n\nIf you are pregnant or breastfeeding: do not follow this plan — consult your OB/GYN and endocrinologist for safe diabetes management.\n\nMedication interactions: tell your doctor about every herb and supplement you take. Some interact with medications — Sarpagandha with BP medications, Guggul with thyroid medications, and blood-thinning herbs (garlic, ginger, high-dose turmeric) with anticoagulants.\n\nStop the plan and seek immediate medical help for: severe chest pain/pressure, severe difficulty breathing, sudden vision loss, severe abdominal pain, blood in urine or stool, blood sugar persistently below 60 mg/dL, severe dizziness/fainting, confusion, or any symptom that feels life-threatening.\n\nMedical supervision is required before starting if you have: active heart disease, a recent heart attack, angina or cardiac stents; severe kidney disease (eGFR below 30); severe retinopathy with bleeding risk; active diabetic foot ulcers; uncontrolled BP above 180/110; pregnancy or breastfeeding; recent surgery (within 3 months); or active cancer/chemotherapy.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-vit-01-d",
+    "part": 3,
+    "order_index": 10,
+    "time_label": null,
+    "title": "Vitamin D — The Insulin Hormone Regulator",
+    "body": "A prohormone that directly controls insulin secretion, insulin sensitivity, inflammation and immune function — 80% of diabetics are deficient. Correcting it raises insulin sensitivity by up to 60%, cuts HbA1c by 0.5-1.2%, and lowers cardiovascular risk by 43%.\n\nSources: 15-20 min sunlight daily (7-9 AM or 4-6 PM, arms+legs exposed, no sunscreen); wild salmon 600-1000 IU/100g, mackerel 360, sardines 480; egg yolks 87 IU each (2-3/day); UV-exposed mushrooms 400-1600 IU/100g; fortified almond milk 100 IU/cup; grass-fed ghee/butter.\n\nDaily target: 2000-4000 IU (5000-10,000 IU for 8-12 weeks if severely deficient, doctor supervised). Best taken with a fat-containing meal, morning/afternoon. Test 25-OH Vitamin D — target 40-60 ng/mL, retest every 3 months.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-vit-02-b12",
+    "part": 3,
+    "order_index": 20,
+    "time_label": null,
+    "title": "Vitamin B12 — The Nerve Protector",
+    "body": "Essential for nerve health, red blood cells, DNA synthesis and energy. Metformin depletes B12 by up to 30% within 2 years — anyone on it 2+ years, vegetarians/vegans, the elderly, Type 1 diabetics, and anyone with gut inflammation is most at risk.\n\nRepairs damaged nerves and prevents/reduces diabetic neuropathy (tingling, numbness, burning), improves energy and cognition, prevents anemia.\n\nSources: eggs 1.1mcg each; plain yogurt 1.4mcg/cup, paneer 0.9mcg/100g; clams 84mcg/100g (highest in nature), oysters 16mcg/100g; salmon 4.8mcg/100g; beef liver 70mcg/100g; nutritional yeast 8-24mcg/2 tbsp (best vegetarian source).\n\nDaily target: 500-1000mcg (1000-2000mcg therapeutic for neuropathy) — sublingual or methylcobalamin form absorbs best. Take in the morning. Test serum B12 (>400 pg/mL, optimal >600) and homocysteine (<10 µmol/L).",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-vit-03-c",
+    "part": 3,
+    "order_index": 30,
+    "time_label": null,
+    "title": "Vitamin C — The Blood Sugar Stabiliser",
+    "body": "Lowers post-meal blood sugar spikes by up to 30%, cuts HbA1c by 0.5% over 12 weeks, speeds wound healing, strengthens blood vessels (protects against retinopathy/nephropathy), and lowers diabetic complication risk by 35%.\n\nSources: red bell pepper 190mg/cup raw; guava 377mg/cup (highest); kiwi 137mg/cup; strawberries 89mg/cup; broccoli 81mg/cup cooked; oranges 70mg each.\n\nDaily target: 500-1000mg, split into 2 doses (max 2000mg/day). Take morning and afternoon, with meals. Don't overcook vegetables — Vitamin C degrades with heat; steam or eat raw. Avoid high doses if prone to kidney stones.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-vit-04-e",
+    "part": 3,
+    "order_index": 40,
+    "time_label": null,
+    "title": "Vitamin E — The Cellular Protector",
+    "body": "A fat-soluble antioxidant that protects pancreatic beta cells, improves insulin sensitivity, protects eyes/kidneys/nerves, and reduces LDL oxidation. Cuts HbA1c by 0.4-0.8% over 3-6 months and lowers diabetic retinopathy risk by 40%.\n\nSources: almonds 7.3mg/oz (23 almonds); sunflower seeds 7.4mg/oz; avocado 4mg each; spinach 3.7mg/cup cooked; wheat germ oil 20mg/tbsp (highest).\n\nDaily target: 15-30mg (therapeutic 400-800 IU for complications, consult doctor). Take with a fat-containing meal. Choose natural d-alpha-tocopherol over synthetic dl-alpha-tocopherol; avoid mega-doses without supervision (bleeding risk); works best paired with Vitamin C and Selenium.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-vit-05-magnesium",
+    "part": 3,
+    "order_index": 50,
+    "time_label": null,
+    "title": "Magnesium — The Insulin Sensitivity Mineral",
+    "body": "Involved in 300+ enzyme reactions including insulin secretion, ATP production and blood pressure regulation. ~70% of diabetics are deficient — high blood sugar makes the kidneys excrete 300% more magnesium.\n\nReverses insulin resistance at the cellular level, lowers fasting sugar 10-20%, cuts HbA1c 0.5-1.0%, lowers BP 5-10mmHg, prevents cramps, improves sleep.\n\nSources: pumpkin seeds 168mg/oz; spinach 157mg/cup cooked; black beans 120mg/cup; almonds 80mg/oz; 85%+ dark chocolate 64mg/oz; quinoa 118mg/cup.\n\nDaily target: 400-600mg (glycinate or citrate form). Take in the evening with food (promotes relaxation/sleep). Test RBC magnesium (not serum) — target >5.5mg/dL.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-vit-06-b1",
+    "part": 3,
+    "order_index": 60,
+    "time_label": null,
+    "title": "Vitamin B1 (Thiamine) — The Energy Producer",
+    "body": "Fuels cellular energy and glucose metabolism. Diabetic thiamine levels are often 75% lower than normal, driving fatigue, neuropathy and diabetic cardiomyopathy.\n\nPrevents/reverses neuropathy (especially in the feet), improves energy, protects the heart, enhances glucose metabolism.\n\nSources: pork 0.8mg/100g; lentils 0.33mg/cup; brown rice 0.4mg/cup; sunflower seeds 0.4mg/oz; macadamia or pistachio 0.7mg/cup.\n\nStandard RDA (1.2-1.5mg) is far too low for diabetics — therapeutic dose is 50-100mg, or Benfotiamine (fat-soluble, superior for diabetic complications) 300-600mg for neuropathy. Take in the morning with meals.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-vit-07-k2",
+    "part": 3,
+    "order_index": 70,
+    "time_label": null,
+    "title": "Vitamin K2 — The Arterial Cleanser",
+    "body": "The \"calcium traffic director\" — pulls calcium out of arteries and directs it into bone, cutting cardiovascular events by 52% and improving bone density, with a 26% lower all-cause mortality in studies.\n\nSources: natto (fermented soybeans) 1085mcg/100g — highest in nature, 1 tbsp/day is enough; gouda 75mcg/100g; pasture-raised egg yolks 32mcg each; grass-fed ghee 12mcg/tsp; chicken thigh 9mcg/100g.\n\nDaily target: 100-200mcg (MK-7 form; therapeutic 180-360mcg). Take with a fat-containing meal. Always pair with Vitamin D3 (synergistic). Avoid if on Warfarin/blood thinners without medical supervision.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-vit-08-b6",
+    "part": 3,
+    "order_index": 80,
+    "time_label": null,
+    "title": "Vitamin B6 (Pyridoxine) — The Blood Sugar Stabiliser",
+    "body": "Regulates blood sugar metabolism, supports neurotransmitter production, helps prevent diabetic neuropathy (especially with B12), and lowers homocysteine (cardiovascular risk marker).\n\nSources: chickpeas 1.1mg/cup cooked; chicken breast 1.0mg/100g; tuna 1.0mg/100g; less-ripe banana 0.4mg; avocado 0.4mg each; sweet potato 0.6mg.\n\nStandard RDA (1.3-1.7mg) is insufficient for diabetics — therapeutic dose is 25-50mg/day. Do not exceed 100mg/day long-term (very high doses can cause nerve damage). Take morning/afternoon with food; works best combined with B12 and Folate.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-vit-09-biotin",
+    "part": 3,
+    "order_index": 90,
+    "time_label": null,
+    "title": "Biotin (Vitamin B7) — The Metabolic Enhancer",
+    "body": "Works alongside insulin to enhance glucose, fat and protein metabolism, and supports skin/hair/nails (often affected in diabetics). High doses can lower fasting glucose by 18-45% and improve insulin sensitivity and neuropathy symptoms.\n\nSources: eggs 10mcg each (in the yolk); walnuts 9.5mcg/oz; boiled sweet potato 2.4mcg; soybeans 8.7mcg/cup; salmon 5mcg/100g.\n\nDaily target: 30-100mcg for general health; 5,000-10,000mcg (5-10mg) therapeutic for blood sugar control, doctor supervised. Take in the morning with breakfast. Caution: doses above 300mcg/day can distort thyroid/cardiac lab tests — tell your doctor before any blood work. Works well with chromium and alpha-lipoic acid.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-vit-10-folate",
+    "part": 3,
+    "order_index": 100,
+    "time_label": null,
+    "title": "Folate (Vitamin B9) — The Cardiovascular Protector",
+    "body": "Supports DNA repair, red blood cell production, and lowers homocysteine — a major cardiovascular risk factor. Cuts cardiovascular complications by ~40% and lowers diabetic nephropathy risk.\n\nSources: lentils 358mcg/cup cooked (highest); spinach 263mcg/cup cooked; chickpeas 282mcg/cup; asparagus 268mcg/cup cooked; avocado 163mcg each; methi (fenugreek) leaves 84mcg/cup.\n\nDaily target: 400-800mcg (therapeutic 1000-5000mcg as methylfolate). Take in the morning with food. Use methylfolate (5-MTHF) — about 40% of people can't properly convert synthetic \"folic acid.\" Always pair with B12 and B6; test homocysteine (<10 µmol/L); don't mega-dose folate without checking B12 first, since high folate can mask a B12 deficiency.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-min-01-chromium",
+    "part": 3,
+    "order_index": 110,
+    "time_label": null,
+    "title": "Chromium — The Insulin Amplifier",
+    "body": "Enhances insulin receptor sensitivity and glucose metabolism, and cuts sugar cravings — 73% of diabetics are deficient. Improves insulin sensitivity by up to 50%, lowers fasting sugar 10-30 mg/dL, cuts HbA1c 0.6-1.0%, and reduces sugar/carb cravings by ~70%.\n\nSources: broccoli 11mcg/½ cup cooked (highest); grapes 8mcg/cup; barley 13mcg/cup; brewer's yeast 60mcg/tbsp (richest supplemental source); black pepper 10mcg/tbsp.\n\nDaily target: 200-400mcg (chromium picolinate; therapeutic 400-1000mcg for diabetes). Take with carb-containing meals, morning and evening. Hard to lab-test directly — track response via fasting glucose and HbA1c instead.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-min-02-zinc",
+    "part": 3,
+    "order_index": 120,
+    "time_label": null,
+    "title": "Zinc — The Insulin Storage Mineral",
+    "body": "Essential for insulin synthesis, storage and secretion, plus immunity, wound healing and thyroid/testosterone function — 48% of diabetics are deficient. Lowers fasting sugar ~12%, speeds wound healing, and cuts infection risk by ~50%.\n\nSources: oysters 74mg/100g (highest); pumpkin seeds 7.8mg/oz (best plant source); beef 7mg/100g; chickpeas/lentils ~2.5mg/cup; cheddar 3.1mg/100g.\n\nDaily target: 15-30mg elemental zinc (therapeutic 30-50mg short-term for deficiency). Take in the evening with food, not alongside calcium or iron. Best forms: zinc picolinate, citrate, or gluconate. Don't exceed 40mg/day long-term — it causes copper deficiency; keep a 10:1 zinc:copper ratio.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-min-03-selenium",
+    "part": 3,
+    "order_index": 130,
+    "time_label": null,
+    "title": "Selenium — The Thyroid & Immune Protector",
+    "body": "Converts thyroid hormone T4 to active T3, and is a powerful antioxidant — diabetics with thyroid issues are almost always selenium deficient. Protects beta cells, lowers CRP by 23%, improves insulin sensitivity, and lowers thyroid antibodies.\n\nSources: Brazil nuts 544mcg/oz — highest food source, 2-3 nuts/day is enough (more risks toxicity); yellowfin tuna 92mcg/100g; sardines 53mcg/100g; beef/turkey ~30mcg/100g; eggs 15mcg each.\n\nDaily target: 100-200mcg (therapeutic 200-400mcg for thyroid support). Take in the morning with food; selenomethionine is the best-absorbed form. Do not exceed 400mcg/day. Works synergistically with Vitamin E and iodine.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-min-04-potassium",
+    "part": 3,
+    "order_index": 140,
+    "time_label": null,
+    "title": "Potassium — The Blood Pressure & Insulin Regulator",
+    "body": "Needed for insulin secretion from beta cells, blood pressure regulation and heart rhythm — low potassium directly impairs insulin secretion. Lowers BP 5-10mmHg and stroke risk by 24%.\n\nSources: avocado 975mg each (more than 2 bananas); beet greens 1309mg/cup (highest); white beans 1189mg/cup; baked potato with skin 926mg; spinach 839mg/cup cooked; tomato paste 1065mg/½ cup; coconut water 600mg/cup.\n\nDaily target: 3000-4700mg — get this from FOOD, not supplements. Do not self-supplement potassium — it can cause dangerous heart rhythms, especially if you're on ACE inhibitors or ARBs for blood pressure; consult your doctor first. Test serum potassium, target 4.0-5.0 mEq/L.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-min-05-calcium",
+    "part": 3,
+    "order_index": 150,
+    "time_label": null,
+    "title": "Calcium — The Metabolic Signal Regulator",
+    "body": "Needed for insulin secretion signalling, bone health (diabetics have higher fracture risk), and blood vessel function.\n\nSources: plain yogurt 448mg/cup; fortified almond milk 450mg/cup; calcium-set tofu 434mg/½ cup; sardines 325mg/100g; paneer 200mg/100g; collard greens 268mg/cup cooked.\n\nDaily target: 1000-1200mg (1200-1500mg if bone health is a concern), split into ~500mg doses for better absorption. Calcium citrate can be taken any time; calcium carbonate needs food. An evening dose supports sleep and bone remodeling. Always pair with Vitamin D3 and K2; don't exceed 2500mg/day; don't take alongside iron or zinc. Test serum calcium, target 8.5-10.5 mg/dL.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-min-06-iron",
+    "part": 3,
+    "order_index": 160,
+    "time_label": null,
+    "title": "Iron — The Oxygen Transport Mineral",
+    "body": "Needed for oxygen transport (hemoglobin), energy production, immunity and thyroid hormone synthesis. Deficiency causes the severe fatigue common in diabetics.\n\nHeme sources (best absorbed): chicken liver 11mg/100g, beef liver 5.2mg/100g, oysters 5.7mg/100g. Plant (non-heme, lower absorption): lentils 6.6mg/cup cooked, tofu 6.6mg/½ cup, spinach 6.4mg/cup cooked.\n\nDaily target: 8mg (men), 18mg (premenopausal women), 8mg (postmenopausal women); if deficient, 50-100mg ferrous bisglycinate. Take on an empty stomach for best absorption (small food if it causes nausea); avoid taking with coffee, tea, dairy, calcium or zinc; pair with Vitamin C (+300% absorption). Do NOT supplement without testing first — excess iron is toxic. Test serum ferritin, target 50-100 ng/mL, plus hemoglobin.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-min-07-manganese",
+    "part": 3,
+    "order_index": 170,
+    "time_label": null,
+    "title": "Manganese — The Glucose Metabolism Cofactor",
+    "body": "Supports glucose metabolism, antioxidant defense, bone formation and wound healing — deficiency worsens glucose intolerance.\n\nSources: pine nuts 8.8mg/cup (highest); pineapple 2.6mg/cup (highest fruit source); oats 3.7mg/cup; chickpeas 1.7mg/cup; cloves 30mg/tbsp.\n\nDaily target: 2-5mg (therapeutic 5-10mg); don't exceed 11mg/day (toxicity risk). Take with meals. Usually sufficient from diet alone — supplementation is rarely needed, and high iron intake can reduce manganese absorption.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-min-08-copper",
+    "part": 3,
+    "order_index": 180,
+    "time_label": null,
+    "title": "Copper — The Cardiovascular & Energy Mineral",
+    "body": "Supports iron metabolism, energy production, antioxidant defense, and blood vessel/connective tissue health.\n\nSources: beef liver 14.3mg/100g (very high); oysters 7.6mg/100g; cashews 0.6mg/oz; chickpeas 0.6mg/cup; dark chocolate 0.5mg/oz.\n\nDaily target: 0.9-2mg, usually sufficient from diet. Balance it 10:1 with zinc — if taking more than 50mg/day of zinc, add ~2mg copper. Don't exceed 10mg/day.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-min-09-phosphorus",
+    "part": 3,
+    "order_index": 190,
+    "time_label": null,
+    "title": "Phosphorus — The Energy & Bone Mineral",
+    "body": "Needed for ATP (cellular energy), bone/teeth formation, DNA/RNA synthesis and kidney function.\n\nSources: pumpkin seeds 1233mg/cup (highest); sunflower seeds 1158mg/cup; sardines 490mg/100g; mozzarella 415mg/100g; salmon 371mg/100g; lentils 356mg/cup.\n\nDaily target: 700-1250mg, usually sufficient from diet — supplementation is rarely needed. Keep it roughly balanced 1:1 with calcium, and avoid high-phosphorus processed foods and soft drinks, which can leach calcium from bone.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-min-10-iodine",
+    "part": 3,
+    "order_index": 200,
+    "time_label": null,
+    "title": "Iodine — The Thyroid Function Mineral",
+    "body": "Needed for thyroid hormone production (T3/T4), metabolism and brain function. 30-40% of diabetics have thyroid dysfunction, often worsened by iodine deficiency.\n\nSources: iodised salt 71mcg/¼ tsp; yogurt 75mcg/cup; cod 99mcg/100g; egg 24mcg each; kelp 2000mcg/g (use cautiously — very high).\n\nDaily target: 150mcg general health, 200-300mcg if thyroid support is needed; don't exceed 1100mcg/day. Take in the morning with food. If you have Hashimoto's thyroiditis, consult your doctor before supplementing — it can worsen autoimmunity. Always pair with selenium. Test TSH, Free T3, Free T4, and urinary iodine.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-supp-01-ala",
+    "part": 3,
+    "order_index": 210,
+    "time_label": null,
+    "title": "Alpha-Lipoic Acid (ALA) — The Universal Antioxidant",
+    "body": "A powerful antioxidant that works in both water and fat, crossing every cell membrane, and regenerates Vitamin C, E and glutathione. The #1 supplement for diabetic neuropathy, backed by 15+ clinical trials.\n\nCuts nerve pain by 60% within 3-5 weeks, improves nerve conduction and reverses tingling/numbness; improves insulin sensitivity by up to 50%, lowers fasting sugar 10-30%, cuts HbA1c 0.5-1.0%; lowers liver enzymes (helps fatty liver); improves blood vessel (endothelial) function.\n\nDose: 600mg/day standard (600mg twice daily/1200mg total for severe neuropathy) — start at 300mg and increase gradually. Take on an empty stomach, 30 minutes before meals (food cuts absorption by ~30%). Best form: R-Lipoic Acid (R-ALA), more potent than the standard mixed form. Caution: monitor blood sugar closely (can lower it significantly); may deplete biotin (pair with 300mcg biotin); can cause mild nausea at first.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-supp-02-berberine",
+    "part": 3,
+    "order_index": 220,
+    "time_label": null,
+    "title": "Berberine — The Natural Metformin Alternative",
+    "body": "Activates the same AMPK pathway as Metformin, with extra benefits for cholesterol, fatty liver and gut health.\n\nLowers fasting sugar 15-25% (comparable to Metformin), cuts HbA1c 0.7-2.0% in 3 months, improves insulin sensitivity by up to 45%; lowers LDL 20-25%, total cholesterol 18%, triglycerides 23-35%, and raises HDL; reduces liver fat by 52% in 16 weeks; supports modest weight loss (~5 lbs/12 weeks) and a healthier gut microbiome.\n\nDose: 500mg, 3 times daily (1500mg total) before meals — start with 500mg once daily and increase over 1-2 weeks. Best form: Berberine HCl (most studied) or Dihydroberberine (200mg ≈ 500mg regular berberine). Caution: GI upset (diarrhea, cramping, gas) in the first 1-2 weeks — start low; avoid in pregnancy/breastfeeding; can interact with antibiotics and other medications (CYP450 enzymes) — consult your doctor if on multiple medications; monitor blood sugar closely if also on diabetes medication (effects can stack).",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-supp-03-omega3",
+    "part": 3,
+    "order_index": 230,
+    "time_label": null,
+    "title": "Omega-3 Fatty Acids (EPA/DHA) — The Anti-Inflammatory Essential Fat",
+    "body": "Diabetics carry 3x the cardiovascular risk and chronic inflammation of non-diabetics — omega-3s address both. Lowers triglycerides 25-30%, BP 5-10mmHg, heart attack risk 45%, and CRP by up to 30%; improves insulin sensitivity; protects nerves (less neuropathic pain); cuts liver fat 30-50%; supports mood and cognition.\n\nDose: 2000-3000mg combined EPA+DHA/day (3000-4000mg if triglycerides are high), EPA:DHA ratio of 2:1 or 3:2. Take with meals (fat-soluble). Best form: triglyceride or re-esterified triglyceride (rTG) — avoid the poorly-absorbed ethyl ester form.\n\nSources: mackerel 4580mg/100g (highest), salmon 2200mg/100g, sardines 1480mg/100g, herring 2150mg/100g — 3-4 servings/week. Plant ALA (flax, chia, walnut) only converts 5-10% to EPA/DHA, so direct sources are preferred.\n\nCaution: choose molecularly-distilled, third-party-tested brands (heavy metals/PCBs) with IFOS certification, keep refrigerated, and note it may raise bleeding risk on blood thinners.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-supp-04-coq10",
+    "part": 3,
+    "order_index": 240,
+    "time_label": null,
+    "title": "Coenzyme Q10 (CoQ10) — The Cellular Energy Booster",
+    "body": "A key mitochondrial-energy antioxidant that statin medications (commonly prescribed to diabetics with high cholesterol) deplete by 40-50% — and diabetics already run mitochondrial dysfunction (low cellular energy).\n\nImproves insulin sensitivity and lowers fasting sugar 8-15%, cuts HbA1c 0.4-1.0%; improves heart muscle function, lowers BP 10-15mmHg, protects against heart failure; reduces fatigue and improves exercise performance; protects nerves and kidneys from oxidative damage.\n\nDose: 100-200mg/day general health (200-400mg/day if on statins or for therapeutic effect). Best form: Ubiquinol — the active, reduced form, absorbed ~8x better than standard Ubiquinone (best for people over 40 or with mitochondrial issues). Take with a fat-containing meal (absorption up to 3x higher), morning or early afternoon — take before 2 PM as it can cause mild insomnia if taken late in the day. Essential to take alongside any statin medication; may enhance blood-thinning medications (monitor with your doctor). Very safe overall, with no known serious side effects.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-supp-05-milkthistle",
+    "part": 3,
+    "order_index": 250,
+    "time_label": null,
+    "title": "Milk Thistle (Silymarin) — The Liver Protector & Regenerator",
+    "body": "Contains silymarin, a flavonoid complex that protects and regenerates liver cells — used for over 2000 years. 30-70% of diabetics have fatty liver, which worsens insulin resistance.\n\nReduces liver fat by up to 50% in 6 months, lowers liver enzymes (ALT/AST) 30-40%, reverses liver inflammation, prevents progression to cirrhosis; also improves insulin sensitivity (fasting sugar -10-15%, HbA1c -0.5-1.0%) and lowers LDL 10-15%.\n\nDose: 200-400mg silymarin, 3 times daily (600-1200mg total), standardized to 70-80% silymarin — start at 200mg once daily and increase gradually. Take with meals, 3 divided doses. Best form: Silybin phytosome (Siliphos®) — absorbs ~10x better than standard silymarin.\n\nVery safe, used for decades. May cause mild GI upset initially; can interact with liver-metabolized medications (CYP450) — consult your doctor; avoid if allergic to ragweed/daisies/marigolds. Monitor liver enzymes every 3 months; ultrasound/FibroScan to track liver fat.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-supp-06-cinnamon",
+    "part": 3,
+    "order_index": 260,
+    "time_label": null,
+    "title": "Cinnamon Extract (Ceylon) — The Blood Sugar Stabiliser",
+    "body": "Contains MHCP, a compound that mimics insulin action and improves glucose metabolism — one of the most studied natural blood sugar regulators.\n\nLowers fasting sugar 10-29%, cuts post-meal spikes up to 30%, lowers HbA1c 0.4-0.8% in 3 months; also lowers LDL 10-15% and triglycerides 23-30%, and is a powerful antioxidant.\n\nDose: 500-2000mg/day standardized extract, or 1-6g/day whole powder (start at 500mg and increase based on response). Take with meals, especially carb-containing ones.\n\nAlways choose Ceylon cinnamon (Cinnamomum verum) — Cassia cinnamon is high in coumarin, which can damage the liver in high long-term doses. May enhance blood-thinning medications; monitor blood sugar closely if combined with diabetes medication (hypoglycemia risk). Safe long-term if Ceylon variety. Track fasting/post-meal glucose and HbA1c every 6-8 weeks.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-supp-07-bittermelon",
+    "part": 3,
+    "order_index": 270,
+    "time_label": null,
+    "title": "Bitter Melon (Karela) Extract — The Natural Insulin Mimicker",
+    "body": "A traditional Ayurvedic/Chinese remedy containing plant insulin (polypeptide-p) that mimics human insulin and activates AMPK (same pathway as Metformin/berberine).\n\nLowers fasting sugar 15-25%, cuts post-meal spikes up to 54%, lowers HbA1c 0.25-1.0%; protects beta cells and may support their regeneration; supports fat metabolism.\n\nDose: 500-2000mg/day standardized extract, or 50-100mL fresh juice, or ½-1 cup whole cooked bitter melon daily. Take 30 minutes before meals, morning and evening. Best form: standardized extract (10-25:1).\n\nPreparation: stir-fry sliced/deseeded bitter melon with turmeric/cumin/garlic; or blend fresh juice with lemon and ginger to mask bitterness; or steep dried slices as tea.\n\nVery bitter and may cause GI upset in sensitive individuals; can lower blood sugar significantly — monitor closely if on medication; avoid in pregnancy (may cause uterine contractions); start low (500mg) and increase gradually.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-supp-08-gymnema",
+    "part": 3,
+    "order_index": 280,
+    "time_label": null,
+    "title": "Gymnema Sylvestre — The \"Sugar Destroyer\"",
+    "body": "Ayurvedic herb (\"Gurmar\" — destroyer of sugar) that blocks sugar receptors on the tongue and in the intestines, cutting sugar absorption and cravings.\n\nLowers fasting sugar 20-30%, cuts HbA1c 0.5-1.5% over 6-18 months, blocks intestinal sugar absorption; may regenerate pancreatic beta cells and increase natural insulin secretion up to 2x; blocks sweet-taste receptors, cutting sugar cravings by ~80% in clinical observation.\n\nDose: 400-600mg/day standardized to 25% gymnemic acids, split into 2 doses, 30-60 minutes before meals — or whenever sugar cravings hit (it blocks the sweet taste for 1-2 hours).\n\nMay cause mild nausea initially (start at 200mg); can lower blood sugar significantly — monitor closely if on medication. Very safe, centuries of Ayurvedic use. Track fasting/post-meal glucose, HbA1c every 6-8 weeks, and sugar cravings/dietary compliance.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-supp-09-fenugreek",
+    "part": 3,
+    "order_index": 290,
+    "time_label": null,
+    "title": "Fenugreek — The Fiber-Rich Glucose Regulator",
+    "body": "Fenugreek seeds are 50% soluble fiber (galactomannan) plus 4-hydroxyisoleucine, which together slow glucose absorption and improve insulin secretion.\n\nLowers fasting sugar 13-25%, cuts post-meal spikes up to 54%, lowers HbA1c 0.4-1.2%, slows gastric emptying; also lowers LDL 14-33%, total cholesterol 14-25%, and triglycerides 25%; high fiber supports gut health and constipation.\n\nDose: 2.5-15g/day whole seed powder, or 500-1000mg/day standardized extract, or soak 1-2 tbsp seeds overnight (traditional method — drink the water and chew the seeds on an empty stomach in the morning). Take with meals to slow glucose absorption.\n\nCan cause gas/bloating initially — start low; harmlessly gives urine/sweat a maple-syrup smell; may enhance blood-thinning medications; avoid in pregnancy (can stimulate uterine contractions); drink plenty of water. Monitor glucose and lipids every 3 months.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-supp-10-nac",
+    "part": 3,
+    "order_index": 300,
+    "time_label": null,
+    "title": "N-Acetyl Cysteine (NAC) — The Master Antioxidant Booster",
+    "body": "A precursor to glutathione, the body's master antioxidant — diabetics run ~40% lower glutathione due to chronic oxidative stress. Protects liver, kidneys, nerves and blood vessels.\n\nImproves insulin sensitivity up to 30% and lowers fasting sugar 8-15%; protects the liver (lower ALT/AST, less inflammation — helps fatty liver); protects kidneys from diabetic damage; lowers homocysteine and protects against LDL oxidation; supports heavy-metal/toxin detoxification.\n\nDose: 600-1200mg/day general health, 1200-1800mg/day therapeutic (fatty liver, insulin resistance), split into 2 doses. Take on an empty stomach for best absorption (small food if it causes nausea).\n\nMay cause nausea initially — start low; has a normal sulfur smell; pair with Vitamin C (boosts glutathione production further); may loosen stools at first. Very safe — used in hospitals for Tylenol overdose. Monitor liver/kidney function periodically.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-b1",
+    "part": 3,
+    "order_index": 310,
+    "time_label": null,
+    "title": "Enhanced Breakfast: Super Protein Veggie Scramble",
+    "body": "3 whole eggs (pasture-raised if possible) + 1 cup spinach + ½ cup bell peppers (red/yellow) + ¼ cup mushrooms (UV-exposed if possible) + 1 tbsp extra-virgin olive oil + ½ avocado sliced on top + a pinch of turmeric and black pepper + a sprinkle of nutritional yeast (optional).\n\nMethod: sauté mushrooms 2 min, add bell peppers 2 min, add spinach until wilted (1 min), pour in scrambled eggs and cook together, season with turmeric/pepper/salt, top with avocado and nutritional yeast.\n\nMacros: Protein 22g | Healthy fats 28g | Carbs 18g (12g net) | Fiber 6g | ~420 kcal. Delivers Vitamin D, B12, B6, Biotin, Folate, C, E, K2, plus Magnesium, Selenium, Potassium, Iron, Copper, Manganese. Blood sugar impact: low — stable 4-5 hours.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-b2",
+    "part": 3,
+    "order_index": 320,
+    "time_label": null,
+    "title": "Enhanced Breakfast: Omega-3 Overnight Oats with Superfoods",
+    "body": "½ cup rolled oats (gluten-free) + 1 tbsp chia seeds + 1 tbsp ground flaxseeds + 1 tbsp pumpkin seeds + ½ cup fortified unsweetened almond milk + ¼ cup plain Greek yogurt + ¼ cup blueberries + 1 tsp cinnamon + 5 chopped walnut halves.\n\nMethod: mix oats, chia, flax and pumpkin seeds in a jar; stir in almond milk and yogurt; add cinnamon; refrigerate overnight (6+ hours); top with blueberries and walnuts in the morning.\n\nMacros: Protein 18g | Healthy fats 22g | Carbs 42g (30g net) | Fiber 12g | ~410 kcal. Delivers Vitamin D, B1, B12, C, E plus Magnesium, Zinc, Calcium, Iron, Manganese, Copper, Phosphorus. Blood sugar impact: low-moderate, stable 4-5 hours.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-b3",
+    "part": 3,
+    "order_index": 330,
+    "time_label": null,
+    "title": "Enhanced Breakfast: Savory Moong Dal Chilla",
+    "body": "½ cup moong dal (soaked 4-6 hours) + 1 tbsp nutritional yeast + ½ cup grated vegetables (zucchini, carrot) + 1 tsp each cumin/coriander/turmeric + 1 tsp grass-fed ghee + fresh cilantro.\n\nMethod: grind soaked dal into a smooth batter with minimal water, mix in yeast/vegetables/spices, cook thin like a pancake in ghee on a non-stick pan until golden on both sides (2-3 min/side), garnish with cilantro.\n\nMacros: Protein 20g | Healthy fats 8g | Carbs 38g (30g net) | Fiber 8g | ~310 kcal. Delivers B1, B6, B9, B12, C, E, K, K2 plus Magnesium, Iron, Potassium, Zinc. Blood sugar impact: low-moderate.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-b4",
+    "part": 3,
+    "order_index": 340,
+    "time_label": null,
+    "title": "Enhanced Breakfast: Greek Yogurt Power Bowl",
+    "body": "1 cup plain Greek yogurt + 2 tbsp pumpkin seeds + 2 tbsp sunflower seeds + 1 tbsp chia seeds + ¼ cup sliced strawberries + 5 chopped walnut halves + 1 tsp raw honey (optional, minimal) + a pinch of cinnamon.\n\nMethod: layer everything on top of the yogurt in a bowl.\n\nMacros: Protein 25g | Healthy fats 24g | Carbs 28g (22g net) | Fiber 6g | ~420 kcal. Delivers B12, C, E, B1, B6 plus Magnesium, Zinc, Calcium, Iron, Selenium. Blood sugar impact: low, stable 4-5 hours.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-b5",
+    "part": 3,
+    "order_index": 350,
+    "time_label": null,
+    "title": "Enhanced Breakfast: Avocado & Egg Power Toast",
+    "body": "1 slice whole grain (sprouted preferred) bread + ½ avocado mashed + 2 boiled or poached eggs + a handful of fresh spinach + 1 tbsp pumpkin seeds + a pinch of chili flakes, lemon juice and sea salt.\n\nMethod: lightly toast the bread, mash avocado with lemon/salt/chili and spread on top, layer spinach, top with the eggs, sprinkle pumpkin seeds.\n\nMacros: Protein 18g | Healthy fats 26g | Carbs 30g (22g net) | Fiber 8g | ~420 kcal. Delivers Vitamin D, B12, Biotin, E, Folate, K2 plus Magnesium, Zinc, Selenium, Potassium. Blood sugar impact: low, 4-5 hour energy.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-l1",
+    "part": 3,
+    "order_index": 360,
+    "time_label": null,
+    "title": "Enhanced Lunch: Wild-Caught Salmon with Quinoa & Greens",
+    "body": "100g wild-caught salmon + ½ cup cooked quinoa + 1 cup steamed broccoli + ½ cup sautéed spinach + 1 tbsp olive oil + lemon, garlic, parsley/dill.\n\nMethod: marinate salmon in lemon/olive oil/garlic/herbs, bake or grill at 180°C for 15-18 min; cook quinoa (1:2 water ratio, simmer 15 min); steam broccoli 5 min; sauté spinach with garlic 2 min. Serve salmon over quinoa with the vegetables, drizzle olive oil and lemon.\n\nMacros: Protein 35g | Healthy fats 20g | Carbs 32g (26g net) | Fiber 6g | ~460 kcal. Delivers Vitamin D, B12, C, E, K, Folate, B1, B6 plus Omega-3, Magnesium, Selenium, Iron, Chromium, Manganese, Phosphorus. Blood sugar impact: low, stable 5-6 hours.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-l2",
+    "part": 3,
+    "order_index": 370,
+    "time_label": null,
+    "title": "Enhanced Lunch: Chickpea & Veggie Stir-Fry with Tahini",
+    "body": "1 cup boiled chickpeas + 1 cup mixed vegetables (bell pepper, zucchini, carrot, spinach) + 1 tbsp sesame oil + 1 tbsp tahini + garlic, ginger, cumin, coriander, turmeric + fresh lemon juice.\n\nMethod: sauté garlic/ginger in sesame oil 1 min, add vegetables and stir-fry 5 min, add chickpeas and spices, cook 3 min, drizzle tahini and lemon before serving.\n\nMacros: Protein 16g | Healthy fats 14g | Carbs 42g (32g net) | Fiber 10g | ~360 kcal. Delivers B6, Folate, C, E plus Magnesium, Iron, Zinc, Calcium, Copper, Potassium. Blood sugar impact: low-moderate.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-l3",
+    "part": 3,
+    "order_index": 380,
+    "time_label": null,
+    "title": "Enhanced Lunch: Paneer Tikka with Rainbow Salad",
+    "body": "100g paneer cubes + 1 tbsp plain yogurt + turmeric/cumin/chili powder/lemon/garlic marinade + 2 cups mixed salad (cucumber, tomato, lettuce, bell pepper, red cabbage) + 1 tbsp olive oil dressing + 1 tbsp pumpkin seeds.\n\nMethod: marinate paneer 30 min, grill or bake at 180°C for 15 min until golden; toss the salad with olive oil, lemon, salt and pepper, top with pumpkin seeds; serve alongside the paneer.\n\nMacros: Protein 22g | Healthy fats 18g | Carbs 16g (12g net) | Fiber 4g | ~320 kcal. Delivers B12, C, E, Folate plus Calcium, Magnesium, Zinc, Potassium. Blood sugar impact: low, stable 4-5 hours.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-l4",
+    "part": 3,
+    "order_index": 390,
+    "time_label": null,
+    "title": "Enhanced Lunch: Lentil & Spinach Soup (Dal Palak) with Ghee",
+    "body": "½ cup masoor dal + 2 cups fresh spinach + 1 chopped tomato + garlic, ginger, cumin, turmeric, coriander + 1 tsp grass-fed ghee + fresh lemon juice.\n\nMethod: pressure-cook the dal with turmeric (3 whistles); separately temper cumin seeds in ghee, add garlic/ginger, then tomato until soft, then spinach until wilted; mix into the cooked dal, simmer 5 min, finish with lemon.\n\nMacros: Protein 18g | Healthy fats 6g | Carbs 40g (32g net) | Fiber 8g | ~290 kcal. Delivers B1, B6, B9, C, E, K2 plus Magnesium, Iron, Potassium. Blood sugar impact: low-moderate.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-l5",
+    "part": 3,
+    "order_index": 400,
+    "time_label": null,
+    "title": "Enhanced Lunch: Brown Rice Power Bowl with Egg & Avocado",
+    "body": "½ cup cooked brown rice + 2 boiled eggs (sliced) + ½ avocado (sliced) + 1 cup sautéed vegetables (bell pepper, broccoli, carrot) + 1 tbsp sesame seeds + low-sodium soy sauce, ginger, garlic.\n\nMethod: cook rice (1:2.5 water ratio, simmer 40 min); sauté vegetables with garlic/ginger 5 min; assemble rice as the base, top with vegetables, egg and avocado, drizzle soy sauce, sprinkle sesame seeds.\n\nMacros: Protein 18g | Healthy fats 22g | Carbs 45g (38g net) | Fiber 7g | ~450 kcal. Delivers Vitamin D, B12, B1, B6, Biotin, E, Folate, K2, C plus Magnesium, Selenium, Potassium, Calcium, Copper, Manganese, Chromium. Blood sugar impact: low-moderate.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-d1",
+    "part": 3,
+    "order_index": 410,
+    "time_label": null,
+    "title": "Enhanced Dinner: Baked Chicken with Roasted Rainbow Vegetables",
+    "body": "100g chicken breast + 1 cup mixed vegetables (zucchini, bell pepper, carrot, broccoli) + 1 tbsp olive oil + rosemary, garlic, thyme, black pepper + lemon.\n\nMethod: marinate chicken in olive oil/rosemary/garlic/lemon 15 min; lay chicken and chopped vegetables on a tray, drizzle oil, season, bake at 180°C for 25-30 min; serve with a lemon wedge.\n\nMacros: Protein 30g | Healthy fats 16g | Carbs 18g (14g net) | Fiber 4g | ~340 kcal. Delivers B6, B12, C, E, Niacin plus Selenium, Chromium, Potassium. Blood sugar impact: low, stable overnight.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-d2",
+    "part": 3,
+    "order_index": 420,
+    "time_label": null,
+    "title": "Enhanced Dinner: Palak Paneer with Whole Wheat Roti",
+    "body": "100g paneer + 2 cups spinach + 1 tomato + garlic, ginger, cumin, garam masala, turmeric + 1 whole wheat roti + 1 tsp grass-fed ghee.\n\nMethod: blanch spinach 1 min and blend into a smooth paste; temper cumin in ghee, sauté garlic/ginger, add tomato until soft, stir in the spinach paste and spices, add paneer cubes, simmer 5 min; serve with the roti.\n\nMacros: Protein 20g | Healthy fats 16g | Carbs 30g (24g net) | Fiber 6g | ~350 kcal. Delivers B12, C, E, Folate, B1, K2 plus Magnesium, Calcium, Iron. Blood sugar impact: low-moderate, stable overnight.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-d3",
+    "part": 3,
+    "order_index": 430,
+    "time_label": null,
+    "title": "Enhanced Dinner: Moong Dal Khichdi with Ghee & Vegetables",
+    "body": "¼ cup moong dal + ¼ cup brown rice + 1 cup mixed vegetables (carrot, peas, beans) + 1 tsp grass-fed ghee + cumin, turmeric, ginger, asafoetida.\n\nMethod: pressure-cook the dal, rice and vegetables with turmeric (3 whistles); temper cumin in ghee with ginger and asafoetida, pour over the khichdi and mix well; serve warm.\n\nMacros: Protein 14g | Healthy fats 6g | Carbs 48g (40g net) | Fiber 8g | ~310 kcal. Delivers B1, B6, B9, C, E, K2 plus Magnesium, Manganese. Blood sugar impact: low-moderate — easy to digest, ideal for dinner.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-d4",
+    "part": 3,
+    "order_index": 440,
+    "time_label": null,
+    "title": "Enhanced Dinner: Grilled Mackerel with Sautéed Greens",
+    "body": "100g mackerel (or salmon/sardines) + 2 cups mixed greens (spinach, methi, kale) + 1 tbsp olive oil + lemon, garlic, black pepper, herbs.\n\nMethod: marinate fish in lemon/garlic/olive oil/herbs 15 min, grill or bake at 180°C for 12-15 min; sauté greens with garlic 3 min; serve together with a squeeze of fresh lemon.\n\nMacros: Protein 28g | Healthy fats 24g | Carbs 10g (8g net) | Fiber 2g | ~370 kcal. Delivers Omega-3, Vitamin D, B12, E, Folate plus Magnesium, Selenium, Iron. Blood sugar impact: low — anti-inflammatory dinner.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p3-meal-d5",
+    "part": 3,
+    "order_index": 450,
+    "time_label": null,
+    "title": "Enhanced Dinner: Stuffed Bell Peppers (Vegetarian)",
+    "body": "2 large bell peppers + ½ cup cooked quinoa + ½ cup black beans + ½ cup diced tomatoes + 1 tbsp olive oil + cumin, paprika, garlic powder, turmeric + fresh cilantro.\n\nMethod: cut the tops off the peppers and remove seeds; mix quinoa, beans, tomatoes and spices; stuff into the peppers, drizzle olive oil, bake at 180°C for 25 min; garnish with cilantro.\n\nMacros: Protein 14g | Healthy fats 10g | Carbs 46g (36g net) | Fiber 10g | ~330 kcal. Delivers C, E, B1, B6, Folate plus Magnesium, Iron, Potassium, Manganese. Blood sugar impact: low-moderate — high fiber, ideal for dinner.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-formula",
+    "part": 4,
+    "order_index": 10,
+    "time_label": null,
+    "title": "UrCare Reversal Meal List — The Formula",
+    "body": "A large recipe database for diabetes reversal: High Fiber • High Protein • Low Carb • Moderate Fat, with vegetarian and non-vegetarian recipes kept separate.\n\nThe formula for every meal: 50% high fiber (leafy greens, cruciferous vegetables, seeds), 30% high protein (eggs, lean meats, paneer, tofu, sprouts), 20% healthy fat (ghee, olive oil, nuts — in moderation). Low carb throughout: no sugar, no white rice, no wheat flour — replaced with almond, coconut, besan or chickpea flour.\n\nUsage: vegetarians can choose any breakfast recipe #1-20, non-vegetarians #1-40; rotate different meals through the week; one recipe = one serving; eat breakfast within 1-2 hours of waking.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-shopping-list",
+    "part": 4,
+    "order_index": 20,
+    "time_label": null,
+    "title": "Shopping List — Core Essentials",
+    "body": "Proteins (veg): paneer, tofu, soya chunks/granules, besan, moong dal, unsweetened Greek yogurt. Proteins (non-veg): eggs, chicken breast/thighs, fish, prawns, chicken sausages, turkey/chicken slices, canned tuna, canned sardines.\n\nHigh-fiber vegetables (buy weekly) — leafy: spinach, methi, lettuce, coriander; crunchy: capsicum, cucumber, broccoli, cauliflower, cabbage; volume: bottle gourd, ridge gourd, pumpkin, eggplant, mushrooms, zucchini.\n\nFats & pantry: ghee, olive oil, coconut oil, butter; nuts/seeds — almonds, walnuts, chia, flaxseed, pumpkin seed, sunflower seed, peanuts; low-carb flours — almond, coconut, besan, oat, ragi; spices — turmeric, cumin, coriander powder, garam masala, pink/black salt, black pepper, mustard seeds, curry leaves, ajwain, cardamom, chaat masala, pav bhaji masala; others — psyllium husk (isabgol), green chili, ginger, garlic, lemon, stevia, low-sodium soy sauce, sugar-free tamarind chutney.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b01",
+    "part": 4,
+    "order_index": 100,
+    "time_label": null,
+    "title": "Meal List Breakfast #1 (Veg): Paneer & Flaxseed Cheela",
+    "body": "Ingredients: 100g grated paneer, 3 tbsp besan, 2 tbsp flaxseed powder, 1 chopped green chili, 2 tbsp coriander, ¼ tsp turmeric, salt, water as needed, 1 tsp ghee/olive oil.\n\nMethod: mix paneer, besan and flaxseed powder with the chili, coriander, turmeric and salt; add water to a thick dosa-like batter; cook thin on a ghee-greased tawa, 2-3 minutes per side until golden.\n\nMacros (per serving): 410 kcal | Protein 23g | Net Carbs 9g | Fiber 8g | Fats 30g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b02",
+    "part": 4,
+    "order_index": 101,
+    "time_label": null,
+    "title": "Meal List Breakfast #2 (Veg): Almond Flour & Spinach Roti",
+    "body": "Ingredients: 1 cup almond flour, 2 tbsp psyllium husk, ¼ cup blanched spinach puree, ½ tsp ajwain, salt, warm water as needed, 1 tbsp ghee.\n\nMethod: knead almond flour, psyllium husk, spinach puree, ajwain and salt with warm water into a soft dough; rest 5 minutes; pat into rotis between plastic sheets and cook on a tawa with ghee until lightly browned both sides.\n\nMacros (per batch, ~4 rotis): 720 kcal | Protein 25g | Net Carbs 12g | Fiber 24g | Fats 62g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b03",
+    "part": 4,
+    "order_index": 102,
+    "time_label": null,
+    "title": "Meal List Breakfast #3 (Veg): Sprouted Moong & Pomegranate Bowl",
+    "body": "Ingredients: 1 cup sprouted moong (steamed 5 min), ¼ cup pomegranate seeds, ½ diced cucumber, ½ tsp chaat masala, a pinch of black salt, 1 tbsp lemon juice, 2 tbsp coriander.\n\nMethod: mix steamed sprouts with cucumber and pomegranate, season with chaat masala, black salt and lemon, garnish with coriander; serve chilled or at room temperature.\n\nMacros (per serving): 180 kcal | Protein 12g | Net Carbs 28g | Fiber 10g | Fats 1g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b04",
+    "part": 4,
+    "order_index": 103,
+    "time_label": null,
+    "title": "Meal List Breakfast #4 (Veg): Tofu Bhurji",
+    "body": "Ingredients: 200g crumbled firm tofu, 1 chopped onion, 1 chopped tomato, ½ tsp turmeric, 1 tsp pav bhaji masala, ½ tsp cumin seeds, salt, 1 tbsp olive oil, coriander.\n\nMethod: temper cumin in oil, sauté onion till translucent, add tomato till soft, stir in turmeric and pav bhaji masala, add crumbled tofu and cook 5 minutes, garnish with coriander.\n\nMacros (per serving): 310 kcal | Protein 34g | Net Carbs 12g | Fiber 6g | Fats 18g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b05",
+    "part": 4,
+    "order_index": 104,
+    "time_label": null,
+    "title": "Meal List Breakfast #5 (Veg): Greek Yogurt Parfait",
+    "body": "Ingredients: 1 cup unsweetened Greek yogurt, 2 tbsp chia seeds, 8-10 chopped walnuts, ¼ tsp cinnamon, 2-3 drops stevia (optional).\n\nMethod: layer yogurt, chia seeds and walnuts in a bowl, dust with cinnamon, add stevia if desired, let sit 5 minutes and serve chilled.\n\nMacros (per serving): 380 kcal | Protein 25g | Net Carbs 9g | Fiber 11g | Fats 24g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b06",
+    "part": 4,
+    "order_index": 105,
+    "time_label": null,
+    "title": "Meal List Breakfast #6 (Veg): Methi & Besan Pola",
+    "body": "Ingredients: 1 cup finely chopped fresh methi leaves, ½ cup besan, 2 tbsp curd, 1 tsp ginger paste, 1 chopped green chili, ¼ tsp turmeric, salt, water as needed, 2 tsp ghee.\n\nMethod: mix besan, curd, methi, ginger, chili, turmeric and salt into a thick batter, rest 10 minutes; cook small pancakes on a covered pan to steam the methi (2 min), flip and finish uncovered, apply ghee.\n\nMacros (per serving): 280 kcal | Protein 14g | Net Carbs 24g | Fiber 7g | Fats 12g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b07",
+    "part": 4,
+    "order_index": 106,
+    "time_label": null,
+    "title": "Meal List Breakfast #7 (Veg): Mushroom & Cheese Sauté",
+    "body": "Ingredients: 200g sliced button mushrooms, 3-4 minced garlic cloves, 1 tbsp butter, 1 cheese slice, ½ tsp oregano, ½ tsp black pepper, salt.\n\nMethod: sauté garlic in butter 30 seconds, add mushrooms and cook on high heat 4-5 minutes until the water evaporates, season, top with the cheese slice while hot until it melts.\n\nMacros (per serving): 210 kcal | Protein 11g | Net Carbs 5g | Fiber 2g | Fats 17g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b08",
+    "part": 4,
+    "order_index": 107,
+    "time_label": null,
+    "title": "Meal List Breakfast #8 (Veg): Soya Granules Upma",
+    "body": "Ingredients: 1 cup soya granules (soaked in hot water 10 min, squeezed dry), 1 tsp mustard seeds, 8-10 curry leaves, ¼ cup each chopped beans and carrot, 1 slit green chili, ¼ tsp turmeric, salt, 1 tbsp olive oil, coriander.\n\nMethod: temper mustard seeds, curry leaves and chili in oil, add beans/carrot and sauté 3 minutes, add turmeric/salt and the squeezed soya granules, cover and steam 5 minutes on low heat, garnish.\n\nMacros (per serving): 290 kcal | Protein 25g | Net Carbs 14g | Fiber 11g | Fats 15g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b09",
+    "part": 4,
+    "order_index": 108,
+    "time_label": null,
+    "title": "Meal List Breakfast #9 (Veg): Coconut Flour Porridge",
+    "body": "Ingredients: 3 tbsp coconut flour, 1 cup unsweetened almond milk, ¼ tsp cardamom powder, 1 tbsp pumpkin seeds, 2-3 drops stevia (optional), a pinch of salt.\n\nMethod: heat almond milk, whisk in coconut flour gradually, add cardamom and salt, cook 2 minutes until thick, sweeten if desired, top with pumpkin seeds.\n\nMacros (per serving): 180 kcal | Protein 7g | Net Carbs 6g | Fiber 10g | Fats 11g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b10",
+    "part": 4,
+    "order_index": 109,
+    "time_label": null,
+    "title": "Meal List Breakfast #10 (Veg): Palak Paneer Cutlets",
+    "body": "Ingredients: 1 cup blanched, squeezed and chopped spinach, 100g grated paneer, 2 tbsp oat flour (binder), 1 tsp ginger paste, 1 chopped green chili, ¼ tsp garam masala, salt, 2 tbsp olive oil.\n\nMethod: mix spinach, paneer, oat flour, ginger, chili, garam masala and salt, shape into cutlets, shallow-fry 3 minutes per side until golden; serve with green chutney.\n\nMacros (per serving): 490 kcal | Protein 22g | Net Carbs 12g | Fiber 4g | Fats 40g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b11",
+    "part": 4,
+    "order_index": 110,
+    "time_label": null,
+    "title": "Meal List Breakfast #11 (Veg): Chia Seed Pudding (Saffron)",
+    "body": "Ingredients: 3 tbsp chia seeds, 1 cup unsweetened coconut milk, 8-10 saffron strands, 3-4 drops stevia, 1 tbsp chopped almonds.\n\nMethod: stir chia seeds into coconut milk with saffron and stevia, refrigerate overnight (or at least 4 hours), top with chopped almonds before serving.\n\nMacros (per serving): 280 kcal | Protein 7g | Net Carbs 5g | Fiber 12g | Fats 23g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b12",
+    "part": 4,
+    "order_index": 111,
+    "time_label": null,
+    "title": "Meal List Breakfast #12 (Veg): Vegetable & Paneer Stir-fry",
+    "body": "Ingredients: 150g cubed paneer, ½ each red/yellow/green capsicum (cubed), ½ cubed zucchini, 1 tbsp low-sodium soy sauce, 1 tsp sesame seeds, 1 tbsp olive oil, salt and pepper.\n\nMethod: toss paneer in hot oil 1 minute until slightly golden, add capsicum and zucchini and toss on high heat 3-4 minutes (keep crunchy), add soy sauce/salt/pepper, finish with sesame seeds.\n\nMacros (per serving): 580 kcal | Protein 30g | Net Carbs 12g | Fiber 5g | Fats 46g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b13",
+    "part": 4,
+    "order_index": 112,
+    "time_label": null,
+    "title": "Meal List Breakfast #13 (Veg): Avocado & Cottage Cheese Mash",
+    "body": "Ingredients: 1 ripe avocado, 100g crumbled paneer/cottage cheese, 1 tbsp lemon juice, ¼ tsp chili flakes, salt, 1 thick-sliced cucumber for serving.\n\nMethod: mash the avocado with the paneer, lemon juice, chili flakes and salt (keep slightly chunky), top thick cucumber rounds with the mash.\n\nMacros (per serving): 540 kcal | Protein 21g | Net Carbs 9g | Fiber 14g | Fats 46g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b14",
+    "part": 4,
+    "order_index": 113,
+    "time_label": null,
+    "title": "Meal List Breakfast #14 (Veg): Roasted Chana Chaat",
+    "body": "Ingredients: 1 cup skinless roasted chana, 1 small chopped onion and tomato, 2 tbsp grated raw mango, 2 tbsp coriander, ½ tsp chaat masala, 1 tbsp lemon juice, 1 tsp green chutney (optional).\n\nMethod: toss the roasted chana with onion, tomato, raw mango and coriander, season with chaat masala, lemon and chutney, let sit 2 minutes and serve.\n\nMacros (per serving): 360 kcal | Protein 19g | Net Carbs 45g | Fiber 14g | Fats 6g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b15",
+    "part": 4,
+    "order_index": 114,
+    "time_label": null,
+    "title": "Meal List Breakfast #15 (Veg): Ragi & Curd Smoothie",
+    "body": "Ingredients: 2 tbsp ragi flour, ½ cup water, 1 cup buttermilk/thin curd, ½ tsp roasted cumin powder, salt, coriander.\n\nMethod: cook ragi flour with water into a lump-free thick paste (3-4 min), cool completely, blend with buttermilk, cumin powder and salt, garnish and drink.\n\nMacros (per serving): 160 kcal | Protein 10g | Net Carbs 22g | Fiber 3g | Fats 3g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b16",
+    "part": 4,
+    "order_index": 115,
+    "time_label": null,
+    "title": "Meal List Breakfast #16 (Veg): Broccoli & Almond Tikki",
+    "body": "Ingredients: 2 cups grated broccoli, 3 tbsp almond powder, 2 tbsp grated cheese, 1 chopped green chili, ¼ tsp black pepper, salt, 2 tbsp olive oil.\n\nMethod: mix broccoli, almond powder, cheese, chili, pepper and salt into a patty mix, shape into tikkis, pan-fry 3-4 minutes per side until golden and crisp.\n\nMacros (per serving): 380 kcal | Protein 13g | Net Carbs 8g | Fiber 6g | Fats 33g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b17",
+    "part": 4,
+    "order_index": 116,
+    "time_label": null,
+    "title": "Meal List Breakfast #17 (Veg): Green Pea & Mint Mash",
+    "body": "Ingredients: 1 cup boiled green peas, ¼ cup fresh mint leaves, 1 tbsp lemon juice, 1 tbsp olive oil, 2 garlic cloves, ¼ tsp black pepper, salt.\n\nMethod: boil peas until soft, drain, roughly mash with mint, garlic, lemon juice, olive oil, pepper and salt; serve warm.\n\nMacros (per serving): 250 kcal | Protein 8g | Net Carbs 16g | Fiber 7g | Fats 15g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b18",
+    "part": 4,
+    "order_index": 117,
+    "time_label": null,
+    "title": "Meal List Breakfast #18 (Veg): Pumpkin Seed & Berry Bowl",
+    "body": "Ingredients: 2 tbsp pumpkin seeds, 1 tbsp sunflower seeds, 1 cup unsweetened Greek yogurt, 4-5 sliced strawberries, ¼ tsp vanilla extract (optional).\n\nMethod: mix vanilla into the yogurt, stir in the seeds, top with sliced strawberries and serve immediately.\n\nMacros (per serving): 310 kcal | Protein 25g | Net Carbs 12g | Fiber 3g | Fats 16g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b19",
+    "part": 4,
+    "order_index": 118,
+    "time_label": null,
+    "title": "Meal List Breakfast #19 (Veg): Cauliflower Poha",
+    "body": "Ingredients: 2 cups grated cauliflower, 2 tbsp peanuts, 1 tsp mustard seeds, 8-10 curry leaves, ¼ tsp turmeric, 1 chopped green chili, 1 tbsp lemon juice, salt, 1 tbsp olive oil, coriander.\n\nMethod: temper mustard seeds, curry leaves and peanuts in oil, add chili, cauliflower, turmeric and salt, cover and cook on low heat 5-7 minutes, finish with lemon juice and coriander.\n\nMacros (per serving): 260 kcal | Protein 9g | Net Carbs 10g | Fiber 6g | Fats 20g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b20",
+    "part": 4,
+    "order_index": 119,
+    "time_label": null,
+    "title": "Meal List Breakfast #20 (Veg): Masala Peanuts & Veggies",
+    "body": "Ingredients: 1 cup pressure-cooked (boiled) peanuts, ½ each chopped onion/tomato/cucumber, ½ tsp chaat masala, 1 tbsp lemon juice, 2 tbsp coriander, salt.\n\nMethod: pressure-cook peanuts 10 minutes, cool, toss with the chopped vegetables, chaat masala, lemon juice, salt and coriander; serve immediately.\n\nMacros (per serving): 350 kcal | Protein 15g | Net Carbs 12g | Fiber 8g | Fats 25g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b21",
+    "part": 4,
+    "order_index": 120,
+    "time_label": null,
+    "title": "Meal List Breakfast #21 (Non-Veg): Masala Omelette with Spinach",
+    "body": "Ingredients: 2 whole eggs, ½ cup chopped spinach, 1 small chopped onion, 1 chopped green chili, ¼ tsp turmeric, salt and pepper, 1 tsp olive oil/butter.\n\nMethod: whisk eggs with the vegetables and spices, cook in a hot pan 2 minutes, flip and finish 1-2 minutes.\n\nMacros (per serving): 210 kcal | Protein 13g | Net Carbs 4g | Fiber 1g | Fats 15g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b22",
+    "part": 4,
+    "order_index": 121,
+    "time_label": null,
+    "title": "Meal List Breakfast #22 (Non-Veg): Boiled Egg Chaat",
+    "body": "Ingredients: 2 diced boiled eggs, ¼ chopped onion and tomato, 1 tbsp sugar-free tamarind chutney, 1 tsp green chutney, ½ tsp chaat masala, 1 tbsp sev (optional, minimal), coriander.\n\nMethod: toss the diced eggs with onion, tomato, chutneys and chaat masala, top with a little sev and coriander.\n\nMacros (per serving): 180 kcal | Protein 13g | Net Carbs 6g | Fiber 1g | Fats 10g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b23",
+    "part": 4,
+    "order_index": 122,
+    "time_label": null,
+    "title": "Meal List Breakfast #23 (Non-Veg): Chicken Sausages & Mushrooms",
+    "body": "Ingredients: 2 low-starch chicken sausages, 1 cup sliced mushrooms, ½ tsp black pepper, ½ tsp mixed herbs, salt, 1 tsp olive oil.\n\nMethod: pan-fry sliced sausages 2 minutes, add mushrooms, pepper, herbs and salt, toss and cook 4-5 minutes until tender.\n\nMacros (per serving): 250 kcal | Protein 18g | Net Carbs 5g | Fiber 1g | Fats 17g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b24",
+    "part": 4,
+    "order_index": 123,
+    "time_label": null,
+    "title": "Meal List Breakfast #24 (Non-Veg): Scrambled Eggs with Broccoli",
+    "body": "Ingredients: 2 whole eggs, 1 cup small broccoli florets, 2 minced garlic cloves, 1 tbsp butter, salt and pepper.\n\nMethod: sauté garlic in butter, add broccoli 3-4 minutes, pour in whisked eggs and scramble 2 minutes.\n\nMacros (per serving): 280 kcal | Protein 16g | Net Carbs 4g | Fiber 2g | Fats 22g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b25",
+    "part": 4,
+    "order_index": 124,
+    "time_label": null,
+    "title": "Meal List Breakfast #25 (Non-Veg): Egg White Muffins",
+    "body": "Ingredients: 6 egg whites, ¼ cup each chopped bell pepper and spinach, 2 tbsp grated cheese (optional), salt, pepper, olive oil spray.\n\nMethod: whisk egg whites, fold in vegetables/cheese/seasoning, pour into a greased muffin tray and bake at 180°C for 15 minutes.\n\nMacros (per serving): 150 kcal | Protein 25g | Net Carbs 3g | Fiber 1g | Fats 3g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b26",
+    "part": 4,
+    "order_index": 125,
+    "time_label": null,
+    "title": "Meal List Breakfast #26 (Non-Veg): Poached Eggs on Tomato",
+    "body": "Ingredients: 2 eggs, 1 large tomato (thick slices), ½ tsp oregano, salt and pepper, 1 tsp olive oil.\n\nMethod: sear tomato slices in oil 2 minutes per side with seasoning, poach or fry the eggs, place one on each tomato slice and serve.\n\nMacros (per serving): 200 kcal | Protein 13g | Net Carbs 4g | Fiber 1g | Fats 14g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b27",
+    "part": 4,
+    "order_index": 126,
+    "time_label": null,
+    "title": "Meal List Breakfast #27 (Non-Veg): Chicken Keema (Breakfast Style)",
+    "body": "Ingredients: 200g minced chicken, 1 tsp ginger paste, ¼ cup green peas, 1 small chopped onion, ¼ tsp turmeric, ½ tsp garam masala, salt, 1 tsp olive oil, coriander.\n\nMethod: sauté onion and ginger, add minced chicken and dry-fry 5 minutes, add peas and spices, cook 5 more minutes until dry.\n\nMacros (per serving): 360 kcal | Protein 44g | Net Carbs 8g | Fiber 3g | Fats 15g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b28",
+    "part": 4,
+    "order_index": 127,
+    "time_label": null,
+    "title": "Meal List Breakfast #28 (Non-Veg): Smoked Salmon/Fish & Cucumber",
+    "body": "Ingredients: 100g smoked salmon or steamed fish, 1 cucumber (thick sticks), 2 tbsp cream cheese, 1 tsp lemon juice, black pepper.\n\nMethod: spread cream cheese (mixed with lemon and pepper) on cucumber sticks, wrap with fish, secure with a toothpick, serve chilled.\n\nMacros (per serving): 240 kcal | Protein 22g | Net Carbs 4g | Fiber 1g | Fats 14g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b29",
+    "part": 4,
+    "order_index": 128,
+    "time_label": null,
+    "title": "Meal List Breakfast #29 (Non-Veg): Egg Bhurji with Capsicum",
+    "body": "Ingredients: 2 whole eggs, ½ chopped capsicum, 1 small chopped onion, ½ tsp pav bhaji masala, ¼ tsp turmeric, 1 green chili, salt, 1 tsp butter/ghee.\n\nMethod: sauté onion, capsicum and chili 2 minutes, add turmeric and masala, crack eggs directly into the pan and scramble until done.\n\nMacros (per serving): 220 kcal | Protein 13g | Net Carbs 5g | Fiber 1g | Fats 16g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b30",
+    "part": 4,
+    "order_index": 129,
+    "time_label": null,
+    "title": "Meal List Breakfast #30 (Non-Veg): Turkey Slices with Avocado",
+    "body": "Ingredients: 4-5 deli turkey/chicken breast slices, ½ ripe avocado, black pepper, lemon juice.\n\nMethod: slice avocado into strips, season with pepper and lemon, roll a strip inside each turkey slice, secure with a toothpick, serve cold.\n\nMacros (per serving): 280 kcal | Protein 24g | Net Carbs 3g | Fiber 5g | Fats 17g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b31",
+    "part": 4,
+    "order_index": 130,
+    "time_label": null,
+    "title": "Meal List Breakfast #31 (Non-Veg): Shakshuka (Indian Style)",
+    "body": "Ingredients: 2 eggs, 1 medium chopped onion and tomato, 1 tsp cumin seeds, ¼ tsp red chili powder, ¼ tsp turmeric, salt, 1 tbsp olive oil, coriander.\n\nMethod: cook onion/tomato with spices into a gravy (5 min), make two wells, crack in the eggs, cover and steam 4-5 minutes, garnish and serve.\n\nMacros (per serving): 310 kcal | Protein 14g | Net Carbs 9g | Fiber 2g | Fats 23g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b32",
+    "part": 4,
+    "order_index": 131,
+    "time_label": null,
+    "title": "Meal List Breakfast #32 (Non-Veg): Fish Cutlets (Oat Crusted)",
+    "body": "Ingredients: 200g steamed and mashed fish, 1 tsp ginger paste, 1 chopped green chili, 2 tbsp oat flour (in the mix) + 2 tbsp for coating, ¼ tsp garam masala, salt, 2 tbsp olive oil.\n\nMethod: mix mashed fish with ginger, chili, oat flour, masala and salt, shape into cutlets, coat with oat flour and pan-fry 3 minutes per side until golden.\n\nMacros (per serving): 420 kcal | Protein 42g | Net Carbs 14g | Fiber 2g | Fats 20g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b33",
+    "part": 4,
+    "order_index": 132,
+    "time_label": null,
+    "title": "Meal List Breakfast #33 (Non-Veg): Anda Ghotala (Surat Style)",
+    "body": "Ingredients: 1 grated boiled egg + 1 raw egg, 1 small chopped onion and tomato, 1 tsp pav bhaji masala, ¼ tsp turmeric, salt, 1 tsp butter, coriander.\n\nMethod: sauté onion/tomato with spices, stir in the grated boiled egg, crack in the raw egg and scramble 2 minutes, garnish and serve.\n\nMacros (per serving): 220 kcal | Protein 14g | Net Carbs 5g | Fiber 1g | Fats 15g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b34",
+    "part": 4,
+    "order_index": 133,
+    "time_label": null,
+    "title": "Meal List Breakfast #34 (Non-Veg): Prawn & Spring Onion Stir-fry",
+    "body": "Ingredients: 200g cleaned small prawns, ½ cup chopped spring onion, 3 minced garlic cloves, 1 tbsp soy sauce, ¼ tsp black pepper, salt, 1 tbsp olive oil.\n\nMethod: toss garlic in hot oil, add prawns and stir-fry 2 minutes on high heat, add spring onion/soy sauce/seasoning, toss 1 more minute until prawns turn pink.\n\nMacros (per serving): 310 kcal | Protein 42g | Net Carbs 5g | Fiber 1g | Fats 15g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b35",
+    "part": 4,
+    "order_index": 134,
+    "time_label": null,
+    "title": "Meal List Breakfast #35 (Non-Veg): Chicken Liver Fry (Pepper)",
+    "body": "Ingredients: 200g cleaned chicken liver, 1 tbsp coarsely crushed black pepper, 10-12 curry leaves, 1 sliced onion, ½ tsp turmeric, salt, 1 tbsp ghee.\n\nMethod: sauté curry leaves and onion in ghee until golden, add turmeric and liver pieces, cook on high heat 5-6 minutes, finish with crushed pepper and salt.\n\nMacros (per serving): 410 kcal | Protein 36g | Net Carbs 9g | Fiber 1g | Fats 23g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b36",
+    "part": 4,
+    "order_index": 135,
+    "time_label": null,
+    "title": "Meal List Breakfast #36 (Non-Veg): Egg & Cheese Roll-up",
+    "body": "Ingredients: 1 whole egg, 1 cheese slice, 1 tsp butter, salt, pepper, oregano.\n\nMethod: make a thin omelette, place the cheese slice in the centre, fold into a roll and let the cheese melt.\n\nMacros (per serving): 190 kcal | Protein 11g | Net Carbs 1g | Fiber 0g | Fats 15g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b37",
+    "part": 4,
+    "order_index": 136,
+    "time_label": null,
+    "title": "Meal List Breakfast #37 (Non-Veg): Tuna Salad Bowl",
+    "body": "Ingredients: 1 can tuna in water (drained), 1 tsp mayonnaise, ½ cup chopped lettuce, ¼ diced cucumber, 1 tbsp lemon juice, salt and pepper.\n\nMethod: mix drained tuna with mayonnaise, toss in lettuce, cucumber, lemon juice, salt and pepper; serve chilled.\n\nMacros (per serving): 180 kcal | Protein 25g | Net Carbs 2g | Fiber 1g | Fats 6g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b38",
+    "part": 4,
+    "order_index": 137,
+    "time_label": null,
+    "title": "Meal List Breakfast #38 (Non-Veg): Sardines on Cucumber Toast",
+    "body": "Ingredients: 1 can sardines (water or olive oil), 1 cucumber (thick rounds), 1 tbsp lemon juice, black pepper, oregano.\n\nMethod: top thick cucumber rounds with sardine chunks, drizzle lemon juice and sprinkle pepper/oregano, serve chilled.\n\nMacros (per serving): 220 kcal | Protein 24g | Net Carbs 4g | Fiber 1g | Fats 12g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b39",
+    "part": 4,
+    "order_index": 138,
+    "time_label": null,
+    "title": "Meal List Breakfast #39 (Non-Veg): Mug Omelette (Microwave)",
+    "body": "Ingredients: 2 eggs, 2 tbsp chopped peppers, 1 tbsp grated cheese, salt, pepper.\n\nMethod: whisk everything in a microwave-safe mug, microwave on high 90 seconds (add 30 more if needed until set).\n\nMacros (per serving): 180 kcal | Protein 14g | Net Carbs 2g | Fiber 0g | Fats 12g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-b40",
+    "part": 4,
+    "order_index": 139,
+    "time_label": null,
+    "title": "Meal List Breakfast #40 (Non-Veg): Chicken Salami & Cheese",
+    "body": "Ingredients: 8-10 low-starch chicken salami slices, 8-10 cheese cubes, 8-10 pitted olives, toothpicks, black pepper.\n\nMethod: thread a cheese cube and olive onto a toothpick, wrap with a salami slice and secure, sprinkle pepper; serve as finger food.\n\nMacros (per serving): 350 kcal | Protein 25g | Net Carbs 4g | Fiber 1g | Fats 26g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l41",
+    "part": 4,
+    "order_index": 200,
+    "time_label": null,
+    "title": "Meal List Lunch #41 (Veg): Palak Paneer (No Cream)",
+    "body": "Ingredients: 200g cubed paneer, 2 cups fresh spinach, 4-5 garlic cloves, 1 green chili, 2 tbsp yogurt, ½ tsp cumin seeds, ¼ tsp garam masala, salt, 1 tbsp ghee.\n\nMethod: blanch spinach and blend with garlic/chili into a puree; temper cumin in ghee, add the puree and cook 3-4 minutes, stir in yogurt/salt/garam masala, add paneer and simmer 5 minutes.\n\nMacros (per serving): 350 kcal | Protein 20g | Net Carbs 5g | Fiber 3g | Fats 28g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l42",
+    "part": 4,
+    "order_index": 201,
+    "time_label": null,
+    "title": "Meal List Lunch #42 (Veg): Bharwa Karela (Stuffed Bitter Gourd)",
+    "body": "Ingredients: 4 medium karela, 1 large finely chopped onion, 2 tsp coarsely crushed fennel seeds, 1 tsp amchur, ½ tsp turmeric, 1 tsp coriander powder, salt, 3 tbsp mustard oil.\n\nMethod: slit karela lengthwise, salt and rest 30 minutes then squeeze out bitterness; stuff with the spiced onion mix; cook covered in mustard oil on low heat, turning every 5 minutes, for 20-25 minutes until soft.\n\nMacros (per serving): 220 kcal | Protein 4g | Net Carbs 10g | Fiber 6g | Fats 21g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l43",
+    "part": 4,
+    "order_index": 202,
+    "time_label": null,
+    "title": "Meal List Lunch #43 (Veg): Soya Chunk Curry",
+    "body": "Ingredients: 1.5 cups soaked soya chunks (squeezed dry), 1 small cubed potato (optional, minimal), 1 large chopped onion, 2 pureed tomatoes, 1 tsp ginger-garlic paste, 1 tsp coriander powder, ½ tsp garam masala, ½ tsp turmeric, 1 tsp red chili powder, salt, 2 tbsp oil, coriander.\n\nMethod: brown the onion, add ginger-garlic paste and tomato puree, cook the spices in 5 minutes, add soya chunks/potato and water, pressure cook 2 whistles (or simmer covered 15 minutes).\n\nMacros (per serving): 280 kcal | Protein 25g | Net Carbs 15g | Fiber 8g | Fats 15g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l44",
+    "part": 4,
+    "order_index": 203,
+    "time_label": null,
+    "title": "Meal List Lunch #44 (Veg): Bhindi Masala (Dry)",
+    "body": "Ingredients: 300g dried, slit okra, 1 large sliced onion, 1 tsp cumin seeds, 1 tsp coriander powder, ½ tsp turmeric, ½ tsp amchur, salt, 2 tbsp oil.\n\nMethod: temper cumin, fry onion until golden, add okra and let it cook undisturbed 3 minutes, then stir in turmeric/coriander/salt and cook 15-20 minutes on medium-high until crisp, finish with amchur.\n\nMacros (per serving): 180 kcal | Protein 3g | Net Carbs 8g | Fiber 5g | Fats 14g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l45",
+    "part": 4,
+    "order_index": 204,
+    "time_label": null,
+    "title": "Meal List Lunch #45 (Veg): Rajma with Cauliflower Rice",
+    "body": "Ingredients: 1 cup soaked kidney beans, 2 pureed tomatoes, 1 chopped onion, 1 tsp ginger-garlic paste, 1 tsp rajma masala, ½ tsp turmeric, salt, 1 tbsp oil, 2 cups grated cauliflower, ½ tsp cumin seeds, 1 tsp ghee.\n\nMethod: pressure-cook the soaked beans (4-5 whistles); separately brown onion, add ginger-garlic paste/tomato/spices, add the cooked beans and simmer 10 minutes, mashing some for thickness; sauté grated cauliflower with cumin in ghee 5-7 minutes and serve the rajma over it.\n\nMacros (per serving): 350 kcal | Protein 15g | Net Carbs 25g | Fiber 14g | Fats 12g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l46",
+    "part": 4,
+    "order_index": 205,
+    "time_label": null,
+    "title": "Meal List Lunch #46 (Veg): Methi Malai Paneer (Cashew Cream)",
+    "body": "Ingredients: 200g cubed paneer, 2 cups chopped fresh methi leaves, 3 tbsp cashew paste, 1 onion (paste), 1 tsp ginger paste, ½ tsp kasuri methi, ¼ tsp turmeric, ½ tsp garam masala, salt, 2 tbsp oil.\n\nMethod: brown the onion paste in oil, add ginger and turmeric, add blanched methi and sauté 3 minutes, stir in cashew paste and a little water for a white gravy, add paneer/kasuri methi/garam masala/salt and simmer 5 minutes.\n\nMacros (per serving): 380 kcal | Protein 21g | Net Carbs 6g | Fiber 2g | Fats 30g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l47",
+    "part": 4,
+    "order_index": 206,
+    "time_label": null,
+    "title": "Meal List Lunch #47 (Veg): Baingan Bharta",
+    "body": "Ingredients: 1 large eggplant (500g), 1 large chopped onion, 1 chopped tomato, 4-5 chopped garlic cloves, 1 chopped green chili, ½ tsp cumin seeds, ¼ tsp turmeric, coriander, salt, 2 tbsp mustard oil.\n\nMethod: char-roast the eggplant directly on a flame until soft, peel and mash; temper cumin and garlic in hot mustard oil, add onion until soft, then chili/tomato until soft, stir in turmeric/salt and the mashed eggplant, cook 5-7 minutes, garnish.\n\nMacros (per serving): 170 kcal | Protein 3g | Net Carbs 10g | Fiber 7g | Fats 14g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l48",
+    "part": 4,
+    "order_index": 207,
+    "time_label": null,
+    "title": "Meal List Lunch #48 (Veg): Mixed Vegetable Korma",
+    "body": "Ingredients: 1 cup chopped beans, 1 cup cubed carrot, ½ cup green peas, 1 cup cauliflower florets, ½ cup coconut milk, 1 onion (paste), 1 tsp ginger-garlic paste, ½ tsp garam masala, 4-5 ground cashews, 2 cloves, 1 bay leaf, salt, 2 tbsp oil.\n\nMethod: steam the vegetables to 70% doneness; brown onion paste with the whole spices, add ginger-garlic, then cashew paste, steamed vegetables, coconut milk, salt and garam masala, simmer 5-7 minutes until creamy.\n\nMacros (per serving): 280 kcal | Protein 5g | Net Carbs 14g | Fiber 6g | Fats 22g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l49",
+    "part": 4,
+    "order_index": 208,
+    "time_label": null,
+    "title": "Meal List Lunch #49 (Veg): Dal Tadka (Thick)",
+    "body": "Ingredients: 1 cup toor or moong dal, 1 tsp turmeric, 1 chopped tomato, salt, 2 tbsp ghee, 1 tsp cumin seeds, 4-5 sliced garlic cloves, 2 dry red chilies, curry leaves, coriander.\n\nMethod: pressure-cook the dal with turmeric (3 whistles), mash lightly, add tomato and salt and simmer 5 minutes (keep thick); temper cumin, garlic, chilies and curry leaves in ghee and pour over the dal as tadka, garnish.\n\nMacros (per serving): 260 kcal | Protein 12g | Net Carbs 25g | Fiber 10g | Fats 14g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l50",
+    "part": 4,
+    "order_index": 209,
+    "time_label": null,
+    "title": "Meal List Lunch #50 (Veg): Tofu Kadai",
+    "body": "Ingredients: 200g cubed firm tofu (pressed), capsicum and onion cut into strips, 1 chopped tomato, 2 tsp kadai masala, 1 tsp julienned ginger, ½ tsp turmeric, salt, 2 tbsp oil, kasuri methi.\n\nMethod: shallow-fry the tofu until golden and set aside; sauté ginger and onion, add capsicum, tomato, kadai masala and turmeric, cook 3-4 minutes on high heat, return the tofu with salt and crushed kasuri methi, toss 2 minutes.\n\nMacros (per serving): 220 kcal | Protein 16g | Net Carbs 8g | Fiber 4g | Fats 14g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l51",
+    "part": 4,
+    "order_index": 210,
+    "time_label": null,
+    "title": "Meal List Lunch #51 (Veg): Lauki Chana Dal",
+    "body": "Ingredients: 2 cups peeled, cubed bottle gourd, ½ cup soaked chana dal, ½ tsp turmeric, 1 slit green chili, salt, 1 tsp ghee, ½ tsp cumin seeds, a pinch of hing, curry leaves.\n\nMethod: pressure-cook the dal, gourd, turmeric, chili and salt with water (3 whistles), mash lightly; temper cumin, hing and curry leaves in ghee and pour over as a finishing tadka.\n\nMacros (per serving): 190 kcal | Protein 9g | Net Carbs 20g | Fiber 8g | Fats 7g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l52",
+    "part": 4,
+    "order_index": 211,
+    "time_label": null,
+    "title": "Meal List Lunch #52 (Veg): Mushroom Masala",
+    "body": "Ingredients: 300g halved button mushrooms, 1 large onion (paste), 2 pureed tomatoes, 1 tsp ginger-garlic paste, 1 tsp coriander powder, ½ tsp garam masala, ½ tsp turmeric, 1 tsp kasuri methi, salt, 2 tbsp oil, coriander.\n\nMethod: brown onion paste, add ginger-garlic then tomato puree and spices, cook 5-6 minutes, add mushrooms and cook covered 5 minutes until the gravy thickens, finish with garam masala and crushed kasuri methi.\n\nMacros (per serving): 160 kcal | Protein 5g | Net Carbs 8g | Fiber 3g | Fats 14g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l53",
+    "part": 4,
+    "order_index": 212,
+    "time_label": null,
+    "title": "Meal List Lunch #53 (Veg): Chole Salad Bowl",
+    "body": "Ingredients: 1 cup boiled chickpeas, diced cucumber/tomato/onion/½ capsicum, 2 tbsp tahini or lemon juice, 1 tsp chaat masala, ½ tsp roasted cumin powder, salt, coriander.\n\nMethod: boil and cool the chickpeas, toss with the diced vegetables, tahini/lemon, chaat masala, cumin and salt, garnish and serve chilled or at room temperature.\n\nMacros (per serving): 240 kcal | Protein 10g | Net Carbs 20g | Fiber 9g | Fats 12g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l54",
+    "part": 4,
+    "order_index": 213,
+    "time_label": null,
+    "title": "Meal List Lunch #54 (Veg): Gobi Aloo (Low Aloo)",
+    "body": "Ingredients: 3 cups cauliflower florets (80%), 1 small cubed potato (20%), 1 tsp ginger paste, 1 chopped green chili, ½ tsp turmeric, 1 tsp coriander powder, ½ tsp cumin seeds, salt, 2 tbsp oil, coriander.\n\nMethod: temper cumin/ginger/chili in oil, sauté the potato 2 minutes, add cauliflower with turmeric/coriander/salt and a little water, cover and steam-cook on low heat 12-15 minutes until tender.\n\nMacros (per serving): 180 kcal | Protein 4g | Net Carbs 12g | Fiber 5g | Fats 14g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l55",
+    "part": 4,
+    "order_index": 214,
+    "time_label": null,
+    "title": "Meal List Lunch #55 (Veg): Black Chana Curry",
+    "body": "Ingredients: 1 cup soaked black chickpeas (kala chana), 2 pureed tomatoes, 1 chopped onion, 1 tbsp ginger-garlic paste, 1 tsp coriander powder, 1 tsp garam masala, ½ tsp turmeric, 1 tsp amchur, salt, 2 tbsp oil, coriander.\n\nMethod: pressure-cook the soaked chana until soft (5-6 whistles); brown onion, add ginger-garlic/tomato/spices and cook the masala 5 minutes, add the chana and simmer 10-12 minutes with amchur until thick.\n\nMacros (per serving): 290 kcal | Protein 13g | Net Carbs 25g | Fiber 12g | Fats 15g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l56",
+    "part": 4,
+    "order_index": 215,
+    "time_label": null,
+    "title": "Meal List Lunch #56 (Veg): Paneer Jalfrezi",
+    "body": "Ingredients: 200g paneer, capsicum and onion cut into strips, 2 diced tomatoes, 2 tbsp sugar-free tomato sauce, 1 tsp vinegar, 1 tsp ginger-garlic paste, ½ tsp black pepper, salt, 2 tbsp oil.\n\nMethod: lightly fry paneer strips and set aside, sauté ginger-garlic/onion/capsicum on high heat, add tomatoes/sauce/vinegar/pepper/salt, toss the paneer back in for 2 minutes.\n\nMacros (per serving): 340 kcal | Protein 19g | Net Carbs 8g | Fiber 3g | Fats 26g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l57",
+    "part": 4,
+    "order_index": 216,
+    "time_label": null,
+    "title": "Meal List Lunch #57 (Veg): Lobia (Black-Eyed Peas) Curry",
+    "body": "Ingredients: 1 cup soaked lobia, 2 pureed tomatoes, 1 chopped onion, 1 tsp ginger-garlic paste, 1 tsp coriander powder, ½ tsp garam masala, ½ tsp turmeric, salt, 2 tbsp oil, coriander.\n\nMethod: pressure-cook the soaked lobia (3 whistles); brown onion, add ginger-garlic/tomato/turmeric/coriander, add the lobia with some cooking water and simmer 8-10 minutes, finish with garam masala.\n\nMacros (per serving): 270 kcal | Protein 14g | Net Carbs 24g | Fiber 11g | Fats 14g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l58",
+    "part": 4,
+    "order_index": 217,
+    "time_label": null,
+    "title": "Meal List Lunch #58 (Veg): Zucchini Noodles with Pesto",
+    "body": "Ingredients: 2 large zucchini, 1 cup fresh basil, ¼ cup walnuts, 3-4 garlic cloves, 3 tbsp olive oil, 2 tbsp grated parmesan, salt and pepper.\n\nMethod: blend basil, walnuts, garlic, parmesan, olive oil, salt and pepper into a pesto; spiralize the zucchini into noodles (raw or lightly sautéed 2 minutes to keep crunchy), toss with the pesto.\n\nMacros (per serving): 250 kcal | Protein 6g | Net Carbs 5g | Fiber 3g | Fats 23g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l59",
+    "part": 4,
+    "order_index": 218,
+    "time_label": null,
+    "title": "Meal List Lunch #59 (Veg): Sprouted Moong Curry",
+    "body": "Ingredients: 1.5 cups sprouted moong, 1 chopped onion, 1 chopped tomato, 1 tsp ginger paste, 1 tsp goda/garam masala, ½ tsp turmeric, ½ tsp cumin seeds, salt, 2 tbsp oil, coriander.\n\nMethod: steam the sprouts lightly 5 minutes; temper cumin, sauté onion, add ginger/tomato/turmeric/masala 3 minutes, add the sprouts with water and salt, simmer 10 minutes to a medium consistency.\n\nMacros (per serving): 210 kcal | Protein 10g | Net Carbs 18g | Fiber 6g | Fats 14g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  },
+  {
+    "id": "p4-l60",
+    "part": 4,
+    "order_index": 219,
+    "time_label": null,
+    "title": "Meal List Lunch #60 (Veg): Turai (Ridge Gourd) Sabzi",
+    "body": "Ingredients: 3 medium peeled, cubed ridge gourd, 4-5 chopped garlic cloves, 2 slit green chilies, ½ tsp cumin seeds, ¼ tsp turmeric, salt, 1 tbsp oil, coriander.\n\nMethod: temper cumin/garlic/chili in oil, add the ridge gourd with turmeric and salt, cover and cook on low heat 15-20 minutes (it releases its own water) until very soft.\n\nMacros (per serving): 90 kcal | Protein 2g | Net Carbs 6g | Fiber 4g | Fats 7g.",
+    "condition_tags": [],
+    "day_start": null,
+    "day_end": null
+  }
+]

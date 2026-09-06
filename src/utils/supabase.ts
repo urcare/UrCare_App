@@ -345,34 +345,20 @@ export async function getActiveDates(userId: string): Promise<Set<string>> {
 }
 
 // ============================================================================
-// AI DAILY PLAN — fetched/generated via the server (needs Claude), but reads
-// go straight to Supabase since that's just a select respecting RLS.
+// REVERSAL DAILY PLAN — NOT AI-generated. The server deterministically
+// assembles it from the static reversal_plan_sections table, filtered to
+// this user's own selected conditions and program day. `date` only steers
+// which program day to show (so the calendar can look at a past day) — the
+// content itself is always the same for a given user + program day.
 // ============================================================================
 
-export async function getDailyPlan(userId: string, date: string): Promise<any | null> {
-  const supabase = getSupabaseClient();
-  if (!supabase) return null;
-  const { data } = await supabase.from('ai_daily_plans').select('*').eq('user_id', userId).eq('plan_date', date).maybeSingle();
-  return data;
-}
-
-export async function generateDailyPlan(date: string, profile?: UserHealthProfile): Promise<{ plan?: any; error?: string }> {
+export async function getDailyPlan(date: string): Promise<{ plan?: any; error?: string }> {
   const res = await authedFetch('/api/daily-plan', {
     method: 'POST',
-    body: JSON.stringify({
-      date,
-      profile: profile ? {
-        goal: profile.goal,
-        gender: profile.gender,
-        age: profile.age,
-        dietaryPreference: profile.dietaryPreference,
-        medicalConditions: profile.medicalConditions,
-        calculatedPlan: profile.calculatedPlan,
-      } : undefined,
-    }),
+    body: JSON.stringify({ date }),
   });
   const data = await res.json();
-  if (!res.ok) return { error: data.error || 'Could not generate today’s plan.' };
+  if (!res.ok) return { error: data.error || 'Could not load the plan for this day.' };
   return { plan: data.plan };
 }
 
