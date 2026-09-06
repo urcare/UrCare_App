@@ -82,3 +82,33 @@ alter table public.qr_settings enable row level security;
 drop policy if exists "public read qr settings" on public.qr_settings;
 create policy "public read qr settings" on public.qr_settings for select using (true);
 -- Writes go through the server (service_role), so no anon write policy.
+
+-- 4. REVERSAL PLAN SECTIONS — the static, admin-authored 24-hour reversal
+--    protocol (no AI). Each row is one step/branch of the plan; the server
+--    composes a user's daily plan by filtering these rows against their
+--    selected medical conditions and how many days they've been on the
+--    program — nothing here is generated, only assembled deterministically.
+create table if not exists public.reversal_plan_sections (
+  id text primary key,
+  part int not null default 1,
+  order_index int not null,
+  time_label text,
+  title text not null,
+  body text not null,
+  -- Empty = shown to everyone. Otherwise shown if the user has ANY of these
+  -- condition tags (see CONDITION_LABEL_TO_TAG in server.ts).
+  condition_tags text[] default '{}',
+  -- Program-day window this row applies to (1-14). Null on both = every day.
+  day_start int,
+  day_end int,
+  created_at timestamptz default now()
+);
+alter table public.reversal_plan_sections enable row level security;
+drop policy if exists "public read reversal plan sections" on public.reversal_plan_sections;
+create policy "public read reversal plan sections" on public.reversal_plan_sections for select using (true);
+-- Writes go through the seed script with the service_role key — no anon write policy.
+
+-- Day 1 of each user's reversal program — set once, the first time their
+-- plan is fetched (never overwritten by later profile edits), so "program
+-- day" (1-14) can be computed as (today - program_started_at).
+alter table public.health_profiles add column if not exists program_started_at timestamptz;

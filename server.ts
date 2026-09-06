@@ -396,150 +396,111 @@ Call the record_food_analysis tool exactly once with the complete result.`;
   }
 }));
 
-// 3. AI Daily Plan — generates (once per day, via Claude) and persists to `ai_daily_plans`.
-//    Explicitly varies from the previous day's plan so it never repeats.
-// De-dupes concurrent "generate today's plan" calls for the same user+date —
-// e.g. React StrictMode double-mounting a component, or two tabs open at
-// once — so a second caller piggybacks on the first's in-flight Claude call
-// instead of firing (and waiting out) its own redundant one. This was making
-// the "slow" complaint worse: two full generations competing for the same
-// Anthropic rate-limit slot, both taking longer than a single call would.
-const inFlightPlanGeneration = new Map<string, Promise<any>>();
+// 3. Daily Plan — NOT AI-generated. Deterministically assembled from the
+//    static `reversal_plan_sections` table (the UrCare reversal protocol),
+//    filtered to this user's own selected conditions and how many days
+//    they've been on the program. Same inputs always produce the same
+//    output — nothing here is written by a model.
+
+// Mirrors the condition checkboxes in OnboardingFlow.tsx / EditHealthProfileModal.tsx
+// — keep this in sync if that list changes. Maps the label the user picked
+// (stored verbatim in health_profiles.existing_concerns) to the canonical
+// tag used on reversal_plan_sections.condition_tags.
+const CONDITION_LABEL_TO_TAG: Record<string, string> = {
+  'Diabetes / Pre-Diabetes': 'diabetes',
+  'Obesity': 'obesity',
+  'High Blood Pressure': 'hypertension',
+  'High Cholesterol / Fatty Liver': 'fatty_liver',
+  'Thyroid (Hypo/Hyper)': 'thyroid',
+  'PCOS / PCOD': 'pcos',
+  'Neuropathy (Nerve Pain/Tingling)': 'neuropathy',
+  'Diabetic Retinopathy': 'retinopathy',
+  'Heart Disease': 'heart_disease',
+  'Kidney Disease': 'kidney_disease',
+  'Joint Pain / Arthritis': 'joint_pain',
+  'Chronic Fatigue': 'chronic_fatigue',
+  'Sleep Apnea / Sleep Issues': 'sleep_apnea',
+  'Erectile Dysfunction': 'erectile_dysfunction',
+  'Uric Acid / Gout': 'uric_acid_gout',
+  'Digestive / IBS': 'digestive_issues',
+};
+
+function conditionLabelsToTags(labels: string[] | null | undefined): Set<string> {
+  const tags = new Set<string>();
+  for (const label of labels || []) {
+    const tag = CONDITION_LABEL_TO_TAG[label];
+    if (tag) tags.add(tag);
+  }
+  return tags;
+}
+
+/** Program day is 1-14, counted from the day the plan was first opened — capped
+ *  at 14 (Day 14's protocol repeats as maintenance guidance after that).
+ *  `referenceDateIso` lets the calendar look back at what a past date's step
+ *  would have been, instead of always answering for today. */
+function computeProgramDay(startedAtIso: string, referenceDateIso?: string): number {
+  const start = new Date(startedAtIso);
+  start.setHours(0, 0, 0, 0);
+  const reference = referenceDateIso ? new Date(referenceDateIso) : new Date();
+  reference.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((reference.getTime() - start.getTime()) / 86400000);
+  return Math.min(14, Math.max(1, diffDays + 1));
+}
 
 app.post('/api/daily-plan', requireUser(async (req, res, user) => {
-  const { date, profile } = req.body;
-  if (!date) return res.status(400).json({ error: 'A date is required.' });
-  const lockKey = `${user.id}:${date}`;
-
   try {
+    const { date } = req.body as { date?: string };
     const supabase = getSupabaseAdmin();
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
 
-    // Already generated for this date? Return it as-is (never regenerate a past day).
-    const { data: existing } = await supabase.from('ai_daily_plans').select('*').eq('user_id', user.id).eq('plan_date', date).maybeSingle();
-    if (existing) return res.json({ plan: existing });
-
-    // Someone else's request for this exact user+date is already generating —
-    // wait for that one instead of starting a second Claude call.
-    const pending = inFlightPlanGeneration.get(lockKey);
-    if (pending) {
-      const plan = await pending;
-      return res.json({ plan });
-    }
-
-    const generation = generateAndSavePlan(supabase, user, date, profile);
-    inFlightPlanGeneration.set(lockKey, generation);
-    try {
-      const plan = await generation;
-      return res.json({ plan });
-    } finally {
-      inFlightPlanGeneration.delete(lockKey);
-    }
-  } catch (error: any) {
-    console.error('Error generating daily plan:', error);
-    return res.status(500).json({ error: 'Could not generate today’s plan right now. Please try again.' });
-  }
-}));
-
-async function generateAndSavePlan(supabase: SupabaseClient, user: { id: string; email: string }, date: string, profile: any): Promise<any> {
-    const ai = getClaudeClient();
-    if (!ai) throw new Error('The AI planner is not configured right now.');
-
-    // Look at the most recent previous plan so today's plan is told to differ from it.
-    const { data: previous } = await supabase
-      .from('ai_daily_plans')
-      .select('plan_date, morning_plan, afternoon_plan, evening_plan, night_plan')
+    const { data: hp } = await supabase
+      .from('health_profiles')
+      .select('existing_concerns, program_started_at')
       .eq('user_id', user.id)
-      .lt('plan_date', date)
-      .order('plan_date', { ascending: false })
-      .limit(1)
       .maybeSingle();
 
-    const profileContext = profile
-      ? [
-          profile.goal ? `Goal: ${profile.goal}` : '',
-          profile.gender ? `Gender: ${profile.gender}` : '',
-          profile.age ? `Age: ${profile.age}` : '',
-          profile.dietaryPreference ? `Dietary preference: ${profile.dietaryPreference}` : '',
-          Array.isArray(profile.medicalConditions) && profile.medicalConditions.length ? `Medical conditions: ${profile.medicalConditions.join(', ')}` : '',
-          profile.calculatedPlan ? `Targets — Calories: ${profile.calculatedPlan.targetCalories} kcal, Protein: ${profile.calculatedPlan.proteinGrams}g, Carbs: ${profile.calculatedPlan.carbsGrams}g, Fats: ${profile.calculatedPlan.fatsGrams}g, Water: ${profile.calculatedPlan.waterLiters}L` : '',
-        ].filter(Boolean).join('. ')
-      : '';
-
-    const systemInstruction = `You are UrCare's clinical nutrition & lifestyle planning AI. Generate ONE full day's personalized health plan for ${date}, in simple, beginner-friendly language (avoid heavy medical jargon).
-${previous ? `IMPORTANT: The user already had a plan yesterday (${previous.plan_date}). Today's plan MUST be meaningfully different — vary the specific meals, exercises, and tips — while still meeting the same nutrition targets. Do not repeat yesterday's plan verbatim.` : ''}
-Call the record_daily_plan tool exactly once with the complete structured result.`;
-
-    const parsed = await callClaudeForJson({
-      client: ai,
-      system: systemInstruction,
-      text: `Generate today's (${date}) personalized plan.${profileContext ? ` User profile: ${profileContext}.` : ''}${previous ? ` Yesterday's plan (vary from this): ${JSON.stringify({ morning: previous.morning_plan, afternoon: previous.afternoon_plan, evening: previous.evening_plan, night: previous.night_plan })}` : ''}`,
-      toolName: 'record_daily_plan',
-      toolDescription: 'Record one full day of personalized health guidance.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          morning_plan: { type: 'object', properties: { meal: { type: 'string' }, tip: { type: 'string' } }, required: ['meal', 'tip'] },
-          afternoon_plan: { type: 'object', properties: { meal: { type: 'string' }, tip: { type: 'string' } }, required: ['meal', 'tip'] },
-          evening_plan: { type: 'object', properties: { meal: { type: 'string' }, tip: { type: 'string' } }, required: ['meal', 'tip'] },
-          night_plan: { type: 'object', properties: { meal: { type: 'string' }, tip: { type: 'string' } }, required: ['meal', 'tip'] },
-          exercise_plan: {
-            type: 'object',
-            properties: {
-              activities: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, duration: { type: 'string' }, benefit: { type: 'string' } }, required: ['name', 'duration', 'benefit'] } },
-              avoid: { type: 'array', items: { type: 'string' } },
-            },
-            required: ['activities'],
-          },
-          hydration_plan: { type: 'object', properties: { targetLiters: { type: 'number' }, tip: { type: 'string' } }, required: ['targetLiters', 'tip'] },
-          nutrition_guidance: {
-            type: 'object',
-            properties: {
-              eat: { type: 'array', items: { type: 'string' } },
-              avoid: { type: 'array', items: { type: 'string' } },
-            },
-            required: ['eat', 'avoid'],
-          },
-          general_advice: { type: 'string' },
-          daily_quote: { type: 'string' },
-          medical_disclaimer: { type: 'string' },
-        },
-        required: ['morning_plan', 'afternoon_plan', 'evening_plan', 'night_plan', 'exercise_plan', 'hydration_plan', 'nutrition_guidance', 'general_advice', 'daily_quote', 'medical_disclaimer'],
-      },
-    });
-
-    // ai_daily_plans has NOT NULL constraints on every one of these columns —
-    // Claude's structured output occasionally omits/nulls a text field even
-    // when the schema marks it required, so fall back rather than 500ing.
-    const row = {
-      user_id: user.id,
-      plan_date: date,
-      morning_plan: parsed.morning_plan || {},
-      afternoon_plan: parsed.afternoon_plan || {},
-      evening_plan: parsed.evening_plan || {},
-      night_plan: parsed.night_plan || {},
-      exercise_plan: parsed.exercise_plan || {},
-      hydration_plan: parsed.hydration_plan || {},
-      nutrition_guidance: parsed.nutrition_guidance || {},
-      general_advice: parsed.general_advice || 'Stay consistent with your meals, movement, and water today — small steady habits add up the most.',
-      daily_quote: parsed.daily_quote || 'Small daily habits build big lifelong results.',
-      medical_disclaimer: parsed.medical_disclaimer || 'This plan is general wellness guidance, not a substitute for professional medical advice. Consult your doctor before making major changes, especially if you have an existing health condition.',
-    };
-
-    const { data: inserted, error: insertErr } = await supabase.from('ai_daily_plans').insert(row).select().single();
-    if (insertErr) {
-      // Two requests raced to generate the same day's plan (e.g. a double-mounted
-      // component in dev). Whoever lost the race just reads back the winner's row
-      // instead of erroring — the plan itself is still correct either way.
-      if (insertErr.code === '23505') {
-        const { data: winner } = await supabase.from('ai_daily_plans').select('*').eq('user_id', user.id).eq('plan_date', date).maybeSingle();
-        if (winner) return winner;
-      }
-      throw insertErr;
+    // First time this user opens their plan — pin "Day 1" to today. Never
+    // overwritten again, so later profile edits don't reset their progress.
+    let startedAt = hp?.program_started_at as string | undefined;
+    if (!startedAt) {
+      startedAt = new Date().toISOString();
+      await supabase.from('health_profiles').update({ program_started_at: startedAt }).eq('user_id', user.id).is('program_started_at', null);
     }
 
-    return inserted;
-}
+    const programDay = computeProgramDay(startedAt, date);
+    const userTags = conditionLabelsToTags(hp?.existing_concerns);
+
+    const { data: sections, error: sectionsError } = await supabase
+      .from('reversal_plan_sections')
+      .select('*')
+      .order('order_index', { ascending: true });
+    if (sectionsError) throw sectionsError;
+
+    const matched = (sections || []).filter((s: any) => {
+      const inDayRange = (s.day_start == null || programDay >= s.day_start) && (s.day_end == null || programDay <= s.day_end);
+      if (!inDayRange) return false;
+      const tags: string[] = s.condition_tags || [];
+      if (tags.length === 0) return true; // universal — shown to everyone
+      return tags.some((t) => userTags.has(t));
+    });
+
+    return res.json({
+      plan: {
+        programDay,
+        startedAt,
+        sections: matched.map((s: any) => ({
+          id: s.id,
+          timeLabel: s.time_label,
+          title: s.title,
+          body: s.body,
+        })),
+      },
+    });
+  } catch (error: any) {
+    console.error('Error assembling daily plan:', error);
+    return res.status(500).json({ error: 'Could not load today’s plan right now. Please try again.' });
+  }
+}));
 
 // ----------------------------------------------------------------------------
 // ORDERS & CHECKOUT — real `orders` + `order_items` rows.

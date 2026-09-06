@@ -35,13 +35,25 @@ const PACE_OPTIONS: { id: GoalPace; title: string; rate: string }[] = [
 
 const DIET_OPTIONS = ['Vegetarian', 'Eggetarian', 'Non-Vegetarian', 'Vegan', 'Jain', 'Keto / Low-Carb', 'Gluten-Free', 'Other'];
 
+// This exact label list is mirrored server-side (CONDITION_LABEL_TO_TAG in
+// server.ts) to match each user into the right condition-specific sections
+// of the reversal plan — keep the two in sync if this changes.
 const CONDITION_OPTIONS = [
   'None',
   'Diabetes / Pre-Diabetes',
-  'Thyroid (Hypo/Hyper)',
-  'PCOS / PCOD',
+  'Obesity',
   'High Blood Pressure',
   'High Cholesterol / Fatty Liver',
+  'Thyroid (Hypo/Hyper)',
+  'PCOS / PCOD',
+  'Neuropathy (Nerve Pain/Tingling)',
+  'Diabetic Retinopathy',
+  'Heart Disease',
+  'Kidney Disease',
+  'Joint Pain / Arthritis',
+  'Chronic Fatigue',
+  'Sleep Apnea / Sleep Issues',
+  'Erectile Dysfunction',
   'Uric Acid / Gout',
   'Digestive / IBS',
 ];

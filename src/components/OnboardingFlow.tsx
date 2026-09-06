@@ -1327,14 +1327,26 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                 <p className="text-xs text-zinc-500 mt-1">Our clinical AI algorithm adjusts micronutrient and glycemic limits for your health.</p>
               </div>
 
+              {/* This exact label list is mirrored server-side (CONDITION_LABEL_TO_TAG
+                  in server.ts) to match each user into the right condition-specific
+                  sections of the reversal plan — keep the two in sync if this changes. */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   'None',
                   'Diabetes / Pre-Diabetes',
-                  'Thyroid (Hypo/Hyper)',
-                  'PCOS / PCOD',
+                  'Obesity',
                   'High Blood Pressure',
                   'High Cholesterol / Fatty Liver',
+                  'Thyroid (Hypo/Hyper)',
+                  'PCOS / PCOD',
+                  'Neuropathy (Nerve Pain/Tingling)',
+                  'Diabetic Retinopathy',
+                  'Heart Disease',
+                  'Kidney Disease',
+                  'Joint Pain / Arthritis',
+                  'Chronic Fatigue',
+                  'Sleep Apnea / Sleep Issues',
+                  'Erectile Dysfunction',
                   'Uric Acid / Gout',
                   'Digestive / IBS',
                 ].map((cond) => {
