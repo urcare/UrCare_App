@@ -7,7 +7,6 @@ import {
 import { UserHealthProfile } from '../types';
 import { Logo } from './Logo';
 import { RiskAssessmentCard } from './RiskAssessmentCard';
-import { BodyPainMap } from './BodyPainMap';
 
 interface WowCelebrationProps {
   profile: UserHealthProfile;
@@ -169,9 +168,6 @@ export const WowCelebration: React.FC<WowCelebrationProps> = ({ profile, onEnter
           </div>
 
         </div>
-
-        {/* Personalized body map — built from the user's own onboarding answers */}
-        <BodyPainMap profile={profile} />
 
         {/* High Urgency Clinical Risk & Health Warnings Section */}
         <RiskAssessmentCard profile={profile} onTakeAction={onEnterDashboard} />
