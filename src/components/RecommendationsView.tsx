@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   CheckCircle2, Target, ChevronRight, ChevronDown,
   Stethoscope, FileText, Award, Circle, Check,
-  RefreshCw, AlertCircle, Clock,
+  RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon,
 } from 'lucide-react';
 import { UserHealthProfile, Prescription } from '../types';
@@ -104,11 +104,15 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
   const [expandedItems, toggleItem] = useToggleSet();
 
+  // The calendar starts collapsed — a "Change Date" button opens it, and
+  // picking a date closes it again, instead of always taking up space.
+  const [showCalendar, setShowCalendar] = useState(false);
+
   // Ticks once a minute purely to force a re-render, so "today"'s timeline
   // re-evaluates which period is current as the real clock moves — without
   // this, the page would keep showing whichever period was current at the
   // moment it was first opened, even hours later.
-  const [, forceClockTick] = useState(0);
+  const [clockTick, forceClockTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => forceClockTick((n) => n + 1), 60_000);
     return () => clearInterval(id);
@@ -237,6 +241,30 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     onReferenceSections?.(referenceSections);
   }, [referenceSections, onReferenceSections]);
 
+  // "Right Now" — whichever step's time has arrived most recently is pinned
+  // to the very top, enlarged, so there's never a need to scroll to find
+  // what to do at this exact moment. Recomputes every minute (via the tick
+  // above), so it swaps to the next step on its own the moment its time
+  // arrives — nothing to refresh manually.
+  const sortedToday = useMemo(
+    () => [...timelineSections].sort((a, b) => labelMinutes(a.timeLabel || '') - labelMinutes(b.timeLabel || '')),
+    [timelineSections]
+  );
+  const heroInfo = useMemo(() => {
+    if (!isToday || sortedToday.length === 0) return null;
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    let current: PlanSection | null = null;
+    let next: PlanSection | null = null;
+    for (const item of sortedToday) {
+      const mins = labelMinutes(item.timeLabel || '');
+      if (mins <= nowMinutes) current = item;
+      else { next = item; break; }
+    }
+    if (!current && !next) return null;
+    return { item: current || next!, isUpcoming: !current, next: current ? next : null };
+  }, [sortedToday, isToday, clockTick]);
+
   return (
     <div id="diet-recommendations-section" className="space-y-5 sm:space-y-6 text-left min-w-0">
 
@@ -292,29 +320,109 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 shrink-0">Day {programDay} of 14</span>
             )}
           </div>
-          {!isToday && (
+          <div className="flex items-center gap-3 shrink-0">
+            {!isToday && (
+              <button
+                type="button"
+                onClick={() => setSelectedDate(startOfToday())}
+                className="text-xs font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+                <span>{t('backToToday')}</span>
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setSelectedDate(startOfToday())}
-              className="text-xs font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+              onClick={() => setShowCalendar((v) => !v)}
+              className={`text-xs font-bold flex items-center gap-1.5 cursor-pointer px-2.5 py-1 rounded-lg transition-colors ${
+                showCalendar ? 'bg-emerald-500/15 text-emerald-500' : 'text-emerald-500 hover:bg-emerald-500/10'
+              }`}
             >
-              <ChevronRight className="w-3.5 h-3.5" />
-              <span>{t('backToToday')}</span>
+              <CalendarIcon className="w-3.5 h-3.5" />
+              <span>{showCalendar ? 'Hide Calendar' : 'Change Date'}</span>
             </button>
-          )}
+          </div>
         </div>
+
+        {/* Calendar — collapsed by default; opens only when "Change Date" is
+            tapped, and closes itself again once a date is picked. */}
+        <AnimatePresence initial={false}>
+          {showCalendar && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="pt-4">
+                <DailyCalendar
+                  selectedDate={selectedDate}
+                  onSelectDate={(d) => { setSelectedDate(d); setShowCalendar(false); }}
+                  markedDates={markedDates}
+                  isDark={isDark}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* 2. CALENDAR + TARGET vs ACHIEVEMENT METRICS */}
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-5 items-start min-w-0">
-        <DailyCalendar
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          markedDates={markedDates}
-          isDark={isDark}
-        />
+      {/* 2. RIGHT NOW — the single step whose time has arrived, enlarged and
+          pinned to the top so there's nothing to scroll for. Swaps to the
+          next step on its own the moment its time passes. */}
+      {heroInfo && (
+        <div className={`relative overflow-hidden rounded-3xl p-5 sm:p-7 ${isDark ? 'bg-zinc-950' : 'bg-white'} border-2 border-emerald-500/30 shadow-lg shadow-emerald-500/5`}>
+          <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+          <div className="relative space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-500">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                {heroInfo.isUpcoming ? 'Coming Up' : 'Right Now'}
+              </span>
+              {heroInfo.item.timeLabel && (
+                <span className="text-xs font-black opacity-60">{heroInfo.item.timeLabel}</span>
+              )}
+            </div>
 
-        <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4 min-w-0`}>
+            <div className="flex items-start gap-3.5">
+              <button
+                type="button"
+                onClick={() => toggleTask(heroInfo.item.id)}
+                aria-label={completedToday[heroInfo.item.id] ? 'Mark as not done' : 'Mark as done'}
+                className="shrink-0 mt-0.5 cursor-pointer"
+              >
+                {completedToday[heroInfo.item.id] ? (
+                  <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm shadow-emerald-500/40">
+                    <Check className="w-4 h-4 text-white stroke-[3]" />
+                  </div>
+                ) : (
+                  <Circle className="w-7 h-7 opacity-30" />
+                )}
+              </button>
+              <div className="min-w-0 flex-1">
+                <h3 className={`text-lg sm:text-xl font-black break-words ${completedToday[heroInfo.item.id] ? 'text-emerald-600' : ''}`}>
+                  {heroInfo.item.title}
+                </h3>
+                <p className={`text-sm leading-relaxed mt-1.5 whitespace-pre-line break-words ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
+                  {heroInfo.item.body}
+                </p>
+              </div>
+            </div>
+
+            {heroInfo.next && (
+              <div className={`flex items-center gap-2 text-xs pt-3 border-t ${isDark ? 'border-zinc-800 text-zinc-400' : 'border-zinc-100 text-zinc-500'}`}>
+                <span className="font-bold opacity-70">Up next:</span>
+                <span className="font-black text-emerald-500 shrink-0">{heroInfo.next.timeLabel}</span>
+                <span className="truncate">{heroInfo.next.title}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 3. TARGET vs ACHIEVEMENT METRICS */}
+      <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4 min-w-0`}>
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40 flex-wrap gap-2">
             <div className="flex items-center gap-2 text-emerald-500 min-w-0">
               {isToday ? <Target className="w-5 h-5 shrink-0" /> : <Award className="w-5 h-5 shrink-0" />}
@@ -363,10 +471,9 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               </div>
             </div>
           )}
-        </div>
       </div>
 
-      {/* 3. THE PLAN ITSELF — a fixed 24-hour timeline, grouped into
+      {/* 4. THE PLAN ITSELF — a fixed 24-hour timeline, grouped into
           Morning/Afternoon/Evening/Night so it reads as four short lists
           instead of one long scroll. Personalized only by which
           condition-specific steps are included (no AI text). */}
@@ -391,18 +498,11 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               <div className="flex items-center gap-2 text-emerald-500 min-w-0">
                 <Clock className="w-5 h-5 shrink-0" />
                 <h3 className="text-sm sm:text-base font-black tracking-tight truncate">
-                  {visiblePeriods.length === 1 ? `${visiblePeriods[0].label} Routine — Right Now` : '24-Hour Reversal Timeline'}
+                  {visiblePeriods.length === 1 ? `Rest of Your ${visiblePeriods[0].label}` : '24-Hour Reversal Timeline'}
                 </h3>
               </div>
-              <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 shrink-0 flex items-center gap-1">
-                {visiblePeriods.length === 1 ? (
-                  <>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span>Live Now</span>
-                  </>
-                ) : (
-                  'Matched to you'
-                )}
+              <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 shrink-0">
+                Matched to you
               </span>
             </div>
 
@@ -426,7 +526,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                     </div>
 
                     <div className="space-y-2">
-                      {items.map((section) => {
+                      {items.filter((s) => s.id !== heroInfo?.item.id).map((section) => {
                         const done = !!completedToday[section.id];
                         const open = expandedItems.has(section.id);
                         return (
