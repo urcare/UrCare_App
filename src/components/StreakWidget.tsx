@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, ChevronDown, Check, X, Calendar, Target, BarChart3, Trophy } from 'lucide-react';
+import { Heart, Check, X, Calendar, Target, BarChart3, Trophy } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { toDateKey } from './DailyCalendar';
-import { getActiveDates, getDailyPlan, getTaskCompletion } from '../utils/supabase';
+import { getActiveDates } from '../utils/supabase';
 
 interface StreakWidgetProps {
   profile: UserHealthProfile;
@@ -11,10 +12,19 @@ interface StreakWidgetProps {
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+/** The uploaded 3D green heart-with-flame asset — resized/compressed from
+ *  the original 2.1MB upload (public/Streak.png) down to a ~420px-wide,
+ *  ~75KB PNG that still looks identical at the small sizes this actually
+ *  renders at. Used as-is (never redrawn/recolored) everywhere a "streak
+ *  heart" appears, per the brief. */
+const STREAK_HEART_SRC = '/streak-heart.png';
+
 /** A day's worth of full plan completion is worth this many points. Every
  *  30-day streak milestone adds a one-time bonus on top. */
 const POINTS_PER_DAY = 30;
 const BONUS_PER_MONTH = 10;
+
+const HEART_GREEN = '#22c55e';
 
 /** Monday..Sunday of the current week, as Date objects at local midnight. */
 function currentWeekDates(): Date[] {
@@ -74,144 +84,110 @@ function computeLongestStreak(markedDates: Set<string>): number {
   return longest;
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '');
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
-}
-function rgbToHex(r: number, g: number, b: number): string {
-  const clamp = (v: number) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0');
-  return `#${clamp(r)}${clamp(g)}${clamp(b)}`;
-}
-function lerpColor(a: string, b: string, t: number): string {
-  const [ar, ag, ab] = hexToRgb(a);
-  const [br, bg, bb] = hexToRgb(b);
-  return rgbToHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
-}
+/** The streak glyph: the uploaded green 3D heart-with-flame image, brought
+ *  to life with layered CSS/JS effects only — the image pixels themselves
+ *  are never redrawn, recolored, or distorted. Two soft glow layers pulse
+ *  behind it out of phase for depth, the heart itself gently floats and
+ *  breathes, a light shimmer sweeps across it on a loop, and it tilts in
+ *  3D on hover. */
+const StreakHeartImage: React.FC<{ size?: number }> = ({ size = 28 }) => (
+  <motion.div
+    className="relative inline-flex items-center justify-center shrink-0"
+    style={{ width: size, height: size, perspective: 200 }}
+    whileHover={{ rotateY: 18, rotateX: -8, scale: 1.08 }}
+    whileTap={{ scale: 0.94 }}
+    transition={{ type: 'spring', stiffness: 260, damping: 14 }}
+  >
+    {/* Layered ambient glow — two blurred halos pulsing out of phase */}
+    <motion.div
+      className="absolute inset-0 rounded-full bg-emerald-500/35 blur-lg"
+      animate={{ opacity: [0.3, 0.6, 0.3], scale: [0.85, 1.25, 0.85] }}
+      transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+    />
+    <motion.div
+      className="absolute inset-0 rounded-full bg-lime-300/40 blur-md"
+      animate={{ opacity: [0.25, 0.55, 0.25], scale: [0.75, 1.05, 0.75] }}
+      transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+    />
 
-/** Hue-based lerp from red to green, sweeping "up" through orange/amber/
- *  yellow-green (the short, natural-looking way around the wheel) instead
- *  of a straight RGB blend, which passes through a muddy brown around the
- *  midpoint. */
-function lerpRedToGreen(t: number): string {
-  const hue = 4 + t * (142 - 4); // red (~4°) -> emerald green (~142°)
-  const sat = 82 - t * 10; // 82% -> 72%
-  const light = 55 + t * 5; // 55% -> 60%
-  return `hsl(${hue}, ${sat}%, ${light}%)`;
-}
+    {/* The heart itself — floats and breathes gently, never distorted */}
+    <motion.img
+      src={STREAK_HEART_SRC}
+      alt="Streak"
+      draggable={false}
+      className="relative pointer-events-none select-none"
+      style={{ width: size, height: size, objectFit: 'contain' }}
+      animate={{ y: [0, -2, 0], scale: [1, 1.045, 1] }}
+      transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+    />
 
-const HEART_EMPTY = '#e2e8f0';
-const HEART_RED = '#ef4444';
-const HEART_GREEN = '#22c55e';
-
-/** White/empty at the start of the day, gradually reddening as today's
- *  tasks get checked off, then sweeping through orange/amber into green
- *  once it's essentially done — the color reflects real progress, it
- *  never just loops on its own. */
-function heartColorForProgress(pct: number): string {
-  if (pct <= 0) return HEART_EMPTY;
-  if (pct < 55) return lerpColor(HEART_EMPTY, HEART_RED, pct / 55);
-  return lerpRedToGreen(Math.min(1, (pct - 55) / 35));
-}
-
-/** The streak glyph: a heart that fills from the bottom up like a rising
- *  liquid level as today's real progress increases — starting empty
- *  (white/gray), turning red as it fills, then easing to green near
- *  completion — with a small flame at its center, a soft ambient pulse,
- *  and a quick spin-and-settle flourish on tap. The fill height and color
- *  both ease smoothly (never snap), and both are driven entirely by real
- *  progress, not a fixed animation loop. */
-const AnimatedHeart: React.FC<{ size?: number; progressPct?: number; spinTrigger?: number }> = ({
-  size = 20, progressPct = 0, spinTrigger = 0,
-}) => {
-  const pct = Math.max(0, Math.min(100, progressPct));
-  const fillColor = heartColorForProgress(pct);
-  const flameSize = size * 0.44;
-
-  return (
-    <div className="relative inline-flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-      {/* Ambient glow, tinted by current progress color */}
+    {/* A light shimmer sweeping across the heart on a loop */}
+    <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none" style={{ mixBlendMode: 'plus-lighter' }}>
       <motion.div
-        className="absolute inset-0 rounded-full blur-md"
-        animate={{ opacity: [0.25, 0.55, 0.25], scale: [0.85, 1.1, 0.85], backgroundColor: fillColor }}
-        transition={{
-          opacity: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' },
-          scale: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' },
-          backgroundColor: { duration: 1.4, ease: 'easeInOut' },
-        }}
+        className="absolute inset-y-0 w-1/3 bg-white/60 blur-[2px]"
+        style={{ transform: 'skewX(-20deg)' }}
+        animate={{ x: ['-140%', '240%'] }}
+        transition={{ duration: 2.6, repeat: Infinity, repeatDelay: 1.8, ease: 'easeInOut' }}
       />
-
-      <motion.div
-        className="relative"
-        style={{ width: size, height: size }}
-        animate={{ scale: [1, 1.1, 1, 1.06, 1], rotate: spinTrigger * 360 }}
-        transition={{
-          scale: { duration: 1.2, repeat: Infinity, repeatDelay: 0.6, ease: 'easeInOut', times: [0, 0.25, 0.45, 0.65, 1] },
-          rotate: { duration: 0.7, ease: 'easeOut' },
-        }}
-      >
-        {/* Empty heart outline — always visible as the "unfilled" base */}
-        <Heart
-          className="absolute inset-0"
-          style={{ width: size, height: size }}
-          fill={HEART_EMPTY}
-          stroke="#cbd5e1"
-          strokeWidth={1.5}
-        />
-
-        {/* Filled heart, revealed bottom-up like rising liquid as pct grows */}
-        <motion.div
-          className="absolute left-0 bottom-0 overflow-hidden"
-          style={{ width: size }}
-          initial={false}
-          animate={{ height: (pct / 100) * size }}
-          transition={{ duration: 1.1, ease: 'easeInOut' }}
-        >
-          <Heart
-            className="absolute left-0 bottom-0"
-            style={{ width: size, height: size }}
-            fill={fillColor}
-            stroke={fillColor}
-            strokeWidth={1.5}
-          />
-        </motion.div>
-
-        {/* Small flame mark at the heart's center, on top of the fill */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ paddingBottom: size * 0.06 }}>
-          <svg width={flameSize} height={flameSize} viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 2c1 3-2.5 4-2.5 7.5A4.5 4.5 0 0 0 14 14c1.5 0 2.5-1 2.5-1s.5 1.5.5 2.5A5 5 0 0 1 12 20a6 6 0 0 1-6-6c0-4 3-6 3-9 0 0 2 1 2 4 0-3 1-5 1-7Z"
-              fill="white"
-              opacity={pct > 8 ? 0.95 : 0.5}
-            />
-          </svg>
-        </div>
-      </motion.div>
     </div>
-  );
-};
+  </motion.div>
+);
 
-/** A small "Streak" pill — sized to its own content, not a full-width bar —
- *  that opens the full streak card on tap. Rendered once outside the tab
- *  content, so it stays visible no matter which module you switch to. */
+/** The compact "Days" trigger that sits next to the '⋮' module menu — the
+ *  heart glyph, a small label, and this week's Mon..Sun positions shown as
+ *  numbered chips (1-7), colored by real progress: filled for days already
+ *  completed, a solid ring for today, and a plain inactive dot for days
+ *  not yet reached. Tapping it opens the same full streak card below. */
+const StreakDaysBar: React.FC<{
+  weekDates: Date[];
+  markedDates: Set<string>;
+  todayKey: string;
+  onOpen: () => void;
+}> = ({ weekDates, markedDates, todayKey, onOpen }) => (
+  <button
+    type="button"
+    onClick={onOpen}
+    title="Streak"
+    className="inline-flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full bg-white shadow-sm hover:shadow-md border border-zinc-100 transition-all cursor-pointer"
+  >
+    <StreakHeartImage size={26} />
+    <span className="text-[9px] sm:text-[10px] font-black text-zinc-900 uppercase tracking-wide shrink-0">Days</span>
+    <div className="flex items-center gap-[3px] shrink-0">
+      {weekDates.map((d, i) => {
+        const key = toDateKey(d);
+        const isToday = key === todayKey;
+        const isDone = markedDates.has(key);
+        return (
+          <span
+            key={key}
+            className={`w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] rounded-full flex items-center justify-center text-[8px] sm:text-[9px] font-black transition-colors ${
+              isToday
+                ? 'bg-emerald-600 text-white'
+                : isDone
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-zinc-100 text-zinc-400'
+            }`}
+          >
+            {i + 1}
+          </span>
+        );
+      })}
+    </div>
+  </button>
+);
+
+/** The "Days" trigger next to the '⋮' module menu, and the full streak
+ *  card it opens — unchanged data/behavior from before, just re-skinned
+ *  with the uploaded heart asset per the brief. Rendered once outside the
+ *  tab content, so it stays visible no matter which module you switch to. */
 export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
   const userId = profile.id || '';
   const [expanded, setExpanded] = useState(false);
-  // Bumped on every tap of the pill so both hearts (collapsed + expanded)
-  // do their spin-and-settle flourish together.
-  const [spinTrigger, setSpinTrigger] = useState(0);
   const [markedDates, setMarkedDates] = useState<Set<string>>(new Set());
-  const [todayDone, setTodayDone] = useState(0);
-  const [todayTotal, setTodayTotal] = useState(0);
 
   const refresh = useCallback(() => {
     if (!userId) return;
-    const todayKey = toDateKey(new Date());
     getActiveDates(userId).then(setMarkedDates);
-    Promise.all([getDailyPlan(todayKey), getTaskCompletion(userId, todayKey)]).then(([plan, completion]) => {
-      const taskIds: string[] = (plan.plan?.sections || []).filter((s: any) => s.timeLabel).map((s: any) => s.id);
-      setTodayTotal(taskIds.length);
-      setTodayDone(taskIds.filter((id) => completion[id]).length);
-    });
   }, [userId]);
 
   useEffect(() => {
@@ -233,7 +209,6 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
   const weekDates = useMemo(() => currentWeekDates(), []);
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayKey = toDateKey(today);
-  const progressPct = todayTotal > 0 ? Math.round((todayDone / todayTotal) * 100) : 0;
 
   // Points: a full day of the plan is worth 30 — every 30-day streak
   // milestone adds a one-time 10-point bonus on top.
@@ -244,23 +219,26 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
 
   return (
     <div className="relative inline-block">
-      {/* The pill — sized to its content, opens the card on tap. */}
-      <button
-        type="button"
-        onClick={() => { setExpanded((v) => !v); setSpinTrigger((n) => n + 1); }}
-        className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full bg-white shadow-sm hover:shadow-md transition-all cursor-pointer"
-      >
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-rose-50 to-emerald-50 flex items-center justify-center shrink-0">
-          <AnimatedHeart size={15} progressPct={progressPct} spinTrigger={spinTrigger} />
-        </div>
-        <span className="text-xs font-black text-zinc-900">Streak</span>
-        <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-      </button>
+      <StreakDaysBar
+        weekDates={weekDates}
+        markedDates={markedDates}
+        todayKey={todayKey}
+        onOpen={() => setExpanded((v) => !v)}
+      />
 
       {/* The full streak card — a centered modal over the whole page, with
           real data: current streak, all-time longest streak, this week's
-          activity, and total active days. */}
-      <AnimatePresence>
+          activity, and total active days. Unchanged from before, aside
+          from the heart glyph now being the uploaded image.
+          Portaled to <body>: the trigger now lives inside the sticky mobile
+          header, which has a backdrop-blur — and backdrop-filter (like
+          filter/transform/perspective) makes its own box the containing
+          block for any `position: fixed` descendant. Left as a normal
+          descendant, this modal would end up clipped to the header's own
+          small box instead of covering the viewport; portaling it out from
+          under that ancestor is the standard fix. */}
+      {createPortal(
+        <AnimatePresence>
         {expanded && (
           <>
             <motion.div
@@ -294,7 +272,7 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
                 </div>
 
                 <div className="flex items-center gap-3.5">
-                  <AnimatedHeart size={68} progressPct={progressPct} spinTrigger={spinTrigger} />
+                  <StreakHeartImage size={68} />
                   <div className="flex-1 min-w-0">
                     <div className="text-3xl font-black text-zinc-950 leading-none">{streak}</div>
                     <div className="text-xs font-bold text-zinc-500 mt-1">Day Streak</div>
@@ -365,7 +343,9 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
             </div>
           </>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };
