@@ -5,6 +5,7 @@ import {
   Stethoscope, FileText, Award, Circle, Check,
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon,
+  Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles,
 } from 'lucide-react';
 import { UserHealthProfile, Prescription } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -27,6 +28,31 @@ interface RecommendationsViewProps {
    *  statically in its own sidebar instead of inline here. */
   onReferenceSections?: (sections: PlanSection[]) => void;
 }
+
+/** Maps each onboarding condition label (see CONDITION_LABEL_TO_TAG in
+ *  server.ts — kept in sync with that exact label list) to a short,
+ *  premium-looking "reversal focus" tile shown on today's goals card,
+ *  instead of generic macro numbers. */
+const REVERSAL_GOALS: Record<string, { label: string; note: string; icon: typeof Droplet; gradient: string }> = {
+  'Diabetes / Pre-Diabetes': { label: 'Diabetes Reversal', note: 'Low-GI meals, steady blood sugar', icon: Droplet, gradient: 'from-sky-500 to-blue-600' },
+  'Obesity': { label: 'Weight Reversal', note: 'Calorie deficit, high protein', icon: Scale, gradient: 'from-amber-500 to-orange-600' },
+  'High Blood Pressure': { label: 'Blood Pressure Control', note: 'Low sodium, potassium-rich foods', icon: HeartPulse, gradient: 'from-rose-500 to-red-600' },
+  'High Cholesterol / Fatty Liver': { label: 'Liver & Lipid Reversal', note: 'Low saturated fat, more fiber', icon: Activity, gradient: 'from-yellow-500 to-amber-600' },
+  'Thyroid (Hypo/Hyper)': { label: 'Thyroid Balance', note: 'Iodine-mindful, anti-inflammatory', icon: Zap, gradient: 'from-purple-500 to-indigo-600' },
+  'PCOS / PCOD': { label: 'Hormonal Reversal', note: 'Low-GI, anti-inflammatory diet', icon: Sparkles, gradient: 'from-pink-500 to-rose-600' },
+  'Neuropathy (Nerve Pain/Tingling)': { label: 'Nerve Health', note: 'B-vitamin rich, blood sugar control', icon: Zap, gradient: 'from-violet-500 to-purple-600' },
+  'Diabetic Retinopathy': { label: 'Eye Health Support', note: 'Antioxidant-rich, sugar control', icon: Eye, gradient: 'from-cyan-500 to-sky-600' },
+  'Heart Disease': { label: 'Heart Reversal', note: 'Low sodium, omega-3 rich', icon: HeartPulse, gradient: 'from-red-500 to-rose-600' },
+  'Kidney Disease': { label: 'Kidney Reversal', note: 'Controlled protein & sodium', icon: Droplet, gradient: 'from-teal-500 to-emerald-600' },
+  'Joint Pain / Arthritis': { label: 'Joint & Mobility Support', note: 'Anti-inflammatory foods', icon: Bone, gradient: 'from-orange-500 to-amber-600' },
+  'Chronic Fatigue': { label: 'Energy Restoration', note: 'Iron & B12 rich, steady meals', icon: Zap, gradient: 'from-lime-500 to-green-600' },
+  'Sleep Apnea / Sleep Issues': { label: 'Sleep Quality Support', note: 'Light dinner, no late caffeine', icon: Moon, gradient: 'from-indigo-500 to-blue-600' },
+  'Erectile Dysfunction': { label: 'Vascular Health', note: 'Heart-healthy, circulation support', icon: HeartPulse, gradient: 'from-rose-500 to-pink-600' },
+  'Uric Acid / Gout': { label: 'Uric Acid Reversal', note: 'Low purine, more water', icon: Flame, gradient: 'from-amber-500 to-yellow-600' },
+  'Digestive / IBS': { label: 'Gut Health Reversal', note: 'Fiber-balanced, gut-friendly', icon: Leaf, gradient: 'from-emerald-500 to-lime-600' },
+};
+
+const DEFAULT_REVERSAL_GOAL = { label: 'Metabolic Health', note: 'Balanced nutrition, steady energy', icon: Sparkles, gradient: 'from-emerald-500 to-teal-600' };
 
 type Period = 'morning' | 'afternoon' | 'evening' | 'night';
 
@@ -193,6 +219,15 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   const targetProtein = calculatedPlan?.proteinGrams || 140;
   const targetCarbs = calculatedPlan?.carbsGrams || 180;
   const targetFats = calculatedPlan?.fatsGrams || 50;
+
+  // Today's goal card leads with the user's own reversal focus (condition by
+  // condition) rather than generic macro numbers — one premium tile per
+  // selected condition, falling back to a general wellness tile if none.
+  const reversalGoals = useMemo(() => {
+    const conditions = (profile.medicalConditions || []).filter((c) => c !== 'None' && c !== 'Other');
+    const goals = conditions.map((c) => REVERSAL_GOALS[c]).filter(Boolean);
+    return goals.length > 0 ? goals : [DEFAULT_REVERSAL_GOAL];
+  }, [profile.medicalConditions]);
 
   const formatDate = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
@@ -421,13 +456,13 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         </div>
       )}
 
-      {/* 3. TARGET vs ACHIEVEMENT METRICS */}
+      {/* 3. TODAY'S REVERSAL FOCUS (or, for a past day, GOALS vs ACHIEVEMENT) */}
       <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4 min-w-0`}>
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40 flex-wrap gap-2">
             <div className="flex items-center gap-2 text-emerald-500 min-w-0">
               {isToday ? <Target className="w-5 h-5 shrink-0" /> : <Award className="w-5 h-5 shrink-0" />}
               <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider truncate">
-                {isToday ? t('todaysNutritionGoals') : t('goalsVsWhatYouAte')}
+                {isToday ? "Today's Reversal Focus" : t('goalsVsWhatYouAte')}
               </h3>
             </div>
             <span className="text-[10px] sm:text-xs font-extrabold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 shrink-0">
@@ -435,28 +470,47 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
-              <span className="text-[10px] font-bold uppercase opacity-60">Calories</span>
-              <div className="text-lg sm:text-xl font-black text-emerald-500">{targetCalories} <span className="text-[10px] sm:text-xs opacity-60">kcal</span></div>
-              {!isToday && <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.calories)} kcal` : 'Not logged'}</div>}
+          {isToday ? (
+            <div className={`grid gap-2.5 sm:gap-3 ${reversalGoals.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+              {reversalGoals.map((goal) => {
+                const GoalIcon = goal.icon;
+                return (
+                  <div key={goal.label} className={`p-3.5 rounded-2xl ${subCardClass} flex items-center gap-3 min-w-0`}>
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${goal.gradient} flex items-center justify-center shrink-0 shadow-sm`}>
+                      <GoalIcon className="w-4.5 h-4.5 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className={`text-xs sm:text-sm font-black truncate ${isDark ? 'text-white' : 'text-zinc-900'}`}>{goal.label}</div>
+                      <div className="text-[10px] sm:text-[11px] text-zinc-500 font-semibold truncate">{goal.note}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
-              <span className="text-[10px] font-bold uppercase opacity-60">Protein</span>
-              <div className="text-lg sm:text-xl font-black">{targetProtein} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
-              {!isToday && <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.protein)} g` : 'Not logged'}</div>}
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+              <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
+                <span className="text-[10px] font-bold uppercase opacity-60">Calories</span>
+                <div className="text-lg sm:text-xl font-black text-emerald-500">{targetCalories} <span className="text-[10px] sm:text-xs opacity-60">kcal</span></div>
+                <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.calories)} kcal` : 'Not logged'}</div>
+              </div>
+              <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
+                <span className="text-[10px] font-bold uppercase opacity-60">Protein</span>
+                <div className="text-lg sm:text-xl font-black">{targetProtein} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
+                <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.protein)} g` : 'Not logged'}</div>
+              </div>
+              <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
+                <span className="text-[10px] font-bold uppercase opacity-60">Carbs</span>
+                <div className="text-lg sm:text-xl font-black">{targetCarbs} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
+                <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.carbs)} g` : 'Not logged'}</div>
+              </div>
+              <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
+                <span className="text-[10px] font-bold uppercase opacity-60">Fats</span>
+                <div className="text-lg sm:text-xl font-black">{targetFats} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
+                <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.fats)} g` : 'Not logged'}</div>
+              </div>
             </div>
-            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
-              <span className="text-[10px] font-bold uppercase opacity-60">Carbs</span>
-              <div className="text-lg sm:text-xl font-black">{targetCarbs} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
-              {!isToday && <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.carbs)} g` : 'Not logged'}</div>}
-            </div>
-            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
-              <span className="text-[10px] font-bold uppercase opacity-60">Fats</span>
-              <div className="text-lg sm:text-xl font-black">{targetFats} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
-              {!isToday && <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.fats)} g` : 'Not logged'}</div>}
-            </div>
-          </div>
+          )}
 
           {taskIds.length > 0 && (
             <div className={`p-3.5 rounded-2xl flex items-center justify-between gap-3 flex-wrap ${allDone ? 'bg-emerald-500/15 border border-emerald-500/40' : subCardClass}`}>
