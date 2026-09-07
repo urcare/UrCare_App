@@ -308,6 +308,12 @@ export async function toggleDailyTask(userId: string, date: string, taskId: stri
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,date' });
   }
+  // Lets anything else on screen (e.g. the streak widget, which has no
+  // other way to know a task changed) refresh itself immediately instead
+  // of only picking up the change on its next mount.
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('urcare:daily-log-changed', { detail: { userId, date } }));
+  }
   return next;
 }
 

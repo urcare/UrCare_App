@@ -132,6 +132,372 @@ const TagsInput: React.FC<{ values: string[]; onChange: (next: string[]) => void
   );
 };
 
+// ---------------------------------------------------------------------------
+// Pre-fills this 22-module form from the user's real onboarding answers
+// (health deep-dive + conditions) instead of generic placeholder content —
+// every field with no onboarding equivalent is left blank rather than
+// invented, since this form is meant to be reviewed and completed, not
+// presented as if it were already real data.
+// ---------------------------------------------------------------------------
+
+function mapSleepQuality(v?: string): 'good' | 'average' | 'poor' | 'very_poor' {
+  switch (v) {
+    case 'Good': return 'good';
+    case 'Poor': return 'poor';
+    case 'Very poor': return 'very_poor';
+    default: return 'average';
+  }
+}
+function mapStressLevel(v?: string): 'low' | 'moderate' | 'high' | 'overwhelming' {
+  switch (v) {
+    case 'Low': return 'low';
+    case 'High': return 'high';
+    case 'Overwhelming': return 'overwhelming';
+    default: return 'moderate';
+  }
+}
+function mapStoolType(v?: string): 'normal' | 'hard' | 'loose' | 'watery' | 'alternating' {
+  switch (v) {
+    case 'Hard': return 'hard';
+    case 'Loose': return 'loose';
+    case 'Watery': return 'watery';
+    case 'Alternating': return 'alternating';
+    default: return 'normal';
+  }
+}
+function parseSleepHours(v?: string): number {
+  const m = (v || '').match(/(\d+(\.\d+)?)/);
+  return m ? parseFloat(m[1]) : 7;
+}
+function ratingFromEnergyLevel(v?: string): number {
+  switch (v) {
+    case 'Very low': return 2;
+    case 'Low': return 4;
+    case 'Good': return 7;
+    case 'Excellent': return 9;
+    default: return 5; // Moderate / unknown
+  }
+}
+function buildFamilyHistory(list: string[]): RootCauseAssessmentData['familyHistory'] {
+  const has = (s: string) => list.includes(s);
+  return {
+    diabetes: has('Diabetes') ? 'Yes' : '',
+    hypertension: has('High BP') ? 'Yes' : '',
+    heartDisease: has('Heart disease') ? 'Yes' : '',
+    thyroid: has('Thyroid disease') ? 'Yes' : '',
+    pcosHormonal: has('PCOS/PCOD') ? 'Yes' : '',
+    cholesterol: has('High cholesterol') ? 'Yes' : '',
+    obesity: has('Obesity') ? 'Yes' : '',
+    autoimmune: '',
+    cancer: has('Cancer') ? 'Yes' : '',
+    kidneyDisease: has('Kidney disease') ? 'Yes' : '',
+    liverDisease: '',
+    mentalHealth: has('Mental health condition') ? 'Yes' : '',
+    otherConditions: list.includes('Other') ? 'See notes' : '',
+  };
+}
+
+function buildAssessmentFromProfile(profile: UserHealthProfile): RootCauseAssessmentData {
+  const dd: any = profile.healthDeepDive || {};
+  const conditions = (profile.medicalConditions || []).filter((c) => c && c !== 'None');
+  const heightCm = profile.heightCm || 0;
+
+  return {
+    email: profile.email || '',
+    whatsappNumber: profile.phone || '',
+    preferredContactMethod: 'whatsapp',
+    bestContactTime: '',
+    communicationLanguage: '',
+    backupContactName: '',
+    backupContactRelationship: '',
+    backupContactNumber: '',
+
+    fullName: profile.name || '',
+    age: profile.age || 0,
+    gender: profile.gender || 'male',
+    heightFeet: Math.floor(heightCm / 30.48),
+    heightInches: Math.round((heightCm % 30.48) / 2.54),
+    currentWeightKg: profile.currentWeightKg || 0,
+    highestWeightKg: undefined,
+    highestWeightWhen: '',
+    waistCircumferenceInches: undefined,
+    cityStateCountry: '',
+    occupation: '',
+    workHoursPerDay: 8,
+    workType: 'seated',
+
+    mainHealthConcern: conditions.filter((c) => c !== 'Other').join(', '),
+    bothersomeSymptoms: (dd.organSymptoms || []).filter((s: string) => s !== 'None').join(', '),
+    goal90to120Days: profile.goal ? profile.goal.replace(/_/g, ' ') : '',
+    overallHealthRating: 5,
+    energyLevelRating: ratingFromEnergyLevel(dd.energyLevel),
+    qualityOfLifeRating: 5,
+    successfulTreatmentVision: '',
+
+    diagnosedConditions: conditions.filter((c) => c !== 'Other').map((c) => ({
+      conditionName: c,
+      diagnosedMonthYear: '',
+      currentStatus: 'uncontrolled' as const,
+      severityRating: 5,
+      beganWhen: '',
+      currentTreatment: '',
+    })),
+    hospitalisationHistory: '',
+    emergencyEpisodeHistory: '',
+
+    medicinesList: dd.onMedicines === 'yes' && dd.medicinesText
+      ? [{ name: dd.medicinesText, dose: '', timing: '', frequencyPerDay: '', sinceWhen: '', reason: '' }]
+      : [],
+    vitaminsAndSupplements: dd.onSupplements === 'yes' ? (dd.supplementsText || '') : '',
+    insulinDetails: {
+      isUsingInsulin: dd.onInsulin === 'yes',
+      basalInsulin: '',
+      rapidBreakfastUnits: '',
+      rapidLunchUnits: '',
+      rapidDinnerUnits: '',
+      totalDailyDose: dd.insulinDetails || '',
+      recentDoseChanges: '',
+      lowSugarEpisodes: '',
+    },
+    steroidsLast6Months: '',
+    medicinesStoppedLast3Months: '',
+    medicinesStoppedReason: '',
+    frequentlyMissedMedicines: '',
+    allergies: {
+      medicineAllergies: dd.medicineAllergy === 'yes' ? 'Yes' : dd.medicineAllergy === 'not_sure' ? 'Not sure' : 'None known',
+      foodAllergies: dd.foodAllergy === 'yes' ? ((dd.foodAllergens || []).join(', ') || 'Yes') : dd.foodAllergy === 'not_sure' ? 'Not sure' : 'None',
+      environmentalAllergies: dd.envAllergy === 'yes' ? 'Yes' : dd.envAllergy === 'not_sure' ? 'Not sure' : 'None',
+      adverseReactions: (dd.allergyReactions || []).join(', '),
+    },
+
+    bloodSugar: {
+      monitorsSugar: dd.monitorsSugar === 'yes',
+      monitoringMethod: undefined,
+      averageFasting7Days: dd.fastingSugar || '',
+      averagePostMeal7Days: dd.postMealSugar || '',
+      morningSpikes: undefined,
+      postMealSpikes: undefined,
+      lowSugarEpisodes: false,
+      lowSugarDetails: '',
+      latestHbA1c: dd.hba1c || '',
+      latestHbA1cDate: '',
+      hba1c3MonthsAgo: '',
+      hba1c6MonthsAgo: '',
+      highestHbA1cEver: '',
+    },
+    cardioVitals: {
+      recentBp: dd.bloodPressure || '',
+      usualBpRange: '',
+      standingDizziness: false,
+      restingPulse: dd.restingHeartRate || '',
+      palpitations: false,
+      currentWeight: profile.currentWeightKg ? `${profile.currentWeightKg} kg` : '',
+      weight3MonthsAgo: '',
+      weight6MonthsAgo: '',
+      spO2: '',
+      ketone: '',
+      creatinine: '',
+      egfr: '',
+      uricAcid: '',
+      otherTracked: dd.otherLabValues || '',
+    },
+
+    sleep: {
+      sleepTime: dd.sleepTime || '',
+      wakeUpTime: dd.wakeTime || '',
+      averageSleepHours: parseSleepHours(dd.sleepHours),
+      sleepQuality: mapSleepQuality(dd.sleepQuality),
+      difficultyFallingAsleep: false,
+      wakesDuringNight: false,
+      wakeCount: '',
+      nightTimeUrinationCount: '',
+      wakesRefreshed: false,
+      snores: dd.snoring === 'yes' ? 'Yes' : dd.snoring === 'no' ? 'No' : '',
+      gaspOrStopBreathing: '',
+      sleepApnoeaDiagnosed: dd.sleepApnea === 'yes',
+      cpapUsed: false,
+      daytimeSleepinessNapping: '',
+      sleepMedicineOrAid: '',
+      shiftWork: false,
+      sleepDisturbances: '',
+    },
+    stressMental: {
+      stressLevel: mapStressLevel(dd.stressLevel),
+      mainSourcesOfStress: (dd.stressSources || []).join(', '),
+      majorTraumaLast2Years: false,
+      traumaExplanation: '',
+      emotionalSymptoms: dd.emotionalSymptoms || [],
+      mentalConditionDiagnosed: false,
+      mentalHealthMedsOrTherapy: '',
+      stressManagementMethods: (dd.stressManagement || []).join(', '),
+      emotionalWellbeingRating: 5,
+    },
+
+    gut: {
+      bowelFrequency: dd.bowelFrequency || '',
+      stoolType: mapStoolType(dd.stoolType),
+      symptoms: dd.digestiveSymptoms || [],
+      symptomFrequency: '',
+      appetite: 'normal',
+      diagnosedConditions: dd.digestiveConditions || [],
+      antibioticUseLast6Months: false,
+      regularAcidityMedicines: false,
+      probioticsOrEnzymes: false,
+      triggerFoods: '',
+    },
+
+    labReports: {
+      hasRecentTests: false,
+      uploadedFileNames: [],
+      reportNotes: '',
+    },
+
+    previousTreatments: {
+      treatmentsTried: [],
+      whatImproved: '',
+      whatDidNotImprove: '',
+      whyStopped: '',
+      improvementRemained: 'not_applicable',
+    },
+
+    diet: {
+      dietType: profile.dietaryPreference || '',
+      regionalPreference: '',
+      mealsPerDay: 3,
+      firstMealTime: '',
+      lastMealTime: '',
+      lateNightEating: false,
+      breakfast: '',
+      lunch: '',
+      dinner: '',
+      snacks: '',
+      teaCoffeeCount: dd.teaCoffee || '',
+      addsSugarOrHoney: false,
+      friedFoodFrequency: dd.friedFoodFreq || '',
+      sweetsFrequency: '',
+      packagedFoodFrequency: '',
+      outsideFoodFrequency: '',
+      waterIntakeLiters: dd.waterIntake || '',
+      foodDislikesOrRestrictions: '',
+      cravedFoods: '',
+      alcoholTobaccoUse: [dd.alcohol && `Alcohol: ${dd.alcohol}`, dd.tobacco && `Tobacco: ${dd.tobacco}`].filter(Boolean).join(', '),
+      previousDietHistory: '',
+      eatingDisorderHistory: false,
+    },
+
+    lifestyle: {
+      regularExercise: profile.activityLevel === 'moderately_active' || profile.activityLevel === 'very_active',
+      exerciseType: '',
+      frequencyDaysPerWeek: undefined,
+      durationMinutes: undefined,
+      timing: '',
+      noExerciseReason: '',
+      sittingHoursPerDay: parseFloat(dd.sittingHours) || 0,
+      screenTimeHoursPerDay: parseFloat(dd.screenTimeHours) || 0,
+      nonExerciseMovement: '',
+      physicalLimitationsOrInjuries: '',
+    },
+
+    familyHistory: buildFamilyHistory(dd.familyHistory || []),
+
+    hormonalWomen: profile.gender === 'female' ? {
+      menstrualStatus: dd.menstrualStatus || '',
+      cycleLengthDays: dd.cycleLength || '',
+      periodDurationDays: '',
+      flow: '',
+      menstrualCramps: '',
+      pmsSymptoms: [],
+      pcodPcosDiagnosis: dd.pcos === 'yes' ? 'Yes' : dd.pcos === 'not_sure' ? 'Not sure' : 'No',
+      thyroidDiagnosisAndMeds: '',
+      currentlyPregnant: dd.pregnant === 'yes',
+      planningPregnancy: false,
+      currentlyBreastfeeding: false,
+      skinIssues: [],
+      menopauseSymptoms: dd.menopauseSymptoms || [],
+    } : undefined,
+
+    hormonalMen: profile.gender === 'male' ? {
+      energyLevel: dd.energyLevel || '',
+      libido: dd.libido || '',
+      erectileDifficulty: conditions.includes('Erectile Dysfunction') ? 'Yes' : '',
+      morningErectionsRegular: undefined,
+      muscleMassTrend: '',
+      facialBodyHairGrowth: '',
+      gynecomastia: '',
+      moodChanges: '',
+      diagnosedLowTestosterone: dd.lowTestosterone === 'yes' ? 'Yes' : dd.lowTestosterone === 'not_sure' ? 'Not tested' : 'No',
+      prostateIssues: (dd.prostateSymptoms || []).join(', '),
+    } : undefined,
+
+    organHealth: {
+      diabetesComplications: [],
+      cardiovascularSymptoms: [],
+      liverSymptoms: [],
+      kidneySymptoms: [],
+      thyroidSymptoms: [],
+      jointBoneSymptoms: [],
+      neurologicalSymptoms: [],
+      skinSymptoms: [],
+      respiratorySymptoms: [],
+      unusualSymptomsNotes: (dd.organSymptoms || []).filter((s: string) => s !== 'None').join(', '),
+    },
+
+    readiness: {
+      mainBarriers: dd.biggestBarrier || '',
+      helpfulFactors: dd.helpNeeded || [],
+      healthPriorityWillingness: '',
+      hoursPerWeekCommitment: '',
+      motivatedForRootCause: true,
+      canCommit90Days: true,
+      familySupport: true,
+    },
+
+    startTimeline: 'within_3_days',
+    reversalIntensity: 'advanced',
+    reversalIntensityCustomNote: '',
+
+    dailyRoutine: {
+      wakeUpTime: dd.wakeTime || '',
+      morningRoutine: '',
+      breakfastTime: '',
+      midMorningSnackTime: '',
+      lunchTime: '',
+      eveningSnackTeaTime: '',
+      dinnerTime: '',
+      sleepTime: dd.sleepTime || '',
+      workHours: '',
+      dailySittingHoursAtWork: dd.sittingHours || '',
+      commuteTimeAndMode: '',
+      availableTimeForExercise: '',
+      mealPrepManager: '',
+      weekendScheduleDifference: '',
+    },
+
+    exercisePlan: {
+      preferredExerciseTypes: [],
+      gymOrEquipmentAccess: '',
+      bestTimeSlot: 'morning',
+      limitationsExplanation: '',
+    },
+
+    personalQueryRequest: '',
+
+    additionalInfo: {
+      pastSurgeriesOrIllnesses: (dd.pastMedicalHistory || []).join(', '),
+      ongoingSpecialistTreatments: dd.seeingSpecialist === 'yes' ? (dd.specialistDetails || 'Yes') : '',
+      geneticOrRareConditions: '',
+      occupationChallenges: '',
+      livingSituation: '',
+      whoManagesMeals: '',
+      treatmentRequirements: '',
+      questionsForDoctor: '',
+      patientExtraNotes: dd.doctorNotes || '',
+    },
+
+    submittedAt: new Date().toISOString(),
+  };
+}
+
 export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> = ({
   isOpen,
   onClose,
@@ -142,336 +508,11 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
   const [activeSection, setActiveSection] = useState(1);
   const [submitted, setSubmitted] = useState(false);
 
-  // Form State initialized with profile or defaults
+  // Form state — pre-filled from the user's real onboarding answers the
+  // first time this opens, or their own previously-saved edits after that.
   const [formData, setFormData] = useState<RootCauseAssessmentData>(() => {
     if (profile.assessmentData) return profile.assessmentData;
-
-    return {
-      email: profile.email || 'singhkgajendra6276@gmail.com',
-      whatsappNumber: profile.phone || '',
-      preferredContactMethod: 'whatsapp',
-      bestContactTime: 'evening',
-      communicationLanguage: 'English / Hindi',
-      backupContactName: '',
-      backupContactRelationship: '',
-      backupContactNumber: '',
-
-      fullName: profile.name || '',
-      age: profile.age || 29,
-      gender: profile.gender || 'male',
-      heightFeet: Math.floor((profile.heightCm || 172) / 30.48),
-      heightInches: Math.round(((profile.heightCm || 172) % 30.48) / 2.54),
-      currentWeightKg: profile.currentWeightKg || 74,
-      highestWeightKg: 82,
-      highestWeightWhen: '2023',
-      waistCircumferenceInches: 34,
-      cityStateCountry: 'India',
-      occupation: 'Professional',
-      workHoursPerDay: 8,
-      workType: 'seated',
-
-      mainHealthConcern: 'Diabetes Reversal & Metabolic Root Cause Restoration',
-      bothersomeSymptoms: 'Post-meal fatigue, morning sugar fluctuation, occasional brain fog',
-      goal90to120Days: 'Reduce HbA1c to normal range (<5.7%), eliminate insulin resistance, reduce visceral fat',
-      overallHealthRating: 6,
-      energyLevelRating: 6,
-      qualityOfLifeRating: 7,
-      successfulTreatmentVision: 'Complete freedom from medications, steady all-day energy, ideal biomarkers',
-
-      diagnosedConditions: [
-        {
-          conditionName: 'Type 2 Diabetes / Pre-diabetes',
-          diagnosedMonthYear: 'Jan 2022',
-          currentStatus: 'uncontrolled',
-          severityRating: 6,
-          beganWhen: '2 years ago',
-          currentTreatment: 'Diet & oral hypoglycemics',
-        }
-      ],
-      hospitalisationHistory: 'None',
-      emergencyEpisodeHistory: 'None',
-
-      medicinesList: [
-        {
-          name: 'Metformin',
-          dose: '500mg',
-          timing: 'After dinner',
-          frequencyPerDay: 'Once daily',
-          sinceWhen: '1 year',
-          reason: 'Blood sugar control'
-        }
-      ],
-      vitaminsAndSupplements: 'Vitamin D3 (60k IU), Methylcobalamin B12',
-      insulinDetails: {
-        isUsingInsulin: false,
-        basalInsulin: '',
-        rapidBreakfastUnits: '',
-        rapidLunchUnits: '',
-        rapidDinnerUnits: '',
-        totalDailyDose: '',
-        recentDoseChanges: '',
-        lowSugarEpisodes: 'None',
-      },
-      steroidsLast6Months: 'None',
-      medicinesStoppedLast3Months: 'None',
-      medicinesStoppedReason: '',
-      frequentlyMissedMedicines: 'None',
-      allergies: {
-        medicineAllergies: 'None known',
-        foodAllergies: 'None',
-        environmentalAllergies: 'Seasonal pollen (mild)',
-        adverseReactions: 'None',
-      },
-
-      bloodSugar: {
-        monitorsSugar: true,
-        monitoringMethod: 'glucometer',
-        averageFasting7Days: '135 mg/dL',
-        averagePostMeal7Days: '175 mg/dL',
-        morningSpikes: true,
-        postMealSpikes: true,
-        lowSugarEpisodes: false,
-        lowSugarDetails: 'None',
-        latestHbA1c: '7.2%',
-        latestHbA1cDate: 'Last month',
-        hba1c3MonthsAgo: '7.5%',
-        hba1c6MonthsAgo: '7.8%',
-        highestHbA1cEver: '8.4%',
-      },
-      cardioVitals: {
-        recentBp: '124/82 mmHg',
-        usualBpRange: '120-130 / 80-85 mmHg',
-        standingDizziness: false,
-        restingPulse: '72 bpm',
-        palpitations: false,
-        currentWeight: `${profile.currentWeightKg || 74} kg`,
-        weight3MonthsAgo: '75 kg',
-        weight6MonthsAgo: '76 kg',
-        spO2: '98%',
-        ketone: 'Negative',
-        creatinine: '0.9 mg/dL',
-        egfr: '>90 mL/min',
-        uricAcid: '5.6 mg/dL',
-        otherTracked: 'Normal lipid profile',
-      },
-
-      sleep: {
-        sleepTime: '11:30 PM',
-        wakeUpTime: '06:30 AM',
-        averageSleepHours: 7,
-        sleepQuality: 'average',
-        difficultyFallingAsleep: false,
-        wakesDuringNight: true,
-        wakeCount: '1 time',
-        nightTimeUrinationCount: '1 time',
-        wakesRefreshed: false,
-        snores: 'Mild',
-        gaspOrStopBreathing: 'No',
-        sleepApnoeaDiagnosed: false,
-        cpapUsed: false,
-        daytimeSleepinessNapping: 'Occasional post-lunch slump',
-        sleepMedicineOrAid: 'None',
-        shiftWork: false,
-        sleepDisturbances: 'Late screen time, work thoughts',
-      },
-      stressMental: {
-        stressLevel: 'moderate',
-        mainSourcesOfStress: 'Work responsibilities and health uncertainty',
-        majorTraumaLast2Years: false,
-        traumaExplanation: '',
-        emotionalSymptoms: ['Difficulty Relaxing', 'Constant Worry'],
-        mentalConditionDiagnosed: false,
-        mentalHealthMedsOrTherapy: 'None',
-        stressManagementMethods: 'Evening walks, music',
-        emotionalWellbeingRating: 7,
-      },
-
-      gut: {
-        bowelFrequency: 'Once daily (morning)',
-        stoolType: 'normal',
-        symptoms: ['Bloating or Gas', 'Heaviness After Meals'],
-        symptomFrequency: '2-3 times a week',
-        appetite: 'normal',
-        diagnosedConditions: ['Mild Acidity / GERD'],
-        antibioticUseLast6Months: false,
-        regularAcidityMedicines: true,
-        probioticsOrEnzymes: false,
-        triggerFoods: 'Deep fried items, excessive spicy lentils',
-      },
-
-      labReports: {
-        hasRecentTests: true,
-        uploadedFileNames: ['HbA1c_Lipid_Panel_Report.pdf'],
-        reportNotes: 'HbA1c 7.2%, HOMA-IR indicates moderate insulin resistance.',
-      },
-
-      previousTreatments: {
-        treatmentsTried: ['Prescription Medicines', 'Diet Plan', 'Walking Programme'],
-        whatImproved: 'Short term sugar stabilization',
-        whatDidNotImprove: 'Root cause insulin sensitivity & visceral fat did not reverse',
-        whyStopped: 'Lack of personalization and sustainable daily guidance',
-        improvementRemained: 'partially',
-      },
-
-      diet: {
-        dietType: profile.dietaryPreference || 'Vegetarian',
-        regionalPreference: 'North / Central Indian home-cooked meals',
-        mealsPerDay: 3,
-        firstMealTime: '08:30 AM',
-        lastMealTime: '08:30 PM',
-        lateNightEating: false,
-        breakfast: 'Poha / Oats / Besan Chilla with tea',
-        lunch: '2 Rotis, Dal, Green Sabzi, Curd / Salad',
-        dinner: 'Moong Dal Khichdi / Vegetable soup & Paneer salad',
-        snacks: 'Roasted Makhana, walnuts, green tea',
-        teaCoffeeCount: '2 cups/day',
-        addsSugarOrHoney: false,
-        friedFoodFrequency: 'Once a week',
-        sweetsFrequency: 'Rarely',
-        packagedFoodFrequency: '1-2 times a week',
-        outsideFoodFrequency: 'Once on weekends',
-        waterIntakeLiters: '2.5 - 3.0 Litres',
-        foodDislikesOrRestrictions: 'No bitter gourd, low spice',
-        cravedFoods: 'Warm savory snacks',
-        alcoholTobaccoUse: 'None',
-        previousDietHistory: 'Tried low-carb intermittent fasting previously',
-        eatingDisorderHistory: false,
-      },
-
-      lifestyle: {
-        regularExercise: true,
-        exerciseType: 'Brisk walking & light yoga',
-        frequencyDaysPerWeek: 4,
-        durationMinutes: 35,
-        timing: 'Morning 07:00 AM',
-        noExerciseReason: '',
-        sittingHoursPerDay: 7,
-        screenTimeHoursPerDay: 6,
-        nonExerciseMovement: 'Household chores and climbing office stairs',
-        physicalLimitationsOrInjuries: 'Mild lower back stiffness on prolonged sitting',
-      },
-
-      familyHistory: {
-        diabetes: 'Father (Diagnosed at age 52)',
-        hypertension: 'Mother (Diagnosed at age 58)',
-        heartDisease: 'None',
-        thyroid: 'None',
-        pcosHormonal: 'None',
-        cholesterol: 'Paternal Grandfather',
-        obesity: 'Moderate tendency in family',
-        autoimmune: 'None',
-        cancer: 'None',
-        kidneyDisease: 'None',
-        liverDisease: 'None',
-        mentalHealth: 'None',
-        otherConditions: 'None',
-      },
-
-      hormonalWomen: {
-        menstrualStatus: 'Regular periods',
-        cycleLengthDays: '28-30',
-        periodDurationDays: '4-5',
-        flow: 'Normal',
-        menstrualCramps: 'Mild',
-        pmsSymptoms: ['Mood changes', 'Bloating'],
-        pcodPcosDiagnosis: 'None',
-        thyroidDiagnosisAndMeds: 'None',
-        currentlyPregnant: false,
-        planningPregnancy: false,
-        currentlyBreastfeeding: false,
-        skinIssues: ['Occasional dryness'],
-      },
-
-      hormonalMen: {
-        energyLevel: 'Moderate',
-        libido: 'Normal',
-        erectileDifficulty: 'No',
-        morningErectionsRegular: true,
-        muscleMassTrend: 'Stable',
-        facialBodyHairGrowth: 'Normal',
-        gynecomastia: 'No',
-        moodChanges: 'Occasional stress-related fatigue',
-        diagnosedLowTestosterone: 'Not tested',
-        prostateIssues: 'None',
-      },
-
-      organHealth: {
-        diabetesComplications: ['Tingling or mild numbness in toes after long days', 'Occasional excessive thirst'],
-        cardiovascularSymptoms: [],
-        liverSymptoms: ['Grade 1 Fatty Liver noted on ultrasound'],
-        kidneySymptoms: [],
-        thyroidSymptoms: [],
-        jointBoneSymptoms: ['Occasional morning lower back stiffness'],
-        neurologicalSymptoms: ['Occasional brain fog after heavy meals'],
-        skinSymptoms: ['Mild skin tags on neck'],
-        respiratorySymptoms: [],
-        unusualSymptomsNotes: 'No other unusual complaints',
-      },
-
-      readiness: {
-        mainBarriers: 'Busy work schedule and social outside food dining',
-        helpfulFactors: [
-          'Simple meal plans that fit my schedule',
-          'Family-friendly recipes everyone can eat',
-          'Daily accountability and motivation',
-          'Clear step-by-step guidance',
-          'Help managing stress and emotions'
-        ],
-        healthPriorityWillingness: 'Yes, fully committed',
-        hoursPerWeekCommitment: '5 to 7 hours per week',
-        motivatedForRootCause: true,
-        canCommit90Days: true,
-        familySupport: true,
-      },
-
-      startTimeline: 'within_3_days',
-      reversalIntensity: 'advanced',
-      reversalIntensityCustomNote: 'Structured approach with steady biomarker reduction and doctor supervision',
-
-      dailyRoutine: {
-        wakeUpTime: '06:30 AM',
-        morningRoutine: 'Warm water with lemon, 25-min walk, fresh bath',
-        breakfastTime: '08:30 AM',
-        midMorningSnackTime: '11:00 AM (Green tea & almonds)',
-        lunchTime: '01:30 PM',
-        eveningSnackTeaTime: '05:30 PM (Herbal tea & roasted chana)',
-        dinnerTime: '08:30 PM',
-        sleepTime: '11:30 PM',
-        workHours: '09:30 AM - 06:30 PM',
-        dailySittingHoursAtWork: '6-7 hours',
-        commuteTimeAndMode: '30 mins by car / metro',
-        availableTimeForExercise: 'Morning 07:00 AM - 07:45 AM',
-        mealPrepManager: 'Self & spouse home-cooked',
-        weekendScheduleDifference: 'Slightly delayed breakfast (09:30 AM) and outdoor cycling',
-      },
-
-      exercisePlan: {
-        preferredExerciseTypes: [
-          'Walking or brisk walking (outdoor or treadmill)',
-          'Yoga asanas and pranayama',
-          'Functional training or HIIT'
-        ],
-        gymOrEquipmentAccess: 'Dumbbells and yoga mat at home, neighborhood walking track',
-        bestTimeSlot: 'morning',
-        limitationsExplanation: 'Avoid excessive heavy deadlifts due to previous lower back strain',
-      },
-
-      personalQueryRequest: 'I want to know if I can safely taper off Metformin once my fasting sugar drops below 100 mg/dL and how to prevent post-prandial spikes after festive meals.',
-
-      additionalInfo: {
-        pastSurgeriesOrIllnesses: 'Appendectomy in 2018 (fully healed)',
-        ongoingSpecialistTreatments: 'Annual endocrinology checkup',
-        geneticOrRareConditions: 'Strong familial predisposition to metabolic syndrome',
-        occupationChallenges: 'Continuous screen time and sedentary meetings',
-        livingSituation: 'Living with family in metropolitan city',
-        whoManagesMeals: 'Home kitchen prepared fresh with low refined oil',
-        treatmentRequirements: 'Personalized polyherbal support, continuous monitoring, structured guidance',
-        questionsForDoctor: 'How rapidly can liver fat and insulin resistance reverse with this protocol?',
-        patientExtraNotes: 'Ready to dedicate 100% effort to achieve total metabolic reversal.',
-      },
-
-      submittedAt: new Date().toISOString(),
-    };
+    return buildAssessmentFromProfile(profile);
   });
 
   if (!isOpen) return null;
