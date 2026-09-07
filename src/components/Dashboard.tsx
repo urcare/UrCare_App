@@ -70,6 +70,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     { id: 'store' as const, label: 'Store', icon: ShoppingBag },
     // Not a tab — opens the Settings modal directly (see the drawer's onClick).
     { id: 'settings' as const, label: 'Settings', icon: Settings },
+    // Not a tab either — opens the sign-out confirmation (see the drawer's onClick).
+    { id: 'logout' as const, label: 'Sign Out', icon: LogOut },
   ];
 
   // Without this, switching tabs while scrolled down on the previous tab
@@ -467,7 +469,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <nav className="flex-1 p-3 space-y-1">
                 {moduleMenuItems.map((item) => {
                   const ItemIcon = item.icon;
-                  const isActive = item.id !== 'settings' && activeTab === item.id;
+                  const isActive = item.id !== 'settings' && item.id !== 'logout' && activeTab === item.id;
                   return (
                     <button
                       key={item.id}
@@ -475,17 +477,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       onClick={() => {
                         if (item.id === 'settings') {
                           setIsSettingsOpen(true);
+                        } else if (item.id === 'logout') {
+                          setShowLogoutConfirm(true);
                         } else {
                           setActiveTab(item.id);
                         }
                         setIsModuleMenuOpen(false);
                       }}
                       className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer group ${
-                        isActive ? 'bg-emerald-50 text-emerald-700' : 'text-zinc-800 hover:bg-emerald-50 hover:text-emerald-700'
+                        isActive
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : item.id === 'logout'
+                            ? 'text-rose-600 hover:bg-rose-50'
+                            : 'text-zinc-800 hover:bg-emerald-50 hover:text-emerald-700'
                       }`}
                     >
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                        isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 group-hover:bg-emerald-100 text-zinc-600 group-hover:text-emerald-700'
+                        isActive
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : item.id === 'logout'
+                            ? 'bg-rose-50 text-rose-600 group-hover:bg-rose-100'
+                            : 'bg-zinc-100 group-hover:bg-emerald-100 text-zinc-600 group-hover:text-emerald-700'
                       }`}>
                         <ItemIcon className="w-4.5 h-4.5" />
                       </div>
