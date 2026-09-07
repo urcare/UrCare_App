@@ -2,10 +2,22 @@ import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } fr
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, ContactShadows, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, X, RotateCw, Plus, Minus, Sparkles, Loader2 } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { Logo } from './Logo';
+
+// The body meshes are dense (~60k verts / 300k+ tris each). drei's Html
+// `occlude` prop raycasts every marker against the mesh on every frame —
+// with a plain brute-force raycast that's 19 markers × hundreds of
+// thousands of triangles, per frame, which is what made the rotation feel
+// laggy. A bounds tree turns each of those raycasts into an O(log n) tree
+// walk instead, so occlusion stays essentially free no matter how dense
+// the mesh is.
+(THREE.BufferGeometry.prototype as any).computeBoundsTree = computeBoundsTree;
+(THREE.BufferGeometry.prototype as any).disposeBoundsTree = disposeBoundsTree;
+(THREE.Mesh.prototype as any).raycast = acceleratedRaycast;
 
 interface BodyMapScreenProps {
   profile: UserHealthProfile;
@@ -198,8 +210,15 @@ function OrbitRig({ current, target }: { current: React.MutableRefObject<OrbitSt
 const BodyMesh = React.forwardRef<THREE.Mesh, { gender: Gender }>(({ gender }, ref) => {
   const { nodes } = useGLTF(MODEL_URL[gender]) as any;
   const geometry: THREE.BufferGeometry = nodes.body.geometry;
+
+  // Build the bounds-tree once per geometry (useGLTF caches the geometry
+  // by URL, so this only runs again if the gender/model actually changes).
+  useMemo(() => {
+    if (!(geometry as any).boundsTree) geometry.computeBoundsTree();
+  }, [geometry]);
+
   return (
-    <mesh ref={ref} geometry={geometry} castShadow receiveShadow>
+    <mesh ref={ref} geometry={geometry}>
       <meshStandardMaterial color="#d8ac8d" roughness={0.55} metalness={0.02} />
     </mesh>
   );
@@ -282,7 +301,9 @@ function Scene({
         ))
       )}
 
-      <ContactShadows position={[0, -0.98, 0]} opacity={0.38} scale={3.2} blur={2.6} far={1.1} />
+      {/* frames=1: the body never deforms and only the camera orbits, so the
+          shadow only needs to be baked once instead of re-rendered every frame. */}
+      <ContactShadows position={[0, -0.98, 0]} opacity={0.38} scale={3.2} blur={2.6} far={1.1} frames={1} />
     </>
   );
 }
@@ -325,7 +346,6 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
     dragRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
-    setPreset((p) => p); // no-op, keeps type happy; visual "active" preset cleared below
   }, []);
 
   useEffect(() => {
@@ -352,12 +372,22 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
     };
   }, []);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    target.current = {
-      ...target.current,
-      radius: Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, target.current.radius + e.deltaY * 0.0016)),
+  // React attaches onWheel as a passive listener, so e.preventDefault() inside
+  // it is a silent no-op (and logs a console warning on every scroll) — a
+  // native listener with { passive: false } is the only way to actually stop
+  // the page from scrolling while the user zooms the model.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      target.current = {
+        ...target.current,
+        radius: Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, target.current.radius + e.deltaY * 0.0016)),
+      };
     };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -455,14 +485,14 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
           ref={containerRef}
           className="relative w-full max-w-md h-[50vh] min-h-[380px] max-h-[560px] mt-3 select-none touch-none rounded-3xl overflow-hidden bg-gradient-to-b from-zinc-100 to-zinc-200/60 cursor-grab active:cursor-grabbing"
           onPointerDown={handlePointerDown}
-          onWheel={handleWheel}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
           <Canvas
             camera={{ fov: 32, position: [0, 0, DEFAULT_ORBIT.radius] }}
-            gl={{ antialias: true, alpha: true }}
+            gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+            dpr={[1, 1.75]}
             onCreated={() => setModelReady(true)}
           >
             <Suspense fallback={null}>
