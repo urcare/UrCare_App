@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   CheckCircle2, Target, ChevronRight, ChevronDown,
-  Stethoscope, FileText, Award, Circle,
+  Stethoscope, FileText, Award, Circle, Check,
   RefreshCw, AlertCircle, Clock,
   Sunrise, Sun, Sunset, Moon,
 } from 'lucide-react';
@@ -103,6 +103,16 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
   const [expandedItems, toggleItem] = useToggleSet();
 
+  // Ticks once a minute purely to force a re-render, so "today"'s timeline
+  // re-evaluates which period is current as the real clock moves — without
+  // this, the page would keep showing whichever period was current at the
+  // moment it was first opened, even hours later.
+  const [, forceClockTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => forceClockTick((n) => n + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   // Load this day's reversal-plan sections — a plain DB read + filter, no
   // AI call, so this is always fast (no "generating..." wait needed).
   useEffect(() => {
@@ -195,6 +205,16 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   }, [timelineSections]);
 
   const activePeriod = isToday ? currentPeriod() : null;
+
+  // For today, show ONLY the period matching the real clock right now — as
+  // time moves into the next period, this section swaps to match (no other
+  // period is shown until then). Viewing a past/future day via the calendar
+  // has no "current time" to match, so it still shows the full day; today
+  // also falls back to the full day if the live period happens to be empty
+  // (e.g. nothing scheduled for "Night") so the timeline is never blank.
+  const visiblePeriods = isToday && activePeriod && grouped[activePeriod].length > 0
+    ? PERIODS.filter((p) => p.key === activePeriod)
+    : PERIODS;
 
   // The reference library (condition notes, recipes, vitamins...) is not
   // rendered here — it's lifted up so a parent can show it statically in its
@@ -338,15 +358,24 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40 flex-wrap gap-2">
               <div className="flex items-center gap-2 text-emerald-500 min-w-0">
                 <Clock className="w-5 h-5 shrink-0" />
-                <h3 className="text-sm sm:text-base font-black tracking-tight truncate">24-Hour Reversal Timeline</h3>
+                <h3 className="text-sm sm:text-base font-black tracking-tight truncate">
+                  {visiblePeriods.length === 1 ? `${visiblePeriods[0].label} Routine — Right Now` : '24-Hour Reversal Timeline'}
+                </h3>
               </div>
-              <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 shrink-0">
-                Matched to you
+              <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 shrink-0 flex items-center gap-1">
+                {visiblePeriods.length === 1 ? (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span>Live Now</span>
+                  </>
+                ) : (
+                  'Matched to you'
+                )}
               </span>
             </div>
 
             <div className="space-y-5">
-              {PERIODS.map(({ key, label, range, Icon }) => {
+              {visiblePeriods.map(({ key, label, range, Icon }) => {
                 const items = grouped[key];
                 if (items.length === 0) return null;
                 const periodDone = items.filter((s) => completedToday[s.id]).length;
@@ -380,7 +409,13 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                                 aria-label={done ? 'Mark as not done' : 'Mark as done'}
                                 className="flex items-center pl-3 pr-1 shrink-0 cursor-pointer"
                               >
-                                {done ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Circle className="w-4 h-4 opacity-40" />}
+                                {done ? (
+                                  <div className="w-4.5 h-4.5 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm shadow-emerald-500/40">
+                                    <Check className="w-3 h-3 text-white stroke-[3]" />
+                                  </div>
+                                ) : (
+                                  <Circle className="w-4 h-4 opacity-40" />
+                                )}
                               </button>
                               <button
                                 type="button"
@@ -392,7 +427,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                                     {section.timeLabel && (
                                       <span className="text-[10px] font-black text-emerald-500 shrink-0">{section.timeLabel}</span>
                                     )}
-                                    <span className={`text-xs sm:text-sm font-bold break-words ${done ? 'line-through opacity-60' : ''}`}>{section.title}</span>
+                                    <span className={`text-xs sm:text-sm font-bold break-words ${done ? 'text-emerald-600' : ''}`}>{section.title}</span>
                                   </div>
                                 </div>
                                 <ChevronDown className={`w-4 h-4 opacity-40 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
