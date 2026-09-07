@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Plus, Settings,
+  Plus, Settings, Clock,
   ChevronRight, Sparkles, Trash2, Calendar, ShieldCheck, Activity,
   ShoppingBag, Stethoscope, Crown, Camera, Lock, ClipboardCheck,
   Package, User, Check, PhoneCall, FileText, CheckCircle2, HeartPulse,
-  LogOut, MessageSquare, AlertCircle, MoreVertical, X, Home,
+  LogOut, MessageSquare, AlertCircle, MoreVertical, X,
   Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3
 } from 'lucide-react';
 import { 
@@ -22,6 +22,7 @@ import { DoctorConsultModal } from './DoctorConsultModal';
 import { ClinicalFeedbackModal } from './ClinicalFeedbackModal';
 import { RootCauseAssessmentModal } from './RootCauseAssessmentModal';
 import { ProfilePage } from './ProfilePage';
+import { AccountPage } from './AccountPage';
 import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { Logo } from './Logo';
@@ -49,19 +50,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const { t } = useLanguage();
 
-  // Navigation Tabs — simplified: 'profile' (Home) is the default/main screen,
-  // and now also where the Daily Plan lives directly — it is no longer its
-  // own destination. 'premium' = AI Scan (gated). 'reports', 'assessment' +
-  // 'store' are always free.
-  const [activeTab, setActiveTab] = useState<'profile' | 'premium' | 'reports' | 'assessment' | 'store'>('profile');
+  // Navigation Tabs — 'profile' is Your Daily Plan (the default/main screen),
+  // 'premium' is UrCare Camera (the food scanner, gated), 'account' is the
+  // standalone Profile page (identity, stats, quick actions). 'reports',
+  // 'assessment' + 'store' are always free.
+  const [activeTab, setActiveTab] = useState<'profile' | 'premium' | 'account' | 'reports' | 'assessment' | 'store'>('profile');
 
   // '⋮' module switcher — a single drawer, opened from one fixed spot in the
   // persistent header/sidebar (never inline in a tab's scrolling content), so
   // it never jumps position when the tab changes or the page scrolls.
   const [isModuleMenuOpen, setIsModuleMenuOpen] = useState(false);
   const moduleMenuItems = [
-    { id: 'profile' as const, label: t('navHome'), icon: Home },
-    { id: 'premium' as const, label: account.isPro ? t('navPro') : t('navPremium'), icon: Crown },
+    { id: 'profile' as const, label: t('navHome'), icon: Clock },
+    { id: 'premium' as const, label: account.isPro ? t('navPro') : t('navPremium'), icon: Camera },
+    { id: 'account' as const, label: t('navProfile'), icon: User },
     { id: 'reports' as const, label: 'My Reports', icon: FileText },
     { id: 'assessment' as const, label: 'Assessment', icon: ClipboardCheck },
     { id: 'store' as const, label: 'Store', icon: ShoppingBag },
@@ -219,12 +221,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const activeTabClass = 'bg-emerald-600 text-white font-black shadow-md shadow-emerald-600/20';
   const inactiveTabClass = 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100';
 
-  // Only Home + Pro stay in the persistent nav — Reports/Assessment/Store moved
-  // into the '⋮' side menu (opened from the Profile/Home header) to avoid
-  // showing the same three destinations in two places at once.
+  // The three primary destinations stay in the persistent nav — Reports/
+  // Assessment/Store/Settings moved into the '⋮' side menu instead, to avoid
+  // cluttering the always-visible nav with less-frequent destinations.
   const navItems = [
-    { id: 'profile', label: t('navHome'), icon: Home },
-    { id: 'premium', label: account.isPro ? t('navPro') : t('navPremium'), icon: Crown },
+    { id: 'profile', label: t('navHome'), icon: Clock },
+    { id: 'premium', label: account.isPro ? t('navPro') : t('navPremium'), icon: Camera },
+    { id: 'account', label: t('navProfile'), icon: User },
   ];
 
   return (
@@ -260,7 +263,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             <button
               type="button"
-              onClick={() => setActiveTab('profile')}
+              onClick={() => setActiveTab('account')}
               className="p-1.5 rounded-xl bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 transition-all cursor-pointer shrink-0"
               title={t('openMyProfile')}
             >
@@ -331,7 +334,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             <button
               type="button"
-              onClick={() => setActiveTab('profile')}
+              onClick={() => setActiveTab('account')}
               className="p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
               title="My Profile"
             >
@@ -390,7 +393,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
-            onClick={() => setActiveTab('profile')}
+            onClick={() => setActiveTab('account')}
             className="p-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shrink-0"
             title="Profile"
           >
@@ -501,15 +504,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {activeTab === 'profile' ? (
           <ProfilePage
             profile={profile}
-            account={account}
             prescriptions={prescriptions}
+            onOpenDoctorConsult={handleOpenDoctorConsult}
+          />
+        ) : activeTab === 'account' ? (
+          <AccountPage
+            profile={profile}
+            account={account}
             onUpdateProfile={onUpdateProfile}
             onUpdateAccount={onUpdateAccount}
-            onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenOrders={() => setIsMyOrdersOpen(true)}
             onOpenReports={() => setIsHealthReportOpen(true)}
             onOpenDoctorConsult={handleOpenDoctorConsult}
-            onOpenRiskAssessment={() => setIsRiskAssessmentOpen(true)}
             onLogOut={() => setShowLogoutConfirm(true)}
           />
         ) : (

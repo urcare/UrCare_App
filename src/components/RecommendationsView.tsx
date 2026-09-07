@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   CheckCircle2, Target, ChevronRight, ChevronDown,
   Stethoscope, FileText, Award, Circle, Check,
@@ -164,10 +165,23 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     getActiveDates(userId).then(setMarkedDates);
   }, [userId, dateKey]);
 
+  // A little celebratory pop-up whenever a step is checked off — never shown
+  // when un-checking, only on the way to "done".
+  const [celebration, setCelebration] = useState<string | null>(null);
+  const celebrationMessages = [
+    'Wow! 🎉', 'Nice one! ✅', 'Great job! 💪', "You're on fire! 🔥",
+    'Keep it up! 🌟', 'Awesome! 👏', 'That\'s the spirit! 💚', 'Well done! ✨',
+  ];
+
   const toggleTask = (taskId: string) => {
     if (!userId) return;
+    const willBeDone = !completedToday[taskId];
     setCompletedToday((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
     toggleDailyTask(userId, dateKey, taskId);
+    if (willBeDone) {
+      setCelebration(celebrationMessages[Math.floor(Math.random() * celebrationMessages.length)]);
+      window.setTimeout(() => setCelebration(null), 1600);
+    }
   };
 
   const { calculatedPlan } = profile;
@@ -225,6 +239,21 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
   return (
     <div id="diet-recommendations-section" className="space-y-5 sm:space-y-6 text-left min-w-0">
+
+      {/* Celebratory pop-up shown for a moment whenever a step is ticked off. */}
+      <AnimatePresence>
+        {celebration && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.6, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.75, y: -8 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-2xl bg-emerald-500 text-white font-black text-sm shadow-xl shadow-emerald-500/40 pointer-events-none whitespace-nowrap"
+          >
+            {celebration}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 1. FRIENDLY, SIMPLE HEADER */}
       <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4`}>
