@@ -7,6 +7,7 @@ import {
 import { UserHealthProfile } from '../types';
 import { Logo } from './Logo';
 import { RiskAssessmentCard } from './RiskAssessmentCard';
+import { useLanguage } from '../context/LanguageContext';
 
 interface WowCelebrationProps {
   profile: UserHealthProfile;
@@ -14,6 +15,8 @@ interface WowCelebrationProps {
 }
 
 export const WowCelebration: React.FC<WowCelebrationProps> = ({ profile, onEnterDashboard }) => {
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [animatedScore, setAnimatedScore] = useState(0);
   const [animatedCals, setAnimatedCals] = useState(0);
 
@@ -100,26 +103,26 @@ export const WowCelebration: React.FC<WowCelebrationProps> = ({ profile, onEnter
         {/* Top Status badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black tracking-wider uppercase shadow-xs">
           <Sparkles className="w-4 h-4 text-emerald-600" />
-          <span>YOUR CLINICAL METABOLIC BLUEPRINT IS READY</span>
+          <span>{tr('YOUR CLINICAL METABOLIC BLUEPRINT IS READY', 'आपका क्लीनिकल मेटाबॉलिक ब्लूप्रिंट तैयार है')}</span>
         </div>
 
         {/* Main Headline */}
         <div className="space-y-1.5">
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-950 leading-tight">
-            Metabolic Assessment <span className="text-emerald-600">Formulated</span>
+            {tr('Metabolic Assessment', 'मेटाबॉलिक मूल्यांकन')} <span className="text-emerald-600">{tr('Formulated', 'तैयार')}</span>
           </h1>
           <p className="text-xs sm:text-sm text-zinc-600 max-w-md mx-auto">
-            Evidence-based daily caloric limits, protein ratios, and metabolic risk projections.
+            {tr('Evidence-based daily caloric limits, protein ratios, and metabolic risk projections.', 'प्रमाण-आधारित दैनिक कैलोरी सीमा, प्रोटीन अनुपात और मेटाबॉलिक जोखिम अनुमान।')}
           </p>
         </div>
 
         {/* Main Calorie & Health Card */}
         <div className={`p-6 sm:p-7 rounded-3xl ${cardClass} space-y-5 text-left`}>
-          
+
           <div className="grid grid-cols-2 gap-3 text-center">
             {/* Calorie Box */}
             <div className={`p-4 rounded-2xl ${subCardClass}`}>
-              <div className="text-[10px] font-bold uppercase text-emerald-700">Daily Calorie Target</div>
+              <div className="text-[10px] font-bold uppercase text-emerald-700">{tr('Daily Calorie Target', 'दैनिक कैलोरी लक्ष्य')}</div>
               <div className="text-3xl font-black text-emerald-600 mt-1">
                 {animatedCals} <span className="text-xs font-bold text-zinc-500">kcal</span>
               </div>
@@ -127,7 +130,7 @@ export const WowCelebration: React.FC<WowCelebrationProps> = ({ profile, onEnter
 
             {/* Health Score */}
             <div className={`p-4 rounded-2xl ${subCardClass}`}>
-              <div className="text-[10px] font-bold uppercase text-emerald-700">Metabolic Readiness</div>
+              <div className="text-[10px] font-bold uppercase text-emerald-700">{tr('Metabolic Readiness', 'मेटाबॉलिक तैयारी')}</div>
               <div className="text-3xl font-black text-zinc-900 mt-1">
                 {animatedScore} <span className="text-xs font-bold text-zinc-500">/ 100</span>
               </div>
@@ -137,22 +140,22 @@ export const WowCelebration: React.FC<WowCelebrationProps> = ({ profile, onEnter
           {/* Macronutrients Breakdown */}
           <div className="space-y-2">
             <span className="text-[11px] font-bold uppercase text-zinc-400 tracking-wider">
-              Calibrated Macronutrient Allocation
+              {tr('Calibrated Macronutrient Allocation', 'निर्धारित मैक्रोन्यूट्रिएंट वितरण')}
             </span>
 
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className={`p-3 rounded-xl ${subCardClass}`}>
-                <span className="text-[10px] text-zinc-500 block font-bold">Protein</span>
+                <span className="text-[10px] text-zinc-500 block font-bold">{tr('Protein', 'प्रोटीन')}</span>
                 <span className="text-base font-black text-emerald-600">{calculatedPlan?.proteinGrams ?? 140}g</span>
               </div>
 
               <div className={`p-3 rounded-xl ${subCardClass}`}>
-                <span className="text-[10px] text-zinc-500 block font-bold">Carbohydrates</span>
+                <span className="text-[10px] text-zinc-500 block font-bold">{tr('Carbohydrates', 'कार्बोहाइड्रेट')}</span>
                 <span className="text-base font-black text-emerald-600">{calculatedPlan?.carbsGrams ?? 180}g</span>
               </div>
 
               <div className={`p-3 rounded-xl ${subCardClass}`}>
-                <span className="text-[10px] text-zinc-500 block font-bold">Healthy Fats</span>
+                <span className="text-[10px] text-zinc-500 block font-bold">{tr('Healthy Fats', 'हेल्दी फैट्स')}</span>
                 <span className="text-base font-black text-emerald-600">{calculatedPlan?.fatsGrams ?? 50}g</span>
               </div>
             </div>
@@ -162,24 +165,26 @@ export const WowCelebration: React.FC<WowCelebrationProps> = ({ profile, onEnter
           <div className={`p-3.5 rounded-2xl ${subCardClass} flex items-center justify-between text-xs`}>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span className="font-bold text-zinc-800">Target Weight Goal</span>
+              <span className="font-bold text-zinc-800">{tr('Target Weight Goal', 'लक्ष्य वज़न')}</span>
             </div>
-            <span className="font-black text-emerald-600">{targetWeightKg} kg (from {currentWeightKg} kg)</span>
+            <span className="font-black text-emerald-600">{targetWeightKg} kg ({tr('from', 'से')} {currentWeightKg} kg)</span>
           </div>
 
         </div>
 
-        {/* High Urgency Clinical Risk & Health Warnings Section */}
-        <RiskAssessmentCard profile={profile} onTakeAction={onEnterDashboard} />
+        {/* High Urgency Clinical Risk & Health Warnings Section — no CTA of
+            its own here; the single button below is the one and only way
+            forward on this screen. */}
+        <RiskAssessmentCard profile={profile} />
 
-        {/* Enter Dashboard Button */}
+        {/* Enter Dashboard Button — the one CTA on this screen */}
         <button
           id="enter-dashboard-btn"
           type="button"
           onClick={onEnterDashboard}
           className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/25 active:scale-95 transition-all cursor-pointer"
         >
-          <span>Access Daily Metabolic Tracker</span>
+          <span>{tr('Begin My Reversal Plan', 'मेरी रिवर्सल योजना शुरू करें')}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
 
