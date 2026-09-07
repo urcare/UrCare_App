@@ -34,7 +34,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
 
   // 1. Gender & Activity
   const [gender, setGender] = useState<GenderType>('male');
-  const [workoutsPerWeek, setWorkoutsPerWeek] = useState<'0-2' | '3-5' | '6+'>('3-5');
+  const [workoutsPerWeek, setWorkoutsPerWeek] = useState<'0-2' | '3-5' | '6+' | 'other'>('3-5');
   const [heardFrom, setHeardFrom] = useState<string>('instagram');
   const [triedOtherApps, setTriedOtherApps] = useState<boolean>(true);
 
@@ -116,6 +116,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
     onInsulin: YesNo; insulinDetails: string;
     onSupplements: YesNo; supplementsText: string;
     medicineAllergy: YesNo; foodAllergy: YesNo; envAllergy: YesNo; allergyReactions: string[];
+    foodAllergens: string[];
+    // Free text captured whenever a question's "Other" option is selected,
+    // keyed by that question's own field name — one shared bucket instead of
+    // a dedicated string field per question.
+    otherTexts: Record<string, string>;
     monitorsSugar: YesNo; fastingSugar: string; postMealSugar: string; hba1c: string;
     bloodPressure: string; restingHeartRate: string; otherLabValues: string;
     sleepTime: string; wakeTime: string; sleepHours: string; sleepQuality: string;
@@ -136,6 +141,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
     onInsulin: '', insulinDetails: '',
     onSupplements: '', supplementsText: '',
     medicineAllergy: '', foodAllergy: '', envAllergy: '', allergyReactions: [],
+    foodAllergens: [],
+    otherTexts: {},
     monitorsSugar: '', fastingSugar: '', postMealSugar: '', hba1c: '',
     bloodPressure: '', restingHeartRate: '', otherLabValues: '',
     sleepTime: '', wakeTime: '', sleepHours: '', sleepQuality: '',
@@ -161,6 +168,17 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
       const next = arr.includes(item) ? arr.filter((i) => i !== item) : [...arr, item];
       return { ...prev, [field]: next } as DeepDiveState;
     });
+  };
+  // Free-text captured for any question's "Other" choice, keyed by that
+  // question's own field name (works for the deep-dive steps' DDChips).
+  const setOtherText = (key: string, text: string) => {
+    setDd((prev) => ({ ...prev, otherTexts: { ...prev.otherTexts, [key]: text } }));
+  };
+  // Same idea, for questions that live outside the `dd` deep-dive state
+  // (goal, focus areas, activity level, pace, conditions, gender).
+  const [otherTexts, setOtherTexts] = useState<Record<string, string>>({});
+  const setOtherTextTop = (key: string, text: string) => {
+    setOtherTexts((prev) => ({ ...prev, [key]: text }));
   };
 
   // 7. User Details (pre-fill from initialAccount if valid, otherwise empty for required entry)
@@ -371,7 +389,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
       obstacles: selectedAccomplishments,
       dietaryPreference: dietaryPreference === 'Other' ? (customDietText || 'Custom') : dietaryPreference,
       medicalConditions: selectedConditions,
-      healthDeepDive: dd,
+      // Merge the top-level "Other" free-text answers (gender, goal, focus
+      // areas, activity level, conditions) in with the deep-dive ones so
+      // every "Other" answer from the whole form ends up in one place.
+      healthDeepDive: { ...dd, otherTexts: { ...dd.otherTexts, ...otherTexts } },
       calculatedPlan: finalPlan,
       preferences: userPrefs,
       createdAt: new Date().toISOString(),
@@ -445,25 +466,41 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
   );
 
   const DDChips = ({
-    options, selected, onToggle, columns = 2,
-  }: { options: string[]; selected: string[]; onToggle: (v: string) => void; columns?: 1 | 2 }) => (
-    <div className={`grid ${columns === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-2.5`}>
-      {options.map((opt) => {
-        const isSelected = selected.includes(opt);
-        return (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onToggle(opt)}
-            className={`p-3 rounded-2xl flex items-center justify-between border font-bold text-left transition-all ${isSelected ? itemActive : itemInactive}`}
-          >
-            <span className="text-[11px] font-extrabold leading-tight">{opt}</span>
-            <div className={`w-4 h-4 shrink-0 ml-2 rounded-md border flex items-center justify-center ${isSelected ? 'border-white bg-white text-emerald-600' : 'border-zinc-300'}`}>
-              {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-            </div>
-          </button>
-        );
-      })}
+    options, selected, onToggle, columns = 2, otherValue, onOtherChange,
+  }: {
+    options: string[]; selected: string[]; onToggle: (v: string) => void; columns?: 1 | 2;
+    /** When set, selecting the literal "Other" option reveals a free-text
+     *  input beneath the chips so the user can type their own answer. */
+    otherValue?: string; onOtherChange?: (v: string) => void;
+  }) => (
+    <div className="space-y-2.5">
+      <div className={`grid ${columns === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-2.5`}>
+        {options.map((opt) => {
+          const isSelected = selected.includes(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onToggle(opt)}
+              className={`p-3 rounded-2xl flex items-center justify-between border font-bold text-left transition-all ${isSelected ? itemActive : itemInactive}`}
+            >
+              <span className="text-[11px] font-extrabold leading-tight">{opt}</span>
+              <div className={`w-4 h-4 shrink-0 ml-2 rounded-md border flex items-center justify-center ${isSelected ? 'border-white bg-white text-emerald-600' : 'border-zinc-300'}`}>
+                {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {onOtherChange && selected.includes('Other') && (
+        <input
+          type="text"
+          value={otherValue || ''}
+          onChange={(e) => onOtherChange(e.target.value)}
+          placeholder="Please specify..."
+          className="w-full p-3 rounded-xl border border-zinc-200 bg-zinc-50 focus:bg-white text-zinc-900 text-xs font-medium focus:border-emerald-600 outline-none shadow-xs"
+        />
+      )}
     </div>
   );
 
@@ -652,10 +689,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   <button
                     key={g.id}
                     type="button"
-                    onClick={() => {
-                      setGender(g.id as GenderType);
-                      setTimeout(nextStep, 180);
-                    }}
+                    onClick={() => setGender(g.id as GenderType)}
                     className={`w-full p-4 rounded-2xl flex items-center justify-between border font-bold text-left transition-all ${
                       gender === g.id ? itemActive : itemInactive
                     }`}
@@ -670,6 +704,25 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   </button>
                 ))}
               </div>
+
+              {gender === 'other' && (
+                <input
+                  type="text"
+                  placeholder="Prefer to specify? (optional)"
+                  value={otherTexts.gender || ''}
+                  onChange={(e) => setOtherTextTop('gender', e.target.value)}
+                  className="w-full p-3.5 rounded-xl border border-zinc-200 bg-white text-zinc-900 text-xs font-medium focus:border-emerald-600 outline-none shadow-xs"
+                />
+              )}
+
+              <button
+                type="button"
+                onClick={nextStep}
+                className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer"
+              >
+                <span>Continue</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </motion.div>
           )}
 
@@ -693,14 +746,12 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   { id: 'build_muscle', title: 'Build Lean Muscle & Tone', desc: 'Hypertrophy macro split with progressive reload' },
                   { id: 'maintain_weight', title: 'Maintain Weight & Stay Fit', desc: 'Iso-caloric metabolic balance and sustained energy' },
                   { id: 'health_wellness', title: 'Manage Blood Sugar & Vitality', desc: 'Low glycemic index focus with insulin optimization' },
+                  { id: 'other', title: 'Other', desc: 'Tell us in your own words' },
                 ].map((g) => (
                   <button
                     key={g.id}
                     type="button"
-                    onClick={() => {
-                      setGoal(g.id as GoalType);
-                      setTimeout(nextStep, 180);
-                    }}
+                    onClick={() => setGoal(g.id as GoalType)}
                     className={`w-full p-4 rounded-2xl flex items-center justify-between border font-bold text-left transition-all ${
                       goal === g.id ? itemActive : itemInactive
                     }`}
@@ -715,6 +766,25 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   </button>
                 ))}
               </div>
+
+              {(goal as string) === 'other' && (
+                <input
+                  type="text"
+                  placeholder="Describe your primary goal..."
+                  value={otherTexts.goal || ''}
+                  onChange={(e) => setOtherTextTop('goal', e.target.value)}
+                  className="w-full p-3.5 rounded-xl border border-zinc-200 bg-white text-zinc-900 text-xs font-medium focus:border-emerald-600 outline-none shadow-xs"
+                />
+              )}
+
+              <button
+                type="button"
+                onClick={nextStep}
+                className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer"
+              >
+                <span>Continue</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </motion.div>
           )}
 
@@ -740,6 +810,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   { id: 'thighs', label: 'Legs & Core Strength', icon: Activity },
                   { id: 'sleep', label: 'Deep Sleep & Recovery', icon: Moon },
                   { id: 'stress', label: 'Cortisol & Stress Balance', icon: Heart },
+                  { id: 'other', label: 'Other', icon: Sparkle },
                 ].map((item) => {
                   const isSelected = selectedAccomplishments.includes(item.id);
                   const ItemIcon = item.icon;
@@ -763,6 +834,16 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   );
                 })}
               </div>
+
+              {selectedAccomplishments.includes('other') && (
+                <input
+                  type="text"
+                  placeholder="What else would you like to focus on?"
+                  value={otherTexts.focusAreas || ''}
+                  onChange={(e) => setOtherTextTop('focusAreas', e.target.value)}
+                  className="w-full p-3.5 rounded-xl border border-zinc-200 bg-white text-zinc-900 text-xs font-medium focus:border-emerald-600 outline-none shadow-xs"
+                />
+              )}
 
               <button
                 type="button"
@@ -794,13 +875,14 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   { id: '0-2', title: 'Sedentary / Light (0-2 workouts/wk)', desc: 'Desk job, < 5,000 steps daily' },
                   { id: '3-5', title: 'Moderately Active (3-5 workouts/wk)', desc: 'Active routine, 7,000 - 10,000 steps daily' },
                   { id: '6+', title: 'Very Active (6+ workouts/wk)', desc: 'Intense training, athlete or high physical work' },
+                  { id: 'other', title: 'Other', desc: 'Describe your routine in your own words' },
                 ].map((w) => (
                   <button
                     key={w.id}
                     type="button"
                     onClick={() => {
                       setWorkoutsPerWeek(w.id as any);
-                      setTimeout(nextStep, 180);
+                      if (w.id !== 'other') setTimeout(nextStep, 180);
                     }}
                     className={`w-full p-4 rounded-2xl flex items-center justify-between border font-bold text-left transition-all ${
                       workoutsPerWeek === w.id ? itemActive : itemInactive
@@ -816,6 +898,26 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   </button>
                 ))}
               </div>
+
+              {workoutsPerWeek === 'other' && (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Describe your activity level..."
+                    value={otherTexts.activityLevel || ''}
+                    onChange={(e) => setOtherTextTop('activityLevel', e.target.value)}
+                    className="w-full p-3.5 rounded-xl border border-zinc-200 bg-white text-zinc-900 text-xs font-medium focus:border-emerald-600 outline-none shadow-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={nextStep}
+                    className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer"
+                  >
+                    <span>Continue</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </motion.div>
           )}
 
@@ -1349,6 +1451,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   'Erectile Dysfunction',
                   'Uric Acid / Gout',
                   'Digestive / IBS',
+                  // "Other" is intentionally NOT part of the mirrored
+                  // server-side label list above — it never maps to a
+                  // condition tag, it just captures free text below.
+                  'Other',
                 ].map((cond) => {
                   const isSelected = selectedConditions.includes(cond);
                   return (
@@ -1368,6 +1474,16 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   );
                 })}
               </div>
+
+              {selectedConditions.includes('Other') && (
+                <input
+                  type="text"
+                  placeholder="Describe the other condition..."
+                  value={otherTexts.conditions || ''}
+                  onChange={(e) => setOtherTextTop('conditions', e.target.value)}
+                  className="w-full p-3.5 rounded-xl border border-zinc-200 bg-white text-zinc-900 text-xs font-medium focus:border-emerald-600 outline-none shadow-xs"
+                />
+              )}
 
               <button
                 type="button"
@@ -1428,6 +1544,18 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                 <div className={`p-4 rounded-2xl ${cardClass} space-y-3`}>
                   <span className="text-xs font-black text-zinc-800">Food allergies?</span>
                   <DDYesNo value={dd.foodAllergy} onChange={(v) => setDdField('foodAllergy', v as YesNo)} options={[{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }, { id: 'not_sure', label: 'Not sure' }]} />
+                  {dd.foodAllergy === 'yes' && (
+                    <div className="space-y-2 pt-1">
+                      <span className="text-xs font-black text-zinc-800">Which food(s) are you allergic to?</span>
+                      <DDChips
+                        options={['Peanut', 'Tree Nuts', 'Dairy / Milk', 'Egg', 'Gluten / Wheat', 'Soy', 'Shellfish', 'Fish', 'Sesame', 'Other']}
+                        selected={dd.foodAllergens}
+                        onToggle={(v) => toggleDdItem('foodAllergens', v)}
+                        otherValue={dd.otherTexts['foodAllergens'] || ''}
+                        onOtherChange={(v) => setOtherText('foodAllergens', v)}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className={`p-4 rounded-2xl ${cardClass} space-y-3`}>
                   <span className="text-xs font-black text-zinc-800">Environmental allergies?</span>
@@ -1436,7 +1564,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                 {(dd.medicineAllergy === 'yes' || dd.foodAllergy === 'yes' || dd.envAllergy === 'yes') && (
                   <div className="space-y-2">
                     <span className="text-xs font-black text-zinc-800">What reaction have you experienced?</span>
-                    <DDChips options={['Rash', 'Swelling', 'Breathing difficulty', 'Stomach problems', 'Other']} selected={dd.allergyReactions} onToggle={(v) => toggleDdItem('allergyReactions', v)} />
+                    <DDChips options={['Rash', 'Swelling', 'Breathing difficulty', 'Stomach problems', 'Other']} selected={dd.allergyReactions} onToggle={(v) => toggleDdItem('allergyReactions', v)}  otherValue={dd.otherTexts['allergyReactions'] || ''} onOtherChange={(v) => setOtherText('allergyReactions', v)} />
                   </div>
                 )}
               </div>
@@ -1488,12 +1616,12 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
 
                 <div className="space-y-2">
                   <span className="text-xs font-black text-zinc-800">How many hours do you sleep?</span>
-                  <DDChips options={['Less than 5', '5–6', '6–7', '7–8', '8–9', 'More than 9']} selected={dd.sleepHours ? [dd.sleepHours] : []} onToggle={(v) => setDdField('sleepHours', v)} />
+                  <DDChips options={['Less than 5', '5–6', '6–7', '7–8', '8–9', 'More than 9', 'Other']} selected={dd.sleepHours ? [dd.sleepHours] : []} onToggle={(v) => setDdField('sleepHours', v)}  otherValue={dd.otherTexts['sleepHours'] || ''} onOtherChange={(v) => setOtherText('sleepHours', v)} />
                 </div>
 
                 <div className="space-y-2">
                   <span className="text-xs font-black text-zinc-800">How would you rate your sleep?</span>
-                  <DDChips options={['Good', 'Average', 'Poor', 'Very poor']} selected={dd.sleepQuality ? [dd.sleepQuality] : []} onToggle={(v) => setDdField('sleepQuality', v)} />
+                  <DDChips options={['Good', 'Average', 'Poor', 'Very poor', 'Other']} selected={dd.sleepQuality ? [dd.sleepQuality] : []} onToggle={(v) => setDdField('sleepQuality', v)}  otherValue={dd.otherTexts['sleepQuality'] || ''} onOtherChange={(v) => setOtherText('sleepQuality', v)} />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -1519,22 +1647,22 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">How would you rate your current stress?</span>
-                <DDChips options={['Low', 'Moderate', 'High', 'Overwhelming']} selected={dd.stressLevel ? [dd.stressLevel] : []} onToggle={(v) => setDdField('stressLevel', v)} />
+                <DDChips options={['Low', 'Moderate', 'High', 'Overwhelming', 'Other']} selected={dd.stressLevel ? [dd.stressLevel] : []} onToggle={(v) => setDdField('stressLevel', v)}  otherValue={dd.otherTexts['stressLevel'] || ''} onOtherChange={(v) => setOtherText('stressLevel', v)} />
               </div>
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Main sources of stress</span>
-                <DDChips options={['Work', 'Family', 'Financial', 'Relationship', 'Health', 'Studies', 'Sleep', 'Other']} selected={dd.stressSources} onToggle={(v) => toggleDdItem('stressSources', v)} />
+                <DDChips options={['Work', 'Family', 'Financial', 'Relationship', 'Health', 'Studies', 'Sleep', 'Other']} selected={dd.stressSources} onToggle={(v) => toggleDdItem('stressSources', v)}  otherValue={dd.otherTexts['stressSources'] || ''} onOtherChange={(v) => setOtherText('stressSources', v)} />
               </div>
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Emotional symptoms you currently experience</span>
-                <DDChips options={['Constant worry', 'Racing thoughts', 'Difficulty relaxing', 'Sadness/low mood', 'Low motivation', 'None']} selected={dd.emotionalSymptoms} onToggle={(v) => toggleDdItem('emotionalSymptoms', v)} />
+                <DDChips options={['Constant worry', 'Racing thoughts', 'Difficulty relaxing', 'Sadness/low mood', 'Low motivation', 'None', 'Other']} selected={dd.emotionalSymptoms} onToggle={(v) => toggleDdItem('emotionalSymptoms', v)}  otherValue={dd.otherTexts['emotionalSymptoms'] || ''} onOtherChange={(v) => setOtherText('emotionalSymptoms', v)} />
               </div>
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">How do you usually manage stress?</span>
-                <DDChips options={['Exercise', 'Meditation/Yoga', 'Talking to someone', 'Music', 'Sleep', 'Nothing currently']} selected={dd.stressManagement} onToggle={(v) => toggleDdItem('stressManagement', v)} />
+                <DDChips options={['Exercise', 'Meditation/Yoga', 'Talking to someone', 'Music', 'Sleep', 'Nothing currently', 'Other']} selected={dd.stressManagement} onToggle={(v) => toggleDdItem('stressManagement', v)}  otherValue={dd.otherTexts['stressManagement'] || ''} onOtherChange={(v) => setOtherText('stressManagement', v)} />
               </div>
 
               <DDContinue />
@@ -1548,22 +1676,22 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Bowel movement frequency</span>
-                <DDChips options={['Less than once/day', 'Once/day', '2 times/day', 'More than 2/day', 'Irregular']} selected={dd.bowelFrequency ? [dd.bowelFrequency] : []} onToggle={(v) => setDdField('bowelFrequency', v)} />
+                <DDChips options={['Less than once/day', 'Once/day', '2 times/day', 'More than 2/day', 'Irregular', 'Other']} selected={dd.bowelFrequency ? [dd.bowelFrequency] : []} onToggle={(v) => setDdField('bowelFrequency', v)}  otherValue={dd.otherTexts['bowelFrequency'] || ''} onOtherChange={(v) => setOtherText('bowelFrequency', v)} />
               </div>
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Usual stool type</span>
-                <DDChips options={['Normal', 'Hard', 'Loose', 'Watery', 'Alternating']} selected={dd.stoolType ? [dd.stoolType] : []} onToggle={(v) => setDdField('stoolType', v)} />
+                <DDChips options={['Normal', 'Hard', 'Loose', 'Watery', 'Alternating', 'Other']} selected={dd.stoolType ? [dd.stoolType] : []} onToggle={(v) => setDdField('stoolType', v)}  otherValue={dd.otherTexts['stoolType'] || ''} onOtherChange={(v) => setOtherText('stoolType', v)} />
               </div>
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Digestive symptoms</span>
-                <DDChips options={['Constipation', 'Loose motions', 'Acidity/heartburn', 'Bloating/gas', 'Nausea', 'None']} selected={dd.digestiveSymptoms} onToggle={(v) => toggleDdItem('digestiveSymptoms', v)} />
+                <DDChips options={['Constipation', 'Loose motions', 'Acidity/heartburn', 'Bloating/gas', 'Nausea', 'None', 'Other']} selected={dd.digestiveSymptoms} onToggle={(v) => toggleDdItem('digestiveSymptoms', v)}  otherValue={dd.otherTexts['digestiveSymptoms'] || ''} onOtherChange={(v) => setOtherText('digestiveSymptoms', v)} />
               </div>
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Diagnosed digestive conditions</span>
-                <DDChips options={['IBS', 'GERD', 'Gastritis', 'Ulcer', 'Lactose intolerance', 'None']} selected={dd.digestiveConditions} onToggle={(v) => toggleDdItem('digestiveConditions', v)} />
+                <DDChips options={['IBS', 'GERD', 'Gastritis', 'Ulcer', 'Lactose intolerance', 'None', 'Other']} selected={dd.digestiveConditions} onToggle={(v) => toggleDdItem('digestiveConditions', v)}  otherValue={dd.otherTexts['digestiveConditions'] || ''} onOtherChange={(v) => setOtherText('digestiveConditions', v)} />
               </div>
 
               <DDContinue />
@@ -1577,27 +1705,27 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Alcohol consumption</span>
-                <DDChips options={['Never', 'Occasionally', 'Weekly', 'Daily', 'Previously used, stopped']} selected={dd.alcohol ? [dd.alcohol] : []} onToggle={(v) => setDdField('alcohol', v)} />
+                <DDChips options={['Never', 'Occasionally', 'Weekly', 'Daily', 'Previously used, stopped', 'Other']} selected={dd.alcohol ? [dd.alcohol] : []} onToggle={(v) => setDdField('alcohol', v)}  otherValue={dd.otherTexts['alcohol'] || ''} onOtherChange={(v) => setOtherText('alcohol', v)} />
               </div>
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Smoking / tobacco use</span>
-                <DDChips options={['Never', 'Occasionally', 'Daily', 'Previously used, stopped']} selected={dd.tobacco ? [dd.tobacco] : []} onToggle={(v) => setDdField('tobacco', v)} />
+                <DDChips options={['Never', 'Occasionally', 'Daily', 'Previously used, stopped', 'Other']} selected={dd.tobacco ? [dd.tobacco] : []} onToggle={(v) => setDdField('tobacco', v)}  otherValue={dd.otherTexts['tobacco'] || ''} onOtherChange={(v) => setOtherText('tobacco', v)} />
               </div>
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Daily water intake</span>
-                <DDChips options={['Less than 1 L', '1–2 L', '2–3 L', 'More than 3 L']} selected={dd.waterIntake ? [dd.waterIntake] : []} onToggle={(v) => setDdField('waterIntake', v)} />
+                <DDChips options={['Less than 1 L', '1–2 L', '2–3 L', 'More than 3 L', 'Other']} selected={dd.waterIntake ? [dd.waterIntake] : []} onToggle={(v) => setDdField('waterIntake', v)}  otherValue={dd.otherTexts['waterIntake'] || ''} onOtherChange={(v) => setOtherText('waterIntake', v)} />
               </div>
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Tea / coffee per day</span>
-                <DDChips options={['None', '1 cup', '2 cups', '3+ cups']} selected={dd.teaCoffee ? [dd.teaCoffee] : []} onToggle={(v) => setDdField('teaCoffee', v)} />
+                <DDChips options={['None', '1 cup', '2 cups', '3+ cups', 'Other']} selected={dd.teaCoffee ? [dd.teaCoffee] : []} onToggle={(v) => setDdField('teaCoffee', v)}  otherValue={dd.otherTexts['teaCoffee'] || ''} onOtherChange={(v) => setOtherText('teaCoffee', v)} />
               </div>
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">How often do you eat fried food?</span>
-                <DDChips options={['Rarely', '1–2 times/week', '3–4 times/week', 'Daily']} selected={dd.friedFoodFreq ? [dd.friedFoodFreq] : []} onToggle={(v) => setDdField('friedFoodFreq', v)} />
+                <DDChips options={['Rarely', '1–2 times/week', '3–4 times/week', 'Daily', 'Other']} selected={dd.friedFoodFreq ? [dd.friedFoodFreq] : []} onToggle={(v) => setDdField('friedFoodFreq', v)}  otherValue={dd.otherTexts['friedFoodFreq'] || ''} onOtherChange={(v) => setOtherText('friedFoodFreq', v)} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1617,10 +1745,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Does anyone in your family have these conditions?</span>
                 <DDChips
-                  options={['Diabetes', 'High BP', 'Heart disease', 'Thyroid disease', 'PCOS/PCOD', 'High cholesterol', 'Obesity', 'Cancer', 'Kidney disease', 'Mental health condition', 'No known history']}
+                  options={['Diabetes', 'High BP', 'Heart disease', 'Thyroid disease', 'PCOS/PCOD', 'High cholesterol', 'Obesity', 'Cancer', 'Kidney disease', 'Mental health condition', 'No known history', 'Other']}
                   selected={dd.familyHistory}
                   onToggle={(v) => toggleDdItem('familyHistory', v)}
-                />
+                 otherValue={dd.otherTexts['familyHistory'] || ''} onOtherChange={(v) => setOtherText('familyHistory', v)} />
               </div>
 
               <DDContinue />
@@ -1635,7 +1763,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   <DDHeader title="Women's Health" subtitle="Hormonal and reproductive health context for your personalized plan." />
                   <div className="space-y-2">
                     <span className="text-xs font-black text-zinc-800">Menstrual status</span>
-                    <DDChips options={['Regular periods', 'Irregular periods', 'Menopause', 'Post-menopause']} selected={dd.menstrualStatus ? [dd.menstrualStatus] : []} onToggle={(v) => setDdField('menstrualStatus', v)} />
+                    <DDChips options={['Regular periods', 'Irregular periods', 'Menopause', 'Post-menopause', 'Other']} selected={dd.menstrualStatus ? [dd.menstrualStatus] : []} onToggle={(v) => setDdField('menstrualStatus', v)}  otherValue={dd.otherTexts['menstrualStatus'] || ''} onOtherChange={(v) => setOtherText('menstrualStatus', v)} />
                   </div>
                   {(dd.menstrualStatus === 'Regular periods' || dd.menstrualStatus === 'Irregular periods') && (
                     <DDInput label="Average cycle length (days)" value={dd.cycleLength} onChange={(v) => setDdField('cycleLength', v)} placeholder="e.g. 28" />
@@ -1652,7 +1780,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   </div>
                   <div className="space-y-2">
                     <span className="text-xs font-black text-zinc-800">Menopause/perimenopause symptoms (if any)</span>
-                    <DDChips options={['Hot flashes', 'Night sweats', 'Mood changes', 'Weight gain', 'None']} selected={dd.menopauseSymptoms} onToggle={(v) => toggleDdItem('menopauseSymptoms', v)} />
+                    <DDChips options={['Hot flashes', 'Night sweats', 'Mood changes', 'Weight gain', 'None', 'Other']} selected={dd.menopauseSymptoms} onToggle={(v) => toggleDdItem('menopauseSymptoms', v)}  otherValue={dd.otherTexts['menopauseSymptoms'] || ''} onOtherChange={(v) => setOtherText('menopauseSymptoms', v)} />
                   </div>
                 </>
               ) : (
@@ -1660,11 +1788,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   <DDHeader title="Men's Hormonal Health" subtitle="Energy, muscle mass and hormonal balance context for your personalized plan." />
                   <div className="space-y-2">
                     <span className="text-xs font-black text-zinc-800">Energy throughout the day</span>
-                    <DDChips options={['Very low', 'Low', 'Moderate', 'Good', 'Excellent']} selected={dd.energyLevel ? [dd.energyLevel] : []} onToggle={(v) => setDdField('energyLevel', v)} />
+                    <DDChips options={['Very low', 'Low', 'Moderate', 'Good', 'Excellent', 'Other']} selected={dd.energyLevel ? [dd.energyLevel] : []} onToggle={(v) => setDdField('energyLevel', v)}  otherValue={dd.otherTexts['energyLevel'] || ''} onOtherChange={(v) => setOtherText('energyLevel', v)} />
                   </div>
                   <div className="space-y-2">
                     <span className="text-xs font-black text-zinc-800">Libido / sexual drive</span>
-                    <DDChips options={['Very low', 'Low', 'Normal', 'High', 'Prefer not to answer']} selected={dd.libido ? [dd.libido] : []} onToggle={(v) => setDdField('libido', v)} />
+                    <DDChips options={['Very low', 'Low', 'Normal', 'High', 'Prefer not to answer', 'Other']} selected={dd.libido ? [dd.libido] : []} onToggle={(v) => setDdField('libido', v)}  otherValue={dd.otherTexts['libido'] || ''} onOtherChange={(v) => setOtherText('libido', v)} />
                   </div>
                   <div className="space-y-2">
                     <span className="text-xs font-black text-zinc-800">Diagnosed with low testosterone or hormonal problem?</span>
@@ -1672,7 +1800,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   </div>
                   <div className="space-y-2">
                     <span className="text-xs font-black text-zinc-800">Prostate / urination symptoms</span>
-                    <DDChips options={['Frequent urination', 'Difficulty urinating', 'Enlarged prostate diagnosed', 'None']} selected={dd.prostateSymptoms} onToggle={(v) => toggleDdItem('prostateSymptoms', v)} />
+                    <DDChips options={['Frequent urination', 'Difficulty urinating', 'Enlarged prostate diagnosed', 'None', 'Other']} selected={dd.prostateSymptoms} onToggle={(v) => toggleDdItem('prostateSymptoms', v)}  otherValue={dd.otherTexts['prostateSymptoms'] || ''} onOtherChange={(v) => setOtherText('prostateSymptoms', v)} />
                   </div>
                 </>
               )}
@@ -1689,17 +1817,17 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">Any of these symptoms bothering you?</span>
                 <DDChips
-                  options={['Tingling/numbness in hands or feet', 'Blurry vision', 'Swelling in feet/legs', 'Chest pain/breathlessness', 'Joint pain/stiffness', 'Headaches/brain fog', 'Skin dryness/dark patches', 'None']}
+                  options={['Tingling/numbness in hands or feet', 'Blurry vision', 'Swelling in feet/legs', 'Chest pain/breathlessness', 'Joint pain/stiffness', 'Headaches/brain fog', 'Skin dryness/dark patches', 'None', 'Other']}
                   selected={dd.organSymptoms}
                   onToggle={(v) => toggleDdItem('organSymptoms', v)}
-                />
+                 otherValue={dd.otherTexts['organSymptoms'] || ''} onOtherChange={(v) => setOtherText('organSymptoms', v)} />
               </div>
 
               <DDInput label="Biggest thing stopping you from improving your health" value={dd.biggestBarrier} onChange={(v) => setDdField('biggestBarrier', v)} placeholder="e.g. Lack of time, no motivation..." />
 
               <div className="space-y-2">
                 <span className="text-xs font-black text-zinc-800">What would help you the most?</span>
-                <DDChips options={['Simple meal plans', 'Quick home workouts', 'Daily accountability', 'Flexible timings', 'Health education', 'Stress management']} selected={dd.helpNeeded} onToggle={(v) => toggleDdItem('helpNeeded', v)} />
+                <DDChips options={['Simple meal plans', 'Quick home workouts', 'Daily accountability', 'Flexible timings', 'Health education', 'Stress management', 'Other']} selected={dd.helpNeeded} onToggle={(v) => toggleDdItem('helpNeeded', v)}  otherValue={dd.otherTexts['helpNeeded'] || ''} onOtherChange={(v) => setOtherText('helpNeeded', v)} />
               </div>
 
               <div className="space-y-2">
