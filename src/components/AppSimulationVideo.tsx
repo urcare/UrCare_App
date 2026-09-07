@@ -22,7 +22,7 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
     { id: 'rootcause', title: '1. Find Your Root Causes', duration: 3800 },
     { id: 'plan', title: '2. Follow The Treatment Plan', duration: 4000 },
     { id: 'progress', title: '3. Track Your Progress', duration: 3800 },
-    { id: 'scan', title: '4. AI Food Scan', duration: 4000 },
+    { id: 'scan', title: '4. UrCare Food Scan', duration: 4000 },
   ];
 
   // Timer loop for simulation scenes
@@ -400,7 +400,7 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
 
                 <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/80 text-white text-[9px] font-bold">
                   <Camera className="w-3 h-3 text-emerald-400 animate-pulse" />
-                  <span>AI Live Scanning</span>
+                  <span>Live Scanning</span>
                 </div>
               </div>
 

@@ -209,7 +209,7 @@ export const UrgentRiskScreen: React.FC<UrgentRiskScreenProps> = ({
           </div>
           <p className="text-xs text-emerald-950 font-medium leading-relaxed">
             {language === 'hi'
-              ? 'अच्छी खबर: इस पूरे जोखिम को 90 दिनों के अंदर 100% रोका जा सकता है। प्रतिदिन कैलोरी डेफिसिट, हाई-प्रोटीन डाइट और योर केयर एआई ट्रैकिंग के साथ अपने शरीर को तुरंत रिकवर करें।'
+              ? 'अच्छी खबर: इस पूरे जोखिम को 90 दिनों के अंदर 100% रोका जा सकता है। प्रतिदिन कैलोरी डेफिसिट, हाई-प्रोटीन डाइट और यूआरकेयर की स्मार्ट ट्रैकिंग के साथ अपने शरीर को तुरंत रिकवर करें।'
               : 'The good news: This metabolic degradation is 100% reversible. Starting your calibrated deficit and physician-guided macro pacing today can restore your metabolic health within 90 days.'}
           </p>
         </div>

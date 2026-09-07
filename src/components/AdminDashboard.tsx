@@ -985,7 +985,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                     )}
 
                     <div className="flex items-center gap-4 pt-3 border-t border-zinc-100 text-xs text-zinc-500">
-                      <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-emerald-600" />{patientMealDays} day(s) with AI Scan meals logged</span>
+                      <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-emerald-600" />{patientMealDays} day(s) with UrCare Scan meals logged</span>
                       <span className="flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />{patientTasksDone} daily tasks completed total</span>
                     </div>
 

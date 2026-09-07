@@ -212,7 +212,7 @@ app.post('/api/analyze-report', requireUser(async (req, res, user) => {
     const { imageBase64, mimeType = 'image/jpeg', reportText, reportType } = req.body;
     const ai = getClaudeClient();
     if (!ai) {
-      return res.status(503).json({ analysisFailed: true, rejectionReason: 'The AI scanner is not configured right now. Please try again later.' });
+      return res.status(503).json({ analysisFailed: true, rejectionReason: 'The scanner is not configured right now. Please try again later.' });
     }
 
     const systemInstruction = `You are UrCare's world-class Clinical Nutritionist and Metabolic Health AI.
@@ -325,7 +325,7 @@ app.post('/api/analyze-food', requireUser(async (req, res, user) => {
       : '';
 
     if (!ai) {
-      return res.status(503).json({ analysisFailed: true, rejectionReason: 'The AI scanner is not configured right now. Please try again later.' });
+      return res.status(503).json({ analysisFailed: true, rejectionReason: 'The scanner is not configured right now. Please try again later.' });
     }
 
     const systemInstruction = `You are UrCare's food identification and nutrition vision intelligence.
@@ -391,7 +391,7 @@ Call the record_food_analysis tool exactly once with the complete result.`;
     return res.status(200).json({
       isFood: null,
       analysisFailed: true,
-      rejectionReason: 'Could not reach the AI scanner right now. Please check your connection and try scanning again.',
+      rejectionReason: 'Could not reach the scanner right now. Please check your connection and try scanning again.',
     });
   }
 }));
@@ -709,7 +709,7 @@ app.post('/api/user/upgrade-pro', requireUser(async (req, res, user) => {
       isPro: true,
       proPlanType: planType,
       proExpiry: expiresAt,
-      message: 'Welcome to UrCare Premium! AI Food Scan & your Daily Personalized Plan are now unlocked.',
+      message: 'Welcome to UrCare Premium! UrCare Food Scan & your Daily Personalized Plan are now unlocked.',
     });
   } catch (e: any) {
     console.error('Upgrade failed:', e);

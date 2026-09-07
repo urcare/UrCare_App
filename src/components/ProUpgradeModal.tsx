@@ -18,7 +18,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
   onClose,
   account,
   onUpgradeSuccess,
-  featureTriggerName = 'AI Food Camera Scanner',
+  featureTriggerName = 'UrCare Food Camera Scanner',
 }) => {
   // Single flat plan — no monthly/yearly choice, kept simple on purpose.
   // UPI QR is the only payment method — Razorpay was removed on request.
@@ -37,9 +37,9 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
   const upiId = 'urcare.official@okhdfcbank';
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=${upiId}&pn=UrCare%20Premium%20Subscription&am=${price}&cu=INR`;
 
-  // Premium unlocks exactly one thing, as requested: AI Scan.
+  // Premium unlocks exactly one thing, as requested: the food scan.
   const proFeatures = [
-    { title: 'AI Food Scan', desc: 'Scan or describe any meal and instantly know if it suits YOUR health profile — calories, macros & a personalized good/avoid verdict.' },
+    { title: 'UrCare Food Scan', desc: 'Scan or describe any meal and instantly know if it suits YOUR health profile — calories, macros & a personalized good/avoid verdict.' },
   ];
 
   const handleCopyUpi = () => {
@@ -153,7 +153,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
                 7-Day Money Back Guarantee
               </span>
               <span>•</span>
-              <span>Instant AI Unlock</span>
+              <span>Instant Unlock</span>
             </div>
           </div>
         )}
@@ -256,7 +256,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
             </div>
             <h3 className="text-2xl font-black text-white">Welcome to UrCare Premium!</h3>
             <p className="text-sm text-zinc-400 mt-2 max-w-sm mx-auto">
-              Your Pro membership is now active. AI Food Scan is unlocked.
+              Your Pro membership is now active. UrCare Food Scan is unlocked.
             </p>
             <button
               type="button"
