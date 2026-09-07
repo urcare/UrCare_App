@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   CheckCircle2, Target, ChevronRight, ChevronDown,
-  Stethoscope, FileText, Award, Circle, Check,
+  FileText, Award, Circle, Check,
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon,
   Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles,
@@ -21,7 +21,6 @@ interface RecommendationsViewProps {
   profile: UserHealthProfile;
   prescriptions?: Prescription[];
   onOpenStore?: () => void;
-  onOpenConsultDoctor?: () => void;
   onOpenProModal?: (feature: string) => void;
   /** Called whenever this day's non-time-bound reference rows (condition
    *  library, recipes, vitamins...) change, so a parent can render them
@@ -103,7 +102,6 @@ function useToggleSet(): [Set<string>, (id: string) => void] {
 export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   profile,
   prescriptions = [],
-  onOpenConsultDoctor,
   onReferenceSections,
 }) => {
   const { theme } = useTheme();
@@ -323,29 +321,18 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
       {/* 1. FRIENDLY, SIMPLE HEADER */}
       <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4`}>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20">
-              <Clock className="w-5 h-5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-lg sm:text-2xl font-black tracking-tight break-words bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                {t('dailyPlanTitle')}
-              </h2>
-              <p className="text-xs opacity-70 mt-0.5 break-words">
-                {t('dailyPlanSubtitle')}
-              </p>
-            </div>
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20">
+            <Clock className="w-5 h-5 text-white" />
           </div>
-
-          <button
-            type="button"
-            onClick={() => onOpenConsultDoctor?.()}
-            className="px-3.5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-md shadow-teal-500/20 shrink-0 w-full sm:w-auto justify-center"
-          >
-            <Stethoscope className="w-3.5 h-3.5" />
-            <span>{t('askADoctor')}</span>
-          </button>
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-2xl font-black tracking-tight break-words bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              {t('dailyPlanTitle')}
+            </h2>
+            <p className="text-xs opacity-70 mt-0.5 break-words">
+              {t('dailyPlanSubtitle')}
+            </p>
+          </div>
         </div>
 
         <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between gap-3 flex-wrap">
