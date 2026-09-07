@@ -504,8 +504,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {activeTab === 'profile' ? (
           <ProfilePage
             profile={profile}
+            account={account}
             prescriptions={prescriptions}
             onOpenDoctorConsult={handleOpenDoctorConsult}
+            onOpenProfile={() => setActiveTab('account')}
           />
         ) : activeTab === 'account' ? (
           <AccountPage
