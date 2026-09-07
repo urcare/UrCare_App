@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { UserHealthProfile, UserAccount } from './types';
 import { AuthScreen } from './components/AuthScreen';
 import { OnboardingFlow } from './components/OnboardingFlow';
 import { WowCelebration } from './components/WowCelebration';
-import { BodyMapScreen } from './components/BodyMapScreen';
 import { Dashboard } from './components/Dashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile } from './utils/supabase';
+
+// The 3D body map pulls in three.js + react-three-fiber/drei — a sizeable
+// chunk that only the post-onboarding screen needs, so it's loaded lazily
+// instead of bloating every other screen's initial bundle.
+const BodyMapScreen = lazy(() => import('./components/BodyMapScreen').then((m) => ({ default: m.BodyMapScreen })));
 
 function MainApp() {
   const [profile, setProfile] = useState<UserHealthProfile | null>(null);
@@ -109,13 +113,21 @@ function MainApp() {
   //    before the celebration/plan-ready screen.
   if (profile && account && showBodyMap) {
     return (
-      <BodyMapScreen
-        profile={profile}
-        onNext={() => {
-          setShowBodyMap(false);
-          setShowWowCelebration(true);
-        }}
-      />
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-[#F8FAFC] text-emerald-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-full border-3 border-emerald-600 border-t-transparent animate-spin" />
+          </div>
+        }
+      >
+        <BodyMapScreen
+          profile={profile}
+          onNext={() => {
+            setShowBodyMap(false);
+            setShowWowCelebration(true);
+          }}
+        />
+      </Suspense>
     );
   }
 

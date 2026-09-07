@@ -1,6 +1,9 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { Html, ContactShadows, useGLTF } from '@react-three/drei';
+import * as THREE from 'three';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, X, RotateCw, Plus, Minus, Sparkles } from 'lucide-react';
+import { ArrowRight, X, RotateCw, Plus, Minus, Sparkles, Loader2 } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { Logo } from './Logo';
 
@@ -11,15 +14,7 @@ interface BodyMapScreenProps {
 
 type ViewName = 'front' | 'side' | 'back';
 type Status = 'good' | 'attention' | 'high';
-
-interface RegionDef {
-  id: string;
-  label: string;
-  view: ViewName;
-  top: string;
-  left: string;
-  mirror?: boolean;
-}
+type Gender = 'male' | 'female';
 
 interface RegionStatus {
   status: Status;
@@ -29,46 +24,65 @@ interface RegionStatus {
   wellnessScore: number;
 }
 
-const VIEW_ORDER: ViewName[] = ['front', 'side', 'back'];
+const MODEL_URL: Record<Gender, string> = {
+  male: '/models/male.glb',
+  female: '/models/female.glb',
+};
+useGLTF.preload(MODEL_URL.male);
+useGLTF.preload(MODEL_URL.female);
 
-const IMAGES: Record<'male' | 'female', Record<ViewName, string>> = {
-  male: { front: '/body-male-front.png', side: '/body-male-side.png', back: '/body-male-back.png' },
-  female: { front: '/body-female-front.png', side: '/body-female-side.png', back: '/body-female-back.png' },
+const REGION_LABELS: Record<string, string> = {
+  head: 'Head',
+  eyes: 'Eyes',
+  neck: 'Neck',
+  shoulders: 'Shoulders',
+  chest: 'Chest',
+  arms: 'Arms',
+  stomach: 'Stomach & Abdomen',
+  hips: 'Hips',
+  lowerBack: 'Lower Back',
+  knees: 'Knees',
+  legs: 'Legs',
+  ankles: 'Ankles',
+  feet: 'Feet',
 };
 
-// Every marker position is calibrated against the actual cropped reference
-// photos (public/body-*.png) — a fixed, curated set of regions per angle so
-// the screen stays readable instead of turning into a wall of dots.
-const REGIONS: RegionDef[] = [
-  { id: 'head', label: 'Head', view: 'front', top: '7%', left: '50%' },
-  { id: 'eyes', label: 'Eyes', view: 'front', top: '10.5%', left: '50%' },
-  { id: 'neck', label: 'Neck', view: 'front', top: '15%', left: '50%' },
-  { id: 'shoulders', label: 'Shoulders', view: 'front', top: '19%', left: '31%', mirror: true },
-  { id: 'chest', label: 'Chest', view: 'front', top: '27%', left: '50%' },
-  { id: 'arms', label: 'Arms', view: 'front', top: '37%', left: '13%', mirror: true },
-  { id: 'stomach', label: 'Stomach & Abdomen', view: 'front', top: '41%', left: '50%' },
-  { id: 'hips', label: 'Hips', view: 'front', top: '48%', left: '50%' },
-  { id: 'knees', label: 'Knees', view: 'front', top: '68%', left: '39%', mirror: true },
-  { id: 'legs', label: 'Legs', view: 'front', top: '80%', left: '38%', mirror: true },
-  { id: 'feet', label: 'Feet', view: 'front', top: '96%', left: '40%', mirror: true },
-
-  { id: 'head', label: 'Head', view: 'side', top: '7%', left: '55%' },
-  { id: 'neck', label: 'Neck', view: 'side', top: '15%', left: '52%' },
-  { id: 'chest', label: 'Chest', view: 'side', top: '27%', left: '58%' },
-  { id: 'stomach', label: 'Stomach & Abdomen', view: 'side', top: '41%', left: '52%' },
-  { id: 'hips', label: 'Hips', view: 'side', top: '48%', left: '48%' },
-  { id: 'knees', label: 'Knees', view: 'side', top: '68%', left: '48%' },
-  { id: 'legs', label: 'Legs', view: 'side', top: '80%', left: '48%' },
-
-  { id: 'head', label: 'Head', view: 'back', top: '7%', left: '50%' },
-  { id: 'neck', label: 'Neck', view: 'back', top: '15%', left: '50%' },
-  { id: 'shoulders', label: 'Shoulders', view: 'back', top: '19%', left: '31%', mirror: true },
-  { id: 'lowerBack', label: 'Lower Back', view: 'back', top: '38%', left: '50%' },
-  { id: 'hips', label: 'Hips', view: 'back', top: '48%', left: '50%' },
-  { id: 'knees', label: 'Knees', view: 'back', top: '68%', left: '39%', mirror: true },
-  { id: 'ankles', label: 'Ankles', view: 'back', top: '91%', left: '40%', mirror: true },
-  { id: 'feet', label: 'Feet', view: 'back', top: '96%', left: '40%', mirror: true },
-];
+// Exact points on the surface of each real 3D body model (public/models/*.glb),
+// found once by raycasting against the mesh — see scripts/generate-body-hotspots.mjs.
+// Both models are already centered at the origin, so these read the same way
+// regardless of screen size: [x, y, z] in the model's own local units.
+const BODY_HOTSPOTS: Record<Gender, Record<string, [number, number, number][]>> = {
+  male: {
+    head: [[-0.0006, 0.8866, 0.2191]],
+    eyes: [[-0.001, 0.8172, 0.1957]],
+    neck: [[-0.0046, 0.7125, 0.1833]],
+    shoulders: [[0.2851, 0.5721, 0.0381], [-0.2793, 0.5729, 0.0638]],
+    chest: [[0.0039, 0.4612, 0.168]],
+    arms: [[0.3494, 0.2363, 0.0296], [-0.3442, 0.2366, 0.0833]],
+    stomach: [[0.0016, 0.1553, 0.1669]],
+    hips: [[-0.0075, -0.1984, -0.001]],
+    lowerBack: [[-0.0008, 0.1196, -0.1225]],
+    knees: [[0.2075, -0.4109, -0.0103], [-0.2285, -0.4104, 0.0116]],
+    legs: [[0.2286, -0.627, -0.0072], [-0.2654, -0.6267, 0.0142]],
+    ankles: [[0.2023, -0.891, -0.021], [-0.2391, -0.8914, -0.014]],
+    feet: [[0.2635, -0.9343, 0.1691], [-0.2618, -0.9331, 0.1599]],
+  },
+  female: {
+    head: [[-0.0006, 0.8936, 0.1658]],
+    eyes: [[-0.0015, 0.8196, 0.1814]],
+    neck: [[-0.0028, 0.7127, 0.1659]],
+    shoulders: [[0.2472, 0.571, 0.0495], [-0.2427, 0.5716, 0.0807]],
+    chest: [[0.0028, 0.4665, 0.1508]],
+    arms: [[0.2925, 0.2357, 0.0272], [-0.2787, 0.2377, 0.0675]],
+    stomach: [[-0.0004, 0.1588, 0.1278]],
+    hips: [[0.0111, -0.1959, 0.0542]],
+    lowerBack: [[0.0006, 0.1182, -0.0986]],
+    knees: [[0.1903, -0.4127, 0.0455], [-0.1859, -0.4113, 0.0373]],
+    legs: [[0.1857, -0.6275, 0.0088], [-0.2037, -0.6275, 0.0289]],
+    ankles: [[0.1365, -0.8925, -0.0326], [-0.1633, -0.8901, -0.0217]],
+    feet: [[0.1683, -0.933, 0.0665], [-0.1781, -0.9334, 0.0746]],
+  },
+};
 
 const STATUS_COLOR: Record<Status, string> = { good: '#22c55e', attention: '#f97316', high: '#ef4444' };
 const STATUS_LABEL: Record<Status, string> = { good: 'Healthy', attention: 'Needs Attention', high: 'High Attention' };
@@ -140,12 +154,153 @@ interface SelectedRegion extends RegionStatus {
   label: string;
 }
 
+// ---------- 3D camera rig ----------
+// A hand-rolled orbit: azimuth (spin around the body), polar (tilt up/down),
+// radius (zoom) and y (look-at height). `current` is what's actually drawn
+// each frame; `target` is where drag/buttons/marker-focus want it to go.
+// During an active drag both are set together for instant 1:1 tracking —
+// everything else (preset buttons, focusing on a marker) only moves the
+// target and lets the per-frame lerp below ease the camera there.
+interface OrbitState { azimuth: number; polar: number; radius: number; y: number; }
+
+const DEFAULT_ORBIT: OrbitState = { azimuth: 0, polar: 1.5, radius: 2.55, y: 0 };
+const MIN_RADIUS = 1.0;
+const MAX_RADIUS = 3.4;
+const MIN_POLAR = 0.85;
+const MAX_POLAR = 2.25;
+
+function shortestAngleDiff(from: number, to: number) {
+  let diff = (to - from) % (Math.PI * 2);
+  if (diff < -Math.PI) diff += Math.PI * 2;
+  if (diff > Math.PI) diff -= Math.PI * 2;
+  return diff;
+}
+
+function OrbitRig({ current, target }: { current: React.MutableRefObject<OrbitState>; target: React.MutableRefObject<OrbitState> }) {
+  useFrame((state, delta) => {
+    const c = current.current;
+    const t = target.current;
+    const f = 1 - Math.pow(0.0025, Math.min(delta, 0.1));
+    c.azimuth += shortestAngleDiff(c.azimuth, t.azimuth) * f;
+    c.polar += (t.polar - c.polar) * f;
+    c.radius += (t.radius - c.radius) * f;
+    c.y += (t.y - c.y) * f;
+
+    const x = c.radius * Math.sin(c.polar) * Math.sin(c.azimuth);
+    const y = c.radius * Math.cos(c.polar);
+    const z = c.radius * Math.sin(c.polar) * Math.cos(c.azimuth);
+    state.camera.position.set(x, c.y + y, z);
+    state.camera.lookAt(0, c.y, 0);
+  });
+  return null;
+}
+
+const BodyMesh = React.forwardRef<THREE.Mesh, { gender: Gender }>(({ gender }, ref) => {
+  const { nodes } = useGLTF(MODEL_URL[gender]) as any;
+  const geometry: THREE.BufferGeometry = nodes.body.geometry;
+  return (
+    <mesh ref={ref} geometry={geometry} castShadow receiveShadow>
+      <meshStandardMaterial color="#d8ac8d" roughness={0.55} metalness={0.02} />
+    </mesh>
+  );
+});
+
+function Marker({
+  id,
+  label,
+  position,
+  status,
+  onSelect,
+  occluder,
+}: {
+  id: string;
+  label: string;
+  position: [number, number, number];
+  status: Status;
+  onSelect: (id: string) => void;
+  occluder: React.MutableRefObject<THREE.Mesh | null>;
+}) {
+  const color = STATUS_COLOR[status];
+  return (
+    <Html position={position} center distanceFactor={2.6} zIndexRange={[10, 0]} occlude={[occluder]} style={{ pointerEvents: 'auto' }}>
+      <button
+        type="button"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); onSelect(id); }}
+        title={label}
+        style={{ width: 26, height: 26, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', padding: 0 }}
+      >
+        <span
+          style={{
+            position: 'absolute', width: 26, height: 26, borderRadius: '9999px', background: color, opacity: 0.3,
+            animation: 'urcare-marker-pulse 1.8s ease-in-out infinite',
+          }}
+        />
+        <span style={{ position: 'relative', width: 11, height: 11, borderRadius: '9999px', background: color, boxShadow: '0 0 0 2px rgba(255,255,255,0.9), 0 1px 4px rgba(0,0,0,0.35)' }} />
+      </button>
+    </Html>
+  );
+}
+
+function Scene({
+  gender,
+  statuses,
+  current,
+  target,
+  onSelectRegion,
+}: {
+  gender: Gender;
+  statuses: Record<string, RegionStatus>;
+  current: React.MutableRefObject<OrbitState>;
+  target: React.MutableRefObject<OrbitState>;
+  onSelectRegion: (id: string) => void;
+}) {
+  const hotspots = BODY_HOTSPOTS[gender];
+  const bodyRef = useRef<THREE.Mesh | null>(null);
+  return (
+    <>
+      <ambientLight intensity={0.62} />
+      <directionalLight position={[2, 3.2, 3]} intensity={1.15} />
+      <directionalLight position={[-2.2, 1.2, -1.8]} intensity={0.35} color="#bcd6ff" />
+      <hemisphereLight args={['#ffffff', '#e7ecf3', 0.45]} />
+
+      <OrbitRig current={current} target={target} />
+
+      <BodyMesh gender={gender} ref={bodyRef} />
+
+      {Object.entries(hotspots).map(([id, points]) =>
+        points.map((p, i) => (
+          <Marker
+            key={`${id}-${i}`}
+            id={id}
+            label={REGION_LABELS[id]}
+            position={p}
+            status={statuses[id]?.status || 'good'}
+            onSelect={onSelectRegion}
+            occluder={bodyRef}
+          />
+        ))
+      )}
+
+      <ContactShadows position={[0, -0.98, 0]} opacity={0.38} scale={3.2} blur={2.6} far={1.1} />
+    </>
+  );
+}
+
+function LoadingOverlay() {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#F8FAFC]/70 backdrop-blur-sm z-20 pointer-events-none">
+      <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+      <span className="text-xs font-bold text-zinc-400">Preparing your 3D body model…</span>
+    </div>
+  );
+}
+
 export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext }) => {
-  const gender: 'male' | 'female' = profile.gender === 'female' ? 'female' : 'male';
-  const [view, setView] = useState<ViewName>('front');
-  const [zoom, setZoom] = useState(1);
-  const [focusOrigin, setFocusOrigin] = useState('50% 50%');
+  const gender: Gender = profile.gender === 'female' ? 'female' : 'male';
+  const [preset, setPreset] = useState<ViewName>('front');
   const [selected, setSelected] = useState<SelectedRegion | null>(null);
+  const [modelReady, setModelReady] = useState(false);
 
   const statuses = useMemo(() => computeRegionStatuses(profile), [profile]);
   const overallScore = useMemo(() => {
@@ -153,43 +308,108 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
     return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
   }, [statuses]);
 
-  const visibleRegions = REGIONS.filter((r) => r.view === view);
+  const current = useRef<OrbitState>({ ...DEFAULT_ORBIT });
+  const target = useRef<OrbitState>({ ...DEFAULT_ORBIT });
 
-  // Drag left/right cycles Front → Side → Back (and back), simulating
-  // turning the body — dragging a marker itself is ignored (see the
-  // marker button's own stopPropagation).
-  const dragState = useRef<{ startX: number } | null>(null);
-  const handlePointerDown = (e: React.PointerEvent) => { dragState.current = { startX: e.clientX }; };
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!dragState.current) return;
-    const delta = e.clientX - dragState.current.startX;
-    dragState.current = null;
-    if (Math.abs(delta) < 40) return;
-    const idx = VIEW_ORDER.indexOf(view);
-    const nextIdx = delta < 0
-      ? (idx + 1) % VIEW_ORDER.length
-      : (idx - 1 + VIEW_ORDER.length) % VIEW_ORDER.length;
-    setView(VIEW_ORDER[nextIdx]);
-    setZoom(1);
-    setFocusOrigin('50% 50%');
-  };
+  const dragRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const pinchRef = useRef<{ dist: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleMarkerClick = (region: RegionDef, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setFocusOrigin(`${region.left} ${region.top}`);
-    setZoom(1.5);
-    const info = statuses[region.id];
-    window.setTimeout(() => setSelected({ id: region.id, label: region.label, ...info }), 300);
-  };
-
-  const closeSheet = () => {
+  const applyPreset = useCallback((v: ViewName) => {
+    setPreset(v);
     setSelected(null);
-    setZoom(1);
-    setFocusOrigin('50% 50%');
-  };
+    const azimuth = v === 'front' ? 0 : v === 'side' ? Math.PI / 2 : Math.PI;
+    target.current = { azimuth, polar: DEFAULT_ORBIT.polar, radius: DEFAULT_ORBIT.radius, y: 0 };
+  }, []);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    dragRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+    setPreset((p) => p); // no-op, keeps type happy; visual "active" preset cleared below
+  }, []);
+
+  useEffect(() => {
+    const handleMove = (e: PointerEvent) => {
+      if (!dragRef.current) return;
+      const dx = e.clientX - dragRef.current.x;
+      const dy = e.clientY - dragRef.current.y;
+      dragRef.current = { x: e.clientX, y: e.clientY, pointerId: dragRef.current.pointerId };
+      const next: OrbitState = {
+        azimuth: target.current.azimuth - dx * 0.009,
+        polar: Math.min(MAX_POLAR, Math.max(MIN_POLAR, target.current.polar - dy * 0.007)),
+        radius: target.current.radius,
+        y: target.current.y,
+      };
+      target.current = next;
+      current.current = next;
+    };
+    const handleUp = () => { dragRef.current = null; };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    target.current = {
+      ...target.current,
+      radius: Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, target.current.radius + e.deltaY * 0.0016)),
+    };
+  }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      pinchRef.current = { dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) };
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchRef.current) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const delta = dist - pinchRef.current.dist;
+      pinchRef.current = { dist };
+      target.current = {
+        ...target.current,
+        radius: Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, target.current.radius - delta * 0.006)),
+      };
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => { pinchRef.current = null; }, []);
+
+  const zoomBy = useCallback((delta: number) => {
+    target.current = { ...target.current, radius: Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, target.current.radius + delta)) };
+  }, []);
+
+  const handleSelectRegion = useCallback((id: string) => {
+    const points = BODY_HOTSPOTS[gender][id];
+    const p = points?.[0];
+    if (p) {
+      target.current = {
+        azimuth: Math.atan2(p[0], p[2]),
+        polar: DEFAULT_ORBIT.polar,
+        radius: 1.2,
+        y: p[1],
+      };
+    }
+    const info = statuses[id];
+    window.setTimeout(() => setSelected({ id, label: REGION_LABELS[id], ...info }), 280);
+  }, [gender, statuses]);
+
+  const closeSheet = useCallback(() => {
+    setSelected(null);
+    target.current = { ...target.current, radius: DEFAULT_ORBIT.radius, y: 0 };
+  }, []);
 
   return (
     <div id="body-map-screen" className="min-h-screen bg-[#F8FAFC] flex flex-col">
+      <style>{`@keyframes urcare-marker-pulse { 0%,100% { transform: scale(0.85); opacity: 0.35; } 50% { transform: scale(1.6); opacity: 0.05; } }`}</style>
+
       <header className="w-full max-w-xl mx-auto flex items-center justify-center pt-6 pb-1 px-4">
         <Logo size="md" />
       </header>
@@ -216,13 +436,13 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
 
         {/* View buttons */}
         <div className="flex items-center gap-1.5 mt-4 p-1 rounded-2xl bg-zinc-100 border border-zinc-200">
-          {VIEW_ORDER.map((v) => (
+          {(['front', 'side', 'back'] as ViewName[]).map((v) => (
             <button
               key={v}
               type="button"
-              onClick={() => { setView(v); setZoom(1); setFocusOrigin('50% 50%'); }}
+              onClick={() => applyPreset(v)}
               className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wide transition-all cursor-pointer ${
-                view === v ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-800'
+                preset === v ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-800'
               }`}
             >
               {v}
@@ -230,86 +450,50 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
           ))}
         </div>
 
-        {/* The body viewer — a fixed aspect ratio close to the reference
-            photos' own proportions, so the full figure (head to feet) is
-            always visible instead of being cropped by a squatter box. */}
-        <div className="relative w-full max-w-xs sm:max-w-sm aspect-[9/28] mt-3 select-none">
-          <div
-            className="absolute inset-0 rounded-3xl overflow-hidden bg-gradient-to-b from-zinc-100 to-zinc-200 border border-zinc-200 shadow-inner cursor-grab active:cursor-grabbing"
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
-            style={{ touchAction: 'pan-y' }}
+        {/* The 3D body viewer */}
+        <div
+          ref={containerRef}
+          className="relative w-full max-w-md h-[50vh] min-h-[380px] max-h-[560px] mt-3 select-none touch-none rounded-3xl overflow-hidden bg-gradient-to-b from-zinc-100 to-zinc-200/60 cursor-grab active:cursor-grabbing"
+          onPointerDown={handlePointerDown}
+          onWheel={handleWheel}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <Canvas
+            camera={{ fov: 32, position: [0, 0, DEFAULT_ORBIT.radius] }}
+            gl={{ antialias: true, alpha: true }}
+            onCreated={() => setModelReady(true)}
           >
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={view}
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -16 }}
-                transition={{ duration: 0.22, ease: 'easeOut' }}
-                className="absolute inset-0"
-              >
-                <motion.img
-                  src={IMAGES[gender][view]}
-                  alt={`${gender} body — ${view} view`}
-                  className="w-full h-full object-contain pointer-events-none"
-                  animate={{ scale: zoom }}
-                  transition={{ duration: 0.35, ease: 'easeOut' }}
-                  style={{ transformOrigin: focusOrigin }}
-                  draggable={false}
-                />
+            <Suspense fallback={null}>
+              <Scene gender={gender} statuses={statuses} current={current} target={target} onSelectRegion={handleSelectRegion} />
+            </Suspense>
+          </Canvas>
 
-                {visibleRegions.map((region) => {
-                  const info = statuses[region.id];
-                  const color = STATUS_COLOR[info.status];
-                  const positions = region.mirror
-                    ? [region.left, `${100 - parseFloat(region.left)}%`]
-                    : [region.left];
-                  return positions.map((left, i) => (
-                    <button
-                      key={`${region.id}-${region.view}-${i}`}
-                      type="button"
-                      onClick={(e) => handleMarkerClick(region, e)}
-                      className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
-                      style={{ top: region.top, left }}
-                      title={region.label}
-                    >
-                      <motion.span
-                        className="absolute inset-0 rounded-full"
-                        style={{ background: color, width: 22, height: 22, left: -11, top: -11 }}
-                        animate={{ opacity: [0.35, 0.05, 0.35], scale: [0.8, 1.6, 0.8] }}
-                        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-                      />
-                      <span className="relative block w-2.5 h-2.5 rounded-full shadow-md ring-2 ring-white" style={{ background: color }} />
-                    </button>
-                  ));
-                })}
-              </motion.div>
-            </AnimatePresence>
+          {!modelReady && <LoadingOverlay />}
 
-            {/* Zoom controls */}
-            <div className="absolute bottom-3 right-3 flex flex-col gap-1.5 z-10">
-              <button
-                type="button"
-                onClick={() => setZoom((z) => Math.min(2.2, z + 0.3))}
-                className="w-8 h-8 rounded-xl bg-white/90 backdrop-blur border border-zinc-200 shadow-sm flex items-center justify-center text-zinc-600 hover:text-emerald-600 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setZoom((z) => Math.max(1, z - 0.3))}
-                className="w-8 h-8 rounded-xl bg-white/90 backdrop-blur border border-zinc-200 shadow-sm flex items-center justify-center text-zinc-600 hover:text-emerald-600 cursor-pointer"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-            </div>
+          {/* Zoom controls */}
+          <div className="absolute bottom-3 right-3 flex flex-col gap-1.5 z-10">
+            <button
+              type="button"
+              onClick={() => zoomBy(-0.3)}
+              className="w-8 h-8 rounded-xl bg-white/90 backdrop-blur border border-zinc-200 shadow-sm flex items-center justify-center text-zinc-600 hover:text-emerald-600 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => zoomBy(0.3)}
+              className="w-8 h-8 rounded-xl bg-white/90 backdrop-blur border border-zinc-200 shadow-sm flex items-center justify-center text-zinc-600 hover:text-emerald-600 cursor-pointer"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
         <p className="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-2.5">
           <RotateCw className="w-3.5 h-3.5 shrink-0" />
-          Drag to turn the body — tap a glowing marker for details.
+          Drag to rotate the body — pinch or scroll to zoom — tap a glowing marker for details.
         </p>
       </div>
 
