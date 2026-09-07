@@ -84,102 +84,68 @@ function computeLongestStreak(markedDates: Set<string>): number {
   return longest;
 }
 
-/** The streak glyph: the uploaded green 3D heart-with-flame image, brought
- *  to life with layered CSS/JS effects only — the image pixels themselves
- *  are never redrawn, recolored, or distorted. Two soft glow layers pulse
- *  behind it out of phase for depth, the heart itself gently floats and
- *  breathes, a light shimmer sweeps across it on a loop, and it tilts in
- *  3D on hover. */
+/** The streak glyph: the uploaded green 3D heart-with-flame image, held
+ *  completely still — no float, no breathing, no tilt, nothing on the
+ *  heart itself. The only motion is a small flickering glow sitting right
+ *  over the flame in the artwork, so it reads as "the flame is burning"
+ *  rather than the heart moving. The image pixels are never redrawn,
+ *  recolored, or distorted. */
 const StreakHeartImage: React.FC<{ size?: number }> = ({ size = 28 }) => (
-  <motion.div
-    className="relative inline-flex items-center justify-center shrink-0"
-    style={{ width: size, height: size, perspective: 200 }}
-    whileHover={{ rotateY: 18, rotateX: -8, scale: 1.08 }}
-    whileTap={{ scale: 0.94 }}
-    transition={{ type: 'spring', stiffness: 260, damping: 14 }}
-  >
-    {/* Layered ambient glow — two blurred halos pulsing out of phase */}
-    <motion.div
-      className="absolute inset-0 rounded-full bg-emerald-500/35 blur-lg"
-      animate={{ opacity: [0.3, 0.6, 0.3], scale: [0.85, 1.25, 0.85] }}
-      transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
-    />
-    <motion.div
-      className="absolute inset-0 rounded-full bg-lime-300/40 blur-md"
-      animate={{ opacity: [0.25, 0.55, 0.25], scale: [0.75, 1.05, 0.75] }}
-      transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
-    />
-
-    {/* The heart itself — floats and breathes gently, never distorted */}
-    <motion.img
+  <div className="relative inline-flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+    <img
       src={STREAK_HEART_SRC}
       alt="Streak"
       draggable={false}
       className="relative pointer-events-none select-none"
       style={{ width: size, height: size, objectFit: 'contain' }}
-      animate={{ y: [0, -2, 0], scale: [1, 1.045, 1] }}
-      transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
     />
 
-    {/* A light shimmer sweeping across the heart on a loop */}
-    <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none" style={{ mixBlendMode: 'plus-lighter' }}>
-      <motion.div
-        className="absolute inset-y-0 w-1/3 bg-white/60 blur-[2px]"
-        style={{ transform: 'skewX(-20deg)' }}
-        animate={{ x: ['-140%', '240%'] }}
-        transition={{ duration: 2.6, repeat: Infinity, repeatDelay: 1.8, ease: 'easeInOut' }}
-      />
-    </div>
-  </motion.div>
+    {/* Flickering flame glow, positioned over the flame at the heart's
+        center — an irregular multi-step flicker reads more like real fire
+        than a smooth pulse would. */}
+    <motion.div
+      className="absolute rounded-full pointer-events-none"
+      style={{
+        width: size * 0.32,
+        height: size * 0.46,
+        left: '50%',
+        top: '48%',
+        transform: 'translate(-50%, -50%)',
+        background: 'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(200,255,150,0.75) 40%, rgba(120,255,120,0) 75%)',
+        mixBlendMode: 'plus-lighter',
+        filter: 'blur(1px)',
+      }}
+      animate={{
+        opacity: [0.55, 1, 0.7, 0.95, 0.5, 0.9, 0.6, 0.55],
+        scale: [0.85, 1.08, 0.95, 1.1, 0.8, 1.02, 0.9, 0.85],
+      }}
+      transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+    />
+  </div>
 );
 
-/** The compact "Days" trigger that sits next to the '⋮' module menu — the
- *  heart glyph, a small label, and this week's Mon..Sun positions shown as
- *  numbered chips (1-7), colored by real progress: filled for days already
- *  completed, a solid ring for today, and a plain inactive dot for days
- *  not yet reached. Tapping it opens the same full streak card below. */
-const StreakDaysBar: React.FC<{
-  weekDates: Date[];
-  markedDates: Set<string>;
-  todayKey: string;
-  onOpen: () => void;
-}> = ({ weekDates, markedDates, todayKey, onOpen }) => (
+/** The compact trigger that sits next to the '⋮' module menu — just the
+ *  heart glyph and the current streak count (0, 1, 2, 3...), which grows
+ *  by one each real consecutive day the user is active in the app. No
+ *  "Days" label, no week of numbers — tapping it opens the same full
+ *  streak card below. */
+const StreakBar: React.FC<{ streak: number; onOpen: () => void }> = ({ streak, onOpen }) => (
   <button
     type="button"
     onClick={onOpen}
     title="Streak"
-    className="inline-flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full bg-white shadow-sm hover:shadow-md border border-zinc-100 transition-all cursor-pointer"
+    className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-white shadow-sm hover:shadow-md border border-zinc-100 transition-all cursor-pointer"
   >
     <StreakHeartImage size={26} />
-    <span className="text-[9px] sm:text-[10px] font-black text-zinc-900 uppercase tracking-wide shrink-0">Days</span>
-    <div className="flex items-center gap-[3px] shrink-0">
-      {weekDates.map((d, i) => {
-        const key = toDateKey(d);
-        const isToday = key === todayKey;
-        const isDone = markedDates.has(key);
-        return (
-          <span
-            key={key}
-            className={`w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] rounded-full flex items-center justify-center text-[8px] sm:text-[9px] font-black transition-colors ${
-              isToday
-                ? 'bg-emerald-600 text-white'
-                : isDone
-                  ? 'bg-emerald-100 text-emerald-700'
-                  : 'bg-zinc-100 text-zinc-400'
-            }`}
-          >
-            {i + 1}
-          </span>
-        );
-      })}
-    </div>
+    <span className="text-sm font-black text-zinc-900 tabular-nums">{streak}</span>
   </button>
 );
 
-/** The "Days" trigger next to the '⋮' module menu, and the full streak
- *  card it opens — unchanged data/behavior from before, just re-skinned
- *  with the uploaded heart asset per the brief. Rendered once outside the
- *  tab content, so it stays visible no matter which module you switch to. */
+/** The heart + streak-count trigger next to the '⋮' module menu, and the
+ *  full streak card it opens — unchanged data/behavior from before, just
+ *  re-skinned with the uploaded heart asset per the brief. Rendered once
+ *  outside the tab content, so it stays visible no matter which module you
+ *  switch to. */
 export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
   const userId = profile.id || '';
   const [expanded, setExpanded] = useState(false);
@@ -219,12 +185,7 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
 
   return (
     <div className="relative inline-block">
-      <StreakDaysBar
-        weekDates={weekDates}
-        markedDates={markedDates}
-        todayKey={todayKey}
-        onOpen={() => setExpanded((v) => !v)}
-      />
+      <StreakBar streak={streak} onOpen={() => setExpanded((v) => !v)} />
 
       {/* The full streak card — a centered modal over the whole page, with
           real data: current streak, all-time longest streak, this week's
