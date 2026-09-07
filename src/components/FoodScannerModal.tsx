@@ -184,7 +184,7 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
       setScannedResult(data);
     } catch (err) {
       console.error(err);
-      setError('Could not reach the AI scanner. Please check your connection and try scanning again.');
+      setError('Could not reach the food scanner. Please check your connection and try scanning again.');
       setScannedResult(null);
     } finally {
       setIsScanning(false);

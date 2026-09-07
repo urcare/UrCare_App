@@ -635,7 +635,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2 font-bold">
                     <Target className="w-4 h-4" />
                   </div>
-                  <div className="text-sm font-extrabold text-zinc-900">Instant Calorie AI</div>
+                  <div className="text-sm font-extrabold text-zinc-900">Instant Calorie Engine</div>
                   <p className="text-xs text-zinc-500 mt-0.5">Automated meal tracking with clinical macro splits.</p>
                 </div>
 
@@ -737,7 +737,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             >
               <div>
                 <h2 className="text-2xl font-black text-zinc-950">What is your primary goal?</h2>
-                <p className="text-xs text-zinc-500 mt-1">UrCare AI tailors your daily calorie deficit and macro targets accordingly.</p>
+                <p className="text-xs text-zinc-500 mt-1">UrCare tailors your daily calorie deficit and macro targets accordingly.</p>
               </div>
 
               <div className="space-y-3">
@@ -1426,7 +1426,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             >
               <div>
                 <h2 className="text-2xl font-black text-zinc-950">Medical & Health Profile</h2>
-                <p className="text-xs text-zinc-500 mt-1">Our clinical AI algorithm adjusts micronutrient and glycemic limits for your health.</p>
+                <p className="text-xs text-zinc-500 mt-1">Our clinical algorithm adjusts micronutrient and glycemic limits for your health.</p>
               </div>
 
               {/* This exact label list is mirrored server-side (CONDITION_LABEL_TO_TAG
@@ -1499,7 +1499,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
           {/* STEP 11: MEDICINES, INSULIN & SUPPLEMENTS */}
           {currentStep === 11 && (
             <motion.div key="step-11" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
-              <DDHeader title="Medicines & Supplements" subtitle="Tell us what you are currently taking, so our clinical AI never conflicts with your prescriptions." />
+              <DDHeader title="Medicines & Supplements" subtitle="Tell us what you are currently taking, so our clinical algorithm never conflicts with your prescriptions." />
 
               <div className="space-y-4">
                 <div className={`p-4 rounded-2xl ${cardClass} space-y-3`}>
@@ -2209,7 +2209,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
               </div>
               <h3 className="text-2xl font-black text-zinc-950">Your Plan is Ready!</h3>
               <p className="text-xs text-zinc-500">
-                Your personalized daily plan is set up. Upgrade to Pro any time to unlock AI meal scanning, clinical biomarker tracking, and doctor consults.
+                Your personalized daily plan is set up. Upgrade to Pro any time to unlock smart meal scanning, clinical biomarker tracking, and doctor consults.
               </p>
             </div>
 

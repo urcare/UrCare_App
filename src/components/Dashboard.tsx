@@ -65,6 +65,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     { id: 'reports' as const, label: 'My Reports', icon: FileText },
     { id: 'assessment' as const, label: 'Assessment', icon: ClipboardCheck },
     { id: 'store' as const, label: 'Store', icon: ShoppingBag },
+    // Not a tab — opens the Settings modal directly (see the drawer's onClick).
+    { id: 'settings' as const, label: 'Settings', icon: Settings },
   ];
 
   // Without this, switching tabs while scrolled down on the previous tab
@@ -232,9 +234,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <aside className="hidden md:flex flex-col justify-between w-64 fixed left-0 top-0 bottom-0 z-40 bg-white border-r border-zinc-200 p-5 shadow-xs">
         <div className="space-y-6">
           
-          {/* Logo & Brand */}
+          {/* Logo & Brand — no subtitle once inside the app itself, only
+              during onboarding/auth (see Logo's other call sites). */}
           <div className="pb-4 border-b border-zinc-100 flex justify-center">
-            <Logo size="sm" showSubtitle={true} />
+            <Logo size="sm" showSubtitle={false} />
           </div>
 
           {/* User Quick Info with My Profile Button */}
@@ -335,15 +338,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <User className="w-4 h-4 text-zinc-700" />
             </button>
 
-            <button
-              type="button"
-              onClick={() => setIsSettingsOpen(true)}
-              className="p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
-              title="Settings"
-            >
-              <Settings className="w-4 h-4 text-zinc-700" />
-            </button>
-
             {onOpenAdminPortal && (
               <button
                 type="button"
@@ -390,7 +384,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="flex-1 min-w-0 flex justify-center px-1">
-          <Logo size="sm" showSubtitle={true} compact className="min-w-0 max-w-full" />
+          <Logo size="sm" showSubtitle={false} compact className="min-w-0 max-w-full" />
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
@@ -409,14 +403,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             className="p-2 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 border border-zinc-200 shrink-0"
           >
             <Package className="w-4 h-4 text-emerald-600" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-2 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 border border-zinc-200 shrink-0"
-          >
-            <Settings className="w-4 h-4" />
           </button>
         </div>
       </header>
@@ -477,12 +463,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <nav className="flex-1 p-3 space-y-1">
                 {moduleMenuItems.map((item) => {
                   const ItemIcon = item.icon;
-                  const isActive = activeTab === item.id;
+                  const isActive = item.id !== 'settings' && activeTab === item.id;
                   return (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => { setActiveTab(item.id); setIsModuleMenuOpen(false); }}
+                      onClick={() => {
+                        if (item.id === 'settings') {
+                          setIsSettingsOpen(true);
+                        } else {
+                          setActiveTab(item.id);
+                        }
+                        setIsModuleMenuOpen(false);
+                      }}
                       className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer group ${
                         isActive ? 'bg-emerald-50 text-emerald-700' : 'text-zinc-800 hover:bg-emerald-50 hover:text-emerald-700'
                       }`}
@@ -547,7 +540,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div className="max-w-sm mx-auto text-left">
                     <div className={`p-4 rounded-2xl ${subCardClass} space-y-1.5`}>
                       <Camera className="w-5 h-5 text-emerald-600" />
-                      <h4 className="text-sm font-black text-zinc-900">AI Food Scan</h4>
+                      <h4 className="text-sm font-black text-zinc-900">UrCare Food Scan</h4>
                       <p className="text-xs text-zinc-500">Scan any meal — instantly know if it's good for YOUR health, or not.</p>
                     </div>
                   </div>
@@ -575,9 +568,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <Camera className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <h3 className="text-base font-black text-zinc-950">AI Food Scan</h3>
+                        <h3 className="text-base font-black text-zinc-950">UrCare Food Scan</h3>
                         <p className="text-xs text-zinc-500 max-w-md mt-0.5">
-                          Snap a photo or describe your meal — the AI tells you if it's good for your health profile, or not, and why.
+                          Snap a photo or describe your meal — UrCare tells you if it's good for your health profile, or not, and why.
                         </p>
                       </div>
                     </div>
@@ -770,7 +763,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           profile={profile}
           onOpenProUpgrade={() => {
             setIsFoodScannerOpen(false);
-            handleOpenProModalFor('AI Food Scan');
+            handleOpenProModalFor('UrCare Food Scan');
           }}
         />
       )}

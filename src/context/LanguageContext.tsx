@@ -57,7 +57,7 @@ export const DICTIONARY: Translations = {
   carbs: { en: 'Carbs', hi: 'कार्ब्स' },
   fats: { en: 'Fats', hi: 'फैट्स' },
   water: { en: 'Water', hi: 'पानी' },
-  scanFood: { en: 'Scan Food with AI', hi: 'एआई से खाना स्कैन करें' },
+  scanFood: { en: 'Scan Food with UrCare', hi: 'यूआरकेयर से खाना स्कैन करें' },
   addMeal: { en: 'Log Meal', hi: 'खाना जोड़ें' },
   consultDoctor: { en: 'Doctor Consult', hi: 'डॉक्टर से बात करें' },
   

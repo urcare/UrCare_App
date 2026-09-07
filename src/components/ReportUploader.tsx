@@ -201,7 +201,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       clearTimeout(progressTimer1);
       clearTimeout(progressTimer2);
       console.error(err);
-      setError(lang === 'hi' ? 'AI सर्विस से संपर्क नहीं हो सका। कृपया दोबारा कोशिश करें।' : 'Could not reach the AI scanner. Please check your connection and try again.');
+      setError(lang === 'hi' ? 'स्कैन सर्विस से संपर्क नहीं हो सका। कृपया दोबारा कोशिश करें।' : 'Could not reach the scanning service. Please check your connection and try again.');
       setScanProgress(0);
       setIsAnalyzing(false);
     }
