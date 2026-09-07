@@ -9,7 +9,6 @@ interface ProfilePageProps {
   profile: UserHealthProfile;
   account: UserAccount;
   prescriptions?: Prescription[];
-  onOpenDoctorConsult: () => void;
   /** Jumps to the standalone Profile tab (full identity/stats/edit page). */
   onOpenProfile: () => void;
 }
@@ -22,7 +21,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   profile,
   account,
   prescriptions = [],
-  onOpenDoctorConsult,
   onOpenProfile,
 }) => {
   const { t } = useLanguage();
@@ -94,7 +92,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <RecommendationsView
               profile={profile}
               prescriptions={prescriptions}
-              onOpenConsultDoctor={onOpenDoctorConsult}
               onReferenceSections={setReferenceSections}
             />
           </div>

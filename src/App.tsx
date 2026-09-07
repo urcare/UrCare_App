@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { UserHealthProfile, UserAccount } from './types';
 import { AuthScreen } from './components/AuthScreen';
 import { OnboardingFlow } from './components/OnboardingFlow';
@@ -9,10 +9,16 @@ import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile } from './utils/supabase';
 
+// The 3D body map pulls in three.js + react-three-fiber/drei — a sizeable
+// chunk that only the post-onboarding screen needs, so it's loaded lazily
+// instead of bloating every other screen's initial bundle.
+const BodyMapScreen = lazy(() => import('./components/BodyMapScreen').then((m) => ({ default: m.BodyMapScreen })));
+
 function MainApp() {
   const [profile, setProfile] = useState<UserHealthProfile | null>(null);
   const [account, setAccount] = useState<UserAccount | null>(null);
   const [showWowCelebration, setShowWowCelebration] = useState(false);
+  const [showBodyMap, setShowBodyMap] = useState(false);
   const [isAdminPortalOpen, setIsAdminPortalOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -55,7 +61,10 @@ function MainApp() {
     await upsertProfile(registeredAccount.uid, completedProfile);
     setProfile(completedProfile);
     setAccount(registeredAccount);
-    setShowWowCelebration(true);
+    // The personalized body map is its own screen, shown immediately after
+    // onboarding — the celebration/plan-ready screen follows once the user
+    // taps "Next" there.
+    setShowBodyMap(true);
   };
 
   const handleUpdateProfile = async (updatedProfile: UserHealthProfile) => {
@@ -71,6 +80,7 @@ function MainApp() {
     setProfile(null);
     setAccount(null);
     setShowWowCelebration(false);
+    setShowBodyMap(false);
   };
 
   if (!isInitialized) {
@@ -99,7 +109,29 @@ function MainApp() {
     );
   }
 
-  // 3. Wow Celebration Screen post-onboarding
+  // 3. Personalized 3D Body Map — its own screen, right after onboarding,
+  //    before the celebration/plan-ready screen.
+  if (profile && account && showBodyMap) {
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-[#F8FAFC] text-emerald-600 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-full border-3 border-emerald-600 border-t-transparent animate-spin" />
+          </div>
+        }
+      >
+        <BodyMapScreen
+          profile={profile}
+          onNext={() => {
+            setShowBodyMap(false);
+            setShowWowCelebration(true);
+          }}
+        />
+      </Suspense>
+    );
+  }
+
+  // 4. Wow Celebration Screen post-onboarding
   if (profile && account && showWowCelebration) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] text-zinc-950">
@@ -111,7 +143,7 @@ function MainApp() {
     );
   }
 
-  // 4. User Authenticated with Active Health Profile -> Dashboard
+  // 5. User Authenticated with Active Health Profile -> Dashboard
   if (profile && account) {
     return (
       <Dashboard
@@ -125,7 +157,7 @@ function MainApp() {
     );
   }
 
-  // 5. User Authenticated without Profile -> Onboarding Flow
+  // 6. User Authenticated without Profile -> Onboarding Flow
   return (
     <OnboardingFlow
       initialAccount={account}

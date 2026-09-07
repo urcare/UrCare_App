@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Tells the browser this page is explicitly light-themed, so Android
+         Chrome's "Force Dark" / auto dark-theme heuristic doesn't try to
+         re-paint parts of it (fixed-position overlays and modals in
+         particular) as dark on phones set to a system dark theme. -->
+    <meta name="color-scheme" content="light" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

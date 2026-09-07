@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
 @layer base {
+  /* Reinforces the <meta name="color-scheme"> in index.html — the app is
+     always light-themed regardless of the device's system theme, so the
+     browser should never substitute its own dark palette for form controls
+     or invert colors on our behalf. */
+  :root {
+    color-scheme: light;
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
