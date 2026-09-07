@@ -164,14 +164,14 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
   const todayPoints = todayTotal > 0 ? Math.round((todayDone / todayTotal) * POINTS_PER_DAY) : 0;
 
   return (
-    <div className="inline-block">
-      {/* The pill — sized to its content, opens the card below on tap. */}
+    <div className="relative inline-block">
+      {/* The pill — sized to its content, opens the card on tap. */}
       <button
         type="button"
         onClick={() => { setExpanded((v) => !v); setSpinTrigger((n) => n + 1); }}
-        className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full bg-white border border-zinc-200 shadow-sm hover:shadow-md hover:border-zinc-300 transition-all cursor-pointer"
+        className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full bg-white shadow-sm hover:shadow-md transition-all cursor-pointer"
       >
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-rose-50 to-emerald-50 border border-zinc-100 flex items-center justify-center shrink-0">
+        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-rose-50 to-emerald-50 flex items-center justify-center shrink-0">
           <AnimatedHeart size={15} progressPct={progressPct} spinTrigger={spinTrigger} />
         </div>
         <span className="text-xs font-black text-zinc-900">Streak</span>
@@ -179,17 +179,20 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
         <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* The card — a compact dropdown, not a page-wide section. */}
-      <AnimatePresence initial={false}>
+      {/* The card — floats over the page as an overlay so the rest of the
+          page never shifts down to make room for it. Clicking outside (the
+          invisible backdrop) closes it, same as tapping the pill again. */}
+      <AnimatePresence>
         {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: 'easeInOut' }}
-            className="overflow-hidden"
-          >
-            <div className="mt-2 w-72 max-w-[85vw] rounded-2xl overflow-hidden shadow-xl border border-zinc-800/50 p-4 bg-gradient-to-br from-zinc-950 to-zinc-900 text-white space-y-4">
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setExpanded(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.97 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="absolute top-full left-0 mt-2 z-50 w-72 max-w-[85vw] rounded-2xl overflow-hidden shadow-xl border border-zinc-800/50 p-4 bg-gradient-to-br from-zinc-950 to-zinc-900 text-white space-y-4"
+            >
               <div className="flex items-center gap-3.5">
                 <AnimatedHeart size={36} progressPct={progressPct} spinTrigger={spinTrigger} />
                 <div className="min-w-0">
@@ -248,8 +251,8 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
                   );
                 })}
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>
