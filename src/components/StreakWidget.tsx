@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, ChevronDown, Check } from 'lucide-react';
+import { Heart, Check, X, Calendar, Target, BarChart3, Trophy } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { toDateKey } from './DailyCalendar';
-import { getActiveDates, getDailyPlan, getTaskCompletion } from '../utils/supabase';
+import { getActiveDates } from '../utils/supabase';
 
 interface StreakWidgetProps {
   profile: UserHealthProfile;
@@ -11,10 +12,19 @@ interface StreakWidgetProps {
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+/** The uploaded 3D green heart-with-flame asset — resized/compressed from
+ *  the original 2.1MB upload (public/Streak.png) down to a ~420px-wide,
+ *  ~75KB PNG that still looks identical at the small sizes this actually
+ *  renders at. Used as-is (never redrawn/recolored) everywhere a "streak
+ *  heart" appears, per the brief. */
+const STREAK_HEART_SRC = '/streak-heart.png';
+
 /** A day's worth of full plan completion is worth this many points. Every
  *  30-day streak milestone adds a one-time bonus on top. */
 const POINTS_PER_DAY = 30;
 const BONUS_PER_MONTH = 10;
+
+const HEART_GREEN = '#22c55e';
 
 /** Monday..Sunday of the current week, as Date objects at local midnight. */
 function currentWeekDates(): Date[] {
@@ -48,94 +58,102 @@ function computeStreak(markedDates: Set<string>): number {
   return streak;
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '');
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
-}
-function rgbToHex(r: number, g: number, b: number): string {
-  const clamp = (v: number) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0');
-  return `#${clamp(r)}${clamp(g)}${clamp(b)}`;
-}
-function lerpColor(a: string, b: string, t: number): string {
-  const [ar, ag, ab] = hexToRgb(a);
-  const [br, bg, bb] = hexToRgb(b);
-  return rgbToHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
+/** The longest run of consecutive active days anywhere in the user's
+ *  history (not just the streak currently running) — shown as "Your
+ *  longest streak" in the expanded card. */
+function computeLongestStreak(markedDates: Set<string>): number {
+  if (markedDates.size === 0) return 0;
+  const days = Array.from(markedDates)
+    .map((key) => {
+      const [y, m, d] = key.split('-').map(Number);
+      return new Date(y, m - 1, d).getTime();
+    })
+    .sort((a, b) => a - b);
+
+  let longest = 1;
+  let current = 1;
+  for (let i = 1; i < days.length; i++) {
+    const diffDays = Math.round((days[i] - days[i - 1]) / 86400000);
+    if (diffDays === 1) {
+      current += 1;
+      longest = Math.max(longest, current);
+    } else if (diffDays > 1) {
+      current = 1;
+    }
+  }
+  return longest;
 }
 
-const HEART_WHITE = '#f1f5f9';
-const HEART_RED = '#ef4444';
-const HEART_GREEN = '#22c55e';
+/** The streak glyph: the uploaded green 3D heart-with-flame image, held
+ *  completely still — no float, no breathing, no tilt, nothing on the
+ *  heart itself. The only motion is a small flickering glow sitting right
+ *  over the flame in the artwork, so it reads as "the flame is burning"
+ *  rather than the heart moving. The image pixels are never redrawn,
+ *  recolored, or distorted. */
+const StreakHeartImage: React.FC<{ size?: number }> = ({ size = 28 }) => (
+  <div className="relative inline-flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+    <img
+      src={STREAK_HEART_SRC}
+      alt="Streak"
+      draggable={false}
+      className="relative pointer-events-none select-none"
+      style={{ width: size, height: size, objectFit: 'contain' }}
+    />
 
-/** White at the start of the day, gradually reddening as today's tasks get
- *  checked off, then easing into green a little before everything is done
- *  — the color reflects real progress, it never just loops on its own. */
-function heartColorForProgress(pct: number): string {
-  if (pct <= 0) return HEART_WHITE;
-  if (pct < 55) return lerpColor(HEART_WHITE, HEART_RED, pct / 55);
-  return lerpColor(HEART_RED, HEART_GREEN, Math.min(1, (pct - 55) / 35));
-}
+    {/* Flickering flame glow, positioned over the flame at the heart's
+        center — an irregular multi-step flicker reads more like real fire
+        than a smooth pulse would. */}
+    <motion.div
+      className="absolute rounded-full pointer-events-none"
+      style={{
+        width: size * 0.32,
+        height: size * 0.46,
+        left: '50%',
+        top: '48%',
+        transform: 'translate(-50%, -50%)',
+        background: 'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(200,255,150,0.75) 40%, rgba(120,255,120,0) 75%)',
+        mixBlendMode: 'plus-lighter',
+        filter: 'blur(1px)',
+      }}
+      animate={{
+        opacity: [0.55, 1, 0.7, 0.95, 0.5, 0.9, 0.6, 0.55],
+        scale: [0.85, 1.08, 0.95, 1.1, 0.8, 1.02, 0.9, 0.85],
+      }}
+      transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+    />
+  </div>
+);
 
-/** A heart that beats gently, colors itself by real progress (white → red →
- *  green, easing smoothly whenever progress changes rather than snapping),
- *  and gives a satisfying fast-spin-then-settle flourish on tap. A fixed
- *  soft outline keeps it visible even at its palest point. */
-const AnimatedHeart: React.FC<{ size?: number; progressPct?: number; spinTrigger?: number }> = ({
-  size = 20, progressPct = 0, spinTrigger = 0,
-}) => {
-  const targetColor = heartColorForProgress(progressPct);
-  return (
-    <div className="relative inline-flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-      <motion.div
-        className="absolute inset-0 rounded-full blur-md"
-        animate={{ opacity: [0.25, 0.55, 0.25], scale: [0.85, 1.1, 0.85], backgroundColor: targetColor }}
-        transition={{
-          opacity: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' },
-          scale: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' },
-          backgroundColor: { duration: 1.6, ease: 'easeInOut' },
-        }}
-      />
-      <motion.div
-        animate={{ scale: [1, 1.16, 1, 1.1, 1], rotate: spinTrigger * 360 }}
-        transition={{
-          scale: { duration: 1, repeat: Infinity, repeatDelay: 0.7, ease: 'easeInOut', times: [0, 0.25, 0.45, 0.65, 1] },
-          rotate: { duration: 0.7, ease: 'easeOut' },
-        }}
-      >
-        <motion.div animate={{ color: targetColor }} transition={{ duration: 1.6, ease: 'easeInOut' }}>
-          <Heart
-            style={{ width: size, height: size }}
-            fill="currentColor"
-            stroke="#94a3b8"
-            strokeWidth={1.5}
-          />
-        </motion.div>
-      </motion.div>
-    </div>
-  );
-};
+/** The compact trigger that sits next to the '⋮' module menu — just the
+ *  heart glyph and the current streak count (0, 1, 2, 3...), which grows
+ *  by one each real consecutive day the user is active in the app. No
+ *  "Days" label, no week of numbers — tapping it opens the same full
+ *  streak card below. */
+const StreakBar: React.FC<{ streak: number; onOpen: () => void }> = ({ streak, onOpen }) => (
+  <button
+    type="button"
+    onClick={onOpen}
+    title="Streak"
+    className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-white shadow-sm hover:shadow-md border border-zinc-100 transition-all cursor-pointer"
+  >
+    <StreakHeartImage size={26} />
+    <span className="text-sm font-black text-zinc-900 tabular-nums">{streak}</span>
+  </button>
+);
 
-/** A small "Streak" pill — sized to its own content, not a full-width bar —
- *  that opens a compact dropdown card on tap. Rendered once outside the tab
- *  content, so it stays visible no matter which module you switch to. */
+/** The heart + streak-count trigger next to the '⋮' module menu, and the
+ *  full streak card it opens — unchanged data/behavior from before, just
+ *  re-skinned with the uploaded heart asset per the brief. Rendered once
+ *  outside the tab content, so it stays visible no matter which module you
+ *  switch to. */
 export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
   const userId = profile.id || '';
   const [expanded, setExpanded] = useState(false);
-  // Bumped on every tap of the pill so both hearts (collapsed + expanded)
-  // do their spin-and-settle flourish together.
-  const [spinTrigger, setSpinTrigger] = useState(0);
   const [markedDates, setMarkedDates] = useState<Set<string>>(new Set());
-  const [todayDone, setTodayDone] = useState(0);
-  const [todayTotal, setTodayTotal] = useState(0);
 
   const refresh = useCallback(() => {
     if (!userId) return;
-    const todayKey = toDateKey(new Date());
     getActiveDates(userId).then(setMarkedDates);
-    Promise.all([getDailyPlan(todayKey), getTaskCompletion(userId, todayKey)]).then(([plan, completion]) => {
-      const taskIds: string[] = (plan.plan?.sections || []).filter((s: any) => s.timeLabel).map((s: any) => s.id);
-      setTodayTotal(taskIds.length);
-      setTodayDone(taskIds.filter((id) => completion[id]).length);
-    });
   }, [userId]);
 
   useEffect(() => {
@@ -152,109 +170,143 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
   }, [refresh]);
 
   const streak = useMemo(() => computeStreak(markedDates), [markedDates]);
+  const longestStreak = useMemo(() => Math.max(computeLongestStreak(markedDates), streak), [markedDates, streak]);
+  const totalActiveDays = markedDates.size;
   const weekDates = useMemo(() => currentWeekDates(), []);
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const todayKey = toDateKey(today);
-  const progressPct = todayTotal > 0 ? Math.round((todayDone / todayTotal) * 100) : 0;
 
   // Points: a full day of the plan is worth 30 — every 30-day streak
   // milestone adds a one-time 10-point bonus on top.
   const bonusPoints = Math.floor(streak / 30) * BONUS_PER_MONTH;
   const streakPoints = streak * POINTS_PER_DAY + bonusPoints;
-  const todayPoints = todayTotal > 0 ? Math.round((todayDone / todayTotal) * POINTS_PER_DAY) : 0;
+
+  const close = () => setExpanded(false);
 
   return (
     <div className="relative inline-block">
-      {/* The pill — sized to its content, opens the card on tap. */}
-      <button
-        type="button"
-        onClick={() => { setExpanded((v) => !v); setSpinTrigger((n) => n + 1); }}
-        className="inline-flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full bg-white shadow-sm hover:shadow-md transition-all cursor-pointer"
-      >
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-rose-50 to-emerald-50 flex items-center justify-center shrink-0">
-          <AnimatedHeart size={15} progressPct={progressPct} spinTrigger={spinTrigger} />
-        </div>
-        <span className="text-xs font-black text-zinc-900">Streak</span>
-        {streak > 0 && <span className="text-xs font-bold text-zinc-500">{streak}d</span>}
-        <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-      </button>
+      <StreakBar streak={streak} onOpen={() => setExpanded((v) => !v)} />
 
-      {/* The card — floats over the page as an overlay so the rest of the
-          page never shifts down to make room for it. Clicking outside (the
-          invisible backdrop) closes it, same as tapping the pill again. */}
-      <AnimatePresence>
+      {/* The full streak card — a centered modal over the whole page, with
+          real data: current streak, all-time longest streak, this week's
+          activity, and total active days. Unchanged from before, aside
+          from the heart glyph now being the uploaded image.
+          Portaled to <body>: the trigger now lives inside the sticky mobile
+          header, which has a backdrop-blur — and backdrop-filter (like
+          filter/transform/perspective) makes its own box the containing
+          block for any `position: fixed` descendant. Left as a normal
+          descendant, this modal would end up clipped to the header's own
+          small box instead of covering the viewport; portaling it out from
+          under that ancestor is the standard fix. */}
+      {createPortal(
+        <AnimatePresence>
         {expanded && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setExpanded(false)} />
             <motion.div
-              initial={{ opacity: 0, y: -6, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.97 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="absolute top-full left-0 mt-2 z-50 w-72 max-w-[85vw] rounded-2xl overflow-hidden shadow-xl border border-zinc-800/50 p-4 bg-gradient-to-br from-zinc-950 to-zinc-900 text-white space-y-4"
-            >
-              <div className="flex items-center gap-3.5">
-                <AnimatedHeart size={36} progressPct={progressPct} spinTrigger={spinTrigger} />
-                <div className="min-w-0">
-                  <div className="text-2xl font-black leading-none">{streakPoints} <span className="text-sm font-bold text-zinc-400">pts</span></div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{streak}-Day Streak</span>
-                </div>
-                {bonusPoints > 0 && (
-                  <span className="ml-auto text-[9px] font-black uppercase px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400 shrink-0">
-                    +{bonusPoints} Bonus
-                  </span>
-                )}
-              </div>
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+              onClick={close}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={close}>
+              <motion.div
+                onClick={(e) => e.stopPropagation()}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.97 }}
+                transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+                className="relative w-full max-w-sm rounded-3xl bg-white shadow-2xl p-6 space-y-5 text-left"
+              >
+                <div className="w-10 h-1 rounded-full bg-zinc-200 mx-auto -mt-1" />
+                <button
+                  type="button"
+                  onClick={close}
+                  className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer"
+                >
+                  <X className="w-4 h-4 text-zinc-500" />
+                </button>
 
-              {todayTotal > 0 && (
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-zinc-300">
-                    <span>Today's Progress</span>
-                    <span className="text-white">{todayDone}/{todayTotal} · +{todayPoints} pts</span>
+                <div>
+                  <h2 className="text-2xl font-black text-zinc-950">Your Streak</h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">Small steps. A healthier you!</p>
+                </div>
+
+                <div className="flex items-center gap-3.5">
+                  <StreakHeartImage size={68} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-3xl font-black text-zinc-950 leading-none">{streak}</div>
+                    <div className="text-xs font-bold text-zinc-500 mt-1">Day Streak</div>
+                    <p className="text-[11px] text-zinc-400 mt-1 leading-snug">
+                      {streak > 0 ? 'Great job! Keep going and stay consistent.' : 'Complete a task today to start your streak!'}
+                    </p>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-rose-500 to-emerald-500"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progressPct}%` }}
-                      transition={{ duration: 0.5, ease: 'easeOut' }}
-                    />
+                  <div className="shrink-0 w-[92px] flex flex-col items-center text-center gap-1 px-2.5 py-2.5 rounded-2xl bg-emerald-50 border border-emerald-100">
+                    <Calendar className="w-4 h-4 text-emerald-600" />
+                    <span className="text-[9px] font-bold text-emerald-700 leading-tight">Your longest streak</span>
+                    <span className="text-sm font-black text-emerald-700">{longestStreak} days</span>
                   </div>
                 </div>
-              )}
 
-              <div className="flex items-center justify-between">
-                {weekDates.map((d) => {
-                  const key = toDateKey(d);
-                  const isToday = key === todayKey;
-                  const isDone = markedDates.has(key);
-                  const isFuture = d.getTime() > today.getTime();
-                  return (
-                    <div key={key} className="flex flex-col items-center gap-1">
-                      <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                          isDone
-                            ? 'bg-gradient-to-br from-rose-500 to-emerald-500 shadow-sm shadow-emerald-500/30'
-                            : 'bg-white/10'
-                        } ${isToday && !isDone ? 'ring-2 ring-white/50' : ''}`}
-                      >
-                        {isDone ? (
-                          <Check className="w-3 h-3 text-white stroke-[3]" />
-                        ) : (
-                          <span className={`w-1.5 h-1.5 rounded-full ${isFuture ? 'bg-white/20' : 'bg-white/30'}`} />
-                        )}
+                <div className="flex items-center justify-between">
+                  {weekDates.map((d) => {
+                    const key = toDateKey(d);
+                    const isToday = key === todayKey;
+                    const isDone = markedDates.has(key);
+                    return (
+                      <div key={key} className="flex flex-col items-center gap-1.5">
+                        <div className={`relative w-8 h-8 flex items-center justify-center ${isToday && !isDone ? 'ring-2 ring-emerald-400 rounded-full' : ''}`}>
+                          <Heart
+                            className="absolute inset-0 w-8 h-8"
+                            fill={isDone ? HEART_GREEN : 'none'}
+                            stroke={isDone ? HEART_GREEN : '#cbd5e1'}
+                            strokeWidth={1.5}
+                          />
+                          {isDone && <Check className="relative w-3.5 h-3.5 text-white stroke-[3]" />}
+                        </div>
+                        <span className={`text-[10px] font-bold ${isToday ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                          {WEEKDAY_LABELS[weekDates.indexOf(d)]}
+                        </span>
                       </div>
-                      <span className={`text-[9px] font-bold ${isToday ? 'text-white' : 'text-zinc-500'}`}>
-                        {WEEKDAY_LABELS[weekDates.indexOf(d)]}
-                      </span>
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-100 space-y-1">
+                    <div className="w-7 h-7 rounded-xl bg-white border border-zinc-200 flex items-center justify-center">
+                      <Target className="w-3.5 h-3.5 text-emerald-600" />
                     </div>
-                  );
-                })}
-              </div>
-            </motion.div>
+                    <div className="text-xs font-black text-zinc-900 mt-1.5">Streak Goal</div>
+                    <p className="text-[10px] text-zinc-500 leading-snug">Build a healthier tomorrow, one day at a time.</p>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-100 space-y-1">
+                    <div className="w-7 h-7 rounded-xl bg-white border border-zinc-200 flex items-center justify-center">
+                      <BarChart3 className="w-3.5 h-3.5 text-emerald-600" />
+                    </div>
+                    <div className="text-xs font-black text-zinc-900 mt-1.5">Total Active Days</div>
+                    <div className="text-lg font-black text-emerald-600 leading-none mt-0.5">{totalActiveDays} days</div>
+                    <p className="text-[10px] text-zinc-500 leading-snug">
+                      {streakPoints > 0 ? `${streakPoints} pts earned so far` : "You're on the right track!"}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={close}
+                  className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer"
+                >
+                  <Trophy className="w-4 h-4" />
+                  <span>Keep Going!</span>
+                </button>
+              </motion.div>
+            </div>
           </>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 };

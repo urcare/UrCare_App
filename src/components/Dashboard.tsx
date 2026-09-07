@@ -375,10 +375,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
           sit on top of the buttons. The left spacer mirrors the button
           cluster's width so the logo still lands at the true visual center. */}
       <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2">
-        {/* '⋮' module switcher — lives here, in the one persistent sticky header
-            shown on every tab, so it never jumps position when you switch tabs
-            or scroll (unlike an inline button placed inside each tab's content). */}
-        <div className="w-28 shrink-0 flex items-center">
+        {/* '⋮' module switcher, plus the Streak/Days widget right next to it —
+            both live here, in the one persistent sticky header shown on every
+            tab, so neither jumps position when you switch tabs or scroll
+            (unlike an inline element placed inside each tab's content). */}
+        <div className="shrink-0 flex items-center gap-1.5 min-w-0">
           <button
             type="button"
             onClick={() => setIsModuleMenuOpen(true)}
@@ -387,6 +388,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           >
             <MoreVertical className="w-4 h-4" />
           </button>
+          <StreakWidget profile={profile} />
         </div>
 
         <div className="flex-1 min-w-0 flex justify-center px-1">
@@ -515,10 +517,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* 4. MAIN CONTENT CONTAINER (Desktop pl-64) */}
       <div className="md:pl-64 w-full">
 
-        {/* Streak & points — rendered once here, outside every tab's own
+        {/* Streak & points — desktop only here; on mobile the same widget
+            already lives in the sticky header next to the '⋮' menu, so it
+            isn't duplicated on small screens. Outside every tab's own
             content, so it stays visible no matter which module you switch
             to, instead of only showing on the Daily Plan tab. */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-3 pb-1">
+        <div className="hidden md:block max-w-6xl mx-auto px-4 sm:px-6 pt-3 pb-1">
           <StreakWidget profile={profile} />
         </div>
 
