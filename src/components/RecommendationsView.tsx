@@ -267,7 +267,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               <Clock className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-2xl font-black tracking-tight break-words">
+              <h2 className="text-lg sm:text-2xl font-black tracking-tight break-words bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
                 {t('dailyPlanTitle')}
               </h2>
               <p className="text-xs opacity-70 mt-0.5 break-words">

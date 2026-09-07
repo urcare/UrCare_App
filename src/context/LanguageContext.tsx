@@ -83,8 +83,8 @@ export const DICTIONARY: Translations = {
   openMyProfile: { en: 'Open My Profile', hi: 'मेरी प्रोफ़ाइल खोलें' },
   backToDashboard: { en: 'Back to Dashboard', hi: 'डैशबोर्ड पर वापस जाएं' },
 
-  // Daily Plan (Pro tab)
-  dailyPlanTitle: { en: 'Your Daily Health Plan', hi: 'आपका दैनिक हेल्थ प्लान' },
+  // Daily Plan (shown directly on Home)
+  dailyPlanTitle: { en: 'Your Daily Treatment Schedule', hi: 'आपका दैनिक उपचार शेड्यूल' },
   dailyPlanSubtitle: { en: 'A fresh plan made for you every day — pick any day on the calendar to see how you did.', hi: 'हर दिन आपके लिए एक नई योजना — कैलेंडर से कोई भी दिन चुनकर देखें आपने कैसा किया।' },
   askADoctor: { en: 'Ask a Doctor', hi: 'डॉक्टर से पूछें' },
   showingToday: { en: 'Today', hi: 'आज' },
