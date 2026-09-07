@@ -1,21 +1,20 @@
 import React, { useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import {
-  User, Mail, Phone, Calendar, ShieldCheck, Scale,
-  Target, Flame, Droplets, Edit3, Heart,
-  Stethoscope, Award, ChevronRight, LogOut, RefreshCw,
-  Package, FileText, CheckCircle2, Camera, BadgeCheck, Sparkles,
-  MoreVertical, X, ShoppingBag, ClipboardCheck, Lightbulb, Crown
+  Mail, Phone,
+  Flame, Edit3,
+  Stethoscope, LogOut, RefreshCw,
+  Package, FileText, Camera, BadgeCheck, Sparkles,
 } from 'lucide-react';
-import { UserHealthProfile, UserAccount } from '../types';
+import { UserHealthProfile, UserAccount, Prescription } from '../types';
 import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
 import { updateAvatar } from '../utils/supabase';
-import { Logo } from './Logo';
+import { RecommendationsView } from './RecommendationsView';
 import { EditHealthProfileModal } from './EditHealthProfileModal';
 
 interface ProfilePageProps {
   profile: UserHealthProfile;
   account: UserAccount;
+  prescriptions?: Prescription[];
   onUpdateProfile: (updated: UserHealthProfile) => void;
   onUpdateAccount?: (updated: UserAccount) => void;
   onOpenSettings: () => void;
@@ -24,11 +23,6 @@ interface ProfilePageProps {
   onOpenDoctorConsult: () => void;
   onOpenRiskAssessment: () => void;
   onLogOut: () => void;
-  onGoToReportsTab: () => void;
-  onGoToAssessmentTab: () => void;
-  onGoToStoreTab: () => void;
-  onGoToDailyPlanTab: () => void;
-  onGoToPremiumTab: () => void;
 }
 
 /** Downscales/compresses an image file to a small square JPEG data URL before
@@ -60,6 +54,7 @@ function resizeImageToDataUrl(file: File, maxSize = 320): Promise<string> {
 export const ProfilePage: React.FC<ProfilePageProps> = ({
   profile,
   account,
+  prescriptions = [],
   onUpdateProfile,
   onUpdateAccount,
   onOpenSettings,
@@ -67,26 +62,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onOpenReports,
   onOpenDoctorConsult,
   onLogOut,
-  onGoToReportsTab,
-  onGoToAssessmentTab,
-  onGoToStoreTab,
-  onGoToDailyPlanTab,
-  onGoToPremiumTab,
 }) => {
   const { language, t } = useLanguage();
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-
-  const menuItems = [
-    { label: account.isPro ? t('navPro') : t('navPremium'), icon: Crown, onClick: onGoToPremiumTab },
-    { label: 'Daily Plan', icon: Lightbulb, onClick: onGoToDailyPlanTab },
-    { label: 'My Reports', icon: FileText, onClick: onGoToReportsTab },
-    { label: 'Assessment', icon: ClipboardCheck, onClick: onGoToAssessmentTab },
-    { label: 'Store', icon: ShoppingBag, onClick: onGoToStoreTab },
-  ];
 
   const handleAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -118,23 +99,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     <div id="urcare-profile-page" className="min-h-screen bg-[#F8FAFC] text-zinc-900 pb-16">
       
       {/* Top Header — no logo here on purpose: Dashboard's own sidebar/mobile
-          header already shows the UrCare brand on every tab, so repeating it
-          here just looked like it was printed twice on the same screen. This
-          bar instead titles the page, centered the same overflow-safe way. */}
+          header already shows the UrCare brand (and the '⋮' module switcher)
+          on every tab, so repeating either here just looked like it was
+          printed twice on the same screen. This bar only titles the page. */}
       <header className="sticky top-0 z-30 bg-white border-b border-zinc-200 px-3 sm:px-8 py-3 sm:py-3.5 shadow-xs">
-        <div className="max-w-4xl mx-auto relative flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => setIsMenuOpen(true)}
-            className="shrink-0 p-2.5 rounded-xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 transition-all cursor-pointer"
-            title="More"
-          >
-            <MoreVertical className="w-5 h-5" />
-          </button>
-
-          {/* Hidden below sm — on narrow phones there isn't room for this next to
-              the language toggle without the two overlapping/sticking together. */}
-          <div className="hidden sm:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 min-w-0">
             <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span className="text-xs font-black text-emerald-700 tracking-wide whitespace-nowrap">My Profile</span>
           </div>
@@ -145,61 +115,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </div>
       </header>
 
-      {/* Side drawer — My Reports / Assessment / Store, sliding in with animation */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMenuOpen(false)}
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
-            />
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', stiffness: 380, damping: 38 }}
-              className="fixed top-0 left-0 bottom-0 z-50 w-72 max-w-[80vw] bg-white shadow-2xl flex flex-col"
-            >
-              <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
-                <Logo size="sm" showSubtitle={false} />
-                <button
-                  type="button"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
-                >
-                  <X className="w-4.5 h-4.5" />
-                </button>
-              </div>
-              <nav className="flex-1 p-3 space-y-1">
-                {menuItems.map((item) => {
-                  const ItemIcon = item.icon;
-                  return (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => { item.onClick(); setIsMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold text-zinc-800 hover:bg-emerald-50 hover:text-emerald-700 transition-all cursor-pointer group"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-zinc-100 group-hover:bg-emerald-100 text-zinc-600 group-hover:text-emerald-700 flex items-center justify-center shrink-0 transition-colors">
-                        <ItemIcon className="w-4.5 h-4.5" />
-                      </div>
-                      <span>{item.label}</span>
-                      <ChevronRight className="w-4 h-4 ml-auto opacity-40 group-hover:opacity-70 group-hover:translate-x-0.5 transition-all" />
-                    </button>
-                  );
-                })}
-              </nav>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
       {/* Main Container */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 space-y-5 text-left">
-        
+
+        {/* 0. TODAY'S DAILY PLAN — shown directly on Home now, not as a
+            separate module a user has to navigate to. */}
+        <RecommendationsView
+          profile={profile}
+          prescriptions={prescriptions}
+          onOpenConsultDoctor={onOpenDoctorConsult}
+        />
+
         {/* 1. SIMPLE USER INFO CARD */}
         <div className="p-6 rounded-3xl bg-white border border-zinc-200 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

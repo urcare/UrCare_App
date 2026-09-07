@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Settings,
   ChevronRight, Sparkles, Trash2, Calendar, ShieldCheck, Activity,
-  ShoppingBag, Stethoscope, Crown, Camera, Lock, Lightbulb, ClipboardCheck,
+  ShoppingBag, Stethoscope, Crown, Camera, Lock, ClipboardCheck,
   Package, User, Check, PhoneCall, FileText, CheckCircle2, HeartPulse,
   LogOut, MessageSquare, AlertCircle, MoreVertical, X, Home,
   Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3
@@ -15,7 +15,6 @@ import {
 import { HealthReportModal } from './HealthReportModal';
 import { SettingsModal } from './SettingsModal';
 import { ProductsModule } from './ProductsModule';
-import { RecommendationsView } from './RecommendationsView';
 import { ProUpgradeModal } from './ProUpgradeModal';
 import { FoodScannerModal } from './FoodScannerModal';
 import { MyOrdersModal } from './MyOrdersModal';
@@ -50,18 +49,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const { t } = useLanguage();
 
-  // Navigation Tabs — simplified: 'profile' (Home) is the default/main screen.
-  // 'premium' = AI Scan + Daily Plan (gated). 'reports', 'assessment' + 'store' are always free.
-  const [activeTab, setActiveTab] = useState<'profile' | 'premium' | 'dailyplan' | 'reports' | 'assessment' | 'store'>('profile');
+  // Navigation Tabs — simplified: 'profile' (Home) is the default/main screen,
+  // and now also where the Daily Plan lives directly — it is no longer its
+  // own destination. 'premium' = AI Scan (gated). 'reports', 'assessment' +
+  // 'store' are always free.
+  const [activeTab, setActiveTab] = useState<'profile' | 'premium' | 'reports' | 'assessment' | 'store'>('profile');
 
-  // '⋮' module switcher — shown on every non-Home tab (Home has its own copy
-  // in ProfilePage) so the user can jump straight from any module to any
-  // other one, instead of having to go back to Home first.
+  // '⋮' module switcher — a single drawer, opened from one fixed spot in the
+  // persistent header/sidebar (never inline in a tab's scrolling content), so
+  // it never jumps position when the tab changes or the page scrolls.
   const [isModuleMenuOpen, setIsModuleMenuOpen] = useState(false);
   const moduleMenuItems = [
     { id: 'profile' as const, label: t('navHome'), icon: Home },
     { id: 'premium' as const, label: account.isPro ? t('navPro') : t('navPremium'), icon: Crown },
-    { id: 'dailyplan' as const, label: 'Daily Plan', icon: Lightbulb },
     { id: 'reports' as const, label: 'My Reports', icon: FileText },
     { id: 'assessment' as const, label: 'Assessment', icon: ClipboardCheck },
     { id: 'store' as const, label: 'Store', icon: ShoppingBag },
@@ -310,6 +310,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex items-center justify-between">
             <button
               type="button"
+              onClick={() => setIsModuleMenuOpen(true)}
+              className="p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
+              title="More"
+            >
+              <MoreVertical className="w-4 h-4 text-zinc-700" />
+            </button>
+
+            <button
+              type="button"
               onClick={() => setIsMyOrdersOpen(true)}
               className="p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
               title="Orders & Receipts"
@@ -366,7 +375,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
           sit on top of the buttons. The left spacer mirrors the button
           cluster's width so the logo still lands at the true visual center. */}
       <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2">
-        <div className="w-28 shrink-0" aria-hidden="true" />
+        {/* '⋮' module switcher — lives here, in the one persistent sticky header
+            shown on every tab, so it never jumps position when you switch tabs
+            or scroll (unlike an inline button placed inside each tab's content). */}
+        <div className="w-28 shrink-0 flex items-center">
+          <button
+            type="button"
+            onClick={() => setIsModuleMenuOpen(true)}
+            className="p-2 rounded-xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 border border-zinc-200 bg-white transition-all cursor-pointer shrink-0"
+            title="More"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+        </div>
 
         <div className="flex-1 min-w-0 flex justify-center px-1">
           <Logo size="sm" showSubtitle={true} compact className="min-w-0 max-w-full" />
@@ -421,12 +442,74 @@ export const Dashboard: React.FC<DashboardProps> = ({
         })}
       </nav>
 
+      {/* '⋮' module switcher drawer — a single instance, mounted once here (not
+          inside either tab branch below), so it's the exact same drawer no
+          matter which tab is active or how far the page is scrolled. Its
+          trigger buttons live in the persistent mobile header and the
+          desktop sidebar footer, above. */}
+      <AnimatePresence>
+        {isModuleMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsModuleMenuOpen(false)}
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 380, damping: 38 }}
+              className="fixed top-0 left-0 bottom-0 z-50 w-72 max-w-[80vw] bg-white shadow-2xl flex flex-col"
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
+                <Logo size="sm" showSubtitle={false} />
+                <button
+                  type="button"
+                  onClick={() => setIsModuleMenuOpen(false)}
+                  className="p-2 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
+              </div>
+              <nav className="flex-1 p-3 space-y-1">
+                {moduleMenuItems.map((item) => {
+                  const ItemIcon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => { setActiveTab(item.id); setIsModuleMenuOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer group ${
+                        isActive ? 'bg-emerald-50 text-emerald-700' : 'text-zinc-800 hover:bg-emerald-50 hover:text-emerald-700'
+                      }`}
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                        isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 group-hover:bg-emerald-100 text-zinc-600 group-hover:text-emerald-700'
+                      }`}>
+                        <ItemIcon className="w-4.5 h-4.5" />
+                      </div>
+                      <span>{item.label}</span>
+                      <ChevronRight className="w-4 h-4 ml-auto opacity-40 group-hover:opacity-70 group-hover:translate-x-0.5 transition-all" />
+                    </button>
+                  );
+                })}
+              </nav>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* 4. MAIN CONTENT CONTAINER (Desktop pl-64) */}
       <div className="md:pl-64 w-full">
         {activeTab === 'profile' ? (
           <ProfilePage
             profile={profile}
             account={account}
+            prescriptions={prescriptions}
             onUpdateProfile={onUpdateProfile}
             onUpdateAccount={onUpdateAccount}
             onOpenSettings={() => setIsSettingsOpen(true)}
@@ -435,89 +518,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onOpenDoctorConsult={handleOpenDoctorConsult}
             onOpenRiskAssessment={() => setIsRiskAssessmentOpen(true)}
             onLogOut={() => setShowLogoutConfirm(true)}
-            onGoToReportsTab={() => setActiveTab('reports')}
-            onGoToAssessmentTab={() => setActiveTab('assessment')}
-            onGoToStoreTab={() => setActiveTab('store')}
-            onGoToDailyPlanTab={() => setActiveTab('dailyplan')}
-            onGoToPremiumTab={() => setActiveTab('premium')}
           />
         ) : (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
-
-          {/* '⋮' module switcher — same drawer pattern as the Home tab, so every
-              module can jump straight to any other one. */}
-          <button
-            type="button"
-            onClick={() => setIsModuleMenuOpen(true)}
-            className="p-2.5 rounded-xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 border border-zinc-200 bg-white transition-all cursor-pointer"
-            title="More"
-          >
-            <MoreVertical className="w-5 h-5" />
-          </button>
-
-          <AnimatePresence>
-            {isModuleMenuOpen && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsModuleMenuOpen(false)}
-                  className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
-                />
-                <motion.div
-                  initial={{ x: '-100%' }}
-                  animate={{ x: 0 }}
-                  exit={{ x: '-100%' }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 38 }}
-                  className="fixed top-0 left-0 bottom-0 z-50 w-72 max-w-[80vw] bg-white shadow-2xl flex flex-col"
-                >
-                  <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
-                    <Logo size="sm" showSubtitle={false} />
-                    <button
-                      type="button"
-                      onClick={() => setIsModuleMenuOpen(false)}
-                      className="p-2 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
-                    >
-                      <X className="w-4.5 h-4.5" />
-                    </button>
-                  </div>
-                  <nav className="flex-1 p-3 space-y-1">
-                    {moduleMenuItems.map((item) => {
-                      const ItemIcon = item.icon;
-                      const isActive = activeTab === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => { setActiveTab(item.id); setIsModuleMenuOpen(false); }}
-                          className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer group ${
-                            isActive ? 'bg-emerald-50 text-emerald-700' : 'text-zinc-800 hover:bg-emerald-50 hover:text-emerald-700'
-                          }`}
-                        >
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                            isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 group-hover:bg-emerald-100 text-zinc-600 group-hover:text-emerald-700'
-                          }`}>
-                            <ItemIcon className="w-4.5 h-4.5" />
-                          </div>
-                          <span>{item.label}</span>
-                          <ChevronRight className="w-4 h-4 ml-auto opacity-40 group-hover:opacity-70 group-hover:translate-x-0.5 transition-all" />
-                        </button>
-                      );
-                    })}
-                  </nav>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
 
           {/* ========================================================================= */}
           {/* TAB VIEWS CONTENT                                                         */}
           {/* ========================================================================= */}
 
           {/* ===================================================================== */}
-          {/* PRO TAB — AI Food Scan. Daily Plan moved to its own 'dailyplan' tab,   */}
-          {/* reachable from the '⋮' menu instead of living inside this one.        */}
+          {/* PRO TAB — AI Food Scan only. The Daily Plan now lives directly on Home. */}
           {/* ===================================================================== */}
           {activeTab === 'premium' && (
             <div className="space-y-6 text-left">
@@ -582,22 +592,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* ===================================================================== */}
-          {/* DAILY PLAN TAB — the full AI-generated plan, reached via the '⋮' menu */}
-          {/* (Profile page) or the pointer card on the Pro tab, not the main nav.  */}
-          {/* ===================================================================== */}
-          {activeTab === 'dailyplan' && (
-            <div className="space-y-6 text-left">
-              <RecommendationsView
-                profile={profile}
-                prescriptions={prescriptions}
-                onOpenStore={() => setActiveTab('store')}
-                onOpenConsultDoctor={handleOpenDoctorConsult}
-                onOpenProModal={handleOpenProModalFor}
-              />
             </div>
           )}
 
