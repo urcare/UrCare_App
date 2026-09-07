@@ -169,8 +169,8 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   // when un-checking, only on the way to "done".
   const [celebration, setCelebration] = useState<string | null>(null);
   const celebrationMessages = [
-    'Wow! 🎉', 'Nice one! ✅', 'Great job! 💪', "You're on fire! 🔥",
-    'Keep it up! 🌟', 'Awesome! 👏', 'That\'s the spirit! 💚', 'Well done! ✨',
+    'Well done!', 'Nicely done.', 'Great progress!', 'Step completed.',
+    'Good work today.', 'One step closer to your goal.',
   ];
 
   const toggleTask = (taskId: string) => {
@@ -240,16 +240,19 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   return (
     <div id="diet-recommendations-section" className="space-y-5 sm:space-y-6 text-left min-w-0">
 
-      {/* Celebratory pop-up shown for a moment whenever a step is ticked off. */}
+      {/* A brief, understated confirmation whenever a step is ticked off. */}
       <AnimatePresence>
         {celebration && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.6, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.75, y: -8 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 24 }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-5 py-3 rounded-2xl bg-emerald-500 text-white font-black text-sm shadow-xl shadow-emerald-500/40 pointer-events-none whitespace-nowrap"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 pl-2.5 pr-4 py-2 rounded-full bg-white border border-emerald-200 text-zinc-800 text-xs font-bold shadow-lg pointer-events-none whitespace-nowrap"
           >
+            <span className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+              <Check className="w-3 h-3 text-white stroke-[3]" />
+            </span>
             {celebration}
           </motion.div>
         )}
