@@ -20,7 +20,7 @@ interface RootCauseAssessmentModalProps {
 // Small reusable form primitives shared across all 22 assessment modules.
 // ---------------------------------------------------------------------------
 
-const inputClass = 'w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold';
+const inputClass = 'w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold';
 
 const Field: React.FC<{ label: string; hint?: string; children: React.ReactNode }> = ({ label, hint, children }) => (
   <div>
@@ -54,7 +54,7 @@ const YesNo: React.FC<{ value?: boolean; onChange: (v: boolean) => void }> = ({ 
         className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${
           value === v
             ? 'bg-emerald-600 text-white shadow-sm'
-            : 'bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 text-zinc-500'
+            : 'bg-zinc-100 border border-zinc-300 text-zinc-500'
         }`}
       >
         {v ? 'Yes' : 'No'}
@@ -76,7 +76,7 @@ const ChipToggle: React.FC<{ options: string[]; selected: string[]; onChange: (n
           className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
             active
               ? 'bg-emerald-600 border-emerald-600 text-white'
-              : 'border-zinc-300 dark:border-zinc-700 text-zinc-500 hover:border-emerald-400'
+              : 'border-zinc-300 text-zinc-500 hover:border-emerald-400'
           }`}
         >
           {opt}
@@ -98,7 +98,7 @@ const TagsInput: React.FC<{ values: string[]; onChange: (next: string[]) => void
     <div>
       <div className="flex flex-wrap gap-2 mb-2">
         {values.map((v, i) => (
-          <span key={`${v}-${i}`} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
+          <span key={`${v}-${i}`} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
             {v}
             <button type="button" onClick={() => onChange(values.filter((_, idx) => idx !== i))} className="hover:text-rose-500 cursor-pointer">
               <X className="w-3 h-3" />
@@ -579,17 +579,17 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-hidden">
-      <div className="w-full max-w-5xl h-[92vh] bg-white dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl flex flex-col overflow-hidden text-zinc-900 dark:text-zinc-100">
+      <div className="w-full max-w-5xl h-[92vh] bg-white rounded-3xl border border-zinc-200 shadow-2xl flex flex-col overflow-hidden text-zinc-900">
         
         {/* Top Header Bar */}
-        <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/70">
+        <div className="p-4 sm:p-5 border-b border-zinc-200 flex items-center justify-between bg-zinc-50/70">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-600/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600/15 text-emerald-600 flex items-center justify-center font-black">
               <Stethoscope className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
                   UrCare Clinical Assessment
                 </span>
                 <span className="text-[10px] text-zinc-500 font-mono">22 Root-Cause Modules</span>
@@ -603,7 +603,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             <button
               type="button"
               onClick={toggleSound}
-              className="p-2 rounded-xl border border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              className="p-2 rounded-xl border border-zinc-300 text-zinc-600 hover:bg-zinc-100 transition-colors"
               title={soundOn ? 'Sound On' : 'Sound Off'}
             >
               {soundOn ? <Volume2 className="w-4 h-4 text-emerald-500" /> : <VolumeX className="w-4 h-4 opacity-50" />}
@@ -613,7 +613,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-zinc-500 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="p-2 rounded-xl text-zinc-500 hover:text-zinc-950 hover:bg-zinc-200 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -621,13 +621,13 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
         </div>
 
         {/* Capacity & Google Account Notice Banner */}
-        <div className="px-5 py-2.5 bg-amber-50 dark:bg-amber-500/10 border-b border-amber-200 dark:border-amber-500/20 text-amber-900 dark:text-amber-300 text-xs flex items-center justify-between gap-2 overflow-x-auto">
+        <div className="px-5 py-2.5 bg-amber-50 border-b border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2 overflow-x-auto">
           <div className="flex items-center gap-2 shrink-0">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             <span className="font-bold">Strict Monthly Capacity Limit Active</span>
             <span className="opacity-75 hidden sm:inline">• Logged as {formData.email}</span>
           </div>
-          <span className="text-[11px] font-mono font-bold bg-amber-200/60 dark:bg-amber-500/20 px-2 py-0.5 rounded shrink-0">
+          <span className="text-[11px] font-mono font-bold bg-amber-200/60 px-2 py-0.5 rounded shrink-0">
             Slot Reserved For Assessment
           </span>
         </div>
@@ -636,7 +636,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           
           {/* Left Quick Jump Sidebar */}
-          <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 overflow-y-auto p-3 flex md:flex-col gap-1.5 scrollbar-thin">
+          <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-zinc-200 bg-zinc-50/50 overflow-x-auto md:overflow-x-visible md:overflow-y-auto p-3 flex md:flex-col gap-1.5 scrollbar-thin">
             <div className="text-[10px] font-black text-zinc-400 uppercase tracking-wider px-2 py-1 hidden md:block">
               Assessment Modules ({activeSection}/22)
             </div>
@@ -651,7 +651,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                   className={`px-3 py-2 rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between gap-2 shrink-0 md:shrink ${
                     isActive 
                       ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' 
-                      : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800'
+                      : 'text-zinc-600 hover:bg-zinc-200/60'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
@@ -670,8 +670,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 1: Patient Details */}
             {activeSection === 1 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 1</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 1</span>
                   <h3 className="text-xl font-black">Patient Contact & Demographics</h3>
                   <p className="text-xs text-zinc-500">Provide accurate personal details for baseline medical calibration.</p>
                 </div>
@@ -683,7 +683,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="text" 
                       value={formData.fullName} 
                       onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
@@ -692,7 +692,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="text" 
                       value={formData.whatsappNumber} 
                       onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
@@ -701,7 +701,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="number" 
                       value={formData.age} 
                       onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
@@ -709,7 +709,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                     <select 
                       value={formData.gender} 
                       onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     >
                       <option value="male">Male</option>
                       <option value="female">Female</option>
@@ -724,14 +724,14 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                         placeholder="Feet" 
                         value={formData.heightFeet} 
                         onChange={(e) => setFormData({ ...formData, heightFeet: Number(e.target.value) })}
-                        className="w-1/2 p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                        className="w-1/2 p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                       />
                       <input 
                         type="number" 
                         placeholder="Inches" 
                         value={formData.heightInches} 
                         onChange={(e) => setFormData({ ...formData, heightInches: Number(e.target.value) })}
-                        className="w-1/2 p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                        className="w-1/2 p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                       />
                     </div>
                   </div>
@@ -741,7 +741,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="number" 
                       value={formData.currentWeightKg} 
                       onChange={(e) => setFormData({ ...formData, currentWeightKg: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
@@ -752,14 +752,14 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                         placeholder="Weight (kg)"
                         value={formData.highestWeightKg || ''} 
                         onChange={(e) => setFormData({ ...formData, highestWeightKg: Number(e.target.value) })}
-                        className="w-1/2 p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                        className="w-1/2 p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                       />
                       <input 
                         type="text" 
                         placeholder="Year (e.g. 2022)"
                         value={formData.highestWeightWhen || ''} 
                         onChange={(e) => setFormData({ ...formData, highestWeightWhen: e.target.value })}
-                        className="w-1/2 p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                        className="w-1/2 p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                       />
                     </div>
                   </div>
@@ -769,7 +769,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="number" 
                       value={formData.waistCircumferenceInches || ''} 
                       onChange={(e) => setFormData({ ...formData, waistCircumferenceInches: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
@@ -778,7 +778,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="text" 
                       value={formData.cityStateCountry} 
                       onChange={(e) => setFormData({ ...formData, cityStateCountry: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
@@ -786,7 +786,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                     <select 
                       value={formData.workType} 
                       onChange={(e) => setFormData({ ...formData, workType: e.target.value as any })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     >
                       <option value="seated">Seated Job</option>
                       <option value="physical">Physical Job</option>
@@ -804,8 +804,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 2: Main Health Concerns & Goals */}
             {activeSection === 2 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 2</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 2</span>
                   <h3 className="text-xl font-black">Main Health Concerns & 90-120 Days Goal</h3>
                 </div>
 
@@ -816,7 +816,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       rows={2}
                       value={formData.mainHealthConcern} 
                       onChange={(e) => setFormData({ ...formData, mainHealthConcern: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
@@ -825,7 +825,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       rows={2}
                       value={formData.bothersomeSymptoms} 
                       onChange={(e) => setFormData({ ...formData, bothersomeSymptoms: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
@@ -834,12 +834,12 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       rows={2}
                       value={formData.goal90to120Days} 
                       onChange={(e) => setFormData({ ...formData, goal90to120Days: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                    <div className="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-center">
+                    <div className="p-4 rounded-2xl bg-zinc-100 border border-zinc-200 text-center">
                       <label className="text-xs font-bold block mb-2">Overall Health (0-10)</label>
                       <input 
                         type="range" min="0" max="10" 
@@ -850,7 +850,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       <span className="text-lg font-black text-emerald-600 font-mono mt-1 block">{formData.overallHealthRating} / 10</span>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-center">
+                    <div className="p-4 rounded-2xl bg-zinc-100 border border-zinc-200 text-center">
                       <label className="text-xs font-bold block mb-2">Energy Level (0-10)</label>
                       <input 
                         type="range" min="0" max="10" 
@@ -861,7 +861,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       <span className="text-lg font-black text-emerald-600 font-mono mt-1 block">{formData.energyLevelRating} / 10</span>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-center">
+                    <div className="p-4 rounded-2xl bg-zinc-100 border border-zinc-200 text-center">
                       <label className="text-xs font-bold block mb-2">Quality of Life (0-10)</label>
                       <input 
                         type="range" min="0" max="10" 
@@ -879,15 +879,15 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 3: Current & Previous Medical Conditions */}
             {activeSection === 3 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 3</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 3</span>
                   <h3 className="text-xl font-black">Diagnosed Medical Conditions</h3>
                   <p className="text-xs text-zinc-500">List every condition you have been diagnosed with, past or present.</p>
                 </div>
 
                 <div className="space-y-3">
                   {formData.diagnosedConditions.map((cond, idx) => (
-                    <div key={idx} className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
+                    <div key={idx} className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-2">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         <TextInput
                           placeholder="Condition Name" value={cond.conditionName}
@@ -983,13 +983,13 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 4: Medicines, Insulin & Allergies */}
             {activeSection === 4 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 4</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 4</span>
                   <h3 className="text-xl font-black">Prescriptions, Insulin & Supplements</h3>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3">
+                  <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-3">
                     <h4 className="text-xs font-black uppercase text-emerald-600">Current Prescription Medicines</h4>
                     {formData.medicinesList.map((med, idx) => (
                       <div key={idx} className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -1000,7 +1000,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                             list[idx].name = e.target.value;
                             setFormData({ ...formData, medicinesList: list });
                           }}
-                          className="p-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 font-bold"
+                          className="p-2.5 rounded-lg border border-zinc-300 bg-white font-bold"
                         />
                         <input 
                           type="text" placeholder="Dose" value={med.dose} 
@@ -1009,7 +1009,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                             list[idx].dose = e.target.value;
                             setFormData({ ...formData, medicinesList: list });
                           }}
-                          className="p-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 font-bold"
+                          className="p-2.5 rounded-lg border border-zinc-300 bg-white font-bold"
                         />
                         <input 
                           type="text" placeholder="Timing" value={med.timing} 
@@ -1018,7 +1018,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                             list[idx].timing = e.target.value;
                             setFormData({ ...formData, medicinesList: list });
                           }}
-                          className="p-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 font-bold"
+                          className="p-2.5 rounded-lg border border-zinc-300 bg-white font-bold"
                         />
                         <input 
                           type="text" placeholder="Reason" value={med.reason} 
@@ -1027,7 +1027,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                             list[idx].reason = e.target.value;
                             setFormData({ ...formData, medicinesList: list });
                           }}
-                          className="p-2.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 font-bold"
+                          className="p-2.5 rounded-lg border border-zinc-300 bg-white font-bold"
                         />
                       </div>
                     ))}
@@ -1049,7 +1049,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="text" 
                       value={formData.vitaminsAndSupplements || ''} 
                       onChange={(e) => setFormData({ ...formData, vitaminsAndSupplements: e.target.value })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
 
@@ -1059,7 +1059,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="text" 
                       value={formData.allergies?.medicineAllergies || ''} 
                       onChange={(e) => setFormData({ ...formData, allergies: { ...formData.allergies, medicineAllergies: e.target.value } })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                 </div>
@@ -1069,8 +1069,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 5: Current Health Readings */}
             {activeSection === 5 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 5</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 5</span>
                   <h3 className="text-xl font-black">Blood Sugar & Cardiovascular Vitals</h3>
                 </div>
 
@@ -1081,7 +1081,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="text" 
                       value={formData.bloodSugar.latestHbA1c || ''} 
                       onChange={(e) => setFormData({ ...formData, bloodSugar: { ...formData.bloodSugar, latestHbA1c: e.target.value } })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
@@ -1090,7 +1090,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="text" 
                       value={formData.bloodSugar.averageFasting7Days || ''} 
                       onChange={(e) => setFormData({ ...formData, bloodSugar: { ...formData.bloodSugar, averageFasting7Days: e.target.value } })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
@@ -1099,7 +1099,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="text" 
                       value={formData.bloodSugar.averagePostMeal7Days || ''} 
                       onChange={(e) => setFormData({ ...formData, bloodSugar: { ...formData.bloodSugar, averagePostMeal7Days: e.target.value } })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
@@ -1108,7 +1108,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       type="text" 
                       value={formData.cardioVitals.usualBpRange || ''} 
                       onChange={(e) => setFormData({ ...formData, cardioVitals: { ...formData.cardioVitals, usualBpRange: e.target.value } })}
-                      className="w-full p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold"
+                      className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                 </div>
@@ -1118,8 +1118,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 6: Sleep, Stress & Mental Wellbeing */}
             {activeSection === 6 && (
               <div className="space-y-6 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 6</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 6</span>
                   <h3 className="text-xl font-black">Sleep, Stress & Mental Wellbeing</h3>
                 </div>
 
@@ -1153,7 +1153,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                   <Field label="Other Sleep Disturbances"><TextArea rows={2} value={formData.sleep.sleepDisturbances || ''} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, sleepDisturbances: e.target.value } })} /></Field>
                 </div>
 
-                <div className="space-y-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                <div className="space-y-3 pt-2 border-t border-zinc-200">
                   <h4 className="text-xs font-black uppercase text-emerald-600">Stress & Mental Wellbeing</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Field label="Stress Level">
@@ -1180,7 +1180,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       onChange={(next) => setFormData({ ...formData, stressMental: { ...formData.stressMental, emotionalSymptoms: next } })}
                     />
                   </Field>
-                  <div className="p-4 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-center">
+                  <div className="p-4 rounded-2xl bg-zinc-100 border border-zinc-200 text-center">
                     <label className="text-xs font-bold block mb-2">Emotional Wellbeing (0-10)</label>
                     <input type="range" min="0" max="10" value={formData.stressMental.emotionalWellbeingRating} onChange={(e) => setFormData({ ...formData, stressMental: { ...formData.stressMental, emotionalWellbeingRating: Number(e.target.value) } })} className="w-full accent-emerald-500" />
                     <span className="text-lg font-black text-emerald-600 font-mono mt-1 block">{formData.stressMental.emotionalWellbeingRating} / 10</span>
@@ -1192,8 +1192,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 7: Digestive & Gut Health */}
             {activeSection === 7 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 7</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 7</span>
                   <h3 className="text-xl font-black">Digestive & Gut Health</h3>
                 </div>
 
@@ -1244,8 +1244,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 8: Lab Test Reports */}
             {activeSection === 8 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 8</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 8</span>
                   <h3 className="text-xl font-black">Lab Test Reports</h3>
                   <p className="text-xs text-zinc-500">You can also upload the actual file from the "My Reports" tab — here just tell us what you have.</p>
                 </div>
@@ -1260,8 +1260,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 9: Previous Treatments Tried */}
             {activeSection === 9 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 9</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 9</span>
                   <h3 className="text-xl font-black">Previous Treatments Tried</h3>
                 </div>
                 <Field label="Treatments Tried So Far">
@@ -1290,8 +1290,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 10: Diet & Eating Pattern */}
             {activeSection === 10 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 10</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 10</span>
                   <h3 className="text-xl font-black">Diet & Eating Pattern</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1330,8 +1330,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 11: Lifestyle & Physical Activity */}
             {activeSection === 11 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 11</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 11</span>
                   <h3 className="text-xl font-black">Lifestyle & Physical Activity</h3>
                 </div>
                 <Field label="Do You Exercise Regularly?"><YesNo value={formData.lifestyle.regularExercise} onChange={(v) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, regularExercise: v } })} /></Field>
@@ -1357,8 +1357,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 12: Family Health History */}
             {activeSection === 12 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 12</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 12</span>
                   <h3 className="text-xl font-black">Family Health History</h3>
                   <p className="text-xs text-zinc-500">Note which relative(s) had each condition, or leave as "None".</p>
                 </div>
@@ -1381,8 +1381,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 13: Hormonal Health (Women) */}
             {activeSection === 13 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 13</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 13</span>
                   <h3 className="text-xl font-black">Hormonal Health (Women)</h3>
                   <p className="text-xs text-zinc-500">Skip anything not applicable to you.</p>
                 </div>
@@ -1426,8 +1426,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 14: Hormonal Health (Men) */}
             {activeSection === 14 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 14</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 14</span>
                   <h3 className="text-xl font-black">Hormonal Health (Men)</h3>
                   <p className="text-xs text-zinc-500">Skip anything not applicable to you.</p>
                 </div>
@@ -1449,8 +1449,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 15: Organ Health & Complication Symptoms */}
             {activeSection === 15 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 15</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 15</span>
                   <h3 className="text-xl font-black">Organ Health & Complication Symptoms</h3>
                   <p className="text-xs text-zinc-500">Type a symptom and press Enter to add it under each category — leave empty if none.</p>
                 </div>
@@ -1474,8 +1474,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 16: Readiness & Commitment */}
             {activeSection === 16 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 16</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 16</span>
                   <h3 className="text-xl font-black">Readiness & Commitment</h3>
                 </div>
                 <Field label="Main Barriers to Getting Healthier"><TextArea rows={2} value={formData.readiness.mainBarriers || ''} onChange={(e) => setFormData({ ...formData, readiness: { ...formData.readiness, mainBarriers: e.target.value } })} /></Field>
@@ -1499,8 +1499,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 17: Start Timeline */}
             {activeSection === 17 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 17</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 17</span>
                   <h3 className="text-xl font-black">When Would You Like to Start?</h3>
                 </div>
                 <div className="space-y-3">
@@ -1515,8 +1515,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       onClick={() => { playClickSound(650); setFormData({ ...formData, startTimeline: tier.id as any }); }}
                       className={`w-full p-4 rounded-2xl border text-left transition-all ${
                         formData.startTimeline === tier.id
-                          ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/10 shadow-sm'
-                          : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 hover:border-zinc-400'
+                          ? 'border-emerald-500 bg-emerald-50/50 shadow-sm'
+                          : 'border-zinc-200 bg-zinc-50/50 hover:border-zinc-400'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -1533,8 +1533,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 18: Reversal Intensity */}
             {activeSection === 18 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 18</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 18</span>
                   <h3 className="text-xl font-black">Reversal Treatment Intensity Selection</h3>
                   <p className="text-xs text-zinc-500">Choose the intensity protocol matching your condition severity and daily readiness.</p>
                 </div>
@@ -1555,8 +1555,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       }}
                       className={`w-full p-4 rounded-2xl border text-left transition-all ${
                         formData.reversalIntensity === tier.id 
-                          ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/10 shadow-sm' 
-                          : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 hover:border-zinc-400'
+                          ? 'border-emerald-500 bg-emerald-50/50 shadow-sm' 
+                          : 'border-zinc-200 bg-zinc-50/50 hover:border-zinc-400'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -1573,8 +1573,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 19: Daily Routine and Timings */}
             {activeSection === 19 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 19</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 19</span>
                   <h3 className="text-xl font-black">Daily Routine and Timings</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1599,8 +1599,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 20: Exercise Preferences & Realistic Activity Plan */}
             {activeSection === 20 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 20</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 20</span>
                   <h3 className="text-xl font-black">Exercise Preferences & Realistic Activity Plan</h3>
                 </div>
                 <Field label="Preferred Exercise Types">
@@ -1627,8 +1627,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 21: Personal Query / Personalisation Request */}
             {activeSection === 21 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 21</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 21</span>
                   <h3 className="text-xl font-black">Personal Query for the Doctor</h3>
                 </div>
                 <Field label="Personal Query & Reversal Customization Request">
@@ -1645,8 +1645,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {/* Section 22: Additional Information */}
             {activeSection === 22 && (
               <div className="space-y-5 animate-in fade-in">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Section 22</span>
+                <div className="border-b border-zinc-200 pb-3">
+                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 22</span>
                   <h3 className="text-xl font-black">Additional Information</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1674,13 +1674,13 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
         </div>
 
         {/* Bottom Navigation Controls */}
-        <div className="p-4 sm:p-5 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/70">
+        <div className="p-4 sm:p-5 border-t border-zinc-200 flex items-center justify-between bg-zinc-50/70">
           <button
             type="button"
             onClick={handlePrevSection}
             disabled={activeSection === 1}
-            className={`px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
-              activeSection === 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-zinc-200 dark:hover:bg-zinc-800'
+            className={`px-4 py-2.5 rounded-xl border border-zinc-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+              activeSection === 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-zinc-200'
             }`}
           >
             <ChevronLeft className="w-4 h-4" />
