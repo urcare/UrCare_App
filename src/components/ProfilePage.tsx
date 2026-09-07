@@ -4,7 +4,6 @@ import { UserHealthProfile, UserAccount, Prescription } from '../types';
 import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
 import { RecommendationsView } from './RecommendationsView';
 import { ReversalLibraryPanel, PlanSection } from './ReversalLibraryPanel';
-import { StreakWidget } from './StreakWidget';
 
 interface ProfilePageProps {
   profile: UserHealthProfile;
@@ -55,9 +54,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           a sticky sidebar on the right, always in view rather than requiring
           a menu. On narrow screens it stacks: plan first, library below. */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-4 space-y-5 text-left">
-
-        {/* Streak — collapsed by default, opens into the full card on tap. */}
-        <StreakWidget profile={profile} />
 
         {/* A compact identity strip — a quick "who's plan this is" glance
             above the plan itself. Deliberately slimmer than the full

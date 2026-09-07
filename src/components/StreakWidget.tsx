@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Flame, ChevronDown, Check } from 'lucide-react';
+import { Heart, ChevronDown, Check } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { toDateKey } from './DailyCalendar';
 import { getActiveDates, getDailyPlan, getTaskCompletion } from '../utils/supabase';
@@ -10,6 +10,11 @@ interface StreakWidgetProps {
 }
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** A day's worth of full plan completion is worth this many points. Every
+ *  30-day streak milestone adds a one-time bonus on top. */
+const POINTS_PER_DAY = 30;
+const BONUS_PER_MONTH = 10;
 
 /** Monday..Sunday of the current week, as Date objects at local midnight. */
 function currentWeekDates(): Date[] {
@@ -43,36 +48,39 @@ function computeStreak(markedDates: Set<string>): number {
   return streak;
 }
 
-/** A small flickering flame — two layered icons animating out of phase, plus
- *  a soft pulsing glow behind them, so it reads as actually moving rather
- *  than a static icon. */
-const AnimatedFlame: React.FC<{ size?: number }> = ({ size = 20 }) => (
+/** A heart that beats and slowly cycles color (white → red → green) —
+ *  animated in both motion and color, not a static icon. A fixed soft
+ *  outline keeps it visible even at its palest point. */
+const AnimatedHeart: React.FC<{ size?: number }> = ({ size = 20 }) => (
   <div className="relative inline-flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
     <motion.div
-      className="absolute inset-0 rounded-full bg-orange-500/50 blur-md"
-      animate={{ opacity: [0.4, 0.85, 0.5, 0.7, 0.4], scale: [0.85, 1.15, 0.95, 1.05, 0.85] }}
-      transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+      className="absolute inset-0 rounded-full bg-rose-500/40 blur-md"
+      animate={{ opacity: [0.3, 0.7, 0.3], scale: [0.85, 1.1, 0.85] }}
+      transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
     />
     <motion.div
-      className="absolute"
-      animate={{ scaleY: [1, 1.12, 0.94, 1.08, 1], scaleX: [1, 0.94, 1.06, 0.97, 1], rotate: [-4, 3, -2, 4, -4] }}
-      transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+      animate={{ scale: [1, 1.16, 1, 1.1, 1] }}
+      transition={{ duration: 1, repeat: Infinity, repeatDelay: 0.7, ease: 'easeInOut', times: [0, 0.25, 0.45, 0.65, 1] }}
     >
-      <Flame style={{ width: size, height: size }} className="text-rose-500 fill-rose-500/90" />
-    </motion.div>
-    <motion.div
-      className="absolute"
-      animate={{ scaleY: [1, 0.9, 1.1, 0.95, 1], rotate: [3, -3, 2, -4, 3] }}
-      transition={{ duration: 1.3, repeat: Infinity, ease: 'easeInOut', delay: 0.15 }}
-    >
-      <Flame style={{ width: size * 0.62, height: size * 0.62 }} className="text-amber-300 fill-amber-300/90" />
+      <motion.div
+        animate={{ color: ['#ffffff', '#ef4444', '#22c55e', '#ffffff'] }}
+        transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <Heart
+          style={{ width: size, height: size }}
+          fill="currentColor"
+          stroke="#94a3b8"
+          strokeWidth={1.5}
+        />
+      </motion.div>
     </motion.div>
   </div>
 );
 
-/** A collapsed streak bar that opens into a full streak card on tap — how
- *  many days in a row the reversal plan has been followed, plus this week
- *  at a glance and today's task progress. */
+/** A collapsed streak bar that opens into a full streak card on tap — points
+ *  earned, days in a row the reversal plan has been followed, this week at
+ *  a glance, and today's task progress. Rendered once outside the tab
+ *  content, so it stays visible no matter which module you switch to. */
 export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
   const userId = profile.id || '';
   const [expanded, setExpanded] = useState(false);
@@ -102,6 +110,12 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
   const todayKey = toDateKey(today);
   const progressPct = todayTotal > 0 ? Math.round((todayDone / todayTotal) * 100) : 0;
 
+  // Points: a full day of the plan is worth 30 — every 30-day streak
+  // milestone adds a one-time 10-point bonus on top.
+  const bonusPoints = Math.floor(streak / 30) * BONUS_PER_MONTH;
+  const streakPoints = streak * POINTS_PER_DAY + bonusPoints;
+  const todayPoints = todayTotal > 0 ? Math.round((todayDone / todayTotal) * POINTS_PER_DAY) : 0;
+
   return (
     <div className="rounded-3xl overflow-hidden border border-zinc-200 shadow-sm">
       {/* Collapsed bar — always visible, opens the full card on tap. */}
@@ -110,9 +124,9 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center gap-3 px-4 sm:px-5 py-3.5 bg-white hover:bg-zinc-50 transition-colors cursor-pointer text-left"
       >
-        <AnimatedFlame size={22} />
+        <AnimatedHeart size={22} />
         <div className="min-w-0 flex-1">
-          <span className="text-sm font-black text-zinc-950">{streak} Day Streak</span>
+          <span className="text-sm font-black text-zinc-950">{streakPoints} Points</span>
           {todayTotal > 0 && (
             <span className="text-xs text-zinc-500 font-semibold ml-2">· {todayDone}/{todayTotal} tasks today</span>
           )}
@@ -132,22 +146,27 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
           >
             <div className="p-5 sm:p-6 bg-gradient-to-br from-zinc-950 to-zinc-900 text-white space-y-5">
               <div className="flex items-center gap-4">
-                <AnimatedFlame size={44} />
+                <AnimatedHeart size={44} />
                 <div>
-                  <div className="text-3xl font-black leading-none">{streak} <span className="text-base font-bold text-zinc-400">days</span></div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Reversal Plan Streak</span>
+                  <div className="text-3xl font-black leading-none">{streakPoints} <span className="text-base font-bold text-zinc-400">pts</span></div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">{streak}-Day Reversal Streak</span>
                 </div>
+                {bonusPoints > 0 && (
+                  <span className="ml-auto text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 shrink-0">
+                    +{bonusPoints} Monthly Bonus
+                  </span>
+                )}
               </div>
 
               {todayTotal > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-zinc-300">
                     <span>Today's Progress</span>
-                    <span className="text-white">{todayDone}/{todayTotal}</span>
+                    <span className="text-white">{todayDone}/{todayTotal} tasks · +{todayPoints} pts</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-rose-500 to-amber-400"
+                      className="h-full rounded-full bg-gradient-to-r from-rose-500 to-emerald-500"
                       initial={{ width: 0 }}
                       animate={{ width: `${progressPct}%` }}
                       transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -167,7 +186,7 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
                       <div
                         className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all ${
                           isDone
-                            ? 'bg-gradient-to-br from-rose-500 to-amber-400 shadow-md shadow-rose-500/30'
+                            ? 'bg-gradient-to-br from-rose-500 to-emerald-500 shadow-md shadow-emerald-500/30'
                             : 'bg-white/10'
                         } ${isToday && !isDone ? 'ring-2 ring-white/50' : ''}`}
                       >

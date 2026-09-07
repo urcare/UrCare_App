@@ -23,6 +23,7 @@ import { ClinicalFeedbackModal } from './ClinicalFeedbackModal';
 import { RootCauseAssessmentModal } from './RootCauseAssessmentModal';
 import { ProfilePage } from './ProfilePage';
 import { AccountPage } from './AccountPage';
+import { StreakWidget } from './StreakWidget';
 import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { Logo } from './Logo';
@@ -501,6 +502,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* 4. MAIN CONTENT CONTAINER (Desktop pl-64) */}
       <div className="md:pl-64 w-full">
+
+        {/* Streak & points — rendered once here, outside every tab's own
+            content, so it stays visible no matter which module you switch
+            to, instead of only showing on the Daily Plan tab. */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-3">
+          <StreakWidget profile={profile} />
+        </div>
+
         {activeTab === 'profile' ? (
           <ProfilePage
             profile={profile}
