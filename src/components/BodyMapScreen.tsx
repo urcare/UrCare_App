@@ -230,10 +230,12 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
           ))}
         </div>
 
-        {/* The body viewer */}
-        <div className="relative w-full max-w-xs sm:max-w-sm flex-1 min-h-[380px] mt-3 select-none">
+        {/* The body viewer — a fixed aspect ratio close to the reference
+            photos' own proportions, so the full figure (head to feet) is
+            always visible instead of being cropped by a squatter box. */}
+        <div className="relative w-full max-w-xs sm:max-w-sm aspect-[9/28] mt-3 select-none">
           <div
-            className="relative w-full h-full rounded-3xl overflow-hidden bg-gradient-to-b from-zinc-100 to-zinc-200 border border-zinc-200 shadow-inner cursor-grab active:cursor-grabbing"
+            className="absolute inset-0 rounded-3xl overflow-hidden bg-gradient-to-b from-zinc-100 to-zinc-200 border border-zinc-200 shadow-inner cursor-grab active:cursor-grabbing"
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
             style={{ touchAction: 'pan-y' }}
@@ -250,7 +252,7 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
                 <motion.img
                   src={IMAGES[gender][view]}
                   alt={`${gender} body — ${view} view`}
-                  className="w-full h-full object-cover object-top pointer-events-none"
+                  className="w-full h-full object-contain pointer-events-none"
                   animate={{ scale: zoom }}
                   transition={{ duration: 0.35, ease: 'easeOut' }}
                   style={{ transformOrigin: focusOrigin }}
