@@ -252,11 +252,43 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
   const weightDiff = Number((targetWeightKg - currentWeightKg).toFixed(1));
   const isLosing = weightDiff < 0;
 
+  // A short, varied "nice progress" toast shown after every step forward —
+  // picked from a pool per progress tier so it never repeats the same line
+  // twice in a row.
+  const [celebration, setCelebration] = useState<{ message: string; percent: number } | null>(null);
+  const lastCelebrationRef = useRef<string | null>(null);
+  const celebrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const CELEBRATION_TIERS: { max: number; messages: string[] }[] = [
+    { max: 0.2, messages: ['Great start!', 'Nice beginning!', "You're on your way!", 'Off to a strong start!', 'Good first step!'] },
+    { max: 0.45, messages: ['Making great progress!', "You're doing well!", 'Good momentum!', 'Keep it up!', 'Nicely done so far!'] },
+    { max: 0.7, messages: ['More than halfway there!', 'Strong progress!', "You're doing great!", 'Keep going!', 'Steady progress!'] },
+    { max: 0.9, messages: ['Almost there!', "You're very close!", 'Just a few more steps!', 'Nearly done!', 'So close now!'] },
+    { max: 1.01, messages: ['One last step!', 'Almost ready!', 'Final stretch!', 'Your plan is nearly ready!'] },
+  ];
+
+  const triggerCelebration = (step: number) => {
+    const percent = Math.min(1, step / TOTAL_QUESTIONS_COUNT);
+    const tier = CELEBRATION_TIERS.find((t) => percent <= t.max) || CELEBRATION_TIERS[CELEBRATION_TIERS.length - 1];
+    const options = tier.messages.filter((m) => m !== lastCelebrationRef.current);
+    const pool = options.length > 0 ? options : tier.messages;
+    const message = pool[Math.floor(Math.random() * pool.length)];
+    lastCelebrationRef.current = message;
+
+    if (celebrationTimerRef.current) clearTimeout(celebrationTimerRef.current);
+    setCelebration({ message, percent: Math.round(percent * 100) });
+    celebrationTimerRef.current = setTimeout(() => setCelebration(null), 1700);
+  };
+
   // Step Navigation
   const nextStep = () => {
     playClickSound(680);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setCurrentStep((prev) => Math.min(prev + 1, 24));
+    const next = Math.min(currentStep + 1, 24);
+    setCurrentStep(next);
+    if (next >= 1 && next <= TOTAL_QUESTIONS_COUNT) {
+      triggerCelebration(next);
+    }
   };
 
   const prevStep = () => {
@@ -547,7 +579,25 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
 
   return (
     <div id="yourcare-onboarding-root" className="w-full min-h-screen bg-[#F8FAFC] text-zinc-900 flex flex-col justify-between py-6 px-4 sm:px-8">
-      
+
+      {/* A brief, varied "nice progress" toast after every step forward. */}
+      <AnimatePresence>
+        {celebration && (
+          <motion.div
+            initial={{ opacity: 0, y: -14, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed top-4 sm:top-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 pl-2 pr-4 py-2 rounded-full bg-white border border-emerald-200 shadow-lg text-zinc-800 text-xs sm:text-sm font-bold pointer-events-none whitespace-nowrap"
+          >
+            <span className="shrink-0 w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px] font-black">
+              {celebration.percent}%
+            </span>
+            <span>{celebration.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* TOP HEADER */}
       <header className="w-full max-w-xl mx-auto flex items-center justify-between mb-4">
         {/* Brand Logo */}

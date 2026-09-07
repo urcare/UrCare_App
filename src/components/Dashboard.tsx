@@ -506,7 +506,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Streak & points — rendered once here, outside every tab's own
             content, so it stays visible no matter which module you switch
             to, instead of only showing on the Daily Plan tab. */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-3">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-3 pb-1">
           <StreakWidget profile={profile} />
         </div>
 

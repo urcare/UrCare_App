@@ -162,13 +162,18 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
       <button
         type="button"
         onClick={() => { setExpanded((v) => !v); setSpinTrigger((n) => n + 1); }}
-        className="w-full flex items-center gap-3 px-4 sm:px-5 py-3.5 bg-white hover:bg-zinc-50 transition-colors cursor-pointer text-left"
+        className="w-full flex items-center gap-3.5 px-4 sm:px-5 py-3.5 bg-white hover:bg-zinc-50 transition-colors cursor-pointer text-left"
       >
-        <AnimatedHeart size={22} progressPct={progressPct} spinTrigger={spinTrigger} />
+        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-rose-50 to-emerald-50 border border-zinc-100 flex items-center justify-center shrink-0">
+          <AnimatedHeart size={22} progressPct={progressPct} spinTrigger={spinTrigger} />
+        </div>
         <div className="min-w-0 flex-1">
-          <span className="text-sm font-black text-zinc-950">{streakPoints} Points</span>
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="text-base font-black text-zinc-950 leading-none">{streakPoints}</span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Points</span>
+          </div>
           {todayTotal > 0 && (
-            <span className="text-xs text-zinc-500 font-semibold ml-2">· {todayDone}/{todayTotal} tasks today</span>
+            <span className="text-xs text-zinc-500 font-semibold">{todayDone}/{todayTotal} tasks today{streak > 0 ? ` · ${streak}-day streak` : ''}</span>
           )}
         </div>
         <ChevronDown className={`w-4 h-4 text-zinc-400 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`} />
