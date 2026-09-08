@@ -60,6 +60,11 @@ const CHIP_LABEL_HI: Record<string, string> = {
   // Sleep hours / quality
   'Less than 5': '5 से कम', '5–6': '5–6', '6–7': '6–7', '7–8': '7–8', '8–9': '8–9', 'More than 9': '9 से ज़्यादा',
   'Good': 'अच्छा', 'Average': 'औसत', 'Poor': 'खराब', 'Very poor': 'बहुत खराब',
+  // Daily routine — exercise duration & work schedule
+  'Not Applicable': 'लागू नहीं', 'Less than 15 min': '15 मिनट से कम', '15–30 min': '15–30 मिनट',
+  '30–60 min': '30–60 मिनट', 'More than 60 min': '60 मिनट से ज़्यादा',
+  'Regular day shift': 'नियमित दिन की शिफ्ट', 'Night shift': 'रात की शिफ्ट', 'Rotating shift': 'बदलती शिफ्ट',
+  'Work from home': 'घर से काम', 'Not working / Student': 'काम नहीं करते / छात्र',
   // Stress level / sources / symptoms / management
   'Low': 'कम', 'Moderate': 'मध्यम', 'High': 'ज़्यादा', 'Overwhelming': 'असहनीय',
   'Work': 'काम', 'Family': 'परिवार', 'Financial': 'आर्थिक', 'Relationship': 'रिश्ते', 'Health': 'स्वास्थ्य', 'Studies': 'पढ़ाई', 'Sleep': 'नींद',
@@ -109,7 +114,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   // Total Onboarding Steps
-  const TOTAL_QUESTIONS_COUNT = 23;
+  const TOTAL_QUESTIONS_COUNT = 24;
   const [currentStep, setCurrentStep] = useState(0);
 
   // 1. Gender & Activity
@@ -205,6 +210,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
     bloodPressure: string; restingHeartRate: string; otherLabValues: string;
     sleepTime: string; wakeTime: string; sleepHours: string; sleepQuality: string;
     snoring: YesNo; sleepApnea: YesNo;
+    // Daily Routine (step 15) — a full picture of when the user actually
+    // does things day to day, used alongside sleep/activity data above.
+    wakeUpTime: string; breakfastTime: string; lunchTime: string; dinnerTime: string;
+    exerciseTime: string; exerciseDuration: string; workSchedule: string; dailyRoutineNotes: string;
     stressLevel: string; stressSources: string[]; emotionalSymptoms: string[]; stressManagement: string[];
     bowelFrequency: string; stoolType: string; digestiveSymptoms: string[]; digestiveConditions: string[];
     alcohol: string; tobacco: string; waterIntake: string; teaCoffee: string;
@@ -227,6 +236,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
     bloodPressure: '', restingHeartRate: '', otherLabValues: '',
     sleepTime: '', wakeTime: '', sleepHours: '', sleepQuality: '',
     snoring: '', sleepApnea: '',
+    wakeUpTime: '', breakfastTime: '', lunchTime: '', dinnerTime: '',
+    exerciseTime: '', exerciseDuration: '', workSchedule: '', dailyRoutineNotes: '',
     stressLevel: '', stressSources: [], emotionalSymptoms: [], stressManagement: [],
     bowelFrequency: '', stoolType: '', digestiveSymptoms: [], digestiveConditions: [],
     alcohol: '', tobacco: '', waterIntake: '', teaCoffee: '',
@@ -364,7 +375,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
   const nextStep = () => {
     playClickSound(680);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    const next = Math.min(currentStep + 1, 24);
+    const next = Math.min(currentStep + 1, 25);
     setCurrentStep(next);
     if (next >= 1 && next <= TOTAL_QUESTIONS_COUNT) {
       triggerCelebration(next);
@@ -425,7 +436,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
 
   // Multi-Phase UrCare Metabolic Engine
   const startPlanGeneration = () => {
-    setCurrentStep(24);
+    setCurrentStep(25);
     setCalcProgress(10);
     setCalcPhaseText(lang === 'hi' ? 'आपकी बुनियादी मेटाबोलिक दर (BMR) का विश्लेषण...' : 'Calibrating Basal Metabolic Rate (BMR)...');
 
@@ -658,7 +669,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
   );
 
   return (
-    <div id="yourcare-onboarding-root" className="w-full min-h-screen bg-[#F8FAFC] text-zinc-900 flex flex-col justify-between py-6 px-4 sm:px-8">
+    <div id="yourcare-onboarding-root" className="w-full min-h-screen bg-[#F8FAFC] text-zinc-900 flex flex-col justify-between py-4 px-4 sm:px-8">
 
       {/* A brief, varied "nice progress" toast after every step forward. */}
       <AnimatePresence>
@@ -716,11 +727,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
         </div>
       </header>
 
-      {/* Progress Bar (During questionnaire) — hidden on step 24, the
+      {/* Progress Bar (During questionnaire) — hidden on step 25, the
           "Generating..." screen, which has its own circular progress and
-          isn't one of the 23 counted questions (showing it there produced
-          "Step 24 of 23" / 104%). */}
-      {currentStep > 0 && currentStep < 24 && (
+          isn't one of the 24 counted questions (showing it there produced
+          "Step 25 of 24" / 104%). */}
+      {currentStep > 0 && currentStep < 25 && (
         <div className="w-full max-w-xl mx-auto mb-6">
           <div className="flex items-center justify-between text-[11px] font-bold text-zinc-500 mb-1.5">
             <span>{tr('Step', 'चरण')} {currentStep} {tr('of', 'का')} {TOTAL_QUESTIONS_COUNT}</span>
@@ -1092,7 +1103,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
 
               {/* DIRECT AGE WHEEL PICKER */}
               {agePickerMode === 'direct_age' ? (
-                <div className={`p-6 rounded-3xl ${cardClass} space-y-4`}>
+                <div className={`p-5 rounded-3xl ${cardClass} space-y-4`}>
                   <div className="text-center">
                     <span className="text-xs text-zinc-400 uppercase font-black tracking-wider">{tr('Selected Age', 'चयनित उम्र')}</span>
                     <div className="flex items-baseline justify-center gap-1.5 mt-0.5">
@@ -1107,10 +1118,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                     value={age}
                     onChange={(val) => setAge(Number(val))}
                     unit="yrs"
-                    visibleCount={5}
-                    itemHeight={46}
+                    visibleCount={3}
+                    itemHeight={40}
                     isDark={false}
-                    className="py-2"
+                    className="py-1"
                   />
 
                   <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-center text-emerald-800">
@@ -1119,7 +1130,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                 </div>
               ) : (
                 /* DOB TRIPLE DRUM WHEEL PICKERS */
-                <div className={`p-6 rounded-3xl ${cardClass} space-y-4`}>
+                <div className={`p-5 rounded-3xl ${cardClass} space-y-4`}>
                   <div className="text-center">
                     <span className="text-xs text-zinc-400 uppercase font-black tracking-wider">{tr('Calculated Age', 'गणना की गई उम्र')}</span>
                     <div className="text-3xl font-black text-emerald-600">{finalAge} {tr('Years Old', 'वर्ष')}</div>
@@ -1134,7 +1145,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                         value={birthDay}
                         onChange={(val) => setBirthDay(Number(val))}
                         visibleCount={3}
-                        itemHeight={40}
+                        itemHeight={34}
                         isDark={false}
                       />
                     </div>
@@ -1146,7 +1157,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                         value={birthMonth}
                         onChange={(val) => setBirthMonth(Number(val))}
                         visibleCount={3}
-                        itemHeight={40}
+                        itemHeight={34}
                         isDark={false}
                       />
                     </div>
@@ -1158,7 +1169,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                         value={birthYear}
                         onChange={(val) => setBirthYear(Number(val))}
                         visibleCount={3}
-                        itemHeight={40}
+                        itemHeight={34}
                         isDark={false}
                       />
                     </div>
@@ -1213,7 +1224,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                 </button>
               </div>
 
-              <div className={`p-6 rounded-3xl ${cardClass} space-y-4`}>
+              <div className={`p-5 rounded-3xl ${cardClass} space-y-4`}>
                 {heightUnit === 'cm' ? (
                   /* CM HORIZONTAL RULER WHEEL */
                   <div className="space-y-4">
@@ -1250,7 +1261,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                           value={heightFeet}
                           onChange={(val) => updateHeightFromFtIn(Number(val), heightInches)}
                           visibleCount={3}
-                          itemHeight={44}
+                          itemHeight={38}
                           isDark={false}
                         />
                       </div>
@@ -1261,7 +1272,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                           value={heightInches}
                           onChange={(val) => updateHeightFromFtIn(heightFeet, Number(val))}
                           visibleCount={3}
-                          itemHeight={44}
+                          itemHeight={38}
                           isDark={false}
                         />
                       </div>
@@ -1317,7 +1328,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                 </button>
               </div>
 
-              <div className={`p-6 rounded-3xl ${cardClass} space-y-4`}>
+              <div className={`p-5 rounded-3xl ${cardClass} space-y-4`}>
                 {weightUnit === 'kg' ? (
                   <RulerWheelPicker
                     min={35}
@@ -1415,7 +1426,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                 </button>
               </div>
 
-              <div className={`p-6 rounded-3xl ${cardClass} space-y-4`}>
+              <div className={`p-5 rounded-3xl ${cardClass} space-y-4`}>
                 {targetWeightUnit === 'kg' ? (
                   <RulerWheelPicker
                     min={35}
@@ -1769,15 +1780,93 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                     <DDYesNo value={dd.sleepApnea} onChange={(v) => setDdField('sleepApnea', v as YesNo)} options={[{ id: 'yes', label: tr('Yes', 'हां') }, { id: 'no', label: tr('No', 'नहीं') }]} />
                   </div>
                 </div>
+
+                {/* Follow-up detail text — shown only once a "Yes" is actually
+                    picked above, same reveal-on-Yes pattern used for allergies. */}
+                {(dd.snoring === 'yes' || dd.sleepApnea === 'yes') && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    {dd.snoring === 'yes' && (
+                      <DDInput
+                        label={tr('Tell us more about your snoring', 'खर्राटों के बारे में और बताएं')}
+                        value={dd.otherTexts['snoringDetail'] || ''}
+                        onChange={(v) => setOtherText('snoringDetail', v)}
+                        placeholder={tr('e.g. loud, every night, since 2 years', 'जैसे तेज़, हर रात, 2 साल से')}
+                      />
+                    )}
+                    {dd.sleepApnea === 'yes' && (
+                      <DDInput
+                        label={tr('Tell us more about your sleep apnea', 'स्लीप एपनिया के बारे में और बताएं')}
+                        value={dd.otherTexts['sleepApneaDetail'] || ''}
+                        onChange={(v) => setOtherText('sleepApneaDetail', v)}
+                        placeholder={tr('e.g. diagnosed in 2022, uses CPAP machine', 'जैसे 2022 में निदान, CPAP मशीन उपयोग करते हैं')}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
 
               <DDContinue />
             </motion.div>
           )}
 
-          {/* STEP 15: STRESS & EMOTIONAL WELLBEING */}
+          {/* STEP 15: DAILY ROUTINE — a real timeline of when the user
+              actually does things, not just isolated sleep/activity facts. */}
           {currentStep === 15 && (
             <motion.div key="step-15" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
+              <DDHeader title={tr('Your Daily Routine', 'आपकी दैनिक दिनचर्या')} subtitle={tr('When you wake, eat and move shapes your metabolism as much as what you eat.', 'आप कब उठते, खाते और चलते हैं — यह भी उतना ही मायने रखता है जितना आप क्या खाते हैं।')} />
+
+              <div className={`p-5 rounded-3xl ${cardClass} space-y-4`}>
+                <div className="grid grid-cols-2 gap-3">
+                  <DDInput label={tr('What time do you wake up?', 'आप किस समय उठते हैं?')} value={dd.wakeUpTime} onChange={(v) => setDdField('wakeUpTime', v)} placeholder="e.g. 6:30 AM" />
+                  <DDInput label={tr('What time do you exercise?', 'आप किस समय व्यायाम करते हैं?')} value={dd.exerciseTime} onChange={(v) => setDdField('exerciseTime', v)} placeholder={tr('e.g. 7:00 AM, or Not Applicable', 'जैसे 7:00 AM, या लागू नहीं')} />
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-xs font-black text-zinc-800">{tr('When do you usually eat?', 'आप आमतौर पर कब खाते हैं?')}</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    <DDInput label={tr('Breakfast', 'नाश्ता')} value={dd.breakfastTime} onChange={(v) => setDdField('breakfastTime', v)} placeholder="8:00 AM" />
+                    <DDInput label={tr('Lunch', 'दोपहर का भोजन')} value={dd.lunchTime} onChange={(v) => setDdField('lunchTime', v)} placeholder="1:00 PM" />
+                    <DDInput label={tr('Dinner', 'रात का भोजन')} value={dd.dinnerTime} onChange={(v) => setDdField('dinnerTime', v)} placeholder="8:00 PM" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-xs font-black text-zinc-800">{tr('How long do you usually exercise?', 'आप आमतौर पर कितनी देर व्यायाम करते हैं?')}</span>
+                  <DDChips
+                    options={['Not Applicable', 'Less than 15 min', '15–30 min', '30–60 min', 'More than 60 min', 'Other']}
+                    selected={dd.exerciseDuration ? [dd.exerciseDuration] : []}
+                    onToggle={(v) => setDdField('exerciseDuration', v)}
+                    otherValue={dd.otherTexts['exerciseDuration'] || ''}
+                    onOtherChange={(v) => setOtherText('exerciseDuration', v)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-xs font-black text-zinc-800">{tr('What does your work schedule look like?', 'आपकी काम की दिनचर्या कैसी है?')}</span>
+                  <DDChips
+                    options={['Regular day shift', 'Night shift', 'Rotating shift', 'Work from home', 'Not working / Student', 'Other']}
+                    selected={dd.workSchedule ? [dd.workSchedule] : []}
+                    onToggle={(v) => setDdField('workSchedule', v)}
+                    otherValue={dd.otherTexts['workSchedule'] || ''}
+                    onOtherChange={(v) => setOtherText('workSchedule', v)}
+                  />
+                </div>
+
+                <DDTextArea
+                  label={tr('Anything else about your daily routine?', 'आपकी दिनचर्या के बारे में कुछ और बताना चाहेंगे?')}
+                  value={dd.dailyRoutineNotes}
+                  onChange={(v) => setDdField('dailyRoutineNotes', v)}
+                  placeholder={tr('e.g. commute time, nap habits, weekend routine differs a lot...', 'जैसे आने-जाने का समय, झपकी की आदतें, सप्ताहांत की दिनचर्या अलग है...')}
+                />
+              </div>
+
+              <DDContinue />
+            </motion.div>
+          )}
+
+          {/* STEP 16: STRESS & EMOTIONAL WELLBEING */}
+          {currentStep === 16 && (
+            <motion.div key="step-16" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
               <DDHeader title={tr('Stress & Emotional Wellbeing', 'तनाव व भावनात्मक स्वास्थ्य')} subtitle={tr('Chronic stress affects cortisol, sleep and blood sugar — help us understand yours.', 'लगातार तनाव आपके हार्मोन, नींद और शुगर को प्रभावित करता है — हमें बताएं आपकी स्थिति।')} />
 
               <div className="space-y-2">
@@ -1804,9 +1893,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             </motion.div>
           )}
 
-          {/* STEP 16: GUT & DIGESTION */}
-          {currentStep === 16 && (
-            <motion.div key="step-16" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
+          {/* STEP 17: GUT & DIGESTION */}
+          {currentStep === 17 && (
+            <motion.div key="step-17" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
               <DDHeader title={tr('Gut & Digestion', 'पाचन तंत्र')} subtitle={tr('Digestive health affects nutrient absorption and our meal timing recommendations.', 'पाचन स्वास्थ्य पोषण अवशोषण और भोजन के समय को प्रभावित करता है।')} />
 
               <div className="space-y-2">
@@ -1833,9 +1922,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             </motion.div>
           )}
 
-          {/* STEP 17: LIFESTYLE HABITS */}
-          {currentStep === 17 && (
-            <motion.div key="step-17" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
+          {/* STEP 18: LIFESTYLE HABITS */}
+          {currentStep === 18 && (
+            <motion.div key="step-18" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
               <DDHeader title={tr('Lifestyle Habits', 'जीवनशैली की आदतें')} subtitle={tr('Alcohol, tobacco, hydration and screen time all factor into your metabolic plan.', 'शराब, तंबाकू, पानी की मात्रा और स्क्रीन टाइम — सब आपकी योजना में शामिल होते हैं।')} />
 
               <div className="space-y-2">
@@ -1872,9 +1961,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             </motion.div>
           )}
 
-          {/* STEP 18: FAMILY HISTORY */}
-          {currentStep === 18 && (
-            <motion.div key="step-18" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
+          {/* STEP 19: FAMILY HISTORY */}
+          {currentStep === 19 && (
+            <motion.div key="step-19" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
               <DDHeader title={tr('Family History', 'पारिवारिक इतिहास')} subtitle={tr('Genetic predisposition helps us flag risks earlier and personalize prevention.', 'पारिवारिक जोखिम जानने से हम पहले ही सचेत होकर बचाव की योजना बना सकते हैं।')} />
 
               <div className="space-y-2">
@@ -1890,9 +1979,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             </motion.div>
           )}
 
-          {/* STEP 19: GENDER-SPECIFIC HEALTH */}
-          {currentStep === 19 && (
-            <motion.div key="step-19" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
+          {/* STEP 20: GENDER-SPECIFIC HEALTH */}
+          {currentStep === 20 && (
+            <motion.div key="step-20" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
               {gender === 'female' ? (
                 <>
                   <DDHeader title={tr("Women's Health", 'महिला स्वास्थ्य')} subtitle={tr('Hormonal and reproductive health context for your personalized plan.', 'आपकी व्यक्तिगत योजना के लिए हार्मोनल व प्रजनन स्वास्थ्य जानकारी।')} />
@@ -1944,9 +2033,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             </motion.div>
           )}
 
-          {/* STEP 20: SYMPTOMS, READINESS & PERSONALIZATION */}
-          {currentStep === 20 && (
-            <motion.div key="step-20" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
+          {/* STEP 21: SYMPTOMS, READINESS & PERSONALIZATION */}
+          {currentStep === 21 && (
+            <motion.div key="step-21" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-5">
               <DDHeader title={tr('Symptoms, Readiness & Notes', 'लक्षण, तैयारी व अन्य जानकारी')} subtitle={tr('A final check on how you feel day-to-day, and anything the doctor should know.', 'आप रोज़मर्रा में कैसा महसूस करते हैं और डॉक्टर को क्या पता होना चाहिए — अंतिम जानकारी।')} />
 
               <div className="space-y-2">
@@ -1979,10 +2068,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             </motion.div>
           )}
 
-          {/* STEP 21: USER CONTACT & PROFILE REVIEW */}
-          {currentStep === 21 && (
+          {/* STEP 22: USER CONTACT & PROFILE REVIEW */}
+          {currentStep === 22 && (
             <motion.div
-              key="step-21"
+              key="step-22"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
@@ -2116,10 +2205,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             </motion.div>
           )}
 
-          {/* STEP 22: HABITS & MOTIVATION */}
-          {currentStep === 22 && (
+          {/* STEP 23: HABITS & MOTIVATION */}
+          {currentStep === 23 && (
             <motion.div
-              key="step-22"
+              key="step-23"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
@@ -2182,10 +2271,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             </motion.div>
           )}
 
-          {/* STEP 23: COMMITMENT HOLD BUTTON (HEALTHIFY SIGNATURE) */}
-          {currentStep === 23 && (
+          {/* STEP 24: COMMITMENT HOLD BUTTON (HEALTHIFY SIGNATURE) */}
+          {currentStep === 24 && (
             <motion.div
-              key="step-23"
+              key="step-24"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
@@ -2248,10 +2337,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             </motion.div>
           )}
 
-          {/* STEP 24: LIVE MULTI-PHASE CALIBRATION SCREEN */}
-          {currentStep === 24 && (
+          {/* STEP 25: LIVE MULTI-PHASE CALIBRATION SCREEN */}
+          {currentStep === 25 && (
             <motion.div
-              key="step-24"
+              key="step-25"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -2314,7 +2403,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
       </main>
 
       {/* FOOTER NAVIGATION BUTTONS */}
-      {currentStep > 0 && currentStep < 24 && (
+      {currentStep > 0 && currentStep < 25 && (
         <footer className="w-full max-w-xl mx-auto flex items-center justify-between pt-4 border-t border-zinc-200/80">
           <button
             type="button"

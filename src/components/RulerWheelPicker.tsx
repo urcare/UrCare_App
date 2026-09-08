@@ -117,26 +117,26 @@ export const RulerWheelPicker: React.FC<RulerWheelPickerProps> = ({
   return (
     <div className={`w-full flex flex-col items-center select-none ${className}`}>
       {/* Top Value Display & Controls */}
-      <div className="flex items-center justify-between w-full px-2 mb-3">
+      <div className="flex items-center justify-between w-full px-2 mb-2">
         <button
           type="button"
           onClick={() => handleQuickStep('prev')}
           disabled={value <= min}
-          className={`p-2 rounded-xl transition-all ${
-            value <= min 
-              ? 'opacity-20 cursor-not-allowed' 
-              : isDark 
-                ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-emerald-400 hover:border-emerald-500/40' 
+          className={`p-1.5 rounded-xl transition-all ${
+            value <= min
+              ? 'opacity-20 cursor-not-allowed'
+              : isDark
+                ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-emerald-400 hover:border-emerald-500/40'
                 : 'bg-zinc-100 border border-zinc-200 text-zinc-700 hover:text-emerald-600 hover:border-emerald-500/40'
           }`}
           aria-label={tr('Decrease', 'घटाएं')}
         >
-          <Minus className="w-4 h-4" />
+          <Minus className="w-3.5 h-3.5" />
         </button>
 
         <div className="text-center">
           <div className="flex items-baseline justify-center gap-1.5">
-            <span className={`text-4xl font-black tracking-tight tabular-nums ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+            <span className={`text-3xl font-black tracking-tight tabular-nums ${isDark ? 'text-white' : 'text-zinc-900'}`}>
               {value.toFixed(decimals)}
             </span>
             <span className="text-sm font-extrabold text-emerald-500 uppercase tracking-wider">
@@ -149,21 +149,21 @@ export const RulerWheelPicker: React.FC<RulerWheelPickerProps> = ({
           type="button"
           onClick={() => handleQuickStep('next')}
           disabled={value >= max}
-          className={`p-2 rounded-xl transition-all ${
-            value >= max 
-              ? 'opacity-20 cursor-not-allowed' 
-              : isDark 
-                ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-emerald-400 hover:border-emerald-500/40' 
+          className={`p-1.5 rounded-xl transition-all ${
+            value >= max
+              ? 'opacity-20 cursor-not-allowed'
+              : isDark
+                ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-emerald-400 hover:border-emerald-500/40'
                 : 'bg-zinc-100 border border-zinc-200 text-zinc-700 hover:text-emerald-600 hover:border-emerald-500/40'
           }`}
           aria-label={tr('Increase', 'बढ़ाएं')}
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
 
       {/* Interactive Ruler Dial Container */}
-      <div className={`relative w-full h-24 rounded-2xl overflow-hidden border ${
+      <div className={`relative w-full h-16 rounded-2xl overflow-hidden border ${
         isDark ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'
       }`}>
         {/* Left & Right Fade Shadows */}
