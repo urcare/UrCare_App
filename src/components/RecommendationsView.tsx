@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  CheckCircle2, Target, ChevronRight, ChevronDown,
+  CheckCircle2, ChevronRight, ChevronDown,
   FileText, Award, Circle, Check,
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon,
@@ -32,7 +32,7 @@ interface RecommendationsViewProps {
  *  server.ts — kept in sync with that exact label list) to a short,
  *  premium-looking "reversal focus" tile shown on today's goals card,
  *  instead of generic macro numbers. */
-const REVERSAL_GOALS: Record<string, { label: string; note: string; icon: typeof Droplet; gradient: string }> = {
+export const REVERSAL_GOALS: Record<string, { label: string; note: string; icon: typeof Droplet; gradient: string }> = {
   'Diabetes / Pre-Diabetes': { label: 'Diabetes Reversal', note: 'Low-GI meals, steady blood sugar', icon: Droplet, gradient: 'from-sky-500 to-blue-600' },
   'Obesity': { label: 'Weight Reversal', note: 'Calorie deficit, high protein', icon: Scale, gradient: 'from-amber-500 to-orange-600' },
   'High Blood Pressure': { label: 'Blood Pressure Control', note: 'Low sodium, potassium-rich foods', icon: HeartPulse, gradient: 'from-rose-500 to-red-600' },
@@ -51,7 +51,7 @@ const REVERSAL_GOALS: Record<string, { label: string; note: string; icon: typeof
   'Digestive / IBS': { label: 'Gut Health Reversal', note: 'Fiber-balanced, gut-friendly', icon: Leaf, gradient: 'from-emerald-500 to-lime-600' },
 };
 
-const DEFAULT_REVERSAL_GOAL = { label: 'Metabolic Health', note: 'Balanced nutrition, steady energy', icon: Sparkles, gradient: 'from-emerald-500 to-teal-600' };
+export const DEFAULT_REVERSAL_GOAL = { label: 'Metabolic Health', note: 'Balanced nutrition, steady energy', icon: Sparkles, gradient: 'from-emerald-500 to-teal-600' };
 
 type Period = 'morning' | 'afternoon' | 'evening' | 'night';
 
@@ -218,15 +218,6 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   const targetCarbs = calculatedPlan?.carbsGrams || 180;
   const targetFats = calculatedPlan?.fatsGrams || 50;
 
-  // Today's goal card leads with the user's own reversal focus (condition by
-  // condition) rather than generic macro numbers — one premium tile per
-  // selected condition, falling back to a general wellness tile if none.
-  const reversalGoals = useMemo(() => {
-    const conditions = (profile.medicalConditions || []).filter((c) => c !== 'None' && c !== 'Other');
-    const goals = conditions.map((c) => REVERSAL_GOALS[c]).filter(Boolean);
-    return goals.length > 0 ? goals : [DEFAULT_REVERSAL_GOAL];
-  }, [profile.medicalConditions]);
-
   const formatDate = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
   const cardClass = isDark ? 'bg-zinc-950 border border-zinc-800' : 'bg-white border border-zinc-200 shadow-sm';
@@ -319,27 +310,30 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         )}
       </AnimatePresence>
 
-      {/* 1. FRIENDLY, SIMPLE HEADER */}
+      {/* 1. HEADER — plain, clinical styling (solid text, bordered icon
+          badge) instead of the previous gradient-text/gradient-badge
+          treatment, to read as a professional schedule rather than a
+          playful app screen. */}
       <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4`}>
         <div className="flex items-start gap-3 min-w-0">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20">
-            <Clock className="w-5 h-5 text-white" />
+          <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 ${isDark ? 'bg-emerald-500/10 border-emerald-500/30' : ''}`}>
+            <Clock className="w-5 h-5 text-emerald-600" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-lg sm:text-2xl font-black tracking-tight break-words bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+            <h2 className={`text-lg sm:text-xl font-black tracking-tight break-words ${isDark ? 'text-white' : 'text-zinc-950'}`}>
               {t('dailyPlanTitle')}
             </h2>
-            <p className="text-xs opacity-70 mt-0.5 break-words">
+            <p className="text-xs opacity-60 mt-0.5 break-words">
               {t('dailyPlanSubtitle')}
             </p>
           </div>
         </div>
 
-        <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between gap-3 flex-wrap">
-          <div className="text-xs opacity-75 font-semibold flex items-center gap-2 flex-wrap min-w-0">
-            <span className="break-words">{t('showingLabel')}: <span className="text-emerald-500 font-black">{isToday ? `${t('showingToday')} (${formatDate(selectedDate)})` : formatDate(selectedDate)}</span></span>
+        <div className={`pt-3 border-t ${isDark ? 'border-zinc-800' : 'border-zinc-100'} flex items-center justify-between gap-3 flex-wrap`}>
+          <div className="text-xs opacity-70 font-semibold flex items-center gap-2 flex-wrap min-w-0">
+            <span className="break-words">{t('showingLabel')}: <span className="text-emerald-600 font-black">{isToday ? `${t('showingToday')} (${formatDate(selectedDate)})` : formatDate(selectedDate)}</span></span>
             {programDay != null && (
-              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 shrink-0">Day {programDay} of 14</span>
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">Day {programDay} of 14</span>
             )}
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -347,7 +341,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedDate(startOfToday())}
-                className="text-xs font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs font-bold text-emerald-600 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
                 <span>{t('backToToday')}</span>
@@ -356,8 +350,8 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             <button
               type="button"
               onClick={() => setShowCalendar((v) => !v)}
-              className={`text-xs font-bold flex items-center gap-1.5 cursor-pointer px-2.5 py-1 rounded-lg transition-colors ${
-                showCalendar ? 'bg-emerald-500/15 text-emerald-500' : 'text-emerald-500 hover:bg-emerald-500/10'
+              className={`text-xs font-bold flex items-center gap-1.5 cursor-pointer px-2.5 py-1.5 rounded-lg border transition-colors ${
+                showCalendar ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'text-zinc-600 border-zinc-200 hover:bg-zinc-50'
               }`}
             >
               <CalendarIcon className="w-3.5 h-3.5" />
@@ -443,76 +437,63 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         </div>
       )}
 
-      {/* 3. TODAY'S REVERSAL FOCUS (or, for a past day, GOALS vs ACHIEVEMENT) */}
-      <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4 min-w-0`}>
+      {/* Whole-day progress — the reversal-focus tiles that used to live in
+          this card moved to the Profile page (a static, condition-derived
+          summary that doesn't need "today"); this compact bar is what's
+          still genuinely daily-plan-specific. Past days show meals logged
+          instead, since there's no live task list to tick off. */}
+      {isToday ? (
+        taskIds.length > 0 && (
+          <div className={`p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl ${cardClass} flex items-center justify-between gap-3 flex-wrap`}>
+            <div className="flex items-center gap-2 min-w-0">
+              {allDone ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <Circle className="w-4 h-4 opacity-50 shrink-0" />}
+              <span className="text-xs font-bold truncate">
+                {allDone ? "All done for this day! 🎉" : `${doneCount}/${taskIds.length} steps checked off`}
+              </span>
+            </div>
+            <div className={`w-20 sm:w-24 h-1.5 rounded-full overflow-hidden shrink-0 ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`}>
+              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(doneCount / taskIds.length) * 100}%` }} />
+            </div>
+          </div>
+        )
+      ) : (
+        <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4 min-w-0`}>
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40 flex-wrap gap-2">
             <div className="flex items-center gap-2 text-emerald-500 min-w-0">
-              {isToday ? <Target className="w-5 h-5 shrink-0" /> : <Award className="w-5 h-5 shrink-0" />}
+              <Award className="w-5 h-5 shrink-0" />
               <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider truncate">
-                {isToday ? "Today's Reversal Focus" : t('goalsVsWhatYouAte')}
+                {t('goalsVsWhatYouAte')}
               </h3>
             </div>
             <span className="text-[10px] sm:text-xs font-extrabold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 shrink-0">
-              {isToday ? "Today's Goal" : hasLoggedMeals ? `${mealCount} Meal${mealCount > 1 ? 's' : ''} Logged` : 'Nothing Logged'}
+              {hasLoggedMeals ? `${mealCount} Meal${mealCount > 1 ? 's' : ''} Logged` : 'Nothing Logged'}
             </span>
           </div>
 
-          {isToday ? (
-            <div className={`grid gap-2.5 sm:gap-3 ${reversalGoals.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-              {reversalGoals.map((goal) => {
-                const GoalIcon = goal.icon;
-                return (
-                  <div key={goal.label} className={`p-3.5 rounded-2xl ${subCardClass} flex items-center gap-3 min-w-0`}>
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${goal.gradient} flex items-center justify-center shrink-0 shadow-sm`}>
-                      <GoalIcon className="w-4.5 h-4.5 text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className={`text-xs sm:text-sm font-black truncate ${isDark ? 'text-white' : 'text-zinc-900'}`}>{goal.label}</div>
-                      <div className="text-[10px] sm:text-[11px] text-zinc-500 font-semibold truncate">{goal.note}</div>
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
+              <span className="text-[10px] font-bold uppercase opacity-60">Calories</span>
+              <div className="text-lg sm:text-xl font-black text-emerald-500">{targetCalories} <span className="text-[10px] sm:text-xs opacity-60">kcal</span></div>
+              <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.calories)} kcal` : 'Not logged'}</div>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-              <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
-                <span className="text-[10px] font-bold uppercase opacity-60">Calories</span>
-                <div className="text-lg sm:text-xl font-black text-emerald-500">{targetCalories} <span className="text-[10px] sm:text-xs opacity-60">kcal</span></div>
-                <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.calories)} kcal` : 'Not logged'}</div>
-              </div>
-              <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
-                <span className="text-[10px] font-bold uppercase opacity-60">Protein</span>
-                <div className="text-lg sm:text-xl font-black">{targetProtein} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
-                <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.protein)} g` : 'Not logged'}</div>
-              </div>
-              <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
-                <span className="text-[10px] font-bold uppercase opacity-60">Carbs</span>
-                <div className="text-lg sm:text-xl font-black">{targetCarbs} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
-                <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.carbs)} g` : 'Not logged'}</div>
-              </div>
-              <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
-                <span className="text-[10px] font-bold uppercase opacity-60">Fats</span>
-                <div className="text-lg sm:text-xl font-black">{targetFats} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
-                <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.fats)} g` : 'Not logged'}</div>
-              </div>
+            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
+              <span className="text-[10px] font-bold uppercase opacity-60">Protein</span>
+              <div className="text-lg sm:text-xl font-black">{targetProtein} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
+              <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.protein)} g` : 'Not logged'}</div>
             </div>
-          )}
-
-          {taskIds.length > 0 && (
-            <div className={`p-3.5 rounded-2xl flex items-center justify-between gap-3 flex-wrap ${allDone ? 'bg-emerald-500/15 border border-emerald-500/40' : subCardClass}`}>
-              <div className="flex items-center gap-2 min-w-0">
-                {allDone ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <Circle className="w-4 h-4 opacity-50 shrink-0" />}
-                <span className="text-xs font-bold truncate">
-                  {allDone ? "All done for this day! 🎉" : `${doneCount}/${taskIds.length} steps checked off`}
-                </span>
-              </div>
-              <div className={`w-20 sm:w-24 h-1.5 rounded-full overflow-hidden shrink-0 ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`}>
-                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(doneCount / taskIds.length) * 100}%` }} />
-              </div>
+            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
+              <span className="text-[10px] font-bold uppercase opacity-60">Carbs</span>
+              <div className="text-lg sm:text-xl font-black">{targetCarbs} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
+              <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.carbs)} g` : 'Not logged'}</div>
             </div>
-          )}
-      </div>
+            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl ${subCardClass} text-center space-y-1 min-w-0`}>
+              <span className="text-[10px] font-bold uppercase opacity-60">Fats</span>
+              <div className="text-lg sm:text-xl font-black">{targetFats} <span className="text-[10px] sm:text-xs opacity-60">g</span></div>
+              <div className="text-[10px] sm:text-xs font-extrabold mt-1 opacity-90">{hasLoggedMeals ? `Ate: ${Math.round(achieved.fats)} g` : 'Not logged'}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 4. THE PLAN ITSELF — a fixed 24-hour timeline, grouped into
           Morning/Afternoon/Evening/Night so it reads as four short lists

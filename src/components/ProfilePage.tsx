@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Mail, BadgeCheck, Edit3 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, Prescription } from '../types';
-import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
+import { useLanguage } from '../context/LanguageContext';
 import { RecommendationsView } from './RecommendationsView';
 import { ReversalLibraryPanel, PlanSection } from './ReversalLibraryPanel';
 
@@ -35,14 +35,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           on every tab, so repeating either here just looked like it was
           printed twice on the same screen. This bar only titles the page. */}
       <header className="sticky top-0 z-30 bg-white border-b border-zinc-200 px-3 sm:px-8 py-3 sm:py-3.5 shadow-xs">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
+        <div className="max-w-6xl mx-auto flex items-center gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 min-w-0">
             <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span className="text-xs font-black text-emerald-700 tracking-wide whitespace-nowrap">{t('navHome')}</span>
-          </div>
-
-          <div className="flex items-center justify-end shrink-0">
-            <LanguageSwitchButton />
           </div>
         </div>
       </header>
