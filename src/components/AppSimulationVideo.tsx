@@ -316,16 +316,16 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
                 {/* Animated Waveform Graph */}
                 <div className="h-18 w-full bg-emerald-500/5 rounded-xl p-2 relative flex items-end justify-between border border-emerald-100">
                   <svg className="w-full h-full" viewBox="0 0 100 40" preserveAspectRatio="none">
-                    <rect x="0" y="10" width="100" height="20" fill="#10b981" opacity="0.1" />
+                    <rect x="0" y="10" width="100" height="20" fill="#00a800" opacity="0.1" />
                     <path
                       d="M0,25 Q15,20 30,28 T60,16 T85,22 T100,20"
                       fill="none"
-                      stroke="#059669"
+                      stroke="#008000"
                       strokeWidth="2.5"
                       strokeLinecap="round"
                     />
-                    <circle cx="85" cy="22" r="3" fill="#059669" className="animate-ping" />
-                    <circle cx="85" cy="22" r="2.5" fill="#ffffff" stroke="#059669" strokeWidth="1.5" />
+                    <circle cx="85" cy="22" r="3" fill="#008000" className="animate-ping" />
+                    <circle cx="85" cy="22" r="2.5" fill="#ffffff" stroke="#008000" strokeWidth="1.5" />
                   </svg>
                   <div className="absolute top-1 left-2 text-[8px] font-bold text-zinc-400">{tr('Target:', 'लक्ष्य:')} 70-140 mg/dL</div>
                   <div className="absolute bottom-1 right-2 text-[8px] font-bold text-emerald-600">{tr('Zero Glycemic Spikes', 'शून्य ग्लाइसेमिक स्पाइक')}</div>
@@ -391,7 +391,7 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
 
                 {/* Laser scan line */}
                 <div
-                  className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_8px_#34d399] pointer-events-none transition-all duration-75"
+                  className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_8px_#00e600] pointer-events-none transition-all duration-75"
                   style={{ top: `${scanLaserPos}%` }}
                 />
 

@@ -159,7 +159,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
           particleCount: 70,
           spread: 60,
           origin: { y: 0.6 },
-          colors: ['#10b981', '#ffffff', '#059669'],
+          colors: ['#00a800', '#ffffff', '#008000'],
         });
       } catch (e) {}
 

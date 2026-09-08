@@ -34,14 +34,14 @@ export const WowCelebration: React.FC<WowCelebrationProps> = ({ profile, onEnter
           angle: 60,
           spread: 55,
           origin: { x: 0, y: 0.7 },
-          colors: ['#059669', '#10b981', '#34d399', '#ffffff'],
+          colors: ['#008000', '#00a800', '#00e600', '#ffffff'],
         });
         confetti({
           particleCount: 3,
           angle: 120,
           spread: 55,
           origin: { x: 1, y: 0.7 },
-          colors: ['#059669', '#10b981', '#34d399', '#ffffff'],
+          colors: ['#008000', '#00a800', '#00e600', '#ffffff'],
         });
       } catch (e) {}
 
