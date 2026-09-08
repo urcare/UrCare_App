@@ -181,7 +181,7 @@ export const RulerWheelPicker: React.FC<RulerWheelPickerProps> = ({
         {/* Center Indicator Needle */}
         <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-1 z-30 pointer-events-none flex flex-col items-center">
           <div className="w-3 h-2 bg-emerald-500 rounded-b-md shadow-md shadow-emerald-500/50" />
-          <div className="w-0.5 flex-1 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+          <div className="w-0.5 flex-1 bg-emerald-500 shadow-[0_0_8px_rgba(0,168,0,0.8)]" />
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30" />
         </div>
 

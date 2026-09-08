@@ -26,7 +26,7 @@ const STREAK_HEART_SRC = '/streak-heart.png';
 const POINTS_PER_DAY = 30;
 const BONUS_PER_MONTH = 10;
 
-const HEART_GREEN = '#22c55e';
+const HEART_GREEN = '#008000';
 
 /** Monday..Sunday of the current week, as Date objects at local midnight. */
 function currentWeekDates(): Date[] {

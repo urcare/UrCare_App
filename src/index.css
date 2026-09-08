@@ -1,5 +1,40 @@
 @import "tailwindcss";
 
+/* Overrides Tailwind's built-in "emerald" palette app-wide with a pure-green
+ * ramp anchored on #008000 (emerald-600, the single most-used shade across
+ * buttons/CTAs) — every bg-emerald-*, text-emerald-*, border-emerald-*, etc.
+ * class anywhere in the app now renders from this scale instead of the
+ * default teal-leaning emerald, so hover/lighter/darker variants still work
+ * but the whole app's "green" reads as this green. */
+@theme {
+  --color-emerald-50: #f0fff0;
+  --color-emerald-100: #d6ffd6;
+  --color-emerald-200: #a3ffa3;
+  --color-emerald-300: #5cff5c;
+  --color-emerald-400: #00e600;
+  --color-emerald-500: #00a800;
+  --color-emerald-600: #008000;
+  --color-emerald-700: #006600;
+  --color-emerald-800: #005200;
+  --color-emerald-900: #004200;
+  --color-emerald-950: #002900;
+
+  /* Tailwind's separate "green" palette is used in a few decorative
+   * gradients alongside emerald — mapped to the same ramp so it isn't a
+   * different (yellow-leaning) green from the rest of the app. */
+  --color-green-50: #f0fff0;
+  --color-green-100: #d6ffd6;
+  --color-green-200: #a3ffa3;
+  --color-green-300: #5cff5c;
+  --color-green-400: #00e600;
+  --color-green-500: #00a800;
+  --color-green-600: #008000;
+  --color-green-700: #006600;
+  --color-green-800: #005200;
+  --color-green-900: #004200;
+  --color-green-950: #002900;
+}
+
 @layer base {
   /* Reinforces the <meta name="color-scheme"> in index.html — the app is
      always light-themed regardless of the device's system theme, so the

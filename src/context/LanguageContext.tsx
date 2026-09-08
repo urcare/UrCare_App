@@ -183,7 +183,7 @@ export const LanguageSwitchButton: React.FC<{ className?: string }> = ({ classNa
               <motion.div
                 layoutId="lang-switch-pill"
                 className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 shadow-lg shadow-emerald-600/30"
-                style={{ boxShadow: '0 3px 8px rgba(5,150,105,0.35), inset 0 1px 0 rgba(255,255,255,0.35)' }}
+                style={{ boxShadow: '0 3px 8px rgba(0,128,0,0.35), inset 0 1px 0 rgba(255,255,255,0.35)' }}
                 transition={{ type: 'spring', stiffness: 500, damping: 32 }}
               />
             )}

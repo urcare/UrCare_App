@@ -117,7 +117,7 @@ const BODY_HOTSPOTS: Record<Gender, Record<string, [number, number, number][]>> 
   },
 };
 
-const STATUS_COLOR: Record<Status, string> = { good: '#22c55e', attention: '#f97316', high: '#ef4444' };
+const STATUS_COLOR: Record<Status, string> = { good: '#008000', attention: '#f97316', high: '#ef4444' };
 const STATUS_LABEL: Record<Status, string> = { good: 'Healthy', attention: 'Needs Attention', high: 'High Attention' };
 const STATUS_LABEL_HI: Record<Status, string> = { good: 'स्वस्थ', attention: 'ध्यान देने की ज़रूरत', high: 'अधिक ध्यान देने की ज़रूरत' };
 const RANK: Record<Status, number> = { good: 0, attention: 1, high: 2 };
