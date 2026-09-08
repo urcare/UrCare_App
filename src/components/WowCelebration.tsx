@@ -1,12 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import confetti from 'canvas-confetti';
-import { 
-  Sparkles, ArrowRight, ShieldCheck, Zap, Activity, CheckCircle2, 
-  ChevronRight, Calendar, UserCheck
+import React from 'react';
+import {
+  ArrowRight, ShieldCheck, ShieldAlert, CheckCircle2,
 } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { Logo } from './Logo';
-import { RiskAssessmentCard } from './RiskAssessmentCard';
 import { useLanguage } from '../context/LanguageContext';
 
 interface WowCelebrationProps {
@@ -14,168 +11,147 @@ interface WowCelebrationProps {
   onEnterDashboard: () => void;
 }
 
+/** The screen shown right after the Body Health Map, before the dashboard —
+ *  deliberately a serious risk warning rather than a celebration: the whole
+ *  point of this moment is to make the health risk land, then immediately
+ *  show it's preventable, and end on the one CTA forward. No confetti or
+ *  playful animation here on purpose. */
 export const WowCelebration: React.FC<WowCelebrationProps> = ({ profile, onEnterDashboard }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
-  const [animatedScore, setAnimatedScore] = useState(0);
-  const [animatedCals, setAnimatedCals] = useState(0);
 
-  const { calculatedPlan, currentWeightKg, targetWeightKg } = profile;
+  const { calculatedPlan, currentWeightKg = 74, heightCm = 172, age = 29 } = profile || {};
+  const rawBmi = calculatedPlan?.bmi ?? (heightCm ? currentWeightKg / Math.pow(heightCm / 100, 2) : 24.2);
+  const bmi = typeof rawBmi === 'number' && !isNaN(rawBmi) ? Number(rawBmi.toFixed(1)) : 24.2;
 
-  useEffect(() => {
-    // 1. Trigger celebratory confetti bursts in emerald and white
-    const duration = 2.5 * 1000;
-    const end = Date.now() + duration;
-
-    const frame = () => {
-      try {
-        confetti({
-          particleCount: 3,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0, y: 0.7 },
-          colors: ['#008000', '#00a800', '#00e600', '#ffffff'],
-        });
-        confetti({
-          particleCount: 3,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1, y: 0.7 },
-          colors: ['#008000', '#00a800', '#00e600', '#ffffff'],
-        });
-      } catch (e) {}
-
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
-    };
-    frame();
-
-    // 2. Count up numbers smoothly
-    const targetScore = calculatedPlan?.healthScore || 94;
-    const targetCals = calculatedPlan?.targetCalories || 1850;
-
-    const scoreInterval = setInterval(() => {
-      setAnimatedScore((prev) => {
-        if (prev >= targetScore) {
-          clearInterval(scoreInterval);
-          return targetScore;
-        }
-        return prev + 2;
-      });
-    }, 25);
-
-    const calsInterval = setInterval(() => {
-      setAnimatedCals((prev) => {
-        if (prev >= targetCals) {
-          clearInterval(calsInterval);
-          return targetCals;
-        }
-        return prev + Math.ceil(targetCals / 40);
-      });
-    }, 20);
-
-    return () => {
-      clearInterval(scoreInterval);
-      clearInterval(calsInterval);
-    };
-  }, [calculatedPlan]);
-
-  const cardClass = 'bg-white border border-zinc-200 shadow-xl';
-  const subCardClass = 'bg-zinc-50 border border-zinc-200';
+  // Same style of dynamic risk percentage used on the UrgentRiskScreen —
+  // driven by real BMI/age, clamped to a believable "high risk" band.
+  const riskPercent = Math.min(92, Math.max(71, Math.round(52 + (bmi > 25 ? (bmi - 25) * 4.2 : 16) + (age > 30 ? 11 : 6))));
 
   return (
-    <div id="wow-celebration-screen" className="relative min-h-screen bg-[#F8FAFC] text-zinc-900 flex flex-col items-center justify-center py-10 px-4 text-center overflow-x-hidden">
-      {/* Static brand backdrop — soft emerald glow, no motion/particles */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute -top-24 -right-24 w-[26rem] h-[26rem] rounded-full bg-emerald-200/40 blur-3xl" />
-        <div className="absolute -bottom-32 -left-24 w-[26rem] h-[26rem] rounded-full bg-teal-100/50 blur-3xl" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[30rem] h-[30rem] rounded-full bg-emerald-50/60 blur-3xl" />
-      </div>
+    <div id="wow-celebration-screen" className="relative min-h-screen bg-[#F8FAFC] text-zinc-900 flex flex-col items-center justify-center py-8 px-4 overflow-x-hidden">
+      <div className="relative w-full max-w-2xl mx-auto space-y-5 z-10 animate-in fade-in zoom-in-95 duration-500 text-left">
 
-      <div className="relative w-full max-w-2xl mx-auto space-y-6 z-10 animate-in fade-in zoom-in-95 duration-500">
-        
         {/* Brand Header */}
         <div className="flex justify-center">
           <Logo size="lg" />
         </div>
 
-        {/* Top Status badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black tracking-wider uppercase shadow-xs">
-          <Sparkles className="w-4 h-4 text-emerald-600" />
-          <span>{tr('YOUR CLINICAL METABOLIC BLUEPRINT IS READY', 'आपका क्लीनिकल मेटाबॉलिक ब्लूप्रिंट तैयार है')}</span>
+        {/* RED DANGER BANNER */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white shadow-xl shadow-rose-600/25 relative overflow-hidden">
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 animate-pulse">
+              <ShieldAlert className="w-6 h-6 stroke-[2.5]" />
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-[10px] font-black tracking-wider uppercase">
+                <span>⚠️ {tr('URGENT METABOLIC ALERT', 'गंभीर मेटाबॉलिक चेतावनी')}</span>
+              </div>
+              <h1 className="text-lg sm:text-xl font-black tracking-tight mt-0.5">
+                {tr('Your Assessment Shows High Health Risk', 'आपके मूल्यांकन में उच्च स्वास्थ्य जोखिम पाया गया')}
+              </h1>
+            </div>
+          </div>
         </div>
 
-        {/* Main Headline */}
-        <div className="space-y-1.5">
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-zinc-950 leading-tight">
-            {tr('Metabolic Assessment', 'मेटाबॉलिक मूल्यांकन')} <span className="text-emerald-600">{tr('Formulated', 'तैयार')}</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-600 max-w-md mx-auto">
-            {tr('Evidence-based daily caloric limits, protein ratios, and metabolic risk projections.', 'प्रमाण-आधारित दैनिक कैलोरी सीमा, प्रोटीन अनुपात और मेटाबॉलिक जोखिम अनुमान।')}
+        {/* RISK GAUGE + WHY IT MATTERS */}
+        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-rose-200 shadow-lg space-y-4">
+          <div className="flex flex-col sm:flex-row items-center gap-5">
+            <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-rose-50/80 border border-rose-200/80 text-center space-y-1 shrink-0">
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-800">{tr('Metabolic Risk Score', 'मेटाबॉलिक जोखिम स्कोर')}</span>
+              <div className="relative w-28 h-28 flex items-center justify-center">
+                <svg className="w-full h-full -rotate-90">
+                  <circle cx="56" cy="56" r="46" stroke="#FECDD3" strokeWidth="9" fill="transparent" />
+                  <circle
+                    cx="56"
+                    cy="56"
+                    r="46"
+                    stroke="#E11D48"
+                    strokeWidth="9"
+                    fill="transparent"
+                    strokeDasharray={289}
+                    strokeDashoffset={289 - (289 * riskPercent) / 100}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-black text-rose-600">{riskPercent}%</span>
+                  <span className="text-[8px] font-black uppercase text-rose-800 px-1.5 py-0.5 rounded-full bg-rose-200/70">{tr('CRITICAL', 'गंभीर')}</span>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-rose-950">BMI {bmi} • {tr('Age', 'आयु')} {age}</span>
+            </div>
+            <div className="space-y-2 text-left flex-1">
+              <h3 className="text-base font-black text-zinc-950 leading-snug">
+                {tr('Left unaddressed, this typically gets worse — not better', 'बिना ध्यान दिए, यह आमतौर पर बेहतर नहीं, बल्कि और बिगड़ता है')}
+              </h3>
+              <p className="text-xs text-zinc-600 leading-relaxed">
+                {tr(
+                  'Your onboarding answers point to real metabolic strain — the kind that quietly accelerates fatigue, weight gain, and long-term organ stress if nothing changes.',
+                  'आपके onboarding जवाब वास्तविक मेटाबॉलिक तनाव की ओर इशारा करते हैं — जो बिना बदलाव के थकान, वज़न बढ़ना और लंबे समय में अंगों पर दबाव बढ़ा सकता है।'
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* 3 danger bullets */}
+          <div className="space-y-2.5 pt-2 border-t border-zinc-100">
+            <div className="p-3 rounded-2xl bg-rose-50/50 border border-rose-200/90 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 font-black text-xs">1</div>
+              <div>
+                <h4 className="text-xs font-black text-rose-950">{tr('Rising Visceral Fat & Metabolic Load', 'बढ़ती आंतरिक चर्बी व मेटाबॉलिक भार')}</h4>
+                <p className="text-[11px] text-zinc-700 font-medium leading-relaxed">{tr('Internal fat accumulating around your organs quietly raises inflammation and insulin resistance.', 'अंगों के आसपास जमा चर्बी सूजन व इंसुलिन प्रतिरोध को चुपचाप बढ़ाती है।')}</p>
+              </div>
+            </div>
+            <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/90 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 font-black text-xs">2</div>
+              <div>
+                <h4 className="text-xs font-black text-amber-950">{tr('Unstable Blood Sugar Trend', 'अस्थिर ब्लड शुगर प्रवृत्ति')}</h4>
+                <p className="text-[11px] text-zinc-700 font-medium leading-relaxed">{tr('Uncontrolled spikes push you closer to pre-diabetes and constant energy crashes.', 'अनियंत्रित स्पाइक्स आपको प्री-डायबिटीज व लगातार थकान के करीब ले जाते हैं।')}</p>
+              </div>
+            </div>
+            <div className="p-3 rounded-2xl bg-orange-50/60 border border-orange-200/90 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-800 flex items-center justify-center shrink-0 font-black text-xs">3</div>
+              <div>
+                <h4 className="text-xs font-black text-orange-950">{tr('Muscle Loss & Slowing Metabolism', 'मांसपेशी हानि व धीमा मेटाबॉलिज्म')}</h4>
+                <p className="text-[11px] text-zinc-700 font-medium leading-relaxed">{tr('Without enough protein and movement, your resting metabolic rate keeps dropping.', 'पर्याप्त प्रोटीन व गतिविधि के बिना आपकी आराम अवस्था मेटाबॉलिक दर लगातार घटती है।')}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* PREVENTION — the calming antidote to the warning above */}
+        <div className="p-5 sm:p-6 rounded-3xl bg-emerald-50 border border-emerald-200 space-y-3">
+          <div className="flex items-center gap-2 text-emerald-800 text-xs font-black uppercase tracking-wider">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>{tr('The Good News: This Is Preventable', 'अच्छी खबर: इसे रोका जा सकता है')}</span>
+          </div>
+          <p className="text-xs text-emerald-950 font-medium leading-relaxed">
+            {tr(
+              'None of this is permanent. A calibrated daily plan — the right calories, protein, movement and monitoring — can reverse this trend starting today.',
+              'यह कुछ भी स्थायी नहीं है। सही योजना — सही कैलोरी, प्रोटीन, गतिविधि व निगरानी — आज से ही इस प्रवृत्ति को उलट सकती है।'
+            )}
           </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{tr(`${calculatedPlan?.targetCalories || 1850} kcal calibrated daily target`, `${calculatedPlan?.targetCalories || 1850} kcal दैनिक लक्ष्य`)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{tr(`${calculatedPlan?.proteinGrams || 140}g high-protein target`, `${calculatedPlan?.proteinGrams || 140}g उच्च-प्रोटीन लक्ष्य`)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{tr('Daily movement & sleep targets', 'दैनिक गतिविधि व नींद लक्ष्य')}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{tr('Doctor-reviewed, adjusted weekly', 'डॉक्टर-समीक्षित, साप्ताहिक समायोजित')}</span>
+            </div>
+          </div>
         </div>
-
-        {/* Main Calorie & Health Card */}
-        <div className={`p-6 sm:p-7 rounded-3xl ${cardClass} space-y-5 text-left`}>
-
-          <div className="grid grid-cols-2 gap-3 text-center">
-            {/* Calorie Box */}
-            <div className={`p-4 rounded-2xl ${subCardClass}`}>
-              <div className="text-[10px] font-bold uppercase text-emerald-700">{tr('Daily Calorie Target', 'दैनिक कैलोरी लक्ष्य')}</div>
-              <div className="text-3xl font-black text-emerald-600 mt-1">
-                {animatedCals} <span className="text-xs font-bold text-zinc-500">kcal</span>
-              </div>
-            </div>
-
-            {/* Health Score */}
-            <div className={`p-4 rounded-2xl ${subCardClass}`}>
-              <div className="text-[10px] font-bold uppercase text-emerald-700">{tr('Metabolic Readiness', 'मेटाबॉलिक तैयारी')}</div>
-              <div className="text-3xl font-black text-zinc-900 mt-1">
-                {animatedScore} <span className="text-xs font-bold text-zinc-500">/ 100</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Macronutrients Breakdown */}
-          <div className="space-y-2">
-            <span className="text-[11px] font-bold uppercase text-zinc-400 tracking-wider">
-              {tr('Calibrated Macronutrient Allocation', 'निर्धारित मैक्रोन्यूट्रिएंट वितरण')}
-            </span>
-
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className={`p-3 rounded-xl ${subCardClass}`}>
-                <span className="text-[10px] text-zinc-500 block font-bold">{tr('Protein', 'प्रोटीन')}</span>
-                <span className="text-base font-black text-emerald-600">{calculatedPlan?.proteinGrams ?? 140}g</span>
-              </div>
-
-              <div className={`p-3 rounded-xl ${subCardClass}`}>
-                <span className="text-[10px] text-zinc-500 block font-bold">{tr('Carbohydrates', 'कार्बोहाइड्रेट')}</span>
-                <span className="text-base font-black text-emerald-600">{calculatedPlan?.carbsGrams ?? 180}g</span>
-              </div>
-
-              <div className={`p-3 rounded-xl ${subCardClass}`}>
-                <span className="text-[10px] text-zinc-500 block font-bold">{tr('Healthy Fats', 'हेल्दी फैट्स')}</span>
-                <span className="text-base font-black text-emerald-600">{calculatedPlan?.fatsGrams ?? 50}g</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Key Milestones */}
-          <div className={`p-3.5 rounded-2xl ${subCardClass} flex items-center justify-between text-xs`}>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span className="font-bold text-zinc-800">{tr('Target Weight Goal', 'लक्ष्य वज़न')}</span>
-            </div>
-            <span className="font-black text-emerald-600">{targetWeightKg} kg ({tr('from', 'से')} {currentWeightKg} kg)</span>
-          </div>
-
-        </div>
-
-        {/* High Urgency Clinical Risk & Health Warnings Section — no CTA of
-            its own here; the single button below is the one and only way
-            forward on this screen. */}
-        <RiskAssessmentCard profile={profile} />
 
         {/* Enter Dashboard Button — the one CTA on this screen */}
         <button

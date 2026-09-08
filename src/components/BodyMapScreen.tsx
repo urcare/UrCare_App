@@ -25,7 +25,6 @@ interface BodyMapScreenProps {
   onNext: () => void;
 }
 
-type ViewName = 'front' | 'side' | 'back';
 type Status = 'good' | 'attention' | 'high';
 type Gender = 'male' | 'female';
 
@@ -121,8 +120,6 @@ const STATUS_COLOR: Record<Status, string> = { good: '#008000', attention: '#f97
 const STATUS_LABEL: Record<Status, string> = { good: 'Healthy', attention: 'Needs Attention', high: 'High Attention' };
 const STATUS_LABEL_HI: Record<Status, string> = { good: 'स्वस्थ', attention: 'ध्यान देने की ज़रूरत', high: 'अधिक ध्यान देने की ज़रूरत' };
 const RANK: Record<Status, number> = { good: 0, attention: 1, high: 2 };
-const VIEW_LABEL: Record<ViewName, string> = { front: 'front', side: 'side', back: 'back' };
-const VIEW_LABEL_HI: Record<ViewName, string> = { front: 'सामने', side: 'बगल', back: 'पीछे' };
 
 // Hindi display text for the raw onboarding symptom/condition strings that
 // get shown verbatim as "contributing factors" below — the English value is
@@ -378,7 +375,6 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const gender: Gender = profile.gender === 'female' ? 'female' : 'male';
-  const [preset, setPreset] = useState<ViewName>('front');
   const [selected, setSelected] = useState<SelectedRegion | null>(null);
   const [modelReady, setModelReady] = useState(false);
 
@@ -394,13 +390,6 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
   const dragRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const pinchRef = useRef<{ dist: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const applyPreset = useCallback((v: ViewName) => {
-    setPreset(v);
-    setSelected(null);
-    const azimuth = v === 'front' ? 0 : v === 'side' ? Math.PI / 2 : Math.PI;
-    target.current = { azimuth, polar: DEFAULT_ORBIT.polar, radius: DEFAULT_ORBIT.radius, y: 0 };
-  }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
@@ -523,26 +512,13 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
           </div>
         </div>
 
-        {/* View buttons */}
-        <div className="flex items-center gap-1.5 mt-4 p-1 rounded-2xl bg-zinc-100 border border-zinc-200">
-          {(['front', 'side', 'back'] as ViewName[]).map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => applyPreset(v)}
-              className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wide transition-all cursor-pointer ${
-                preset === v ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-800'
-              }`}
-            >
-              {tr(VIEW_LABEL[v], VIEW_LABEL_HI[v])}
-            </button>
-          ))}
-        </div>
-
-        {/* The 3D body viewer */}
+        {/* The 3D body viewer — deliberately borderless/full-bleed (no card
+            background or rounded box around it) so the body itself is the
+            focus instead of looking boxed-in; front/side/back preset
+            buttons were removed, the drag-to-rotate hint below covers it. */}
         <div
           ref={containerRef}
-          className="relative w-full max-w-md h-[50vh] min-h-[380px] max-h-[560px] mt-3 select-none touch-none rounded-3xl overflow-hidden bg-gradient-to-b from-zinc-100 to-zinc-200/60 cursor-grab active:cursor-grabbing"
+          className="relative w-full max-w-lg h-[58vh] min-h-[420px] max-h-[620px] mt-4 -mx-4 sm:mx-0 select-none touch-none overflow-visible cursor-grab active:cursor-grabbing"
           onPointerDown={handlePointerDown}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -666,7 +642,7 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
                   onClick={onNext}
                   className="w-full mt-5 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer"
                 >
-                  <span>{tr('View Personalized Plan', 'व्यक्तिगत योजना देखें')}</span>
+                  <span>{tr('View My Reversal Plan', 'मेरी रिवर्सल योजना देखें')}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
@@ -680,12 +656,16 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
       </AnimatePresence>
 
       <div className="w-full max-w-xl mx-auto px-4 pb-6 pt-3">
+        <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl py-2 px-3 mb-3">
+          <Sparkles className="w-3.5 h-3.5 shrink-0" />
+          <span>{tr('Most of these are reversible with the right daily plan', 'सही दैनिक योजना से इनमें से ज़्यादातर स्थितियां उलटी जा सकती हैं')}</span>
+        </div>
         <button
           type="button"
           onClick={onNext}
           className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 active:scale-95 transition-all cursor-pointer"
         >
-          <span>{tr('View Personalized Plan', 'व्यक्तिगत योजना देखें')}</span>
+          <span>{tr('View My Reversal Plan', 'मेरी रिवर्सल योजना देखें')}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
