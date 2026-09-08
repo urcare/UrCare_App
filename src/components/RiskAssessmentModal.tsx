@@ -2,6 +2,7 @@ import React from 'react';
 import { X, ShieldAlert, Stethoscope } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { RiskAssessmentCard } from './RiskAssessmentCard';
+import { useLanguage } from '../context/LanguageContext';
 
 interface RiskAssessmentModalProps {
   isOpen: boolean;
@@ -16,6 +17,8 @@ export const RiskAssessmentModal: React.FC<RiskAssessmentModalProps> = ({
   profile,
   onOpenDoctorConsult,
 }) => {
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   if (!isOpen) return null;
 
   return (
@@ -29,9 +32,9 @@ export const RiskAssessmentModal: React.FC<RiskAssessmentModalProps> = ({
             </div>
             <div>
               <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300">
-                Clinical Risk Diagnosis
+                {tr('Clinical Risk Diagnosis', 'क्लिनिकल जोखिम निदान')}
               </span>
-              <h2 className="text-base sm:text-lg font-black text-zinc-950">Metabolic Threat & Visceral Fat Projection</h2>
+              <h2 className="text-base sm:text-lg font-black text-zinc-950">{tr('Metabolic Threat & Visceral Fat Projection', 'मेटाबॉलिक खतरा व विसरल फैट अनुमान')}</h2>
             </div>
           </div>
 
@@ -51,7 +54,7 @@ export const RiskAssessmentModal: React.FC<RiskAssessmentModalProps> = ({
             onTakeAction={() => {
               onClose();
               if (onOpenDoctorConsult) {
-                onOpenDoctorConsult('Comprehensive metabolic risk reversal consultation.');
+                onOpenDoctorConsult(tr('Comprehensive metabolic risk reversal consultation.', 'व्यापक मेटाबॉलिक जोखिम रिवर्सल परामर्श।'));
               }
             }}
           />

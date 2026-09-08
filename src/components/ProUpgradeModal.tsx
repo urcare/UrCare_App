@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { UserAccount } from '../types';
 import { authedFetch } from '../utils/supabase';
+import { useLanguage } from '../context/LanguageContext';
 
 interface ProUpgradeModalProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   if (!isOpen) return null;
 
@@ -39,7 +42,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
 
   // Premium unlocks exactly one thing, as requested: the food scan.
   const proFeatures = [
-    { title: 'UrCare Food Scan', desc: 'Scan or describe any meal and instantly know if it suits YOUR health profile — calories, macros & a personalized good/avoid verdict.' },
+    { title: tr('UrCare Food Scan', 'UrCare फूड स्कैन'), desc: tr('Scan or describe any meal and instantly know if it suits YOUR health profile — calories, macros & a personalized good/avoid verdict.', 'किसी भी भोजन को स्कैन करें या बताएं और तुरंत जानें कि यह आपकी स्वास्थ्य प्रोफ़ाइल के अनुकूल है या नहीं — कैलोरी, मैक्रोज़ व व्यक्तिगत अच्छा/बचें निर्णय।') },
   ];
 
   const handleCopyUpi = () => {
@@ -72,7 +75,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
       setPaymentStep('success');
     } catch (e) {
       console.error(e);
-      setErrorMessage('Could not confirm payment. Please try again.');
+      setErrorMessage(tr('Could not confirm payment. Please try again.', 'भुगतान की पुष्टि नहीं हो सकी। कृपया पुनः प्रयास करें।'));
     } finally {
       setIsProcessing(false);
     }
@@ -104,21 +107,21 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
               </div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold mb-2">
                 <Lock className="w-3.5 h-3.5" />
-                <span>Premium Feature: {featureTriggerName}</span>
+                <span>{tr('Premium Feature:', 'प्रीमियम फीचर:')} {featureTriggerName}</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                Unlock <span className="text-emerald-400">UrCare Premium</span>
+                {tr('Unlock', 'अनलॉक करें')} <span className="text-emerald-400">UrCare Premium</span>
               </h2>
               <p className="text-sm text-zinc-400 mt-1 max-w-sm mx-auto">
-                Pay once, unlock the Pro feature below — no plans, no confusion.
+                {tr('Pay once, unlock the Pro feature below — no plans, no confusion.', 'एक बार भुगतान करें, नीचे दिया गया प्रो फीचर अनलॉक करें — कोई प्लान या भ्रम नहीं।')}
               </p>
             </div>
 
             {/* Single Flat Price */}
             <div className="p-5 rounded-2xl bg-emerald-950/40 border border-emerald-500 shadow-lg shadow-emerald-500/10 text-center mb-6">
               <div className="text-xs font-bold text-emerald-400 uppercase tracking-wide">UrCare Premium</div>
-              <div className="text-4xl font-black text-white mt-1">₹{price}<span className="text-sm font-normal text-zinc-400">/month</span></div>
-              <div className="text-[11px] text-zinc-400 mt-1">One simple price. Cancel anytime.</div>
+              <div className="text-4xl font-black text-white mt-1">₹{price}<span className="text-sm font-normal text-zinc-400">/{tr('month', 'महीना')}</span></div>
+              <div className="text-[11px] text-zinc-400 mt-1">{tr('One simple price. Cancel anytime.', 'एक सरल कीमत। कभी भी रद्द करें।')}</div>
             </div>
 
             {/* Feature List */}
@@ -143,17 +146,17 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
               onClick={() => setPaymentStep('payment')}
               className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition-all transform active:scale-95"
             >
-              <span>Continue to Pay ₹{price}</span>
+              <span>{tr('Continue to Pay', 'भुगतान जारी रखें')} ₹{price}</span>
               <ArrowRight className="w-5 h-5" />
             </button>
 
             <div className="flex items-center justify-center gap-4 mt-4 text-[11px] text-zinc-500">
               <span className="flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                7-Day Money Back Guarantee
+                {tr('7-Day Money Back Guarantee', '7-दिन पैसा वापसी गारंटी')}
               </span>
               <span>•</span>
-              <span>Instant Unlock</span>
+              <span>{tr('Instant Unlock', 'तुरंत अनलॉक')}</span>
             </div>
           </div>
         )}
@@ -162,15 +165,15 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-xl font-black text-white">Choose Payment Method</h3>
-                <p className="text-xs text-zinc-400">Total payable: <strong className="text-emerald-400">₹{price}</strong> (1 Month Pro)</p>
+                <h3 className="text-xl font-black text-white">{tr('Choose Payment Method', 'भुगतान विधि चुनें')}</h3>
+                <p className="text-xs text-zinc-400">{tr('Total payable:', 'कुल देय राशि:')} <strong className="text-emerald-400">₹{price}</strong> ({tr('1 Month Pro', '1 महीना प्रो')})</p>
               </div>
               <button
                 type="button"
                 onClick={() => setPaymentStep('intro')}
                 className="text-xs text-zinc-400 hover:text-white underline"
               >
-                Back
+                {tr('Back', 'वापस')}
               </button>
             </div>
 
@@ -189,8 +192,8 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
                     className="w-44 h-44 object-contain rounded-lg"
                   />
                   <div className="mt-2 text-black">
-                    <p className="text-xs font-bold">Scan with GPay, PhonePe, Paytm, BHIM</p>
-                    <p className="text-xs text-zinc-600 font-mono mt-0.5">Amount: ₹{price}.00</p>
+                    <p className="text-xs font-bold">{tr('Scan with GPay, PhonePe, Paytm, BHIM', 'GPay, PhonePe, Paytm, BHIM से स्कैन करें')}</p>
+                    <p className="text-xs text-zinc-600 font-mono mt-0.5">{tr('Amount:', 'राशि:')} ₹{price}.00</p>
                   </div>
                 </div>
 
@@ -206,14 +209,14 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
                     className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-emerald-400 text-xs font-bold flex items-center gap-1.5 transition-colors"
                   >
                     <Copy className="w-3.5 h-3.5" />
-                    <span>{copiedUpi ? 'Copied!' : 'Copy'}</span>
+                    <span>{copiedUpi ? tr('Copied!', 'कॉपी हो गया!') : tr('Copy', 'कॉपी करें')}</span>
                   </button>
                 </div>
 
                 {/* UTR input */}
                 <div>
                   <label className="block text-xs font-bold text-zinc-300 mb-1.5">
-                    Enter UPI Ref / Transaction ID (UTR)
+                    {tr('Enter UPI Ref / Transaction ID (UTR)', 'UPI संदर्भ / ट्रांज़ैक्शन ID (UTR) दर्ज करें')}
                   </label>
                   <input
                     type="text"
@@ -236,7 +239,7 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
                     <div className="w-5 h-5 rounded-full border-2 border-black border-t-transparent animate-spin" />
                   ) : (
                     <>
-                      <span>I Have Paid ₹{price} via QR</span>
+                      <span>{tr('I Have Paid', 'मैंने भुगतान कर दिया है')} ₹{price} {tr('via QR', 'QR के माध्यम से')}</span>
                       <Check className="w-4 h-4" />
                     </>
                   )}
@@ -252,18 +255,18 @@ export const ProUpgradeModal: React.FC<ProUpgradeModalProps> = ({
             </div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-400 text-xs font-black uppercase tracking-wider mb-2">
               <Crown className="w-3.5 h-3.5" />
-              <span>You're now Pro</span>
+              <span>{tr("You're now Pro", 'अब आप प्रो हैं')}</span>
             </div>
-            <h3 className="text-2xl font-black text-white">Welcome to UrCare Premium!</h3>
+            <h3 className="text-2xl font-black text-white">{tr('Welcome to UrCare Premium!', 'UrCare प्रीमियम में आपका स्वागत है!')}</h3>
             <p className="text-sm text-zinc-400 mt-2 max-w-sm mx-auto">
-              Your Pro membership is now active. UrCare Food Scan is unlocked.
+              {tr('Your Pro membership is now active. UrCare Food Scan is unlocked.', 'आपकी प्रो सदस्यता अब सक्रिय है। UrCare फूड स्कैन अनलॉक हो गया है।')}
             </p>
             <button
               type="button"
               onClick={onClose}
               className="mt-6 px-8 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm shadow-lg shadow-emerald-500/20 transition-all"
             >
-              Start Using Premium
+              {tr('Start Using Premium', 'प्रीमियम का उपयोग शुरू करें')}
             </button>
           </div>
         )}

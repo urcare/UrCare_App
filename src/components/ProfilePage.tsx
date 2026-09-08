@@ -23,7 +23,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   prescriptions = [],
   onOpenProfile,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [referenceSections, setReferenceSections] = useState<PlanSection[]>([]);
 
   return (
@@ -71,7 +72,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h2 className="text-sm font-black text-zinc-950 truncate">{profile.name || account.displayName || 'UrCare Member'}</h2>
+              <h2 className="text-sm font-black text-zinc-950 truncate">{profile.name || account.displayName || tr('UrCare Member', 'UrCare सदस्य')}</h2>
               <BadgeCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-500/15 shrink-0" strokeWidth={2.5} />
             </div>
             {profile.email && (

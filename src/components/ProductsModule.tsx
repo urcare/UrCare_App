@@ -7,6 +7,7 @@ import {
 import confetti from 'canvas-confetti';
 import { Product, CartItem, ShippingAddress, Order, UserAccount } from '../types';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { saveOrderAndReceiptToSupabase, getProducts } from '../utils/supabase';
 
 interface ProductsModuleProps {
@@ -22,6 +23,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
@@ -114,7 +117,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const handleAddressSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!shippingAddress.fullName || !shippingAddress.phone || !shippingAddress.streetAddress || !shippingAddress.city || !shippingAddress.pincode) {
-      alert('Please fill in all address details to continue.');
+      alert(tr('Please fill in all address details to continue.', 'जारी रखने के लिए कृपया सभी पते की जानकारी भरें।'));
       return;
     }
     setCheckoutStep('payment');
@@ -168,11 +171,11 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   };
 
   const categories = [
-    { id: 'all', label: 'All Formulations' },
-    { id: 'protein', label: 'Whey & Plant Protein' },
-    { id: 'vitamins', label: 'Vitamins & D3' },
-    { id: 'superfoods', label: 'Supergreens & Gut' },
-    { id: 'snacks', label: 'Healthy Snacks' },
+    { id: 'all', label: tr('All Formulations', 'सभी फॉर्मूलेशन') },
+    { id: 'protein', label: tr('Whey & Plant Protein', 'व्हे व प्लांट प्रोटीन') },
+    { id: 'vitamins', label: tr('Vitamins & D3', 'विटामिन व D3') },
+    { id: 'superfoods', label: tr('Supergreens & Gut', 'सुपरग्रीन्स व गट हेल्थ') },
+    { id: 'snacks', label: tr('Healthy Snacks', 'हेल्दी स्नैक्स') },
   ];
 
   const filteredProducts = selectedCategory === 'all'
@@ -192,23 +195,23 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
         <div className="max-w-xl space-y-2 relative">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 text-white text-xs font-bold">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Doctor & Nutritionist Approved • Free for All Users</span>
+            <span>{tr('Doctor & Nutritionist Approved • Free for All Users', 'डॉक्टर व न्यूट्रिशनिस्ट अनुमोदित • सभी उपयोगकर्ताओं के लिए मुफ्त')}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            UrCare Nutritional Store
+            {tr('UrCare Nutritional Store', 'UrCare पोषण स्टोर')}
           </h2>
           <p className="text-xs sm:text-sm text-emerald-50/90 leading-relaxed">
-            Targeted whey proteins, pure multivitamins, and superfoods designed to complement your daily calorie and fitness goals.
+            {tr('Targeted whey proteins, pure multivitamins, and superfoods designed to complement your daily calorie and fitness goals.', 'लक्षित व्हे प्रोटीन, शुद्ध मल्टीविटामिन व सुपरफूड्स जो आपके दैनिक कैलोरी व फिटनेस लक्ष्यों के पूरक हैं।')}
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2 text-xs font-bold">
             <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg">
               <Truck className="w-4 h-4" />
-              <span>Free Delivery over ₹1,500</span>
+              <span>{tr('Free Delivery over ₹1,500', '₹1,500 से ऊपर मुफ्त डिलीवरी')}</span>
             </span>
             <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg">
               <ShieldCheck className="w-4 h-4" />
-              <span>100% Lab Tested Purity</span>
+              <span>{tr('100% Lab Tested Purity', '100% लैब टेस्टेड शुद्धता')}</span>
             </span>
             {onOpenMyOrders && (
               <button
@@ -217,7 +220,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 className="px-3 py-1 rounded-lg bg-white text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1"
               >
                 <Package className="w-3.5 h-3.5" />
-                <span>My Orders</span>
+                <span>{tr('My Orders', 'मेरे ऑर्डर')}</span>
               </button>
             )}
           </div>
@@ -258,7 +261,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               </span>
             )}
           </div>
-          <span className="tracking-wide">Cart</span>
+          <span className="tracking-wide">{tr('Cart', 'कार्ट')}</span>
           {totalCartItems > 0 && (
             <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-lg font-mono font-bold">
               ₹{cartSubtotal.toLocaleString('en-IN')}
@@ -269,12 +272,12 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
       {/* Product Cards Grid */}
       {productsLoading ? (
-        <div className={`p-12 rounded-3xl ${cardClass} text-center text-sm font-bold opacity-60`}>Loading products...</div>
+        <div className={`p-12 rounded-3xl ${cardClass} text-center text-sm font-bold opacity-60`}>{tr('Loading products...', 'उत्पाद लोड हो रहे हैं...')}</div>
       ) : filteredProducts.length === 0 ? (
         <div className={`p-12 rounded-3xl ${cardClass} text-center space-y-2`}>
           <ShoppingBag className="w-8 h-8 mx-auto opacity-40" />
-          <p className="text-sm font-bold opacity-70">No products available yet</p>
-          <p className="text-xs opacity-50">Check back soon — the store is being stocked.</p>
+          <p className="text-sm font-bold opacity-70">{tr('No products available yet', 'अभी कोई उत्पाद उपलब्ध नहीं है')}</p>
+          <p className="text-xs opacity-50">{tr('Check back soon — the store is being stocked.', 'जल्द ही देखें — स्टोर को स्टॉक किया जा रहा है।')}</p>
         </div>
       ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -298,7 +301,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                   />
                   {product.featured && (
                     <span className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider shadow-sm">
-                      Top Choice
+                      {tr('Top Choice', 'सर्वश्रेष्ठ पसंद')}
                     </span>
                   )}
                   <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md text-[11px] font-bold text-amber-300 shadow-sm">
@@ -344,12 +347,12 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                   {isAdded ? (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      <span>Added!</span>
+                      <span>{tr('Added!', 'जोड़ा गया!')}</span>
                     </>
                   ) : (
                     <>
                       <Plus className="w-3.5 h-3.5" />
-                      <span>Add</span>
+                      <span>{tr('Add', 'जोड़ें')}</span>
                     </>
                   )}
                 </button>
@@ -393,7 +396,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                     <span>{selectedProductDetails.rating}</span>
                   </div>
-                  <span className="text-xs opacity-50">({selectedProductDetails.reviewsCount} verified reviews)</span>
+                  <span className="text-xs opacity-50">({selectedProductDetails.reviewsCount} {tr('verified reviews', 'सत्यापित समीक्षाएं')})</span>
                 </div>
 
                 <div className="flex items-baseline gap-2 pt-1">
@@ -404,7 +407,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     ₹{selectedProductDetails.price}
                   </span>
                   <span className="text-xs font-bold text-rose-500">
-                    {Math.round(((selectedProductDetails.price - selectedProductDetails.discountPrice) / selectedProductDetails.price) * 100)}% OFF
+                    {Math.round(((selectedProductDetails.price - selectedProductDetails.discountPrice) / selectedProductDetails.price) * 100)}% {tr('OFF', 'छूट')}
                   </span>
                 </div>
               </div>
@@ -412,7 +415,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
             {/* Full Description */}
             <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">About this product</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">{tr('About this product', 'इस उत्पाद के बारे में')}</span>
               <p className="text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
                 {selectedProductDetails.description}
               </p>
@@ -422,7 +425,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             {selectedProductDetails.benefits && selectedProductDetails.benefits.length > 0 && (
               <div className="space-y-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  Key Benefits & Highlights
+                  {tr('Key Benefits & Highlights', 'मुख्य लाभ व विशेषताएं')}
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {selectedProductDetails.benefits.map((benefit, idx) => (
@@ -439,23 +442,23 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             {selectedProductDetails.nutritionInfo && (
               <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  Nutritional Breakdown ({selectedProductDetails.nutritionInfo.servingSize})
+                  {tr('Nutritional Breakdown', 'पोषण विवरण')} ({selectedProductDetails.nutritionInfo.servingSize})
                 </span>
                 <div className="grid grid-cols-4 gap-2 text-center text-xs">
                   <div className="p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] opacity-60 block">Calories</span>
+                    <span className="text-[10px] opacity-60 block">{tr('Calories', 'कैलोरी')}</span>
                     <span className="font-black text-sm">{selectedProductDetails.nutritionInfo.calories}</span>
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] opacity-60 block">Protein</span>
+                    <span className="text-[10px] opacity-60 block">{tr('Protein', 'प्रोटीन')}</span>
                     <span className="font-black text-sm text-emerald-500">{selectedProductDetails.nutritionInfo.protein}g</span>
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] opacity-60 block">Carbs</span>
+                    <span className="text-[10px] opacity-60 block">{tr('Carbs', 'कार्ब्स')}</span>
                     <span className="font-black text-sm">{selectedProductDetails.nutritionInfo.carbs}g</span>
                   </div>
                   <div className="p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] opacity-60 block">Fats</span>
+                    <span className="text-[10px] opacity-60 block">{tr('Fats', 'फैट्स')}</span>
                     <span className="font-black text-sm">{selectedProductDetails.nutritionInfo.fats}g</span>
                   </div>
                 </div>
@@ -469,7 +472,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 onClick={() => setSelectedProductDetails(null)}
                 className="px-5 py-3 rounded-xl border border-zinc-300 dark:border-zinc-700 text-xs font-bold hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
               >
-                Close
+                {tr('Close', 'बंद करें')}
               </button>
 
               <button
@@ -482,7 +485,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
               >
                 <ShoppingBag className="w-4 h-4" />
-                <span>Add to Cart & Checkout (₹{selectedProductDetails.discountPrice})</span>
+                <span>{tr('Add to Cart & Checkout', 'कार्ट में जोड़ें व चेकआउट करें')} (₹{selectedProductDetails.discountPrice})</span>
               </button>
             </div>
           </div>
@@ -498,7 +501,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             <div className="flex items-center justify-between pb-4 border-b border-zinc-800/40">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-emerald-500" />
-                <h3 className="text-lg font-black">Your Cart ({totalCartItems})</h3>
+                <h3 className="text-lg font-black">{tr('Your Cart', 'आपका कार्ट')} ({totalCartItems})</h3>
               </div>
               <button
                 type="button"
@@ -514,8 +517,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               {cart.length === 0 ? (
                 <div className="text-center py-16 opacity-50">
                   <ShoppingBag className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm font-bold">Your cart is empty</p>
-                  <p className="text-xs mt-1">Add items from the store above to checkout</p>
+                  <p className="text-sm font-bold">{tr('Your cart is empty', 'आपका कार्ट खाली है')}</p>
+                  <p className="text-xs mt-1">{tr('Add items from the store above to checkout', 'चेकआउट के लिए ऊपर स्टोर से आइटम जोड़ें')}</p>
                 </div>
               ) : (
                 cart.map((item) => (
@@ -557,17 +560,17 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               <div className="pt-4 border-t border-zinc-800/40 space-y-3">
                 <div className="space-y-1 text-xs opacity-80">
                   <div className="flex justify-between">
-                    <span>Subtotal</span>
+                    <span>{tr('Subtotal', 'उप-योग')}</span>
                     <span className="font-bold">₹{cartSubtotal}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Delivery</span>
+                    <span>{tr('Delivery', 'डिलीवरी')}</span>
                     <span className={deliveryFee === 0 ? 'text-emerald-500 font-bold' : ''}>
-                      {deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}
+                      {deliveryFee === 0 ? tr('FREE', 'मुफ्त') : `₹${deliveryFee}`}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm font-black text-emerald-500 pt-2 border-t border-zinc-800/40">
-                    <span>Total Amount</span>
+                    <span>{tr('Total Amount', 'कुल राशि')}</span>
                     <span className="text-base">₹{cartTotal}</span>
                   </div>
                 </div>
@@ -581,7 +584,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                   }}
                   className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95"
                 >
-                  <span>Proceed to Delivery Address</span>
+                  <span>{tr('Proceed to Delivery Address', 'डिलीवरी पते पर आगे बढ़ें')}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -607,14 +610,14 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 <MapPin className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-lg font-black">Delivery Details</h3>
-                <p className="text-xs opacity-60">Enter your shipping address for fast delivery</p>
+                <h3 className="text-lg font-black">{tr('Delivery Details', 'डिलीवरी विवरण')}</h3>
+                <p className="text-xs opacity-60">{tr('Enter your shipping address for fast delivery', 'तेज़ डिलीवरी हेतु अपना शिपिंग पता दर्ज करें')}</p>
               </div>
             </div>
 
             <form onSubmit={handleAddressSubmit} className="space-y-3 text-left">
               <div>
-                <label className="block text-xs font-bold opacity-75 mb-1">Full Name *</label>
+                <label className="block text-xs font-bold opacity-75 mb-1">{tr('Full Name', 'पूरा नाम')} *</label>
                 <input
                   type="text"
                   required
@@ -625,7 +628,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold opacity-75 mb-1">Phone Number *</label>
+                <label className="block text-xs font-bold opacity-75 mb-1">{tr('Phone Number', 'मोबाइल नंबर')} *</label>
                 <input
                   type="tel"
                   required
@@ -636,7 +639,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold opacity-75 mb-1">Street Address *</label>
+                <label className="block text-xs font-bold opacity-75 mb-1">{tr('Street Address', 'सड़क का पता')} *</label>
                 <input
                   type="text"
                   required
@@ -648,7 +651,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-xs font-bold opacity-75 mb-1">City *</label>
+                  <label className="block text-xs font-bold opacity-75 mb-1">{tr('City', 'शहर')} *</label>
                   <input
                     type="text"
                     required
@@ -658,7 +661,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold opacity-75 mb-1">State *</label>
+                  <label className="block text-xs font-bold opacity-75 mb-1">{tr('State', 'राज्य')} *</label>
                   <input
                     type="text"
                     required
@@ -668,7 +671,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold opacity-75 mb-1">Pincode *</label>
+                  <label className="block text-xs font-bold opacity-75 mb-1">{tr('Pincode', 'पिनकोड')} *</label>
                   <input
                     type="text"
                     required
@@ -683,7 +686,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 type="submit"
                 className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 mt-2"
               >
-                <span>Continue to Payment (₹{cartTotal})</span>
+                <span>{tr('Continue to Payment', 'भुगतान हेतु आगे बढ़ें')} (₹{cartTotal})</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
@@ -704,8 +707,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             </button>
 
             <div>
-              <h3 className="text-xl font-black">Choose Payment</h3>
-              <p className="text-xs opacity-60">Total Payable: <strong className="text-emerald-500 text-sm">₹{cartTotal}</strong></p>
+              <h3 className="text-xl font-black">{tr('Choose Payment', 'भुगतान चुनें')}</h3>
+              <p className="text-xs opacity-60">{tr('Total Payable:', 'कुल देय राशि:')} <strong className="text-emerald-500 text-sm">₹{cartTotal}</strong></p>
             </div>
 
             {/* Payment Method Selector */}
@@ -720,7 +723,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 }`}
               >
                 <QrCode className="w-4 h-4" />
-                <span>UPI QR / App</span>
+                <span>{tr('UPI QR / App', 'UPI QR / ऐप')}</span>
               </button>
 
               <button
@@ -733,7 +736,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 }`}
               >
                 <CreditCard className="w-4 h-4" />
-                <span>Cards / NetBanking</span>
+                <span>{tr('Cards / NetBanking', 'कार्ड / नेटबैंकिंग')}</span>
               </button>
             </div>
 
@@ -747,8 +750,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     className="w-40 h-40 object-contain rounded-lg"
                   />
                   <div className="mt-2 text-black">
-                    <p className="text-xs font-bold">Scan & Pay via GPay, PhonePe, Paytm, BHIM</p>
-                    <p className="text-xs text-zinc-600 font-mono mt-0.5">Amount: ₹{cartTotal}.00</p>
+                    <p className="text-xs font-bold">{tr('Scan & Pay via GPay, PhonePe, Paytm, BHIM', 'GPay, PhonePe, Paytm, BHIM से स्कैन कर भुगतान करें')}</p>
+                    <p className="text-xs text-zinc-600 font-mono mt-0.5">{tr('Amount:', 'राशि:')} ₹{cartTotal}.00</p>
                   </div>
                 </div>
 
@@ -762,17 +765,17 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     onClick={handleCopyUpi}
                     className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 text-xs font-bold hover:bg-emerald-500/20"
                   >
-                    {copiedUpi ? 'Copied!' : 'Copy'}
+                    {copiedUpi ? tr('Copied!', 'कॉपी हुआ!') : tr('Copy', 'कॉपी करें')}
                   </button>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold opacity-75 mb-1">
-                    UPI Reference / UTR Number (Optional)
+                    {tr('UPI Reference / UTR Number (Optional)', 'UPI संदर्भ / UTR संख्या (वैकल्पिक)')}
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. 423981092831"
+                    placeholder={tr('e.g. 423981092831', 'जैसे 423981092831')}
                     value={transactionId}
                     onChange={(e) => setTransactionId(e.target.value)}
                     className={`w-full p-2.5 rounded-xl border text-sm font-medium ${isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-300 text-zinc-900'}`}
@@ -790,7 +793,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     <div className="w-5 h-5 rounded-full border-2 border-black border-t-transparent animate-spin" />
                   ) : (
                     <>
-                      <span>I Have Paid ₹{cartTotal} (Confirm Order)</span>
+                      <span>{tr('I Have Paid', 'मैंने भुगतान कर दिया है')} ₹{cartTotal} ({tr('Confirm Order', 'ऑर्डर की पुष्टि करें')})</span>
                       <Check className="w-4 h-4" />
                     </>
                   )}
@@ -803,8 +806,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               <div className="space-y-4 pt-2">
                 <div className={`p-5 rounded-2xl ${subCardClass} text-center space-y-2`}>
                   <CreditCard className="w-8 h-8 mx-auto text-emerald-500" />
-                  <h4 className="text-sm font-extrabold">Instant Card & NetBanking Gateway</h4>
-                  <p className="text-xs opacity-60">128-bit Encrypted secure payment for instant order authorization.</p>
+                  <h4 className="text-sm font-extrabold">{tr('Instant Card & NetBanking Gateway', 'तुरंत कार्ड व नेटबैंकिंग गेटवे')}</h4>
+                  <p className="text-xs opacity-60">{tr('128-bit Encrypted secure payment for instant order authorization.', 'तुरंत ऑर्डर प्राधिकरण हेतु 128-बिट एन्क्रिप्टेड सुरक्षित भुगतान।')}</p>
                 </div>
 
                 <button
@@ -818,7 +821,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     <div className="w-5 h-5 rounded-full border-2 border-black border-t-transparent animate-spin" />
                   ) : (
                     <>
-                      <span>Pay ₹{cartTotal} Securely</span>
+                      <span>{tr('Pay', 'भुगतान करें')} ₹{cartTotal} {tr('Securely', 'सुरक्षित रूप से')}</span>
                       <Zap className="w-4 h-4 fill-black" />
                     </>
                   )}
@@ -838,23 +841,23 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             </div>
 
             <div>
-              <h3 className="text-2xl font-black">Order Placed Successfully!</h3>
-              <p className="text-xs text-emerald-500 font-mono font-bold mt-1">Order #{confirmedOrder.id}</p>
-              <p className="text-xs opacity-60 mt-1">Estimated Delivery: {confirmedOrder.estimatedDelivery}</p>
+              <h3 className="text-2xl font-black">{tr('Order Placed Successfully!', 'ऑर्डर सफलतापूर्वक दिया गया!')}</h3>
+              <p className="text-xs text-emerald-500 font-mono font-bold mt-1">{tr('Order', 'ऑर्डर')} #{confirmedOrder.id}</p>
+              <p className="text-xs opacity-60 mt-1">{tr('Estimated Delivery:', 'अनुमानित डिलीवरी:')} {confirmedOrder.estimatedDelivery}</p>
             </div>
 
             <div className={`p-4 rounded-2xl ${subCardClass} text-left text-xs space-y-1.5`}>
               <div className="flex justify-between font-bold">
-                <span>Deliver To:</span>
+                <span>{tr('Deliver To:', 'डिलीवर करें:')}</span>
                 <span>{confirmedOrder.shippingAddress.fullName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="opacity-60">Total Paid:</span>
+                <span className="opacity-60">{tr('Total Paid:', 'कुल भुगतान:')}</span>
                 <span className="font-extrabold text-emerald-500">₹{confirmedOrder.total}</span>
               </div>
               <div className="flex justify-between">
-                <span className="opacity-60">Status:</span>
-                <span className="text-emerald-500 font-bold uppercase text-[10px]">Processing Dispatch</span>
+                <span className="opacity-60">{tr('Status:', 'स्थिति:')}</span>
+                <span className="text-emerald-500 font-bold uppercase text-[10px]">{tr('Processing Dispatch', 'भेजने की प्रक्रिया जारी')}</span>
               </div>
             </div>
 
@@ -863,7 +866,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               onClick={() => setCheckoutStep('none')}
               className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm"
             >
-              Back to Store
+              {tr('Back to Store', 'स्टोर पर वापस जाएं')}
             </button>
           </div>
         </div>

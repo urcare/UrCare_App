@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { playScrollTickSound, playClickSound } from '../utils/soundEffects';
+import { useLanguage } from '../context/LanguageContext';
 
 interface WheelPickerProps {
   items: { label: string; value: number | string; sublabel?: string }[];
@@ -23,6 +24,8 @@ export const WheelPicker: React.FC<WheelPickerProps> = ({
   className = '',
   isDark = true,
 }) => {
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const containerRef = useRef<HTMLDivElement>(null);
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -116,7 +119,7 @@ export const WheelPicker: React.FC<WheelPickerProps> = ({
               ? 'hover:bg-zinc-800 text-zinc-400 hover:text-emerald-400' 
               : 'hover:bg-zinc-200 text-zinc-600 hover:text-emerald-600'
         }`}
-        aria-label="Previous value"
+        aria-label={tr('Previous value', 'पिछला मान')}
       >
         <ChevronUp className="w-5 h-5" />
       </button>
@@ -233,7 +236,7 @@ export const WheelPicker: React.FC<WheelPickerProps> = ({
               ? 'hover:bg-zinc-800 text-zinc-400 hover:text-emerald-400' 
               : 'hover:bg-zinc-200 text-zinc-600 hover:text-emerald-600'
         }`}
-        aria-label="Next value"
+        aria-label={tr('Next value', 'अगला मान')}
       >
         <ChevronDown className="w-5 h-5" />
       </button>

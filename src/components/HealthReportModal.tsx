@@ -4,6 +4,7 @@ import { MedicalReportAnalysis } from '../types';
 import { ReportUploader } from './ReportUploader';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { playClickSound, playSuccessChime } from '../utils/soundEffects';
+import { useLanguage } from '../context/LanguageContext';
 
 interface HealthReportModalProps {
   isOpen: boolean;
@@ -21,6 +22,8 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
   userAccount,
 }) => {
   const [isUploadingNew, setIsUploadingNew] = useState(!reportAnalysis);
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   if (!isOpen) return null;
 
@@ -40,8 +43,8 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
               <HeartPulse className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-white">Diagnostic Health Reports</h3>
-              <p className="text-xs text-zinc-400">Uploaded medical reports & clinical lab documents</p>
+              <h3 className="text-base sm:text-lg font-bold text-white">{tr('Diagnostic Health Reports', 'डायग्नोस्टिक स्वास्थ्य रिपोर्ट्स')}</h3>
+              <p className="text-xs text-zinc-400">{tr('Uploaded medical reports & clinical lab documents', 'अपलोड की गई मेडिकल रिपोर्ट्स व क्लिनिकल लैब दस्तावेज़')}</p>
             </div>
           </div>
           
@@ -62,7 +65,7 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
                 playClickSound(600);
                 setIsUploadingNew(true);
               }}
-              userName={userAccount?.displayName || 'Member Patient'}
+              userName={userAccount?.displayName || tr('Member Patient', 'सदस्य रोगी')}
               theme="dark"
             />
 
@@ -74,7 +77,7 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
                 className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
               >
                 <Check className="w-4 h-4 stroke-[3]" />
-                <span>Done • Return to Dashboard</span>
+                <span>{tr('Done • Return to Dashboard', 'पूर्ण • डैशबोर्ड पर वापस जाएं')}</span>
               </button>
             </div>
           </div>
@@ -89,7 +92,7 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
                 }}
                 className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 mb-2 cursor-pointer"
               >
-                ← Back to active report
+                ← {tr('Back to active report', 'सक्रिय रिपोर्ट पर वापस जाएं')}
               </button>
             )}
             <ReportUploader

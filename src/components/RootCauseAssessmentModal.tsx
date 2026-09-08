@@ -8,6 +8,110 @@ import {
 } from 'lucide-react';
 import { RootCauseAssessmentData, UserHealthProfile } from '../types';
 import { playClickSound, playScrollTickSound, playSuccessChime, setSoundEnabled, getSoundEnabled } from '../utils/soundEffects';
+import { useLanguage } from '../context/LanguageContext';
+
+/** Hindi display labels for every ChipToggle/select option value used across
+ *  the 22 modules — the English string stays the stored value (it's what
+ *  ends up in formData and gets reviewed/submitted), only the on-screen
+ *  label changes. Keys not present here simply render as-is. */
+const OPTION_LABEL_HI: Record<string, string> = {
+  // Yes/No + generic
+  'Yes': 'हां', 'No': 'नहीं', 'None': 'कोई नहीं', 'Other': 'अन्य', 'Not Applicable': 'लागू नहीं', 'Partially': 'आंशिक रूप से',
+  // Section 3: condition status
+  'Controlled': 'नियंत्रित', 'Uncontrolled': 'अनियंत्रित', 'Worsening': 'बिगड़ रहा है',
+  // Gender / work type (section 1)
+  'Male': 'पुरुष', 'Female': 'महिला', 'Seated Job': 'बैठकर काम', 'Physical Job': 'शारीरिक काम',
+  'Standing Job': 'खड़े होकर काम', 'Mixed Work': 'मिश्रित काम', 'Shift Work': 'शिफ्ट में काम',
+  'Retired': 'सेवानिवृत्त', 'Not Working Currently': 'फिलहाल काम नहीं कर रहे',
+  // Sleep quality (section 6)
+  'Good': 'अच्छा', 'Average': 'औसत', 'Poor': 'खराब', 'Very Poor': 'बहुत खराब',
+  // Stress level
+  'Low': 'कम', 'Moderate': 'मध्यम', 'High': 'ज़्यादा', 'Overwhelming': 'असहनीय',
+  'Difficulty Relaxing': 'आराम करने में कठिनाई', 'Constant Worry': 'लगातार चिंता', 'Irritability': 'चिड़चिड़ापन',
+  'Low Mood / Sadness': 'उदासी', 'Panic Episodes': 'घबराहट के दौरे', 'Loss of Interest': 'रुचि में कमी', 'Racing Thoughts': 'बेचैन विचार',
+  // Gut (section 7)
+  'Normal': 'सामान्य', 'Hard': 'सख्त', 'Loose': 'ढीला', 'Watery': 'पानी जैसा', 'Alternating': 'बदलता रहता है',
+  'Very Low': 'बहुत कम', 'Uncontrolled Appetite': 'अनियंत्रित भूख',
+  'Bloating or Gas': 'गैस / पेट फूलना', 'Heaviness After Meals': 'भोजन के बाद भारीपन', 'Acid Reflux': 'एसिड रिफ्लक्स',
+  'Constipation': 'कब्ज़', 'Diarrhoea': 'दस्त', 'Nausea': 'जी मिचलाना', 'Abdominal Pain': 'पेट दर्द',
+  'Mild Acidity / GERD': 'हल्की एसिडिटी / GERD', 'IBS': 'IBS', 'Fatty Liver': 'फैटी लिवर', 'Gallstones': 'पित्त की पथरी',
+  'H. Pylori': 'H. Pylori', 'Ulcers': 'अल्सर',
+  // Previous treatments (section 9)
+  'Prescription Medicines': 'डॉक्टरी दवाएं', 'Diet Plan': 'डाइट प्लान', 'Walking Programme': 'वॉकिंग प्रोग्राम',
+  'Ayurveda / Herbal': 'आयुर्वेद / हर्बल', 'Homeopathy': 'होम्योपैथी', 'Yoga / Meditation': 'योग / ध्यान',
+  'Bariatric Surgery': 'बेरिएट्रिक सर्जरी',
+  // Family history (section 12)
+  'Diabetes': 'डायबिटीज', 'Hypertension': 'उच्च रक्तचाप', 'Heart Disease': 'हृदय रोग', 'Thyroid': 'थायरॉइड',
+  'PCOS / Hormonal': 'PCOS / हार्मोनल', 'High Cholesterol': 'उच्च कोलेस्ट्रॉल', 'Obesity': 'मोटापा',
+  'Autoimmune Condition': 'ऑटोइम्यून स्थिति', 'Cancer': 'कैंसर', 'Kidney Disease': 'किडनी रोग',
+  'Liver Disease': 'लिवर रोग', 'Mental Health Condition': 'मानसिक स्वास्थ्य समस्या',
+  // Women's hormonal (section 13)
+  'Mood changes': 'मूड बदलना', 'Bloating': 'पेट फूलना', 'Cramps': 'ऐंठन', 'Fatigue': 'थकान',
+  'Food cravings': 'खाने की तलब', 'Headaches': 'सिरदर्द',
+  'Hot flashes': 'हॉट फ्लैशेज़', 'Night sweats': 'रात में पसीना', 'Mood swings': 'मूड स्विंग', 'Vaginal dryness': 'योनि में रूखापन',
+  'Sleep disturbance': 'नींद में खलल',
+  'PCOS/PCOD': 'PCOS/PCOD', 'Thyroid Disorder': 'थायरॉइड विकार', 'Endometriosis': 'एंडोमेट्रियोसिस', 'Fibroids': 'फाइब्रॉएड्स',
+  'Acne': 'मुंहासे', 'Dryness': 'रूखापन', 'Skin tags': 'स्किन टैग्स', 'Pigmentation': 'पिगमेंटेशन', 'Oily skin': 'तैलीय त्वचा',
+  // Readiness (section 16)
+  'Simple meal plans that fit my schedule': 'मेरे समय के अनुसार आसान भोजन योजना',
+  'Family-friendly recipes everyone can eat': 'पूरे परिवार के लिए उपयुक्त व्यंजन',
+  'Daily accountability and motivation': 'दैनिक जवाबदेही और प्रेरणा',
+  'Clear step-by-step guidance': 'स्पष्ट चरण-दर-चरण मार्गदर्शन',
+  'Help managing stress and emotions': 'तनाव व भावनाओं को संभालने में मदद',
+  // Start timeline (section 17)
+  'Within 3 Days': '3 दिनों के भीतर', 'This Week': 'इसी हफ्ते', 'Later / Not Urgent': 'बाद में / जल्दी नहीं',
+  'I want to begin as soon as possible.': 'मैं जल्द से जल्द शुरू करना चाहता/चाहती हूं।',
+  'I can start any day within the next 7 days.': 'मैं अगले 7 दिनों में कभी भी शुरू कर सकता/सकती हूं।',
+  'I am exploring for now, no rush to start.': 'फिलहाल सिर्फ जानकारी ले रहा/रही हूं, जल्दी नहीं है।',
+  // Reversal intensity (section 18)
+  'Foundation Intensity Reversal': 'फाउंडेशन इंटेंसिटी रिवर्सल',
+  'Advanced Intensity Reversal': 'एडवांस्ड इंटेंसिटी रिवर्सल',
+  'Intensive Reversal Treatment': 'इंटेंसिव रिवर्सल ट्रीटमेंट',
+  'Let the Physician Decide': 'डॉक्टर को तय करने दें',
+  'Suitable for early stage or mild cases, gradual approach, less restrictions, slower steady results.': 'शुरुआती या हल्के मामलों के लिए उपयुक्त — धीमी व स्थिर प्रगति, कम पाबंदियां।',
+  'Suitable for moderate cases or long term conditions, structured approach, moderate restrictions, steady results.': 'मध्यम या दीर्घकालिक स्थितियों के लिए उपयुक्त — संरचित तरीका, मध्यम पाबंदियां, स्थिर परिणाम।',
+  'Suitable for severe or complicated cases, high HbA1c, multiple medications, strict protocol, faster results.': 'गंभीर मामलों के लिए उपयुक्त — सख्त प्रोटोकॉल, तेज़ परिणाम।',
+  'Our lead clinical team will evaluate your reports and prescribe the exact optimal protocol intensity.': 'हमारी मुख्य क्लीनिकल टीम आपकी रिपोर्ट देखकर सटीक प्रोटोकॉल तय करेगी।',
+  // Exercise plan (section 20)
+  'Walking or brisk walking (outdoor or treadmill)': 'वॉकिंग या तेज़ चाल (बाहर या ट्रेडमिल)',
+  'Yoga asanas and pranayama': 'योगासन व प्राणायाम', 'Functional training or HIIT': 'फंक्शनल ट्रेनिंग या HIIT',
+  'Strength / Weight training': 'स्ट्रेंथ / वेट ट्रेनिंग', 'Swimming': 'तैराकी', 'Cycling': 'साइकिलिंग',
+  'Dance / Zumba': 'डांस / ज़ुम्बा', 'Sports': 'खेल',
+  'Morning': 'सुबह', 'Evening': 'शाम', 'Flexible': 'लचीला समय',
+  // Organ health categories (section 15)
+  'Diabetes Complications': 'डायबिटीज जटिलताएं', 'Cardiovascular Symptoms': 'हृदय संबंधी लक्षण',
+  'Liver Symptoms': 'लिवर संबंधी लक्षण', 'Kidney Symptoms': 'किडनी संबंधी लक्षण',
+  'Thyroid Symptoms': 'थायरॉइड संबंधी लक्षण', 'Joint & Bone Symptoms': 'जोड़ों व हड्डियों के लक्षण',
+  'Neurological Symptoms': 'न्यूरोलॉजिकल लक्षण', 'Skin Symptoms': 'त्वचा संबंधी लक्षण',
+  'Respiratory Symptoms': 'श्वसन संबंधी लक्षण',
+};
+
+/** Hindi labels for the 22 module titles (sidebar) — used both there and
+ *  anywhere else a module needs to name itself. */
+const SECTION_TITLE_HI: Record<string, string> = {
+  'Patient Details': 'रोगी विवरण',
+  'Concerns & Goals': 'चिंताएं व लक्ष्य',
+  'Medical Conditions': 'चिकित्सीय स्थितियां',
+  'Meds, Insulin & Allergies': 'दवाएं, इंसुलिन व एलर्जी',
+  'Health Readings': 'स्वास्थ्य रीडिंग',
+  'Sleep & Stress': 'नींद व तनाव',
+  'Gut & Digestion': 'पाचन तंत्र',
+  'Lab Test Reports': 'लैब टेस्ट रिपोर्ट',
+  'Previous Treatments': 'पिछले उपचार',
+  'Diet & Eating Pattern': 'आहार व खानपान',
+  'Lifestyle & Activity': 'जीवनशैली व गतिविधि',
+  'Family History': 'पारिवारिक इतिहास',
+  'Hormonal (Women)': 'हार्मोनल (महिला)',
+  'Hormonal (Men)': 'हार्मोनल (पुरुष)',
+  'Organ Complications': 'अंग संबंधी जटिलताएं',
+  'Readiness & Commitment': 'तैयारी व संकल्प',
+  'Start Timeline': 'शुरुआत की समयसीमा',
+  'Reversal Intensity': 'रिवर्सल तीव्रता',
+  'Daily Routine': 'दैनिक दिनचर्या',
+  'Exercise Plan': 'व्यायाम योजना',
+  'Doctor Query': 'डॉक्टर से प्रश्न',
+  'Additional Details': 'अतिरिक्त जानकारी',
+};
 
 interface RootCauseAssessmentModalProps {
   isOpen: boolean;
@@ -44,50 +148,59 @@ const SelectInput: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = ({ 
   </select>
 );
 
-const YesNo: React.FC<{ value?: boolean; onChange: (v: boolean) => void }> = ({ value, onChange }) => (
-  <div className="flex gap-2">
-    {[true, false].map((v) => (
-      <button
-        key={String(v)}
-        type="button"
-        onClick={() => onChange(v)}
-        className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${
-          value === v
-            ? 'bg-emerald-600 text-white shadow-sm'
-            : 'bg-zinc-100 border border-zinc-300 text-zinc-500'
-        }`}
-      >
-        {v ? 'Yes' : 'No'}
-      </button>
-    ))}
-  </div>
-);
-
-// Multi-select from a fixed, common list of options (chip toggle).
-const ChipToggle: React.FC<{ options: string[]; selected: string[]; onChange: (next: string[]) => void }> = ({ options, selected, onChange }) => (
-  <div className="flex flex-wrap gap-2">
-    {options.map((opt) => {
-      const active = selected.includes(opt);
-      return (
+const YesNo: React.FC<{ value?: boolean; onChange: (v: boolean) => void }> = ({ value, onChange }) => {
+  const { language } = useLanguage();
+  return (
+    <div className="flex gap-2">
+      {[true, false].map((v) => (
         <button
-          key={opt}
+          key={String(v)}
           type="button"
-          onClick={() => onChange(active ? selected.filter((s) => s !== opt) : [...selected, opt])}
-          className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
-            active
-              ? 'bg-emerald-600 border-emerald-600 text-white'
-              : 'border-zinc-300 text-zinc-500 hover:border-emerald-400'
+          onClick={() => onChange(v)}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${
+            value === v
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'bg-zinc-100 border border-zinc-300 text-zinc-500'
           }`}
         >
-          {opt}
+          {v ? (language === 'hi' ? 'हां' : 'Yes') : (language === 'hi' ? 'नहीं' : 'No')}
         </button>
-      );
-    })}
-  </div>
-);
+      ))}
+    </div>
+  );
+};
+
+// Multi-select from a fixed, common list of options (chip toggle). The
+// English value is always what's stored in formData — only the on-screen
+// label is translated, via OPTION_LABEL_HI.
+const ChipToggle: React.FC<{ options: string[]; selected: string[]; onChange: (next: string[]) => void }> = ({ options, selected, onChange }) => {
+  const { language } = useLanguage();
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => {
+        const active = selected.includes(opt);
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onChange(active ? selected.filter((s) => s !== opt) : [...selected, opt])}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+              active
+                ? 'bg-emerald-600 border-emerald-600 text-white'
+                : 'border-zinc-300 text-zinc-500 hover:border-emerald-400'
+            }`}
+          >
+            {language === 'hi' ? (OPTION_LABEL_HI[opt] || opt) : opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
 
 // Free-form tag list: type a value, press Enter or comma to add; click a chip's × to remove.
 const TagsInput: React.FC<{ values: string[]; onChange: (next: string[]) => void; placeholder?: string }> = ({ values, onChange, placeholder }) => {
+  const { language } = useLanguage();
   const [draft, setDraft] = useState('');
   const commit = () => {
     const v = draft.trim();
@@ -109,7 +222,7 @@ const TagsInput: React.FC<{ values: string[]; onChange: (next: string[]) => void
       <input
         type="text"
         value={draft}
-        placeholder={placeholder || 'Type and press Enter to add...'}
+        placeholder={placeholder || (language === 'hi' ? 'लिखें और जोड़ने के लिए Enter दबाएं...' : 'Type and press Enter to add...')}
         onChange={(e) => {
           if (e.target.value.endsWith(',')) {
             const v = e.target.value.slice(0, -1).trim();
@@ -504,6 +617,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
   profile,
   onSaveAssessment,
 }) => {
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [soundOn, setSoundOn] = useState(getSoundEnabled());
   const [activeSection, setActiveSection] = useState(1);
   const [submitted, setSubmitted] = useState(false);
@@ -590,11 +705,11 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
-                  UrCare Clinical Assessment
+                  {tr('UrCare Clinical Assessment', 'UrCare क्लीनिकल मूल्यांकन')}
                 </span>
-                <span className="text-[10px] text-zinc-500 font-mono">22 Root-Cause Modules</span>
+                <span className="text-[10px] text-zinc-500 font-mono">{tr('22 Root-Cause Modules', '22 रूट-कॉज़ मॉड्यूल')}</span>
               </div>
-              <h2 className="text-base sm:text-lg font-black leading-tight">All-Condition Personalised Root-Cause Reversal Form</h2>
+              <h2 className="text-base sm:text-lg font-black leading-tight">{tr('All-Condition Personalised Root-Cause Reversal Form', 'व्यक्तिगत रूट-कॉज़ रिवर्सल फॉर्म (सभी स्थितियों के लिए)')}</h2>
             </div>
           </div>
 
@@ -604,7 +719,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
               type="button"
               onClick={toggleSound}
               className="p-2 rounded-xl border border-zinc-300 text-zinc-600 hover:bg-zinc-100 transition-colors"
-              title={soundOn ? 'Sound On' : 'Sound Off'}
+              title={soundOn ? tr('Sound On', 'ध्वनि चालू') : tr('Sound Off', 'ध्वनि बंद')}
             >
               {soundOn ? <Volume2 className="w-4 h-4 text-emerald-500" /> : <VolumeX className="w-4 h-4 opacity-50" />}
             </button>
@@ -624,11 +739,11 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
         <div className="px-5 py-2.5 bg-amber-50 border-b border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2 overflow-x-auto">
           <div className="flex items-center gap-2 shrink-0">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="font-bold">Strict Monthly Capacity Limit Active</span>
-            <span className="opacity-75 hidden sm:inline">• Logged as {formData.email}</span>
+            <span className="font-bold">{tr('Strict Monthly Capacity Limit Active', 'सख्त मासिक क्षमता सीमा लागू')}</span>
+            <span className="opacity-75 hidden sm:inline">• {tr('Logged as', 'लॉग इन')} {formData.email}</span>
           </div>
           <span className="text-[11px] font-mono font-bold bg-amber-200/60 px-2 py-0.5 rounded shrink-0">
-            Slot Reserved For Assessment
+            {tr('Slot Reserved For Assessment', 'मूल्यांकन के लिए स्लॉट सुरक्षित')}
           </span>
         </div>
 
@@ -638,7 +753,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
           {/* Left Quick Jump Sidebar */}
           <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-zinc-200 bg-zinc-50/50 overflow-x-auto md:overflow-x-visible md:overflow-y-auto p-3 flex md:flex-col gap-1.5 scrollbar-thin">
             <div className="text-[10px] font-black text-zinc-400 uppercase tracking-wider px-2 py-1 hidden md:block">
-              Assessment Modules ({activeSection}/22)
+              {tr('Assessment Modules', 'मूल्यांकन मॉड्यूल')} ({activeSection}/22)
             </div>
             {SECTIONS.map((sec) => {
               const Icon = sec.icon || Activity;
@@ -656,7 +771,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                 >
                   <div className="flex items-center gap-2 truncate">
                     <span className="text-[10px] opacity-70 font-mono">{sec.num}.</span>
-                    <span className="truncate">{sec.title}</span>
+                    <span className="truncate">{tr(sec.title, SECTION_TITLE_HI[sec.title] || sec.title)}</span>
                   </div>
                   {isActive && <ChevronRight className="w-3.5 h-3.5 shrink-0 hidden md:block" />}
                 </button>
@@ -671,130 +786,130 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 1 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 1</span>
-                  <h3 className="text-xl font-black">Patient Contact & Demographics</h3>
-                  <p className="text-xs text-zinc-500">Provide accurate personal details for baseline medical calibration.</p>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 1', 'अनुभाग 1')}</span>
+                  <h3 className="text-xl font-black">{tr('Patient Contact & Demographics', 'रोगी संपर्क व सामान्य जानकारी')}</h3>
+                  <p className="text-xs text-zinc-500">{tr('Provide accurate personal details for baseline medical calibration.', 'सटीक चिकित्सीय आधार तय करने के लिए सही व्यक्तिगत जानकारी दें।')}</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-bold block mb-1">Full Name *</label>
-                    <input 
-                      type="text" 
-                      value={formData.fullName} 
+                    <label className="text-xs font-bold block mb-1">{tr('Full Name *', 'पूरा नाम *')}</label>
+                    <input
+                      type="text"
+                      value={formData.fullName}
                       onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">WhatsApp Number *</label>
-                    <input 
-                      type="text" 
-                      value={formData.whatsappNumber} 
+                    <label className="text-xs font-bold block mb-1">{tr('WhatsApp Number *', 'WhatsApp नंबर *')}</label>
+                    <input
+                      type="text"
+                      value={formData.whatsappNumber}
                       onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">Age *</label>
-                    <input 
-                      type="number" 
-                      value={formData.age} 
+                    <label className="text-xs font-bold block mb-1">{tr('Age *', 'उम्र *')}</label>
+                    <input
+                      type="number"
+                      value={formData.age}
                       onChange={(e) => setFormData({ ...formData, age: Number(e.target.value) })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">Gender *</label>
-                    <select 
-                      value={formData.gender} 
+                    <label className="text-xs font-bold block mb-1">{tr('Gender *', 'लिंग *')}</label>
+                    <select
+                      value={formData.gender}
                       onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     >
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
+                      <option value="male">{tr('Male', 'पुरुष')}</option>
+                      <option value="female">{tr('Female', 'महिला')}</option>
+                      <option value="other">{tr('Other', 'अन्य')}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">Height (Feet & Inches) *</label>
+                    <label className="text-xs font-bold block mb-1">{tr('Height (Feet & Inches) *', 'ऊंचाई (फीट व इंच) *')}</label>
                     <div className="flex gap-2">
-                      <input 
-                        type="number" 
-                        placeholder="Feet" 
-                        value={formData.heightFeet} 
+                      <input
+                        type="number"
+                        placeholder={tr('Feet', 'फीट')}
+                        value={formData.heightFeet}
                         onChange={(e) => setFormData({ ...formData, heightFeet: Number(e.target.value) })}
                         className="w-1/2 p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                       />
-                      <input 
-                        type="number" 
-                        placeholder="Inches" 
-                        value={formData.heightInches} 
+                      <input
+                        type="number"
+                        placeholder={tr('Inches', 'इंच')}
+                        value={formData.heightInches}
                         onChange={(e) => setFormData({ ...formData, heightInches: Number(e.target.value) })}
                         className="w-1/2 p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">Current Weight (kg) *</label>
-                    <input 
-                      type="number" 
-                      value={formData.currentWeightKg} 
+                    <label className="text-xs font-bold block mb-1">{tr('Current Weight (kg) *', 'वर्तमान वज़न (kg) *')}</label>
+                    <input
+                      type="number"
+                      value={formData.currentWeightKg}
                       onChange={(e) => setFormData({ ...formData, currentWeightKg: Number(e.target.value) })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">Highest Weight Ever Reached (kg & when)</label>
+                    <label className="text-xs font-bold block mb-1">{tr('Highest Weight Ever Reached (kg & when)', 'अब तक का सबसे अधिक वज़न (kg व कब)')}</label>
                     <div className="flex gap-2">
-                      <input 
-                        type="number" 
-                        placeholder="Weight (kg)"
-                        value={formData.highestWeightKg || ''} 
+                      <input
+                        type="number"
+                        placeholder={tr('Weight (kg)', 'वज़न (kg)')}
+                        value={formData.highestWeightKg || ''}
                         onChange={(e) => setFormData({ ...formData, highestWeightKg: Number(e.target.value) })}
                         className="w-1/2 p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                       />
-                      <input 
-                        type="text" 
-                        placeholder="Year (e.g. 2022)"
-                        value={formData.highestWeightWhen || ''} 
+                      <input
+                        type="text"
+                        placeholder={tr('Year (e.g. 2022)', 'वर्ष (जैसे 2022)')}
+                        value={formData.highestWeightWhen || ''}
                         onChange={(e) => setFormData({ ...formData, highestWeightWhen: e.target.value })}
                         className="w-1/2 p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">Waist Circumference (Inches)</label>
-                    <input 
-                      type="number" 
-                      value={formData.waistCircumferenceInches || ''} 
+                    <label className="text-xs font-bold block mb-1">{tr('Waist Circumference (Inches)', 'कमर की परिधि (इंच)')}</label>
+                    <input
+                      type="number"
+                      value={formData.waistCircumferenceInches || ''}
                       onChange={(e) => setFormData({ ...formData, waistCircumferenceInches: Number(e.target.value) })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">City, State, Country *</label>
-                    <input 
-                      type="text" 
-                      value={formData.cityStateCountry} 
+                    <label className="text-xs font-bold block mb-1">{tr('City, State, Country *', 'शहर, राज्य, देश *')}</label>
+                    <input
+                      type="text"
+                      value={formData.cityStateCountry}
                       onChange={(e) => setFormData({ ...formData, cityStateCountry: e.target.value })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">Type of Work *</label>
-                    <select 
-                      value={formData.workType} 
+                    <label className="text-xs font-bold block mb-1">{tr('Type of Work *', 'काम का प्रकार *')}</label>
+                    <select
+                      value={formData.workType}
                       onChange={(e) => setFormData({ ...formData, workType: e.target.value as any })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     >
-                      <option value="seated">Seated Job</option>
-                      <option value="physical">Physical Job</option>
-                      <option value="standing">Standing Job</option>
-                      <option value="mixed">Mixed Work</option>
-                      <option value="shift">Shift Work</option>
-                      <option value="retired">Retired</option>
-                      <option value="not_working">Not Working Currently</option>
+                      <option value="seated">{tr('Seated Job', 'बैठकर काम')}</option>
+                      <option value="physical">{tr('Physical Job', 'शारीरिक काम')}</option>
+                      <option value="standing">{tr('Standing Job', 'खड़े होकर काम')}</option>
+                      <option value="mixed">{tr('Mixed Work', 'मिश्रित काम')}</option>
+                      <option value="shift">{tr('Shift Work', 'शिफ्ट में काम')}</option>
+                      <option value="retired">{tr('Retired', 'सेवानिवृत्त')}</option>
+                      <option value="not_working">{tr('Not Working Currently', 'फिलहाल काम नहीं कर रहे')}</option>
                     </select>
                   </div>
                 </div>
@@ -805,34 +920,34 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 2 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 2</span>
-                  <h3 className="text-xl font-black">Main Health Concerns & 90-120 Days Goal</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 2', 'अनुभाग 2')}</span>
+                  <h3 className="text-xl font-black">{tr('Main Health Concerns & 90-120 Days Goal', 'मुख्य स्वास्थ्य चिंताएं व 90-120 दिन का लक्ष्य')}</h3>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-bold block mb-1">What is your main health concern today? *</label>
-                    <textarea 
+                    <label className="text-xs font-bold block mb-1">{tr('What is your main health concern today? *', 'आज आपकी मुख्य स्वास्थ्य चिंता क्या है? *')}</label>
+                    <textarea
                       rows={2}
-                      value={formData.mainHealthConcern} 
+                      value={formData.mainHealthConcern}
                       onChange={(e) => setFormData({ ...formData, mainHealthConcern: e.target.value })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">What symptoms bother you the most? *</label>
-                    <textarea 
+                    <label className="text-xs font-bold block mb-1">{tr('What symptoms bother you the most? *', 'कौन से लक्षण आपको सबसे ज़्यादा परेशान करते हैं? *')}</label>
+                    <textarea
                       rows={2}
-                      value={formData.bothersomeSymptoms} 
+                      value={formData.bothersomeSymptoms}
                       onChange={(e) => setFormData({ ...formData, bothersomeSymptoms: e.target.value })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">Specific health goal in the next 90-120 days? *</label>
-                    <textarea 
+                    <label className="text-xs font-bold block mb-1">{tr('Specific health goal in the next 90-120 days? *', 'अगले 90-120 दिनों का विशिष्ट स्वास्थ्य लक्ष्य? *')}</label>
+                    <textarea
                       rows={2}
-                      value={formData.goal90to120Days} 
+                      value={formData.goal90to120Days}
                       onChange={(e) => setFormData({ ...formData, goal90to120Days: e.target.value })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
@@ -840,10 +955,10 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                     <div className="p-4 rounded-2xl bg-zinc-100 border border-zinc-200 text-center">
-                      <label className="text-xs font-bold block mb-2">Overall Health (0-10)</label>
-                      <input 
-                        type="range" min="0" max="10" 
-                        value={formData.overallHealthRating} 
+                      <label className="text-xs font-bold block mb-2">{tr('Overall Health (0-10)', 'समग्र स्वास्थ्य (0-10)')}</label>
+                      <input
+                        type="range" min="0" max="10"
+                        value={formData.overallHealthRating}
                         onChange={(e) => setFormData({ ...formData, overallHealthRating: Number(e.target.value) })}
                         className="w-full accent-emerald-500"
                       />
@@ -851,10 +966,10 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                     </div>
 
                     <div className="p-4 rounded-2xl bg-zinc-100 border border-zinc-200 text-center">
-                      <label className="text-xs font-bold block mb-2">Energy Level (0-10)</label>
-                      <input 
-                        type="range" min="0" max="10" 
-                        value={formData.energyLevelRating} 
+                      <label className="text-xs font-bold block mb-2">{tr('Energy Level (0-10)', 'ऊर्जा स्तर (0-10)')}</label>
+                      <input
+                        type="range" min="0" max="10"
+                        value={formData.energyLevelRating}
                         onChange={(e) => setFormData({ ...formData, energyLevelRating: Number(e.target.value) })}
                         className="w-full accent-emerald-500"
                       />
@@ -862,7 +977,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                     </div>
 
                     <div className="p-4 rounded-2xl bg-zinc-100 border border-zinc-200 text-center">
-                      <label className="text-xs font-bold block mb-2">Quality of Life (0-10)</label>
+                      <label className="text-xs font-bold block mb-2">{tr('Quality of Life (0-10)', 'जीवन की गुणवत्ता (0-10)')}</label>
                       <input 
                         type="range" min="0" max="10" 
                         value={formData.qualityOfLifeRating} 
@@ -880,9 +995,9 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 3 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 3</span>
-                  <h3 className="text-xl font-black">Diagnosed Medical Conditions</h3>
-                  <p className="text-xs text-zinc-500">List every condition you have been diagnosed with, past or present.</p>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 3', 'अनुभाग 3')}</span>
+                  <h3 className="text-xl font-black">{tr('Diagnosed Medical Conditions', 'निदान की गई चिकित्सीय स्थितियां')}</h3>
+                  <p className="text-xs text-zinc-500">{tr('List every condition you have been diagnosed with, past or present.', 'वे सभी स्थितियां लिखें जिनका निदान हुआ है — पहले या अभी।')}</p>
                 </div>
 
                 <div className="space-y-3">
@@ -890,7 +1005,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                     <div key={idx} className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-2">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         <TextInput
-                          placeholder="Condition Name" value={cond.conditionName}
+                          placeholder={tr('Condition Name', 'स्थिति का नाम')} value={cond.conditionName}
                           onChange={(e) => {
                             const list = [...formData.diagnosedConditions];
                             list[idx] = { ...list[idx], conditionName: e.target.value };
@@ -898,7 +1013,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                           }}
                         />
                         <TextInput
-                          placeholder="Diagnosed Month & Year" value={cond.diagnosedMonthYear}
+                          placeholder={tr('Diagnosed Month & Year', 'निदान का महीना व वर्ष')} value={cond.diagnosedMonthYear}
                           onChange={(e) => {
                             const list = [...formData.diagnosedConditions];
                             list[idx] = { ...list[idx], diagnosedMonthYear: e.target.value };
@@ -913,12 +1028,12 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                             setFormData({ ...formData, diagnosedConditions: list });
                           }}
                         >
-                          <option value="controlled">Controlled</option>
-                          <option value="uncontrolled">Uncontrolled</option>
-                          <option value="worsening">Worsening</option>
+                          <option value="controlled">{tr('Controlled', 'नियंत्रित')}</option>
+                          <option value="uncontrolled">{tr('Uncontrolled', 'अनियंत्रित')}</option>
+                          <option value="worsening">{tr('Worsening', 'बिगड़ रहा है')}</option>
                         </SelectInput>
                         <TextInput
-                          placeholder="Began When" value={cond.beganWhen}
+                          placeholder={tr('Began When', 'कब शुरू हुई')} value={cond.beganWhen}
                           onChange={(e) => {
                             const list = [...formData.diagnosedConditions];
                             list[idx] = { ...list[idx], beganWhen: e.target.value };
@@ -926,7 +1041,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                           }}
                         />
                         <TextInput
-                          placeholder="Current Treatment" value={cond.currentTreatment}
+                          placeholder={tr('Current Treatment', 'वर्तमान उपचार')} value={cond.currentTreatment}
                           onChange={(e) => {
                             const list = [...formData.diagnosedConditions];
                             list[idx] = { ...list[idx], currentTreatment: e.target.value };
@@ -934,7 +1049,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                           }}
                         />
                         <div>
-                          <label className="text-[10px] font-bold block mb-1 opacity-70">Severity: {cond.severityRating} / 10</label>
+                          <label className="text-[10px] font-bold block mb-1 opacity-70">{tr('Severity', 'गंभीरता')}: {cond.severityRating} / 10</label>
                           <input
                             type="range" min="0" max="10" value={cond.severityRating}
                             onChange={(e) => {
@@ -952,7 +1067,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                           onClick={() => setFormData({ ...formData, diagnosedConditions: formData.diagnosedConditions.filter((_, i) => i !== idx) })}
                           className="text-[11px] font-bold text-rose-500 hover:underline cursor-pointer"
                         >
-                          Remove Condition
+                          {tr('Remove Condition', 'स्थिति हटाएं')}
                         </button>
                       )}
                     </div>
@@ -965,15 +1080,15 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                     })}
                     className="text-xs font-bold text-emerald-600 hover:underline cursor-pointer"
                   >
-                    + Add Another Condition
+                    + {tr('Add Another Condition', 'एक और स्थिति जोड़ें')}
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Hospitalisation History">
+                  <Field label={tr('Hospitalisation History', 'अस्पताल भर्ती का इतिहास')}>
                     <TextArea rows={2} value={formData.hospitalisationHistory || ''} onChange={(e) => setFormData({ ...formData, hospitalisationHistory: e.target.value })} />
                   </Field>
-                  <Field label="Emergency Episode History">
+                  <Field label={tr('Emergency Episode History', 'आपातकालीन घटनाओं का इतिहास')}>
                     <TextArea rows={2} value={formData.emergencyEpisodeHistory || ''} onChange={(e) => setFormData({ ...formData, emergencyEpisodeHistory: e.target.value })} />
                   </Field>
                 </div>
@@ -984,17 +1099,17 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 4 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 4</span>
-                  <h3 className="text-xl font-black">Prescriptions, Insulin & Supplements</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 4', 'अनुभाग 4')}</span>
+                  <h3 className="text-xl font-black">{tr('Prescriptions, Insulin & Supplements', 'दवाएं, इंसुलिन व सप्लीमेंट्स')}</h3>
                 </div>
 
                 <div className="space-y-4">
                   <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-3">
-                    <h4 className="text-xs font-black uppercase text-emerald-600">Current Prescription Medicines</h4>
+                    <h4 className="text-xs font-black uppercase text-emerald-600">{tr('Current Prescription Medicines', 'वर्तमान डॉक्टरी दवाएं')}</h4>
                     {formData.medicinesList.map((med, idx) => (
                       <div key={idx} className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                        <input 
-                          type="text" placeholder="Name" value={med.name} 
+                        <input
+                          type="text" placeholder={tr('Name', 'नाम')} value={med.name}
                           onChange={(e) => {
                             const list = [...formData.medicinesList];
                             list[idx].name = e.target.value;
@@ -1002,8 +1117,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                           }}
                           className="p-2.5 rounded-lg border border-zinc-300 bg-white font-bold"
                         />
-                        <input 
-                          type="text" placeholder="Dose" value={med.dose} 
+                        <input
+                          type="text" placeholder={tr('Dose', 'खुराक')} value={med.dose}
                           onChange={(e) => {
                             const list = [...formData.medicinesList];
                             list[idx].dose = e.target.value;
@@ -1011,8 +1126,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                           }}
                           className="p-2.5 rounded-lg border border-zinc-300 bg-white font-bold"
                         />
-                        <input 
-                          type="text" placeholder="Timing" value={med.timing} 
+                        <input
+                          type="text" placeholder={tr('Timing', 'समय')} value={med.timing}
                           onChange={(e) => {
                             const list = [...formData.medicinesList];
                             list[idx].timing = e.target.value;
@@ -1020,8 +1135,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                           }}
                           className="p-2.5 rounded-lg border border-zinc-300 bg-white font-bold"
                         />
-                        <input 
-                          type="text" placeholder="Reason" value={med.reason} 
+                        <input
+                          type="text" placeholder={tr('Reason', 'कारण')} value={med.reason}
                           onChange={(e) => {
                             const list = [...formData.medicinesList];
                             list[idx].reason = e.target.value;
@@ -1039,22 +1154,22 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       })}
                       className="text-xs font-bold text-emerald-600 hover:underline cursor-pointer"
                     >
-                      + Add Another Medicine
+                      + {tr('Add Another Medicine', 'एक और दवा जोड़ें')}
                     </button>
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold block mb-1">Vitamins & Supplements</label>
-                    <input 
-                      type="text" 
-                      value={formData.vitaminsAndSupplements || ''} 
+                    <label className="text-xs font-bold block mb-1">{tr('Vitamins & Supplements', 'विटामिन व सप्लीमेंट्स')}</label>
+                    <input
+                      type="text"
+                      value={formData.vitaminsAndSupplements || ''}
                       onChange={(e) => setFormData({ ...formData, vitaminsAndSupplements: e.target.value })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold block mb-1">Known Allergies / Adverse Reactions</label>
+                    <label className="text-xs font-bold block mb-1">{tr('Known Allergies / Adverse Reactions', 'ज्ञात एलर्जी / प्रतिकूल प्रतिक्रियाएं')}</label>
                     <input 
                       type="text" 
                       value={formData.allergies?.medicineAllergies || ''} 
@@ -1070,40 +1185,40 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 5 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 5</span>
-                  <h3 className="text-xl font-black">Blood Sugar & Cardiovascular Vitals</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 5', 'अनुभाग 5')}</span>
+                  <h3 className="text-xl font-black">{tr('Blood Sugar & Cardiovascular Vitals', 'ब्लड शुगर व हृदय संबंधी जांच')}</h3>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-bold block mb-1">Latest HbA1c & Date</label>
-                    <input 
-                      type="text" 
-                      value={formData.bloodSugar.latestHbA1c || ''} 
+                    <label className="text-xs font-bold block mb-1">{tr('Latest HbA1c & Date', 'नवीनतम HbA1c व तारीख')}</label>
+                    <input
+                      type="text"
+                      value={formData.bloodSugar.latestHbA1c || ''}
                       onChange={(e) => setFormData({ ...formData, bloodSugar: { ...formData.bloodSugar, latestHbA1c: e.target.value } })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">Average Fasting Blood Sugar (Last 7 Days)</label>
-                    <input 
-                      type="text" 
-                      value={formData.bloodSugar.averageFasting7Days || ''} 
+                    <label className="text-xs font-bold block mb-1">{tr('Average Fasting Blood Sugar (Last 7 Days)', 'औसत फास्टिंग शुगर (पिछले 7 दिन)')}</label>
+                    <input
+                      type="text"
+                      value={formData.bloodSugar.averageFasting7Days || ''}
                       onChange={(e) => setFormData({ ...formData, bloodSugar: { ...formData.bloodSugar, averageFasting7Days: e.target.value } })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">Average Post-Meal Sugar</label>
-                    <input 
-                      type="text" 
-                      value={formData.bloodSugar.averagePostMeal7Days || ''} 
+                    <label className="text-xs font-bold block mb-1">{tr('Average Post-Meal Sugar', 'औसत भोजन-बाद शुगर')}</label>
+                    <input
+                      type="text"
+                      value={formData.bloodSugar.averagePostMeal7Days || ''}
                       onChange={(e) => setFormData({ ...formData, bloodSugar: { ...formData.bloodSugar, averagePostMeal7Days: e.target.value } })}
                       className="w-full p-3 rounded-xl border border-zinc-300 bg-zinc-50 text-sm font-semibold"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold block mb-1">Blood Pressure Range</label>
+                    <label className="text-xs font-bold block mb-1">{tr('Blood Pressure Range', 'ब्लड प्रेशर रेंज')}</label>
                     <input 
                       type="text" 
                       value={formData.cardioVitals.usualBpRange || ''} 
@@ -1119,61 +1234,61 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 6 && (
               <div className="space-y-6 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 6</span>
-                  <h3 className="text-xl font-black">Sleep, Stress & Mental Wellbeing</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 6', 'अनुभाग 6')}</span>
+                  <h3 className="text-xl font-black">{tr('Sleep, Stress & Mental Wellbeing', 'नींद, तनाव व मानसिक स्वास्थ्य')}</h3>
                 </div>
 
                 <div className="space-y-3">
-                  <h4 className="text-xs font-black uppercase text-emerald-600">Sleep</h4>
+                  <h4 className="text-xs font-black uppercase text-emerald-600">{tr('Sleep', 'नींद')}</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Sleep Time"><TextInput value={formData.sleep.sleepTime} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, sleepTime: e.target.value } })} /></Field>
-                    <Field label="Wake Up Time"><TextInput value={formData.sleep.wakeUpTime} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, wakeUpTime: e.target.value } })} /></Field>
-                    <Field label="Average Sleep Hours"><TextInput type="number" value={formData.sleep.averageSleepHours} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, averageSleepHours: Number(e.target.value) } })} /></Field>
-                    <Field label="Sleep Quality">
+                    <Field label={tr('Sleep Time', 'सोने का समय')}><TextInput value={formData.sleep.sleepTime} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, sleepTime: e.target.value } })} /></Field>
+                    <Field label={tr('Wake Up Time', 'उठने का समय')}><TextInput value={formData.sleep.wakeUpTime} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, wakeUpTime: e.target.value } })} /></Field>
+                    <Field label={tr('Average Sleep Hours', 'औसत नींद के घंटे')}><TextInput type="number" value={formData.sleep.averageSleepHours} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, averageSleepHours: Number(e.target.value) } })} /></Field>
+                    <Field label={tr('Sleep Quality', 'नींद की गुणवत्ता')}>
                       <SelectInput value={formData.sleep.sleepQuality} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, sleepQuality: e.target.value as any } })}>
-                        <option value="good">Good</option>
-                        <option value="average">Average</option>
-                        <option value="poor">Poor</option>
-                        <option value="very_poor">Very Poor</option>
+                        <option value="good">{tr('Good', 'अच्छी')}</option>
+                        <option value="average">{tr('Average', 'औसत')}</option>
+                        <option value="poor">{tr('Poor', 'खराब')}</option>
+                        <option value="very_poor">{tr('Very Poor', 'बहुत खराब')}</option>
                       </SelectInput>
                     </Field>
-                    <Field label="Difficulty Falling Asleep?"><YesNo value={formData.sleep.difficultyFallingAsleep} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, difficultyFallingAsleep: v } })} /></Field>
-                    <Field label="Wakes During Night?"><YesNo value={formData.sleep.wakesDuringNight} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, wakesDuringNight: v } })} /></Field>
-                    <Field label="Wake Count (if any)"><TextInput value={formData.sleep.wakeCount || ''} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, wakeCount: e.target.value } })} /></Field>
-                    <Field label="Night-Time Urination Count"><TextInput value={formData.sleep.nightTimeUrinationCount || ''} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, nightTimeUrinationCount: e.target.value } })} /></Field>
-                    <Field label="Wakes Up Refreshed?"><YesNo value={formData.sleep.wakesRefreshed} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, wakesRefreshed: v } })} /></Field>
-                    <Field label="Snores?"><TextInput value={formData.sleep.snores} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, snores: e.target.value } })} /></Field>
-                    <Field label="Gasps / Stops Breathing While Asleep?"><TextInput value={formData.sleep.gaspOrStopBreathing} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, gaspOrStopBreathing: e.target.value } })} /></Field>
-                    <Field label="Sleep Apnoea Diagnosed?"><YesNo value={formData.sleep.sleepApnoeaDiagnosed} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, sleepApnoeaDiagnosed: v } })} /></Field>
-                    <Field label="Uses CPAP?"><YesNo value={formData.sleep.cpapUsed} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, cpapUsed: v } })} /></Field>
-                    <Field label="Daytime Sleepiness / Napping"><TextInput value={formData.sleep.daytimeSleepinessNapping || ''} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, daytimeSleepinessNapping: e.target.value } })} /></Field>
-                    <Field label="Sleep Medicine / Aid Used"><TextInput value={formData.sleep.sleepMedicineOrAid || ''} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, sleepMedicineOrAid: e.target.value } })} /></Field>
-                    <Field label="Works Shift Hours?"><YesNo value={formData.sleep.shiftWork} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, shiftWork: v } })} /></Field>
+                    <Field label={tr('Difficulty Falling Asleep?', 'सोने में कठिनाई?')}><YesNo value={formData.sleep.difficultyFallingAsleep} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, difficultyFallingAsleep: v } })} /></Field>
+                    <Field label={tr('Wakes During Night?', 'रात में नींद खुलती है?')}><YesNo value={formData.sleep.wakesDuringNight} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, wakesDuringNight: v } })} /></Field>
+                    <Field label={tr('Wake Count (if any)', 'कितनी बार नींद खुलती है')}><TextInput value={formData.sleep.wakeCount || ''} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, wakeCount: e.target.value } })} /></Field>
+                    <Field label={tr('Night-Time Urination Count', 'रात में पेशाब जाने की संख्या')}><TextInput value={formData.sleep.nightTimeUrinationCount || ''} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, nightTimeUrinationCount: e.target.value } })} /></Field>
+                    <Field label={tr('Wakes Up Refreshed?', 'उठने पर तरोताज़ा महसूस होता है?')}><YesNo value={formData.sleep.wakesRefreshed} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, wakesRefreshed: v } })} /></Field>
+                    <Field label={tr('Snores?', 'खर्राटे आते हैं?')}><TextInput value={formData.sleep.snores} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, snores: e.target.value } })} /></Field>
+                    <Field label={tr('Gasps / Stops Breathing While Asleep?', 'नींद में सांस रुकना/हांफना?')}><TextInput value={formData.sleep.gaspOrStopBreathing} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, gaspOrStopBreathing: e.target.value } })} /></Field>
+                    <Field label={tr('Sleep Apnoea Diagnosed?', 'स्लीप एपनिया का निदान हुआ है?')}><YesNo value={formData.sleep.sleepApnoeaDiagnosed} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, sleepApnoeaDiagnosed: v } })} /></Field>
+                    <Field label={tr('Uses CPAP?', 'CPAP का उपयोग करते हैं?')}><YesNo value={formData.sleep.cpapUsed} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, cpapUsed: v } })} /></Field>
+                    <Field label={tr('Daytime Sleepiness / Napping', 'दिन में नींद आना / झपकी')}><TextInput value={formData.sleep.daytimeSleepinessNapping || ''} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, daytimeSleepinessNapping: e.target.value } })} /></Field>
+                    <Field label={tr('Sleep Medicine / Aid Used', 'नींद की दवा/सहायता')}><TextInput value={formData.sleep.sleepMedicineOrAid || ''} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, sleepMedicineOrAid: e.target.value } })} /></Field>
+                    <Field label={tr('Works Shift Hours?', 'शिफ्ट में काम करते हैं?')}><YesNo value={formData.sleep.shiftWork} onChange={(v) => setFormData({ ...formData, sleep: { ...formData.sleep, shiftWork: v } })} /></Field>
                   </div>
-                  <Field label="Other Sleep Disturbances"><TextArea rows={2} value={formData.sleep.sleepDisturbances || ''} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, sleepDisturbances: e.target.value } })} /></Field>
+                  <Field label={tr('Other Sleep Disturbances', 'नींद संबंधी अन्य समस्याएं')}><TextArea rows={2} value={formData.sleep.sleepDisturbances || ''} onChange={(e) => setFormData({ ...formData, sleep: { ...formData.sleep, sleepDisturbances: e.target.value } })} /></Field>
                 </div>
 
                 <div className="space-y-3 pt-2 border-t border-zinc-200">
-                  <h4 className="text-xs font-black uppercase text-emerald-600">Stress & Mental Wellbeing</h4>
+                  <h4 className="text-xs font-black uppercase text-emerald-600">{tr('Stress & Mental Wellbeing', 'तनाव व मानसिक स्वास्थ्य')}</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Stress Level">
+                    <Field label={tr('Stress Level', 'तनाव स्तर')}>
                       <SelectInput value={formData.stressMental.stressLevel} onChange={(e) => setFormData({ ...formData, stressMental: { ...formData.stressMental, stressLevel: e.target.value as any } })}>
-                        <option value="low">Low</option>
-                        <option value="moderate">Moderate</option>
-                        <option value="high">High</option>
-                        <option value="overwhelming">Overwhelming</option>
+                        <option value="low">{tr('Low', 'कम')}</option>
+                        <option value="moderate">{tr('Moderate', 'मध्यम')}</option>
+                        <option value="high">{tr('High', 'ज़्यादा')}</option>
+                        <option value="overwhelming">{tr('Overwhelming', 'असहनीय')}</option>
                       </SelectInput>
                     </Field>
-                    <Field label="Main Sources of Stress"><TextInput value={formData.stressMental.mainSourcesOfStress || ''} onChange={(e) => setFormData({ ...formData, stressMental: { ...formData.stressMental, mainSourcesOfStress: e.target.value } })} /></Field>
-                    <Field label="Major Trauma in Last 2 Years?"><YesNo value={formData.stressMental.majorTraumaLast2Years} onChange={(v) => setFormData({ ...formData, stressMental: { ...formData.stressMental, majorTraumaLast2Years: v } })} /></Field>
-                    <Field label="Mental Condition Diagnosed?"><YesNo value={formData.stressMental.mentalConditionDiagnosed} onChange={(v) => setFormData({ ...formData, stressMental: { ...formData.stressMental, mentalConditionDiagnosed: v } })} /></Field>
-                    <Field label="Mental Health Meds / Therapy"><TextInput value={formData.stressMental.mentalHealthMedsOrTherapy || ''} onChange={(e) => setFormData({ ...formData, stressMental: { ...formData.stressMental, mentalHealthMedsOrTherapy: e.target.value } })} /></Field>
-                    <Field label="Stress Management Methods"><TextInput value={formData.stressMental.stressManagementMethods || ''} onChange={(e) => setFormData({ ...formData, stressMental: { ...formData.stressMental, stressManagementMethods: e.target.value } })} /></Field>
+                    <Field label={tr('Main Sources of Stress', 'तनाव के मुख्य कारण')}><TextInput value={formData.stressMental.mainSourcesOfStress || ''} onChange={(e) => setFormData({ ...formData, stressMental: { ...formData.stressMental, mainSourcesOfStress: e.target.value } })} /></Field>
+                    <Field label={tr('Major Trauma in Last 2 Years?', 'पिछले 2 वर्षों में कोई बड़ा आघात?')}><YesNo value={formData.stressMental.majorTraumaLast2Years} onChange={(v) => setFormData({ ...formData, stressMental: { ...formData.stressMental, majorTraumaLast2Years: v } })} /></Field>
+                    <Field label={tr('Mental Condition Diagnosed?', 'मानसिक स्थिति का निदान हुआ है?')}><YesNo value={formData.stressMental.mentalConditionDiagnosed} onChange={(v) => setFormData({ ...formData, stressMental: { ...formData.stressMental, mentalConditionDiagnosed: v } })} /></Field>
+                    <Field label={tr('Mental Health Meds / Therapy', 'मानसिक स्वास्थ्य दवा / थेरेपी')}><TextInput value={formData.stressMental.mentalHealthMedsOrTherapy || ''} onChange={(e) => setFormData({ ...formData, stressMental: { ...formData.stressMental, mentalHealthMedsOrTherapy: e.target.value } })} /></Field>
+                    <Field label={tr('Stress Management Methods', 'तनाव प्रबंधन के तरीके')}><TextInput value={formData.stressMental.stressManagementMethods || ''} onChange={(e) => setFormData({ ...formData, stressMental: { ...formData.stressMental, stressManagementMethods: e.target.value } })} /></Field>
                   </div>
                   {formData.stressMental.majorTraumaLast2Years && (
-                    <Field label="Trauma Explanation"><TextArea rows={2} value={formData.stressMental.traumaExplanation || ''} onChange={(e) => setFormData({ ...formData, stressMental: { ...formData.stressMental, traumaExplanation: e.target.value } })} /></Field>
+                    <Field label={tr('Trauma Explanation', 'आघात का विवरण')}><TextArea rows={2} value={formData.stressMental.traumaExplanation || ''} onChange={(e) => setFormData({ ...formData, stressMental: { ...formData.stressMental, traumaExplanation: e.target.value } })} /></Field>
                   )}
-                  <Field label="Emotional Symptoms">
+                  <Field label={tr('Emotional Symptoms', 'भावनात्मक लक्षण')}>
                     <ChipToggle
                       options={['Difficulty Relaxing', 'Constant Worry', 'Irritability', 'Low Mood / Sadness', 'Panic Episodes', 'Loss of Interest', 'Racing Thoughts', 'None']}
                       selected={formData.stressMental.emotionalSymptoms}
@@ -1181,7 +1296,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                     />
                   </Field>
                   <div className="p-4 rounded-2xl bg-zinc-100 border border-zinc-200 text-center">
-                    <label className="text-xs font-bold block mb-2">Emotional Wellbeing (0-10)</label>
+                    <label className="text-xs font-bold block mb-2">{tr('Emotional Wellbeing (0-10)', 'भावनात्मक स्वास्थ्य (0-10)')}</label>
                     <input type="range" min="0" max="10" value={formData.stressMental.emotionalWellbeingRating} onChange={(e) => setFormData({ ...formData, stressMental: { ...formData.stressMental, emotionalWellbeingRating: Number(e.target.value) } })} className="w-full accent-emerald-500" />
                     <span className="text-lg font-black text-emerald-600 font-mono mt-1 block">{formData.stressMental.emotionalWellbeingRating} / 10</span>
                   </div>
@@ -1193,51 +1308,51 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 7 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 7</span>
-                  <h3 className="text-xl font-black">Digestive & Gut Health</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 7', 'अनुभाग 7')}</span>
+                  <h3 className="text-xl font-black">{tr('Digestive & Gut Health', 'पाचन तंत्र का स्वास्थ्य')}</h3>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Bowel Frequency"><TextInput value={formData.gut.bowelFrequency} onChange={(e) => setFormData({ ...formData, gut: { ...formData.gut, bowelFrequency: e.target.value } })} /></Field>
-                  <Field label="Stool Type">
+                  <Field label={tr('Bowel Frequency', 'मल त्याग की आवृत्ति')}><TextInput value={formData.gut.bowelFrequency} onChange={(e) => setFormData({ ...formData, gut: { ...formData.gut, bowelFrequency: e.target.value } })} /></Field>
+                  <Field label={tr('Stool Type', 'मल का प्रकार')}>
                     <SelectInput value={formData.gut.stoolType} onChange={(e) => setFormData({ ...formData, gut: { ...formData.gut, stoolType: e.target.value as any } })}>
-                      <option value="normal">Normal</option>
-                      <option value="hard">Hard</option>
-                      <option value="loose">Loose</option>
-                      <option value="watery">Watery</option>
-                      <option value="alternating">Alternating</option>
+                      <option value="normal">{tr('Normal', 'सामान्य')}</option>
+                      <option value="hard">{tr('Hard', 'सख्त')}</option>
+                      <option value="loose">{tr('Loose', 'ढीला')}</option>
+                      <option value="watery">{tr('Watery', 'पानी जैसा')}</option>
+                      <option value="alternating">{tr('Alternating', 'बदलता रहता है')}</option>
                     </SelectInput>
                   </Field>
-                  <Field label="Symptom Frequency"><TextInput value={formData.gut.symptomFrequency} onChange={(e) => setFormData({ ...formData, gut: { ...formData.gut, symptomFrequency: e.target.value } })} /></Field>
-                  <Field label="Appetite">
+                  <Field label={tr('Symptom Frequency', 'लक्षणों की आवृत्ति')}><TextInput value={formData.gut.symptomFrequency} onChange={(e) => setFormData({ ...formData, gut: { ...formData.gut, symptomFrequency: e.target.value } })} /></Field>
+                  <Field label={tr('Appetite', 'भूख')}>
                     <SelectInput value={formData.gut.appetite} onChange={(e) => setFormData({ ...formData, gut: { ...formData.gut, appetite: e.target.value as any } })}>
-                      <option value="very_low">Very Low</option>
-                      <option value="low">Low</option>
-                      <option value="normal">Normal</option>
-                      <option value="high">High</option>
-                      <option value="uncontrolled">Uncontrolled</option>
+                      <option value="very_low">{tr('Very Low', 'बहुत कम')}</option>
+                      <option value="low">{tr('Low', 'कम')}</option>
+                      <option value="normal">{tr('Normal', 'सामान्य')}</option>
+                      <option value="high">{tr('High', 'ज़्यादा')}</option>
+                      <option value="uncontrolled">{tr('Uncontrolled', 'अनियंत्रित')}</option>
                     </SelectInput>
                   </Field>
-                  <Field label="Used Antibiotics in Last 6 Months?"><YesNo value={formData.gut.antibioticUseLast6Months} onChange={(v) => setFormData({ ...formData, gut: { ...formData.gut, antibioticUseLast6Months: v } })} /></Field>
-                  <Field label="Takes Regular Acidity Medicines?"><YesNo value={formData.gut.regularAcidityMedicines} onChange={(v) => setFormData({ ...formData, gut: { ...formData.gut, regularAcidityMedicines: v } })} /></Field>
-                  <Field label="Uses Probiotics / Digestive Enzymes?"><YesNo value={formData.gut.probioticsOrEnzymes} onChange={(v) => setFormData({ ...formData, gut: { ...formData.gut, probioticsOrEnzymes: v } })} /></Field>
+                  <Field label={tr('Used Antibiotics in Last 6 Months?', 'पिछले 6 महीनों में एंटीबायोटिक ली?')}><YesNo value={formData.gut.antibioticUseLast6Months} onChange={(v) => setFormData({ ...formData, gut: { ...formData.gut, antibioticUseLast6Months: v } })} /></Field>
+                  <Field label={tr('Takes Regular Acidity Medicines?', 'नियमित एसिडिटी की दवा लेते हैं?')}><YesNo value={formData.gut.regularAcidityMedicines} onChange={(v) => setFormData({ ...formData, gut: { ...formData.gut, regularAcidityMedicines: v } })} /></Field>
+                  <Field label={tr('Uses Probiotics / Digestive Enzymes?', 'प्रोबायोटिक्स / पाचन एंजाइम लेते हैं?')}><YesNo value={formData.gut.probioticsOrEnzymes} onChange={(v) => setFormData({ ...formData, gut: { ...formData.gut, probioticsOrEnzymes: v } })} /></Field>
                 </div>
 
-                <Field label="Digestive Symptoms">
+                <Field label={tr('Digestive Symptoms', 'पाचन संबंधी लक्षण')}>
                   <ChipToggle
                     options={['Bloating or Gas', 'Heaviness After Meals', 'Acid Reflux', 'Constipation', 'Diarrhoea', 'Nausea', 'Abdominal Pain', 'None']}
                     selected={formData.gut.symptoms}
                     onChange={(next) => setFormData({ ...formData, gut: { ...formData.gut, symptoms: next } })}
                   />
                 </Field>
-                <Field label="Diagnosed Gut Conditions">
+                <Field label={tr('Diagnosed Gut Conditions', 'निदान की गई पाचन समस्याएं')}>
                   <ChipToggle
                     options={['Mild Acidity / GERD', 'IBS', 'Fatty Liver', 'Gallstones', 'H. Pylori', 'Ulcers', 'None']}
                     selected={formData.gut.diagnosedConditions}
                     onChange={(next) => setFormData({ ...formData, gut: { ...formData.gut, diagnosedConditions: next } })}
                   />
                 </Field>
-                <Field label="Trigger Foods"><TextArea rows={2} value={formData.gut.triggerFoods || ''} onChange={(e) => setFormData({ ...formData, gut: { ...formData.gut, triggerFoods: e.target.value } })} placeholder="List any acidity, bloating, or foods causing digestive disturbance..." /></Field>
+                <Field label={tr('Trigger Foods', 'ट्रिगर करने वाले खाद्य पदार्थ')}><TextArea rows={2} value={formData.gut.triggerFoods || ''} onChange={(e) => setFormData({ ...formData, gut: { ...formData.gut, triggerFoods: e.target.value } })} placeholder={tr('List any acidity, bloating, or foods causing digestive disturbance...', 'एसिडिटी, गैस या पाचन बिगाड़ने वाले खाद्य पदार्थ लिखें...')} /></Field>
               </div>
             )}
 
@@ -1245,15 +1360,15 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 8 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 8</span>
-                  <h3 className="text-xl font-black">Lab Test Reports</h3>
-                  <p className="text-xs text-zinc-500">You can also upload the actual file from the "My Reports" tab — here just tell us what you have.</p>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 8', 'अनुभाग 8')}</span>
+                  <h3 className="text-xl font-black">{tr('Lab Test Reports', 'लैब टेस्ट रिपोर्ट')}</h3>
+                  <p className="text-xs text-zinc-500">{tr('You can also upload the actual file from the "My Reports" tab — here just tell us what you have.', 'असली फाइल "मेरी रिपोर्ट्स" टैब से अपलोड करें — यहां बस बताएं आपके पास क्या है।')}</p>
                 </div>
-                <Field label="Have Recent Lab Tests?"><YesNo value={formData.labReports.hasRecentTests} onChange={(v) => setFormData({ ...formData, labReports: { ...formData.labReports, hasRecentTests: v } })} /></Field>
-                <Field label="Report File Names / References" hint="Type a name and press Enter to add it to the list.">
-                  <TagsInput values={formData.labReports.uploadedFileNames} onChange={(next) => setFormData({ ...formData, labReports: { ...formData.labReports, uploadedFileNames: next } })} placeholder="e.g. HbA1c_Lipid_Panel_Report.pdf" />
+                <Field label={tr('Have Recent Lab Tests?', 'हाल में कोई लैब टेस्ट कराया है?')}><YesNo value={formData.labReports.hasRecentTests} onChange={(v) => setFormData({ ...formData, labReports: { ...formData.labReports, hasRecentTests: v } })} /></Field>
+                <Field label={tr('Report File Names / References', 'रिपोर्ट फाइल नाम / संदर्भ')} hint={tr('Type a name and press Enter to add it to the list.', 'नाम लिखें और सूची में जोड़ने के लिए Enter दबाएं।')}>
+                  <TagsInput values={formData.labReports.uploadedFileNames} onChange={(next) => setFormData({ ...formData, labReports: { ...formData.labReports, uploadedFileNames: next } })} placeholder={tr('e.g. HbA1c_Lipid_Panel_Report.pdf', 'जैसे HbA1c_Lipid_Panel_Report.pdf')} />
                 </Field>
-                <Field label="Report Notes / Key Findings"><TextArea rows={3} value={formData.labReports.reportNotes || ''} onChange={(e) => setFormData({ ...formData, labReports: { ...formData.labReports, reportNotes: e.target.value } })} /></Field>
+                <Field label={tr('Report Notes / Key Findings', 'रिपोर्ट नोट्स / मुख्य निष्कर्ष')}><TextArea rows={3} value={formData.labReports.reportNotes || ''} onChange={(e) => setFormData({ ...formData, labReports: { ...formData.labReports, reportNotes: e.target.value } })} /></Field>
               </div>
             )}
 
@@ -1261,10 +1376,10 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 9 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 9</span>
-                  <h3 className="text-xl font-black">Previous Treatments Tried</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 9', 'अनुभाग 9')}</span>
+                  <h3 className="text-xl font-black">{tr('Previous Treatments Tried', 'पहले आजमाए गए उपचार')}</h3>
                 </div>
-                <Field label="Treatments Tried So Far">
+                <Field label={tr('Treatments Tried So Far', 'अब तक आजमाए गए उपचार')}>
                   <ChipToggle
                     options={['Prescription Medicines', 'Diet Plan', 'Walking Programme', 'Ayurveda / Herbal', 'Homeopathy', 'Yoga / Meditation', 'Bariatric Surgery', 'Other']}
                     selected={formData.previousTreatments.treatmentsTried}
@@ -1272,15 +1387,15 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                   />
                 </Field>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="What Improved?"><TextArea rows={2} value={formData.previousTreatments.whatImproved || ''} onChange={(e) => setFormData({ ...formData, previousTreatments: { ...formData.previousTreatments, whatImproved: e.target.value } })} /></Field>
-                  <Field label="What Did Not Improve?"><TextArea rows={2} value={formData.previousTreatments.whatDidNotImprove || ''} onChange={(e) => setFormData({ ...formData, previousTreatments: { ...formData.previousTreatments, whatDidNotImprove: e.target.value } })} /></Field>
-                  <Field label="Why Did You Stop?"><TextArea rows={2} value={formData.previousTreatments.whyStopped || ''} onChange={(e) => setFormData({ ...formData, previousTreatments: { ...formData.previousTreatments, whyStopped: e.target.value } })} /></Field>
-                  <Field label="Did the Improvement Remain?">
+                  <Field label={tr('What Improved?', 'क्या सुधार हुआ?')}><TextArea rows={2} value={formData.previousTreatments.whatImproved || ''} onChange={(e) => setFormData({ ...formData, previousTreatments: { ...formData.previousTreatments, whatImproved: e.target.value } })} /></Field>
+                  <Field label={tr('What Did Not Improve?', 'क्या सुधार नहीं हुआ?')}><TextArea rows={2} value={formData.previousTreatments.whatDidNotImprove || ''} onChange={(e) => setFormData({ ...formData, previousTreatments: { ...formData.previousTreatments, whatDidNotImprove: e.target.value } })} /></Field>
+                  <Field label={tr('Why Did You Stop?', 'आपने क्यों छोड़ा?')}><TextArea rows={2} value={formData.previousTreatments.whyStopped || ''} onChange={(e) => setFormData({ ...formData, previousTreatments: { ...formData.previousTreatments, whyStopped: e.target.value } })} /></Field>
+                  <Field label={tr('Did the Improvement Remain?', 'क्या सुधार बना रहा?')}>
                     <SelectInput value={formData.previousTreatments.improvementRemained} onChange={(e) => setFormData({ ...formData, previousTreatments: { ...formData.previousTreatments, improvementRemained: e.target.value as any } })}>
-                      <option value="yes">Yes</option>
-                      <option value="no">No</option>
-                      <option value="partially">Partially</option>
-                      <option value="not_applicable">Not Applicable</option>
+                      <option value="yes">{tr('Yes', 'हां')}</option>
+                      <option value="no">{tr('No', 'नहीं')}</option>
+                      <option value="partially">{tr('Partially', 'आंशिक रूप से')}</option>
+                      <option value="not_applicable">{tr('Not Applicable', 'लागू नहीं')}</option>
                     </SelectInput>
                   </Field>
                 </div>
@@ -1291,38 +1406,38 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 10 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 10</span>
-                  <h3 className="text-xl font-black">Diet & Eating Pattern</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 10', 'अनुभाग 10')}</span>
+                  <h3 className="text-xl font-black">{tr('Diet & Eating Pattern', 'आहार व खानपान')}</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Diet Type"><TextInput value={formData.diet.dietType} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, dietType: e.target.value } })} /></Field>
-                  <Field label="Regional Preference"><TextInput value={formData.diet.regionalPreference || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, regionalPreference: e.target.value } })} /></Field>
-                  <Field label="Meals Per Day"><TextInput type="number" value={formData.diet.mealsPerDay} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, mealsPerDay: Number(e.target.value) } })} /></Field>
-                  <Field label="First Meal Time"><TextInput value={formData.diet.firstMealTime} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, firstMealTime: e.target.value } })} /></Field>
-                  <Field label="Last Meal Time"><TextInput value={formData.diet.lastMealTime} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, lastMealTime: e.target.value } })} /></Field>
-                  <Field label="Eats Late at Night?"><YesNo value={formData.diet.lateNightEating} onChange={(v) => setFormData({ ...formData, diet: { ...formData.diet, lateNightEating: v } })} /></Field>
+                  <Field label={tr('Diet Type', 'आहार प्रकार')}><TextInput value={formData.diet.dietType} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, dietType: e.target.value } })} /></Field>
+                  <Field label={tr('Regional Preference', 'क्षेत्रीय पसंद')}><TextInput value={formData.diet.regionalPreference || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, regionalPreference: e.target.value } })} /></Field>
+                  <Field label={tr('Meals Per Day', 'दिन में कितनी बार भोजन')}><TextInput type="number" value={formData.diet.mealsPerDay} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, mealsPerDay: Number(e.target.value) } })} /></Field>
+                  <Field label={tr('First Meal Time', 'पहले भोजन का समय')}><TextInput value={formData.diet.firstMealTime} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, firstMealTime: e.target.value } })} /></Field>
+                  <Field label={tr('Last Meal Time', 'आखिरी भोजन का समय')}><TextInput value={formData.diet.lastMealTime} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, lastMealTime: e.target.value } })} /></Field>
+                  <Field label={tr('Eats Late at Night?', 'देर रात खाते हैं?')}><YesNo value={formData.diet.lateNightEating} onChange={(v) => setFormData({ ...formData, diet: { ...formData.diet, lateNightEating: v } })} /></Field>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <Field label="Typical Breakfast"><TextArea rows={2} value={formData.diet.breakfast} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, breakfast: e.target.value } })} /></Field>
-                  <Field label="Typical Lunch"><TextArea rows={2} value={formData.diet.lunch} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, lunch: e.target.value } })} /></Field>
-                  <Field label="Typical Dinner"><TextArea rows={2} value={formData.diet.dinner} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, dinner: e.target.value } })} /></Field>
+                  <Field label={tr('Typical Breakfast', 'सामान्य नाश्ता')}><TextArea rows={2} value={formData.diet.breakfast} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, breakfast: e.target.value } })} /></Field>
+                  <Field label={tr('Typical Lunch', 'सामान्य दोपहर का भोजन')}><TextArea rows={2} value={formData.diet.lunch} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, lunch: e.target.value } })} /></Field>
+                  <Field label={tr('Typical Dinner', 'सामान्य रात का भोजन')}><TextArea rows={2} value={formData.diet.dinner} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, dinner: e.target.value } })} /></Field>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Snacks"><TextInput value={formData.diet.snacks || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, snacks: e.target.value } })} /></Field>
-                  <Field label="Tea / Coffee Count"><TextInput value={formData.diet.teaCoffeeCount} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, teaCoffeeCount: e.target.value } })} /></Field>
-                  <Field label="Adds Sugar or Honey?"><YesNo value={formData.diet.addsSugarOrHoney} onChange={(v) => setFormData({ ...formData, diet: { ...formData.diet, addsSugarOrHoney: v } })} /></Field>
-                  <Field label="Fried Food Frequency"><TextInput value={formData.diet.friedFoodFrequency} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, friedFoodFrequency: e.target.value } })} /></Field>
-                  <Field label="Sweets Frequency"><TextInput value={formData.diet.sweetsFrequency} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, sweetsFrequency: e.target.value } })} /></Field>
-                  <Field label="Packaged Food Frequency"><TextInput value={formData.diet.packagedFoodFrequency} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, packagedFoodFrequency: e.target.value } })} /></Field>
-                  <Field label="Outside Food Frequency"><TextInput value={formData.diet.outsideFoodFrequency} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, outsideFoodFrequency: e.target.value } })} /></Field>
-                  <Field label="Water Intake (Litres/day)"><TextInput value={formData.diet.waterIntakeLiters} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, waterIntakeLiters: e.target.value } })} /></Field>
-                  <Field label="Alcohol / Tobacco Use"><TextInput value={formData.diet.alcoholTobaccoUse || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, alcoholTobaccoUse: e.target.value } })} /></Field>
-                  <Field label="Eating Disorder History?"><YesNo value={formData.diet.eatingDisorderHistory} onChange={(v) => setFormData({ ...formData, diet: { ...formData.diet, eatingDisorderHistory: v } })} /></Field>
+                  <Field label={tr('Snacks', 'नाश्ता/स्नैक्स')}><TextInput value={formData.diet.snacks || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, snacks: e.target.value } })} /></Field>
+                  <Field label={tr('Tea / Coffee Count', 'चाय / कॉफी की मात्रा')}><TextInput value={formData.diet.teaCoffeeCount} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, teaCoffeeCount: e.target.value } })} /></Field>
+                  <Field label={tr('Adds Sugar or Honey?', 'चीनी या शहद मिलाते हैं?')}><YesNo value={formData.diet.addsSugarOrHoney} onChange={(v) => setFormData({ ...formData, diet: { ...formData.diet, addsSugarOrHoney: v } })} /></Field>
+                  <Field label={tr('Fried Food Frequency', 'तले हुए भोजन की आवृत्ति')}><TextInput value={formData.diet.friedFoodFrequency} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, friedFoodFrequency: e.target.value } })} /></Field>
+                  <Field label={tr('Sweets Frequency', 'मिठाई की आवृत्ति')}><TextInput value={formData.diet.sweetsFrequency} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, sweetsFrequency: e.target.value } })} /></Field>
+                  <Field label={tr('Packaged Food Frequency', 'पैकेज्ड भोजन की आवृत्ति')}><TextInput value={formData.diet.packagedFoodFrequency} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, packagedFoodFrequency: e.target.value } })} /></Field>
+                  <Field label={tr('Outside Food Frequency', 'बाहर के खाने की आवृत्ति')}><TextInput value={formData.diet.outsideFoodFrequency} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, outsideFoodFrequency: e.target.value } })} /></Field>
+                  <Field label={tr('Water Intake (Litres/day)', 'पानी की मात्रा (लीटर/दिन)')}><TextInput value={formData.diet.waterIntakeLiters} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, waterIntakeLiters: e.target.value } })} /></Field>
+                  <Field label={tr('Alcohol / Tobacco Use', 'शराब / तंबाकू का सेवन')}><TextInput value={formData.diet.alcoholTobaccoUse || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, alcoholTobaccoUse: e.target.value } })} /></Field>
+                  <Field label={tr('Eating Disorder History?', 'खाने संबंधी विकार का इतिहास?')}><YesNo value={formData.diet.eatingDisorderHistory} onChange={(v) => setFormData({ ...formData, diet: { ...formData.diet, eatingDisorderHistory: v } })} /></Field>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Food Dislikes / Restrictions"><TextArea rows={2} value={formData.diet.foodDislikesOrRestrictions || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, foodDislikesOrRestrictions: e.target.value } })} /></Field>
-                  <Field label="Craved Foods"><TextArea rows={2} value={formData.diet.cravedFoods || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, cravedFoods: e.target.value } })} /></Field>
-                  <Field label="Previous Diet History"><TextArea rows={2} value={formData.diet.previousDietHistory || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, previousDietHistory: e.target.value } })} /></Field>
+                  <Field label={tr('Food Dislikes / Restrictions', 'नापसंद / परहेज वाले खाद्य पदार्थ')}><TextArea rows={2} value={formData.diet.foodDislikesOrRestrictions || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, foodDislikesOrRestrictions: e.target.value } })} /></Field>
+                  <Field label={tr('Craved Foods', 'तलब वाले खाद्य पदार्थ')}><TextArea rows={2} value={formData.diet.cravedFoods || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, cravedFoods: e.target.value } })} /></Field>
+                  <Field label={tr('Previous Diet History', 'पिछले आहार का इतिहास')}><TextArea rows={2} value={formData.diet.previousDietHistory || ''} onChange={(e) => setFormData({ ...formData, diet: { ...formData.diet, previousDietHistory: e.target.value } })} /></Field>
                 </div>
               </div>
             )}
@@ -1331,26 +1446,26 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 11 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 11</span>
-                  <h3 className="text-xl font-black">Lifestyle & Physical Activity</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 11', 'अनुभाग 11')}</span>
+                  <h3 className="text-xl font-black">{tr('Lifestyle & Physical Activity', 'जीवनशैली व शारीरिक गतिविधि')}</h3>
                 </div>
-                <Field label="Do You Exercise Regularly?"><YesNo value={formData.lifestyle.regularExercise} onChange={(v) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, regularExercise: v } })} /></Field>
+                <Field label={tr('Do You Exercise Regularly?', 'क्या आप नियमित व्यायाम करते हैं?')}><YesNo value={formData.lifestyle.regularExercise} onChange={(v) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, regularExercise: v } })} /></Field>
                 {formData.lifestyle.regularExercise ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Exercise Type"><TextInput value={formData.lifestyle.exerciseType || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, exerciseType: e.target.value } })} /></Field>
-                    <Field label="Timing"><TextInput value={formData.lifestyle.timing || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, timing: e.target.value } })} /></Field>
-                    <Field label="Frequency (Days / Week)"><TextInput type="number" value={formData.lifestyle.frequencyDaysPerWeek || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, frequencyDaysPerWeek: Number(e.target.value) } })} /></Field>
-                    <Field label="Duration (Minutes)"><TextInput type="number" value={formData.lifestyle.durationMinutes || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, durationMinutes: Number(e.target.value) } })} /></Field>
+                    <Field label={tr('Exercise Type', 'व्यायाम का प्रकार')}><TextInput value={formData.lifestyle.exerciseType || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, exerciseType: e.target.value } })} /></Field>
+                    <Field label={tr('Timing', 'समय')}><TextInput value={formData.lifestyle.timing || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, timing: e.target.value } })} /></Field>
+                    <Field label={tr('Frequency (Days / Week)', 'आवृत्ति (दिन/सप्ताह)')}><TextInput type="number" value={formData.lifestyle.frequencyDaysPerWeek || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, frequencyDaysPerWeek: Number(e.target.value) } })} /></Field>
+                    <Field label={tr('Duration (Minutes)', 'अवधि (मिनट)')}><TextInput type="number" value={formData.lifestyle.durationMinutes || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, durationMinutes: Number(e.target.value) } })} /></Field>
                   </div>
                 ) : (
-                  <Field label="Reason for Not Exercising"><TextInput value={formData.lifestyle.noExerciseReason || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, noExerciseReason: e.target.value } })} /></Field>
+                  <Field label={tr('Reason for Not Exercising', 'व्यायाम न करने का कारण')}><TextInput value={formData.lifestyle.noExerciseReason || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, noExerciseReason: e.target.value } })} /></Field>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Sitting Hours Per Day"><TextInput type="number" value={formData.lifestyle.sittingHoursPerDay} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, sittingHoursPerDay: Number(e.target.value) } })} /></Field>
-                  <Field label="Screen Time Hours Per Day"><TextInput type="number" value={formData.lifestyle.screenTimeHoursPerDay} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, screenTimeHoursPerDay: Number(e.target.value) } })} /></Field>
+                  <Field label={tr('Sitting Hours Per Day', 'दिन में बैठने के घंटे')}><TextInput type="number" value={formData.lifestyle.sittingHoursPerDay} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, sittingHoursPerDay: Number(e.target.value) } })} /></Field>
+                  <Field label={tr('Screen Time Hours Per Day', 'दिन में स्क्रीन समय (घंटे)')}><TextInput type="number" value={formData.lifestyle.screenTimeHoursPerDay} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, screenTimeHoursPerDay: Number(e.target.value) } })} /></Field>
                 </div>
-                <Field label="Non-Exercise Movement (chores, stairs, walking)"><TextArea rows={2} value={formData.lifestyle.nonExerciseMovement || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, nonExerciseMovement: e.target.value } })} /></Field>
-                <Field label="Physical Limitations / Injuries"><TextArea rows={2} value={formData.lifestyle.physicalLimitationsOrInjuries || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, physicalLimitationsOrInjuries: e.target.value } })} /></Field>
+                <Field label={tr('Non-Exercise Movement (chores, stairs, walking)', 'व्यायाम के अलावा गतिविधि (घर का काम, सीढ़ियां, चलना)')}><TextArea rows={2} value={formData.lifestyle.nonExerciseMovement || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, nonExerciseMovement: e.target.value } })} /></Field>
+                <Field label={tr('Physical Limitations / Injuries', 'शारीरिक सीमाएं / चोटें')}><TextArea rows={2} value={formData.lifestyle.physicalLimitationsOrInjuries || ''} onChange={(e) => setFormData({ ...formData, lifestyle: { ...formData.lifestyle, physicalLimitationsOrInjuries: e.target.value } })} /></Field>
               </div>
             )}
 
@@ -1358,9 +1473,9 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 12 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 12</span>
-                  <h3 className="text-xl font-black">Family Health History</h3>
-                  <p className="text-xs text-zinc-500">Note which relative(s) had each condition, or leave as "None".</p>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 12', 'अनुभाग 12')}</span>
+                  <h3 className="text-xl font-black">{tr('Family Health History', 'पारिवारिक स्वास्थ्य इतिहास')}</h3>
+                  <p className="text-xs text-zinc-500">{tr('Note which relative(s) had each condition, or leave as "None".', 'लिखें किस रिश्तेदार को कौन सी स्थिति थी, या "कोई नहीं" छोड़ें।')}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {([
@@ -1369,12 +1484,12 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                     ['obesity', 'Obesity'], ['autoimmune', 'Autoimmune Condition'], ['cancer', 'Cancer'],
                     ['kidneyDisease', 'Kidney Disease'], ['liverDisease', 'Liver Disease'], ['mentalHealth', 'Mental Health Condition'],
                   ] as [keyof RootCauseAssessmentData['familyHistory'], string][]).map(([key, label]) => (
-                    <Field key={key} label={label}>
+                    <Field key={key} label={tr(label, OPTION_LABEL_HI[label] || label)}>
                       <TextInput value={formData.familyHistory[key] || ''} onChange={(e) => setFormData({ ...formData, familyHistory: { ...formData.familyHistory, [key]: e.target.value } })} />
                     </Field>
                   ))}
                 </div>
-                <Field label="Other Family Conditions"><TextArea rows={2} value={formData.familyHistory.otherConditions || ''} onChange={(e) => setFormData({ ...formData, familyHistory: { ...formData.familyHistory, otherConditions: e.target.value } })} /></Field>
+                <Field label={tr('Other Family Conditions', 'अन्य पारिवारिक स्थितियां')}><TextArea rows={2} value={formData.familyHistory.otherConditions || ''} onChange={(e) => setFormData({ ...formData, familyHistory: { ...formData.familyHistory, otherConditions: e.target.value } })} /></Field>
               </div>
             )}
 
@@ -1382,42 +1497,42 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 13 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 13</span>
-                  <h3 className="text-xl font-black">Hormonal Health (Women)</h3>
-                  <p className="text-xs text-zinc-500">Skip anything not applicable to you.</p>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 13', 'अनुभाग 13')}</span>
+                  <h3 className="text-xl font-black">{tr('Hormonal Health (Women)', 'हार्मोनल स्वास्थ्य (महिला)')}</h3>
+                  <p className="text-xs text-zinc-500">{tr('Skip anything not applicable to you.', 'जो लागू न हो उसे छोड़ दें।')}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Menstrual Status"><TextInput value={formData.hormonalWomen?.menstrualStatus || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, menstrualStatus: e.target.value } })} /></Field>
-                  <Field label="Cycle Length (Days)"><TextInput value={formData.hormonalWomen?.cycleLengthDays || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, cycleLengthDays: e.target.value } })} /></Field>
-                  <Field label="Period Duration (Days)"><TextInput value={formData.hormonalWomen?.periodDurationDays || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, periodDurationDays: e.target.value } })} /></Field>
-                  <Field label="Flow"><TextInput value={formData.hormonalWomen?.flow || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, flow: e.target.value } })} /></Field>
-                  <Field label="Irregularity Pattern"><TextInput value={formData.hormonalWomen?.irregularityPattern || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, irregularityPattern: e.target.value } })} /></Field>
-                  <Field label="Last Menstrual Period Date"><TextInput value={formData.hormonalWomen?.lastMenstrualPeriodDate || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, lastMenstrualPeriodDate: e.target.value } })} /></Field>
-                  <Field label="Age Periods Started"><TextInput value={formData.hormonalWomen?.agePeriodsStarted || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, agePeriodsStarted: e.target.value } })} /></Field>
-                  <Field label="Menstrual Cramps"><TextInput value={formData.hormonalWomen?.menstrualCramps || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, menstrualCramps: e.target.value } })} /></Field>
-                  <Field label="PCOD / PCOS Diagnosis"><TextInput value={formData.hormonalWomen?.pcodPcosDiagnosis || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, pcodPcosDiagnosis: e.target.value } })} /></Field>
-                  <Field label="Thyroid Diagnosis & Meds"><TextInput value={formData.hormonalWomen?.thyroidDiagnosisAndMeds || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, thyroidDiagnosisAndMeds: e.target.value } })} /></Field>
-                  <Field label="Currently Pregnant?"><YesNo value={formData.hormonalWomen?.currentlyPregnant} onChange={(v) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, currentlyPregnant: v } })} /></Field>
-                  <Field label="Planning Pregnancy?"><YesNo value={formData.hormonalWomen?.planningPregnancy} onChange={(v) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, planningPregnancy: v } })} /></Field>
-                  <Field label="Currently Breastfeeding?"><YesNo value={formData.hormonalWomen?.currentlyBreastfeeding} onChange={(v) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, currentlyBreastfeeding: v } })} /></Field>
-                  <Field label="Gestational Diabetes History?"><YesNo value={formData.hormonalWomen?.gestationalDiabetesHistory} onChange={(v) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, gestationalDiabetesHistory: v } })} /></Field>
-                  <Field label="Breast Lumps?"><YesNo value={formData.hormonalWomen?.breastLumps} onChange={(v) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, breastLumps: v } })} /></Field>
-                  <Field label="HRT Type (if any)"><TextInput value={formData.hormonalWomen?.hrtType || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, hrtType: e.target.value } })} /></Field>
-                  <Field label="Facial / Body Hair"><TextInput value={formData.hormonalWomen?.facialBodyHair || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, facialBodyHair: e.target.value } })} /></Field>
-                  <Field label="Scalp Hair Loss Severity"><TextInput value={formData.hormonalWomen?.scalpHairLossSeverity || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, scalpHairLossSeverity: e.target.value } })} /></Field>
+                  <Field label={tr('Menstrual Status', 'मासिक धर्म की स्थिति')}><TextInput value={formData.hormonalWomen?.menstrualStatus || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, menstrualStatus: e.target.value } })} /></Field>
+                  <Field label={tr('Cycle Length (Days)', 'चक्र की लंबाई (दिन)')}><TextInput value={formData.hormonalWomen?.cycleLengthDays || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, cycleLengthDays: e.target.value } })} /></Field>
+                  <Field label={tr('Period Duration (Days)', 'मासिक धर्म की अवधि (दिन)')}><TextInput value={formData.hormonalWomen?.periodDurationDays || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, periodDurationDays: e.target.value } })} /></Field>
+                  <Field label={tr('Flow', 'प्रवाह')}><TextInput value={formData.hormonalWomen?.flow || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, flow: e.target.value } })} /></Field>
+                  <Field label={tr('Irregularity Pattern', 'अनियमितता का पैटर्न')}><TextInput value={formData.hormonalWomen?.irregularityPattern || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, irregularityPattern: e.target.value } })} /></Field>
+                  <Field label={tr('Last Menstrual Period Date', 'पिछले मासिक धर्म की तारीख')}><TextInput value={formData.hormonalWomen?.lastMenstrualPeriodDate || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, lastMenstrualPeriodDate: e.target.value } })} /></Field>
+                  <Field label={tr('Age Periods Started', 'मासिक धर्म शुरू होने की उम्र')}><TextInput value={formData.hormonalWomen?.agePeriodsStarted || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, agePeriodsStarted: e.target.value } })} /></Field>
+                  <Field label={tr('Menstrual Cramps', 'मासिक धर्म में ऐंठन')}><TextInput value={formData.hormonalWomen?.menstrualCramps || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, menstrualCramps: e.target.value } })} /></Field>
+                  <Field label={tr('PCOD / PCOS Diagnosis', 'PCOD / PCOS निदान')}><TextInput value={formData.hormonalWomen?.pcodPcosDiagnosis || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, pcodPcosDiagnosis: e.target.value } })} /></Field>
+                  <Field label={tr('Thyroid Diagnosis & Meds', 'थायरॉइड निदान व दवाएं')}><TextInput value={formData.hormonalWomen?.thyroidDiagnosisAndMeds || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, thyroidDiagnosisAndMeds: e.target.value } })} /></Field>
+                  <Field label={tr('Currently Pregnant?', 'क्या आप गर्भवती हैं?')}><YesNo value={formData.hormonalWomen?.currentlyPregnant} onChange={(v) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, currentlyPregnant: v } })} /></Field>
+                  <Field label={tr('Planning Pregnancy?', 'गर्भधारण की योजना बना रही हैं?')}><YesNo value={formData.hormonalWomen?.planningPregnancy} onChange={(v) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, planningPregnancy: v } })} /></Field>
+                  <Field label={tr('Currently Breastfeeding?', 'क्या आप स्तनपान करा रही हैं?')}><YesNo value={formData.hormonalWomen?.currentlyBreastfeeding} onChange={(v) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, currentlyBreastfeeding: v } })} /></Field>
+                  <Field label={tr('Gestational Diabetes History?', 'गर्भावस्था डायबिटीज का इतिहास?')}><YesNo value={formData.hormonalWomen?.gestationalDiabetesHistory} onChange={(v) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, gestationalDiabetesHistory: v } })} /></Field>
+                  <Field label={tr('Breast Lumps?', 'स्तन में गांठ?')}><YesNo value={formData.hormonalWomen?.breastLumps} onChange={(v) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, breastLumps: v } })} /></Field>
+                  <Field label={tr('HRT Type (if any)', 'HRT प्रकार (यदि हो)')}><TextInput value={formData.hormonalWomen?.hrtType || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, hrtType: e.target.value } })} /></Field>
+                  <Field label={tr('Facial / Body Hair', 'चेहरे / शरीर के बाल')}><TextInput value={formData.hormonalWomen?.facialBodyHair || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, facialBodyHair: e.target.value } })} /></Field>
+                  <Field label={tr('Scalp Hair Loss Severity', 'सिर के बाल झड़ने की गंभीरता')}><TextInput value={formData.hormonalWomen?.scalpHairLossSeverity || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, scalpHairLossSeverity: e.target.value } })} /></Field>
                 </div>
-                <Field label="Pregnancies & Children"><TextInput value={formData.hormonalWomen?.pregnanciesAndChildren || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, pregnanciesAndChildren: e.target.value } })} /></Field>
-                <Field label="Miscarriages / Complications"><TextInput value={formData.hormonalWomen?.miscarriagesOrComplications || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, miscarriagesOrComplications: e.target.value } })} /></Field>
-                <Field label="PMS Symptoms">
+                <Field label={tr('Pregnancies & Children', 'गर्भधारण व बच्चे')}><TextInput value={formData.hormonalWomen?.pregnanciesAndChildren || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, pregnanciesAndChildren: e.target.value } })} /></Field>
+                <Field label={tr('Miscarriages / Complications', 'गर्भपात / जटिलताएं')}><TextInput value={formData.hormonalWomen?.miscarriagesOrComplications || ''} onChange={(e) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, miscarriagesOrComplications: e.target.value } })} /></Field>
+                <Field label={tr('PMS Symptoms', 'PMS के लक्षण')}>
                   <ChipToggle options={['Mood changes', 'Bloating', 'Cramps', 'Fatigue', 'Food cravings', 'Headaches', 'None']} selected={formData.hormonalWomen?.pmsSymptoms || []} onChange={(next) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, pmsSymptoms: next } })} />
                 </Field>
-                <Field label="Menopause Symptoms">
+                <Field label={tr('Menopause Symptoms', 'मेनोपॉज़ के लक्षण')}>
                   <ChipToggle options={['Hot flashes', 'Night sweats', 'Mood swings', 'Vaginal dryness', 'Sleep disturbance', 'Not Applicable']} selected={formData.hormonalWomen?.menopauseSymptoms || []} onChange={(next) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, menopauseSymptoms: next } })} />
                 </Field>
-                <Field label="Diagnosed Hormonal Conditions">
+                <Field label={tr('Diagnosed Hormonal Conditions', 'निदान की गई हार्मोनल स्थितियां')}>
                   <ChipToggle options={['PCOS/PCOD', 'Thyroid Disorder', 'Endometriosis', 'Fibroids', 'None']} selected={formData.hormonalWomen?.diagnosedHormonalConditions || []} onChange={(next) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, diagnosedHormonalConditions: next } })} />
                 </Field>
-                <Field label="Skin Issues">
+                <Field label={tr('Skin Issues', 'त्वचा संबंधी समस्याएं')}>
                   <ChipToggle options={['Acne', 'Dryness', 'Skin tags', 'Pigmentation', 'Oily skin', 'None']} selected={formData.hormonalWomen?.skinIssues || []} onChange={(next) => setFormData({ ...formData, hormonalWomen: { ...formData.hormonalWomen, skinIssues: next } })} />
                 </Field>
               </div>
@@ -1427,21 +1542,21 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 14 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 14</span>
-                  <h3 className="text-xl font-black">Hormonal Health (Men)</h3>
-                  <p className="text-xs text-zinc-500">Skip anything not applicable to you.</p>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 14', 'अनुभाग 14')}</span>
+                  <h3 className="text-xl font-black">{tr('Hormonal Health (Men)', 'हार्मोनल स्वास्थ्य (पुरुष)')}</h3>
+                  <p className="text-xs text-zinc-500">{tr('Skip anything not applicable to you.', 'जो लागू न हो उसे छोड़ दें।')}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Energy Level"><TextInput value={formData.hormonalMen?.energyLevel || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, energyLevel: e.target.value } })} /></Field>
-                  <Field label="Libido"><TextInput value={formData.hormonalMen?.libido || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, libido: e.target.value } })} /></Field>
-                  <Field label="Erectile Difficulty"><TextInput value={formData.hormonalMen?.erectileDifficulty || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, erectileDifficulty: e.target.value } })} /></Field>
-                  <Field label="Morning Erections Regular?"><YesNo value={formData.hormonalMen?.morningErectionsRegular} onChange={(v) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, morningErectionsRegular: v } })} /></Field>
-                  <Field label="Muscle Mass Trend"><TextInput value={formData.hormonalMen?.muscleMassTrend || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, muscleMassTrend: e.target.value } })} /></Field>
-                  <Field label="Facial / Body Hair Growth"><TextInput value={formData.hormonalMen?.facialBodyHairGrowth || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, facialBodyHairGrowth: e.target.value } })} /></Field>
-                  <Field label="Gynecomastia (Breast Tissue)?"><TextInput value={formData.hormonalMen?.gynecomastia || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, gynecomastia: e.target.value } })} /></Field>
-                  <Field label="Mood Changes"><TextInput value={formData.hormonalMen?.moodChanges || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, moodChanges: e.target.value } })} /></Field>
-                  <Field label="Diagnosed Low Testosterone?"><TextInput value={formData.hormonalMen?.diagnosedLowTestosterone || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, diagnosedLowTestosterone: e.target.value } })} /></Field>
-                  <Field label="Prostate Issues"><TextInput value={formData.hormonalMen?.prostateIssues || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, prostateIssues: e.target.value } })} /></Field>
+                  <Field label={tr('Energy Level', 'ऊर्जा स्तर')}><TextInput value={formData.hormonalMen?.energyLevel || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, energyLevel: e.target.value } })} /></Field>
+                  <Field label={tr('Libido', 'यौन इच्छा')}><TextInput value={formData.hormonalMen?.libido || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, libido: e.target.value } })} /></Field>
+                  <Field label={tr('Erectile Difficulty', 'इरेक्टाइल कठिनाई')}><TextInput value={formData.hormonalMen?.erectileDifficulty || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, erectileDifficulty: e.target.value } })} /></Field>
+                  <Field label={tr('Morning Erections Regular?', 'सुबह इरेक्शन नियमित होता है?')}><YesNo value={formData.hormonalMen?.morningErectionsRegular} onChange={(v) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, morningErectionsRegular: v } })} /></Field>
+                  <Field label={tr('Muscle Mass Trend', 'मांसपेशियों का रुझान')}><TextInput value={formData.hormonalMen?.muscleMassTrend || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, muscleMassTrend: e.target.value } })} /></Field>
+                  <Field label={tr('Facial / Body Hair Growth', 'चेहरे / शरीर के बालों की वृद्धि')}><TextInput value={formData.hormonalMen?.facialBodyHairGrowth || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, facialBodyHairGrowth: e.target.value } })} /></Field>
+                  <Field label={tr('Gynecomastia (Breast Tissue)?', 'गायनेकोमास्टिया (स्तन ऊतक)?')}><TextInput value={formData.hormonalMen?.gynecomastia || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, gynecomastia: e.target.value } })} /></Field>
+                  <Field label={tr('Mood Changes', 'मूड में बदलाव')}><TextInput value={formData.hormonalMen?.moodChanges || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, moodChanges: e.target.value } })} /></Field>
+                  <Field label={tr('Diagnosed Low Testosterone?', 'लो टेस्टोस्टेरोन का निदान हुआ है?')}><TextInput value={formData.hormonalMen?.diagnosedLowTestosterone || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, diagnosedLowTestosterone: e.target.value } })} /></Field>
+                  <Field label={tr('Prostate Issues', 'प्रोस्टेट संबंधी समस्याएं')}><TextInput value={formData.hormonalMen?.prostateIssues || ''} onChange={(e) => setFormData({ ...formData, hormonalMen: { ...formData.hormonalMen, prostateIssues: e.target.value } })} /></Field>
                 </div>
               </div>
             )}
@@ -1450,9 +1565,9 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 15 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 15</span>
-                  <h3 className="text-xl font-black">Organ Health & Complication Symptoms</h3>
-                  <p className="text-xs text-zinc-500">Type a symptom and press Enter to add it under each category — leave empty if none.</p>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 15', 'अनुभाग 15')}</span>
+                  <h3 className="text-xl font-black">{tr('Organ Health & Complication Symptoms', 'अंग स्वास्थ्य व जटिलता के लक्षण')}</h3>
+                  <p className="text-xs text-zinc-500">{tr('Type a symptom and press Enter to add it under each category — leave empty if none.', 'हर श्रेणी में लक्षण लिखें और Enter दबाएं — कुछ न हो तो खाली छोड़ें।')}</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   {([
@@ -1462,12 +1577,12 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                     ['neurologicalSymptoms', 'Neurological Symptoms'], ['skinSymptoms', 'Skin Symptoms'],
                     ['respiratorySymptoms', 'Respiratory Symptoms'],
                   ] as [Exclude<keyof RootCauseAssessmentData['organHealth'], 'unusualSymptomsNotes'>, string][]).map(([key, label]) => (
-                    <Field key={key} label={label}>
+                    <Field key={key} label={tr(label, OPTION_LABEL_HI[label] || label)}>
                       <TagsInput values={formData.organHealth[key]} onChange={(next) => setFormData({ ...formData, organHealth: { ...formData.organHealth, [key]: next } })} />
                     </Field>
                   ))}
                 </div>
-                <Field label="Any Other Unusual Symptoms"><TextArea rows={2} value={formData.organHealth.unusualSymptomsNotes || ''} onChange={(e) => setFormData({ ...formData, organHealth: { ...formData.organHealth, unusualSymptomsNotes: e.target.value } })} /></Field>
+                <Field label={tr('Any Other Unusual Symptoms', 'कोई अन्य असामान्य लक्षण')}><TextArea rows={2} value={formData.organHealth.unusualSymptomsNotes || ''} onChange={(e) => setFormData({ ...formData, organHealth: { ...formData.organHealth, unusualSymptomsNotes: e.target.value } })} /></Field>
               </div>
             )}
 
@@ -1475,11 +1590,11 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 16 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 16</span>
-                  <h3 className="text-xl font-black">Readiness & Commitment</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 16', 'अनुभाग 16')}</span>
+                  <h3 className="text-xl font-black">{tr('Readiness & Commitment', 'तैयारी व संकल्प')}</h3>
                 </div>
-                <Field label="Main Barriers to Getting Healthier"><TextArea rows={2} value={formData.readiness.mainBarriers || ''} onChange={(e) => setFormData({ ...formData, readiness: { ...formData.readiness, mainBarriers: e.target.value } })} /></Field>
-                <Field label="What Would Help You Most?">
+                <Field label={tr('Main Barriers to Getting Healthier', 'स्वस्थ होने में मुख्य बाधाएं')}><TextArea rows={2} value={formData.readiness.mainBarriers || ''} onChange={(e) => setFormData({ ...formData, readiness: { ...formData.readiness, mainBarriers: e.target.value } })} /></Field>
+                <Field label={tr('What Would Help You Most?', 'आपकी सबसे ज़्यादा मदद क्या करेगी?')}>
                   <ChipToggle
                     options={['Simple meal plans that fit my schedule', 'Family-friendly recipes everyone can eat', 'Daily accountability and motivation', 'Clear step-by-step guidance', 'Help managing stress and emotions']}
                     selected={formData.readiness.helpfulFactors}
@@ -1487,11 +1602,11 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                   />
                 </Field>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Willingness to Prioritise Health"><TextInput value={formData.readiness.healthPriorityWillingness} onChange={(e) => setFormData({ ...formData, readiness: { ...formData.readiness, healthPriorityWillingness: e.target.value } })} /></Field>
-                  <Field label="Hours Per Week You Can Commit"><TextInput value={formData.readiness.hoursPerWeekCommitment} onChange={(e) => setFormData({ ...formData, readiness: { ...formData.readiness, hoursPerWeekCommitment: e.target.value } })} /></Field>
-                  <Field label="Motivated for Root-Cause Reversal?"><YesNo value={formData.readiness.motivatedForRootCause} onChange={(v) => setFormData({ ...formData, readiness: { ...formData.readiness, motivatedForRootCause: v } })} /></Field>
-                  <Field label="Can Commit for 90 Days?"><YesNo value={formData.readiness.canCommit90Days} onChange={(v) => setFormData({ ...formData, readiness: { ...formData.readiness, canCommit90Days: v } })} /></Field>
-                  <Field label="Family Support Available?"><YesNo value={formData.readiness.familySupport} onChange={(v) => setFormData({ ...formData, readiness: { ...formData.readiness, familySupport: v } })} /></Field>
+                  <Field label={tr('Willingness to Prioritise Health', 'स्वास्थ्य को प्राथमिकता देने की इच्छा')}><TextInput value={formData.readiness.healthPriorityWillingness} onChange={(e) => setFormData({ ...formData, readiness: { ...formData.readiness, healthPriorityWillingness: e.target.value } })} /></Field>
+                  <Field label={tr('Hours Per Week You Can Commit', 'हफ्ते में कितने घंटे दे सकते हैं')}><TextInput value={formData.readiness.hoursPerWeekCommitment} onChange={(e) => setFormData({ ...formData, readiness: { ...formData.readiness, hoursPerWeekCommitment: e.target.value } })} /></Field>
+                  <Field label={tr('Motivated for Root-Cause Reversal?', 'रूट-कॉज़ रिवर्सल के लिए प्रेरित हैं?')}><YesNo value={formData.readiness.motivatedForRootCause} onChange={(v) => setFormData({ ...formData, readiness: { ...formData.readiness, motivatedForRootCause: v } })} /></Field>
+                  <Field label={tr('Can Commit for 90 Days?', '90 दिनों के लिए संकल्पित हैं?')}><YesNo value={formData.readiness.canCommit90Days} onChange={(v) => setFormData({ ...formData, readiness: { ...formData.readiness, canCommit90Days: v } })} /></Field>
+                  <Field label={tr('Family Support Available?', 'पारिवारिक सहयोग उपलब्ध है?')}><YesNo value={formData.readiness.familySupport} onChange={(v) => setFormData({ ...formData, readiness: { ...formData.readiness, familySupport: v } })} /></Field>
                 </div>
               </div>
             )}
@@ -1500,8 +1615,8 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 17 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 17</span>
-                  <h3 className="text-xl font-black">When Would You Like to Start?</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 17', 'अनुभाग 17')}</span>
+                  <h3 className="text-xl font-black">{tr('When Would You Like to Start?', 'आप कब शुरू करना चाहेंगे?')}</h3>
                 </div>
                 <div className="space-y-3">
                   {[
@@ -1520,10 +1635,10 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-sm">{tier.title}</span>
+                        <span className="font-extrabold text-sm">{tr(tier.title, OPTION_LABEL_HI[tier.title] || tier.title)}</span>
                         {formData.startTimeline === tier.id && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
                       </div>
-                      <p className="text-xs opacity-75 mt-1">{tier.desc}</p>
+                      <p className="text-xs opacity-75 mt-1">{tr(tier.desc, OPTION_LABEL_HI[tier.desc] || tier.desc)}</p>
                     </button>
                   ))}
                 </div>
@@ -1534,9 +1649,9 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 18 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 18</span>
-                  <h3 className="text-xl font-black">Reversal Treatment Intensity Selection</h3>
-                  <p className="text-xs text-zinc-500">Choose the intensity protocol matching your condition severity and daily readiness.</p>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 18', 'अनुभाग 18')}</span>
+                  <h3 className="text-xl font-black">{tr('Reversal Treatment Intensity Selection', 'रिवर्सल उपचार तीव्रता चयन')}</h3>
+                  <p className="text-xs text-zinc-500">{tr('Choose the intensity protocol matching your condition severity and daily readiness.', 'अपनी स्थिति की गंभीरता व दैनिक तैयारी के अनुसार तीव्रता चुनें।')}</p>
                 </div>
 
                 <div className="space-y-3">
@@ -1554,16 +1669,16 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                         setFormData({ ...formData, reversalIntensity: tier.id as any });
                       }}
                       className={`w-full p-4 rounded-2xl border text-left transition-all ${
-                        formData.reversalIntensity === tier.id 
-                          ? 'border-emerald-500 bg-emerald-50/50 shadow-sm' 
+                        formData.reversalIntensity === tier.id
+                          ? 'border-emerald-500 bg-emerald-50/50 shadow-sm'
                           : 'border-zinc-200 bg-zinc-50/50 hover:border-zinc-400'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-sm">{tier.title}</span>
+                        <span className="font-extrabold text-sm">{tr(tier.title, OPTION_LABEL_HI[tier.title] || tier.title)}</span>
                         {formData.reversalIntensity === tier.id && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
                       </div>
-                      <p className="text-xs opacity-75 mt-1">{tier.desc}</p>
+                      <p className="text-xs opacity-75 mt-1">{tr(tier.desc, OPTION_LABEL_HI[tier.desc] || tier.desc)}</p>
                     </button>
                   ))}
                 </div>
@@ -1574,25 +1689,25 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 19 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 19</span>
-                  <h3 className="text-xl font-black">Daily Routine and Timings</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 19', 'अनुभाग 19')}</span>
+                  <h3 className="text-xl font-black">{tr('Daily Routine and Timings', 'दैनिक दिनचर्या व समय')}</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Wake Up Time"><TextInput value={formData.dailyRoutine.wakeUpTime} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, wakeUpTime: e.target.value } })} /></Field>
-                  <Field label="Morning Routine"><TextInput value={formData.dailyRoutine.morningRoutine || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, morningRoutine: e.target.value } })} /></Field>
-                  <Field label="Breakfast Time"><TextInput value={formData.dailyRoutine.breakfastTime} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, breakfastTime: e.target.value } })} /></Field>
-                  <Field label="Mid-Morning Snack Time"><TextInput value={formData.dailyRoutine.midMorningSnackTime || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, midMorningSnackTime: e.target.value } })} /></Field>
-                  <Field label="Lunch Time"><TextInput value={formData.dailyRoutine.lunchTime} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, lunchTime: e.target.value } })} /></Field>
-                  <Field label="Evening Snack / Tea Time"><TextInput value={formData.dailyRoutine.eveningSnackTeaTime || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, eveningSnackTeaTime: e.target.value } })} /></Field>
-                  <Field label="Dinner Time"><TextInput value={formData.dailyRoutine.dinnerTime} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, dinnerTime: e.target.value } })} /></Field>
-                  <Field label="Sleep Time"><TextInput value={formData.dailyRoutine.sleepTime} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, sleepTime: e.target.value } })} /></Field>
-                  <Field label="Work Hours"><TextInput value={formData.dailyRoutine.workHours || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, workHours: e.target.value } })} /></Field>
-                  <Field label="Daily Sitting Hours at Work"><TextInput value={formData.dailyRoutine.dailySittingHoursAtWork || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, dailySittingHoursAtWork: e.target.value } })} /></Field>
-                  <Field label="Commute Time & Mode"><TextInput value={formData.dailyRoutine.commuteTimeAndMode || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, commuteTimeAndMode: e.target.value } })} /></Field>
-                  <Field label="Available Time for Exercise"><TextInput value={formData.dailyRoutine.availableTimeForExercise || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, availableTimeForExercise: e.target.value } })} /></Field>
-                  <Field label="Who Manages Meal Prep"><TextInput value={formData.dailyRoutine.mealPrepManager || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, mealPrepManager: e.target.value } })} /></Field>
+                  <Field label={tr('Wake Up Time', 'उठने का समय')}><TextInput value={formData.dailyRoutine.wakeUpTime} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, wakeUpTime: e.target.value } })} /></Field>
+                  <Field label={tr('Morning Routine', 'सुबह की दिनचर्या')}><TextInput value={formData.dailyRoutine.morningRoutine || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, morningRoutine: e.target.value } })} /></Field>
+                  <Field label={tr('Breakfast Time', 'नाश्ते का समय')}><TextInput value={formData.dailyRoutine.breakfastTime} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, breakfastTime: e.target.value } })} /></Field>
+                  <Field label={tr('Mid-Morning Snack Time', 'सुबह के नाश्ते के बाद का स्नैक समय')}><TextInput value={formData.dailyRoutine.midMorningSnackTime || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, midMorningSnackTime: e.target.value } })} /></Field>
+                  <Field label={tr('Lunch Time', 'दोपहर के भोजन का समय')}><TextInput value={formData.dailyRoutine.lunchTime} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, lunchTime: e.target.value } })} /></Field>
+                  <Field label={tr('Evening Snack / Tea Time', 'शाम के नाश्ते / चाय का समय')}><TextInput value={formData.dailyRoutine.eveningSnackTeaTime || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, eveningSnackTeaTime: e.target.value } })} /></Field>
+                  <Field label={tr('Dinner Time', 'रात के भोजन का समय')}><TextInput value={formData.dailyRoutine.dinnerTime} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, dinnerTime: e.target.value } })} /></Field>
+                  <Field label={tr('Sleep Time', 'सोने का समय')}><TextInput value={formData.dailyRoutine.sleepTime} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, sleepTime: e.target.value } })} /></Field>
+                  <Field label={tr('Work Hours', 'काम के घंटे')}><TextInput value={formData.dailyRoutine.workHours || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, workHours: e.target.value } })} /></Field>
+                  <Field label={tr('Daily Sitting Hours at Work', 'काम पर बैठने के दैनिक घंटे')}><TextInput value={formData.dailyRoutine.dailySittingHoursAtWork || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, dailySittingHoursAtWork: e.target.value } })} /></Field>
+                  <Field label={tr('Commute Time & Mode', 'आने-जाने का समय व साधन')}><TextInput value={formData.dailyRoutine.commuteTimeAndMode || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, commuteTimeAndMode: e.target.value } })} /></Field>
+                  <Field label={tr('Available Time for Exercise', 'व्यायाम के लिए उपलब्ध समय')}><TextInput value={formData.dailyRoutine.availableTimeForExercise || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, availableTimeForExercise: e.target.value } })} /></Field>
+                  <Field label={tr('Who Manages Meal Prep', 'भोजन कौन बनाता है')}><TextInput value={formData.dailyRoutine.mealPrepManager || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, mealPrepManager: e.target.value } })} /></Field>
                 </div>
-                <Field label="Weekend Schedule Difference"><TextArea rows={2} value={formData.dailyRoutine.weekendScheduleDifference || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, weekendScheduleDifference: e.target.value } })} /></Field>
+                <Field label={tr('Weekend Schedule Difference', 'सप्ताहांत का अलग शेड्यूल')}><TextArea rows={2} value={formData.dailyRoutine.weekendScheduleDifference || ''} onChange={(e) => setFormData({ ...formData, dailyRoutine: { ...formData.dailyRoutine, weekendScheduleDifference: e.target.value } })} /></Field>
               </div>
             )}
 
@@ -1600,10 +1715,10 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 20 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 20</span>
-                  <h3 className="text-xl font-black">Exercise Preferences & Realistic Activity Plan</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 20', 'अनुभाग 20')}</span>
+                  <h3 className="text-xl font-black">{tr('Exercise Preferences & Realistic Activity Plan', 'व्यायाम पसंद व यथार्थवादी गतिविधि योजना')}</h3>
                 </div>
-                <Field label="Preferred Exercise Types">
+                <Field label={tr('Preferred Exercise Types', 'पसंदीदा व्यायाम प्रकार')}>
                   <ChipToggle
                     options={['Walking or brisk walking (outdoor or treadmill)', 'Yoga asanas and pranayama', 'Functional training or HIIT', 'Strength / Weight training', 'Swimming', 'Cycling', 'Dance / Zumba', 'Sports']}
                     selected={formData.exercisePlan.preferredExerciseTypes}
@@ -1611,16 +1726,16 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                   />
                 </Field>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Gym / Equipment Access"><TextInput value={formData.exercisePlan.gymOrEquipmentAccess || ''} onChange={(e) => setFormData({ ...formData, exercisePlan: { ...formData.exercisePlan, gymOrEquipmentAccess: e.target.value } })} /></Field>
-                  <Field label="Best Time Slot">
+                  <Field label={tr('Gym / Equipment Access', 'जिम / उपकरण उपलब्धता')}><TextInput value={formData.exercisePlan.gymOrEquipmentAccess || ''} onChange={(e) => setFormData({ ...formData, exercisePlan: { ...formData.exercisePlan, gymOrEquipmentAccess: e.target.value } })} /></Field>
+                  <Field label={tr('Best Time Slot', 'सबसे अच्छा समय')}>
                     <SelectInput value={formData.exercisePlan.bestTimeSlot || 'flexible'} onChange={(e) => setFormData({ ...formData, exercisePlan: { ...formData.exercisePlan, bestTimeSlot: e.target.value as any } })}>
-                      <option value="morning">Morning</option>
-                      <option value="evening">Evening</option>
-                      <option value="flexible">Flexible</option>
+                      <option value="morning">{tr('Morning', 'सुबह')}</option>
+                      <option value="evening">{tr('Evening', 'शाम')}</option>
+                      <option value="flexible">{tr('Flexible', 'लचीला समय')}</option>
                     </SelectInput>
                   </Field>
                 </div>
-                <Field label="Limitations / Explanation"><TextArea rows={2} value={formData.exercisePlan.limitationsExplanation || ''} onChange={(e) => setFormData({ ...formData, exercisePlan: { ...formData.exercisePlan, limitationsExplanation: e.target.value } })} /></Field>
+                <Field label={tr('Limitations / Explanation', 'सीमाएं / स्पष्टीकरण')}><TextArea rows={2} value={formData.exercisePlan.limitationsExplanation || ''} onChange={(e) => setFormData({ ...formData, exercisePlan: { ...formData.exercisePlan, limitationsExplanation: e.target.value } })} /></Field>
               </div>
             )}
 
@@ -1628,15 +1743,15 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 21 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 21</span>
-                  <h3 className="text-xl font-black">Personal Query for the Doctor</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 21', 'अनुभाग 21')}</span>
+                  <h3 className="text-xl font-black">{tr('Personal Query for the Doctor', 'डॉक्टर के लिए व्यक्तिगत प्रश्न')}</h3>
                 </div>
-                <Field label="Personal Query & Reversal Customization Request">
+                <Field label={tr('Personal Query & Reversal Customization Request', 'व्यक्तिगत प्रश्न व रिवर्सल अनुकूलन अनुरोध')}>
                   <TextArea
                     rows={5}
                     value={formData.personalQueryRequest || ''}
                     onChange={(e) => setFormData({ ...formData, personalQueryRequest: e.target.value })}
-                    placeholder="Write any specific query, dietary constraint, or medication question you want the physician to review..."
+                    placeholder={tr('Write any specific query, dietary constraint, or medication question you want the physician to review...', 'कोई विशेष प्रश्न, आहार संबंधी बाध्यता या दवा संबंधी सवाल लिखें जो डॉक्टर को देखना चाहिए...')}
                   />
                 </Field>
               </div>
@@ -1646,25 +1761,25 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             {activeSection === 22 && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
-                  <span className="text-xs font-bold text-emerald-600 uppercase">Section 22</span>
-                  <h3 className="text-xl font-black">Additional Information</h3>
+                  <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 22', 'अनुभाग 22')}</span>
+                  <h3 className="text-xl font-black">{tr('Additional Information', 'अतिरिक्त जानकारी')}</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="Past Surgeries or Illnesses"><TextArea rows={2} value={formData.additionalInfo.pastSurgeriesOrIllnesses || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, pastSurgeriesOrIllnesses: e.target.value } })} /></Field>
-                  <Field label="Ongoing Specialist Treatments"><TextArea rows={2} value={formData.additionalInfo.ongoingSpecialistTreatments || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, ongoingSpecialistTreatments: e.target.value } })} /></Field>
-                  <Field label="Genetic or Rare Conditions"><TextArea rows={2} value={formData.additionalInfo.geneticOrRareConditions || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, geneticOrRareConditions: e.target.value } })} /></Field>
-                  <Field label="Occupation Challenges"><TextArea rows={2} value={formData.additionalInfo.occupationChallenges || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, occupationChallenges: e.target.value } })} /></Field>
-                  <Field label="Living Situation"><TextInput value={formData.additionalInfo.livingSituation || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, livingSituation: e.target.value } })} /></Field>
-                  <Field label="Who Manages Your Meals"><TextInput value={formData.additionalInfo.whoManagesMeals || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, whoManagesMeals: e.target.value } })} /></Field>
+                  <Field label={tr('Past Surgeries or Illnesses', 'पिछली सर्जरी या बीमारियां')}><TextArea rows={2} value={formData.additionalInfo.pastSurgeriesOrIllnesses || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, pastSurgeriesOrIllnesses: e.target.value } })} /></Field>
+                  <Field label={tr('Ongoing Specialist Treatments', 'चल रहे विशेषज्ञ उपचार')}><TextArea rows={2} value={formData.additionalInfo.ongoingSpecialistTreatments || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, ongoingSpecialistTreatments: e.target.value } })} /></Field>
+                  <Field label={tr('Genetic or Rare Conditions', 'आनुवंशिक या दुर्लभ स्थितियां')}><TextArea rows={2} value={formData.additionalInfo.geneticOrRareConditions || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, geneticOrRareConditions: e.target.value } })} /></Field>
+                  <Field label={tr('Occupation Challenges', 'कार्य संबंधी चुनौतियां')}><TextArea rows={2} value={formData.additionalInfo.occupationChallenges || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, occupationChallenges: e.target.value } })} /></Field>
+                  <Field label={tr('Living Situation', 'रहने की स्थिति')}><TextInput value={formData.additionalInfo.livingSituation || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, livingSituation: e.target.value } })} /></Field>
+                  <Field label={tr('Who Manages Your Meals', 'भोजन कौन प्रबंधित करता है')}><TextInput value={formData.additionalInfo.whoManagesMeals || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, whoManagesMeals: e.target.value } })} /></Field>
                 </div>
-                <Field label="Specific Treatment Requirements"><TextArea rows={2} value={formData.additionalInfo.treatmentRequirements || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, treatmentRequirements: e.target.value } })} /></Field>
-                <Field label="Questions for the Doctor"><TextArea rows={2} value={formData.additionalInfo.questionsForDoctor || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, questionsForDoctor: e.target.value } })} /></Field>
-                <Field label="Additional Information & Final Notes">
+                <Field label={tr('Specific Treatment Requirements', 'विशेष उपचार आवश्यकताएं')}><TextArea rows={2} value={formData.additionalInfo.treatmentRequirements || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, treatmentRequirements: e.target.value } })} /></Field>
+                <Field label={tr('Questions for the Doctor', 'डॉक्टर के लिए प्रश्न')}><TextArea rows={2} value={formData.additionalInfo.questionsForDoctor || ''} onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, questionsForDoctor: e.target.value } })} /></Field>
+                <Field label={tr('Additional Information & Final Notes', 'अतिरिक्त जानकारी व अंतिम टिप्पणी')}>
                   <TextArea
                     rows={4}
                     value={formData.additionalInfo.patientExtraNotes || ''}
                     onChange={(e) => setFormData({ ...formData, additionalInfo: { ...formData.additionalInfo, patientExtraNotes: e.target.value } })}
-                    placeholder="Share any other surgery history, childhood health, living situation or preferences..."
+                    placeholder={tr('Share any other surgery history, childhood health, living situation or preferences...', 'कोई अन्य सर्जरी इतिहास, बचपन का स्वास्थ्य, रहने की स्थिति या पसंद बताएं...')}
                   />
                 </Field>
               </div>
@@ -1684,11 +1799,11 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             }`}
           >
             <ChevronLeft className="w-4 h-4" />
-            <span>Previous Module</span>
+            <span>{tr('Previous Module', 'पिछला मॉड्यूल')}</span>
           </button>
 
           <div className="text-xs font-mono font-bold text-zinc-500">
-            {activeSection} / 22 Modules Completed
+            {activeSection} / 22 {tr('Modules Completed', 'मॉड्यूल पूर्ण')}
           </div>
 
           <button
@@ -1696,7 +1811,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
             onClick={handleNextSection}
             className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-emerald-600/30 transition-all cursor-pointer"
           >
-            <span>{activeSection === 22 ? 'Submit & Finalize Plan' : 'Next Module'}</span>
+            <span>{activeSection === 22 ? tr('Submit & Finalize Plan', 'सबमिट करें व योजना अंतिम करें') : tr('Next Module', 'अगला मॉड्यूल')}</span>
             <ChevronRight className="w-4 h-4 stroke-[3]" />
           </button>
         </div>

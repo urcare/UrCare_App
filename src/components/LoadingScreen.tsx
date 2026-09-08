@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, ShieldCheck, Zap } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Logo } from './Logo';
 
 interface LoadingScreenProps {
@@ -12,10 +13,13 @@ interface LoadingScreenProps {
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({
   onLoaded,
   durationMs = 1200,
-  message = 'Initializing Clinical Metabolic Intelligence...',
+  message,
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
+  const displayMessage = message || tr('Initializing Clinical Metabolic Intelligence...', 'क्लिनिकल मेटाबॉलिक इंटेलिजेंस शुरू हो रहा है...');
   const [progress, setProgress] = useState(15);
 
   useEffect(() => {
@@ -52,7 +56,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             UrCare
           </h1>
           <p className="text-xs font-semibold text-emerald-500 uppercase tracking-widest mt-1">
-            Clinical Nutrition & Metabolic Protocol
+            {tr('Clinical Nutrition & Metabolic Protocol', 'क्लिनिकल पोषण व मेटाबॉलिक प्रोटोकॉल')}
           </p>
         </div>
 
@@ -65,7 +69,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             />
           </div>
           <div className="flex items-center justify-between text-[10px] font-mono opacity-60">
-            <span>{message}</span>
+            <span>{displayMessage}</span>
             <span>{Math.min(100, progress)}%</span>
           </div>
         </div>
@@ -73,7 +77,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
         {/* Security & Clinical Badge */}
         <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 pt-2 border-t border-zinc-800/40">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-          <span>Evidence-Based Endocrinology & Dietetics</span>
+          <span>{tr('Evidence-Based Endocrinology & Dietetics', 'साक्ष्य-आधारित एंडोक्राइनोलॉजी व आहार विज्ञान')}</span>
         </div>
 
       </div>

@@ -8,6 +8,20 @@ import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
 import { updateAvatar } from '../utils/supabase';
 import { EditHealthProfileModal } from './EditHealthProfileModal';
 
+function formatGoalLabel(goal?: string): string {
+  if (!goal) return 'Reversal Plan';
+  return goal.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const GOAL_LABEL_HI: Record<string, string> = {
+  lose_weight: 'वज़न घटाना',
+  build_muscle: 'मांसपेशी बनाना',
+  maintain_tone: 'टोन बनाए रखना',
+  improve_health: 'स्वास्थ्य सुधारना',
+  reverse_condition: 'स्थिति को उलटना',
+  '': 'रिवर्सल योजना',
+};
+
 interface AccountPageProps {
   profile: UserHealthProfile;
   account: UserAccount;
@@ -57,7 +71,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   onOpenDoctorConsult,
   onLogOut,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -67,7 +82,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      setAvatarError('Please choose an image file.');
+      setAvatarError(tr('Please choose an image file.', 'कृपया एक इमेज फ़ाइल चुनें।'));
       return;
     }
     setAvatarError(null);
@@ -78,7 +93,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
       if (error) throw new Error(error);
       onUpdateAccount?.({ ...account, avatarUrl: dataUrl });
     } catch (err: any) {
-      setAvatarError(err.message || 'Could not save your photo. Please try again.');
+      setAvatarError(err.message || tr('Could not save your photo. Please try again.', 'आपकी फोटो सहेजी नहीं जा सकी। कृपया पुनः प्रयास करें।'));
     } finally {
       setIsUploadingAvatar(false);
       if (avatarInputRef.current) avatarInputRef.current.value = '';
@@ -129,7 +144,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
                   type="button"
                   onClick={() => avatarInputRef.current?.click()}
                   disabled={isUploadingAvatar}
-                  title="Change photo"
+                  title={tr('Change photo', 'फोटो बदलें')}
                   className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-white border-2 border-white shadow-md flex items-center justify-center text-emerald-600 hover:text-emerald-700 cursor-pointer disabled:opacity-60"
                 >
                   {isUploadingAvatar ? (
@@ -143,18 +158,18 @@ export const AccountPage: React.FC<AccountPageProps> = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-lg sm:text-xl font-black text-zinc-950 break-words">
-                    {profile.name || account.displayName || 'UrCare Member'}
+                    {profile.name || account.displayName || tr('UrCare Member', 'UrCare सदस्य')}
                   </h1>
                   <span className="flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
                     <BadgeCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-500/15 shrink-0" strokeWidth={2.5} />
-                    <span>Verified Member</span>
+                    <span>{tr('Verified Member', 'सत्यापित सदस्य')}</span>
                   </span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 font-medium mt-1">
                   {profile.email && <span className="flex items-center gap-1 min-w-0 break-all"><Mail className="w-3.5 h-3.5 shrink-0" />{profile.email}</span>}
                   {profile.phone && <span className="flex items-center gap-1 shrink-0"><Phone className="w-3.5 h-3.5" />{profile.phone}</span>}
-                  <span className="shrink-0">{gender.toUpperCase()} • {age} YRS</span>
+                  <span className="shrink-0">{gender.toUpperCase()} • {age} {tr('YRS', 'वर्ष')}</span>
                 </div>
               </div>
             </div>
@@ -165,7 +180,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
               className="px-4 py-2 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 w-full sm:w-auto justify-center"
             >
               <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Edit Health Profile</span>
+              <span>{tr('Edit Health Profile', 'स्वास्थ्य प्रोफ़ाइल संपादित करें')}</span>
             </button>
           </div>
 
@@ -178,7 +193,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
 
           <div className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-xs space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Current Weight</span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">{tr('Current Weight', 'वर्तमान वज़न')}</span>
             <div className="text-xl sm:text-2xl font-black text-zinc-950">
               {profile.currentWeightKg} <span className="text-xs font-semibold text-zinc-400">kg</span>
             </div>
@@ -188,17 +203,17 @@ export const AccountPage: React.FC<AccountPageProps> = ({
           </div>
 
           <div className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-xs space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Target Goal</span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">{tr('Target Goal', 'लक्ष्य वज़न')}</span>
             <div className="text-xl sm:text-2xl font-black text-emerald-600">
               {profile.targetWeightKg} <span className="text-xs font-semibold text-emerald-700">kg</span>
             </div>
             <span className="text-[10px] text-emerald-800 font-bold block">
-              {profile.goal?.replace('_', ' ') || 'Reversal Plan'}
+              {tr(formatGoalLabel(profile.goal), GOAL_LABEL_HI[profile.goal || ''] || formatGoalLabel(profile.goal))}
             </span>
           </div>
 
           <div className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-xs space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Height</span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">{tr('Height', 'कद')}</span>
             <div className="text-xl sm:text-2xl font-black text-zinc-950">
               {heightCm} <span className="text-xs font-semibold text-zinc-400">cm</span>
             </div>
@@ -208,12 +223,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({
           </div>
 
           <div className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-xs space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">BMI Status</span>
+            <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">{tr('BMI Status', 'बीएमआई स्थिति')}</span>
             <div className="text-xl sm:text-2xl font-black text-zinc-950">
               {bmi}
             </div>
             <span className="text-[10px] font-bold text-emerald-700 block">
-              {bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal (Healthy)' : bmi < 30 ? 'Overweight' : 'Need Reversal'}
+              {bmi < 18.5 ? tr('Underweight', 'कम वज़न') : bmi < 25 ? tr('Normal (Healthy)', 'सामान्य (स्वस्थ)') : bmi < 30 ? tr('Overweight', 'अधिक वज़न') : tr('Need Reversal', 'रिवर्सल आवश्यक')}
             </span>
           </div>
 
@@ -225,37 +240,37 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <div className="flex items-center gap-2">
               <Flame className="w-5 h-5 text-emerald-600" />
               <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight">
-                Daily Nutrition & Water Targets
+                {tr('Daily Nutrition & Water Targets', 'दैनिक पोषण व पानी के लक्ष्य')}
               </h3>
             </div>
             <span className="text-xs font-extrabold text-emerald-700">
-              {calculatedPlan?.targetCalories || 1850} kcal / day
+              {calculatedPlan?.targetCalories || 1850} kcal / {tr('day', 'दिन')}
             </span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
             <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">Protein Target</span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Protein Target', 'प्रोटीन लक्ष्य')}</span>
               <div className="text-lg font-black text-emerald-600">{calculatedPlan?.proteinGrams || 130}g</div>
-              <span className="text-[10px] text-zinc-500 font-medium">For muscle & sugar control</span>
+              <span className="text-[10px] text-zinc-500 font-medium">{tr('For muscle & sugar control', 'मांसपेशी व शुगर नियंत्रण हेतु')}</span>
             </div>
 
             <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">Carb Target</span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Carb Target', 'कार्ब्स लक्ष्य')}</span>
               <div className="text-lg font-black text-zinc-900">{calculatedPlan?.carbsGrams || 180}g</div>
-              <span className="text-[10px] text-zinc-500 font-medium">Whole grains & fiber</span>
+              <span className="text-[10px] text-zinc-500 font-medium">{tr('Whole grains & fiber', 'साबुत अनाज व फाइबर')}</span>
             </div>
 
             <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">Healthy Fats</span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Healthy Fats', 'हेल्दी फैट्स')}</span>
               <div className="text-lg font-black text-zinc-900">{calculatedPlan?.fatsGrams || 50}g</div>
-              <span className="text-[10px] text-zinc-500 font-medium">Nuts & seeds</span>
+              <span className="text-[10px] text-zinc-500 font-medium">{tr('Nuts & seeds', 'मेवे व बीज')}</span>
             </div>
 
             <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">Water Intake</span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Water Intake', 'पानी की मात्रा')}</span>
               <div className="text-lg font-black text-teal-600">{calculatedPlan?.waterLiters || 3.2}L</div>
-              <span className="text-[10px] text-zinc-500 font-medium">Daily hydration</span>
+              <span className="text-[10px] text-zinc-500 font-medium">{tr('Daily hydration', 'दैनिक जल सेवन')}</span>
             </div>
           </div>
         </div>
@@ -271,8 +286,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-black text-zinc-900">Lab & Diab Reports</div>
-              <span className="text-[10px] text-zinc-500">Upload PDF or type text</span>
+              <div className="text-xs font-black text-zinc-900">{tr('Lab & Diab Reports', 'लैब व डायबिटीज़ रिपोर्ट्स')}</div>
+              <span className="text-[10px] text-zinc-500">{tr('Upload PDF or type text', 'PDF अपलोड करें या टेक्स्ट टाइप करें')}</span>
             </div>
           </button>
 
@@ -285,8 +300,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({
               <Stethoscope className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-black text-zinc-900">Doctor Hotline</div>
-              <span className="text-[10px] text-zinc-500">Consult clinical MD</span>
+              <div className="text-xs font-black text-zinc-900">{tr('Doctor Hotline', 'डॉक्टर हॉटलाइन')}</div>
+              <span className="text-[10px] text-zinc-500">{tr('Consult clinical MD', 'क्लिनिकल MD से परामर्श')}</span>
             </div>
           </button>
 
@@ -299,8 +314,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({
               <Package className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-black text-zinc-900">My Orders</div>
-              <span className="text-[10px] text-zinc-500">Supplements & delivery</span>
+              <div className="text-xs font-black text-zinc-900">{tr('My Orders', 'मेरे ऑर्डर')}</div>
+              <span className="text-[10px] text-zinc-500">{tr('Supplements & delivery', 'सप्लीमेंट्स व डिलीवरी')}</span>
             </div>
           </button>
         </div>
@@ -313,7 +328,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             className="px-4 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
-            <span>Sign Out of UrCare</span>
+            <span>{tr('Sign Out of UrCare', 'UrCare से साइन आउट करें')}</span>
           </button>
         </div>
 

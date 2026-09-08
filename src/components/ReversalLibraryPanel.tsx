@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { FileText, ChevronDown, Search, X } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 /** One row of the static reversal-plan content (see reversal_plan_sections in
  *  the DB). A row with no timeLabel is reference material, not a scheduled
@@ -50,6 +51,23 @@ const CATEGORY_ORDER = [
   'Other',
 ];
 
+const CATEGORY_LABEL_HI: Record<string, string> = {
+  'Herbal Reference by Condition': 'स्थिति अनुसार जड़ी-बूटी संदर्भ',
+  'Condition-Specific Diet': 'स्थिति-विशिष्ट आहार',
+  'Intensive Add-On Plans': 'इंटेंसिव अतिरिक्त योजनाएं',
+  'Advanced Exercise Plans': 'एडवांस्ड एक्सरसाइज़ योजनाएं',
+  'Advanced Therapies': 'एडवांस्ड थेरेपी',
+  'Vitamins': 'विटामिन',
+  'Minerals': 'मिनरल्स',
+  'Therapeutic Supplements': 'चिकित्सीय सप्लीमेंट्स',
+  'Enhanced Meal Plans': 'उन्नत भोजन योजनाएं',
+  'Meal List Basics': 'भोजन सूची की मूल बातें',
+  'Breakfast Recipes': 'नाश्ते की रेसिपी',
+  'Lunch Recipes': 'दोपहर के भोजन की रेसिपी',
+  'Help, Safety & Quick Reference': 'सहायता, सुरक्षा व त्वरित संदर्भ',
+  'Other': 'अन्य',
+};
+
 function useToggleSet(): [Set<string>, (id: string) => void] {
   const [set, setSet] = useState<Set<string>>(new Set());
   const toggle = (id: string) => setSet((prev) => {
@@ -71,6 +89,8 @@ interface ReversalLibraryPanelProps {
  *  meant to sit statically in a sidebar next to (not inside) the daily plan,
  *  so it's always in view without needing a menu to reach it. */
 export const ReversalLibraryPanel: React.FC<ReversalLibraryPanelProps> = ({ sections, isDark = false }) => {
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [refSearch, setRefSearch] = useState('');
   const [expandedCategories, toggleCategory] = useToggleSet();
   const [expandedItems, toggleItem] = useToggleSet();
@@ -99,9 +119,9 @@ export const ReversalLibraryPanel: React.FC<ReversalLibraryPanelProps> = ({ sect
       <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40 flex-wrap gap-2">
         <div className="flex items-center gap-2 text-emerald-500 min-w-0">
           <FileText className="w-5 h-5 shrink-0" />
-          <h3 className="text-sm font-black tracking-tight truncate">Your Reversal Library</h3>
+          <h3 className="text-sm font-black tracking-tight truncate">{tr('Your Reversal Library', 'आपकी रिवर्सल लाइब्रेरी')}</h3>
         </div>
-        <span className="text-[10px] font-bold opacity-50 shrink-0">{sections.length} items</span>
+        <span className="text-[10px] font-bold opacity-50 shrink-0">{sections.length} {tr('items', 'आइटम')}</span>
       </div>
 
       <div className="relative">
@@ -110,7 +130,7 @@ export const ReversalLibraryPanel: React.FC<ReversalLibraryPanelProps> = ({ sect
           type="text"
           value={refSearch}
           onChange={(e) => setRefSearch(e.target.value)}
-          placeholder="Search recipes, herbs, vitamins…"
+          placeholder={tr('Search recipes, herbs, vitamins…', 'रेसिपी, जड़ी-बूटी, विटामिन खोजें…')}
           className={`w-full pl-9 pr-9 py-2.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500/40 ${subCardClass} ${isDark ? 'placeholder:text-zinc-500' : 'placeholder:text-zinc-400'}`}
         />
         {refSearch && (
@@ -121,7 +141,7 @@ export const ReversalLibraryPanel: React.FC<ReversalLibraryPanelProps> = ({ sect
       </div>
 
       {referenceByCategory.length === 0 ? (
-        <p className="text-xs opacity-60 text-center py-4">No matches for "{refSearch}".</p>
+        <p className="text-xs opacity-60 text-center py-4">{tr(`No matches for "${refSearch}".`, `"${refSearch}" के लिए कोई मेल नहीं मिला।`)}</p>
       ) : (
         <div className="space-y-2">
           {referenceByCategory.map(({ category, items }) => {
@@ -133,7 +153,7 @@ export const ReversalLibraryPanel: React.FC<ReversalLibraryPanelProps> = ({ sect
                   onClick={() => toggleCategory(category)}
                   className="w-full flex items-center gap-2 px-3.5 py-3 text-left cursor-pointer"
                 >
-                  <span className="text-xs font-black flex-1 min-w-0 truncate">{category}</span>
+                  <span className="text-xs font-black flex-1 min-w-0 truncate">{tr(category, CATEGORY_LABEL_HI[category] || category)}</span>
                   <span className="text-[10px] font-bold opacity-50 shrink-0">{items.length}</span>
                   <ChevronDown className={`w-4 h-4 opacity-40 shrink-0 transition-transform ${catOpen ? 'rotate-180' : ''}`} />
                 </button>

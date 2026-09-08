@@ -4,6 +4,7 @@ import {
   FileText, Copy, ArrowRight, CheckCircle2, AlertCircle, RefreshCw, Smartphone
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Order, CartItem, ShippingAddress } from '../types';
 import { saveOrderAndReceiptToSupabase, updateOrderPayment } from '../utils/supabase';
 
@@ -32,6 +33,8 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   // Payment Options: 'razorpay' | 'qr_upi'
   const [selectedMethod, setSelectedMethod] = useState<'razorpay' | 'qr_upi'>('razorpay');
@@ -96,7 +99,7 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
       const newOrder: Order = {
         id: orderId,
         userId: userId || 'usr_active',
-        userName: userName || shippingAddress.fullName || 'Valued Member',
+        userName: userName || shippingAddress.fullName || tr('Valued Member', 'सम्मानित सदस्य'),
         userEmail: userEmail || 'member@urcare.clinic',
         items,
         shippingAddress,
@@ -118,7 +121,7 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
       setStep('receipt_upload');
     } catch (err: any) {
       setIsProcessing(false);
-      setErrorMessage(err.message || 'Razorpay payment gateway communication failed.');
+      setErrorMessage(err.message || tr('Razorpay payment gateway communication failed.', 'Razorpay भुगतान गेटवे से संपर्क विफल रहा।'));
     }
   };
 
@@ -130,7 +133,7 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
     const newOrder: Order = {
       id: placeholderId,
       userId: userId || 'usr_active',
-      userName: userName || shippingAddress.fullName || 'Valued Member',
+      userName: userName || shippingAddress.fullName || tr('Valued Member', 'सम्मानित सदस्य'),
       userEmail: userEmail || 'member@urcare.clinic',
       items,
       shippingAddress,
@@ -148,7 +151,7 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
     const saveResult = await saveOrderAndReceiptToSupabase(newOrder);
     setIsProcessing(false);
     if (!saveResult.success) {
-      setErrorMessage(saveResult.error || 'Could not create this order. Please try again.');
+      setErrorMessage(saveResult.error || tr('Could not create this order. Please try again.', 'यह ऑर्डर नहीं बनाया जा सका। कृपया पुनः प्रयास करें।'));
       return;
     }
     // The server assigns the real order id — everything after this must use it.
@@ -170,7 +173,7 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
 
     setIsProcessing(false);
     if (!result.success) {
-      setErrorMessage(result.error || 'Could not confirm this order. Please try again.');
+      setErrorMessage(result.error || tr('Could not confirm this order. Please try again.', 'यह ऑर्डर पुष्ट नहीं हो सका। कृपया पुनः प्रयास करें।'));
       return;
     }
 
@@ -198,9 +201,9 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-emerald-500" />
-              <h3 className="text-lg font-black uppercase tracking-tight">Clinical Payment Gateway</h3>
+              <h3 className="text-lg font-black uppercase tracking-tight">{tr('Clinical Payment Gateway', 'क्लिनिकल भुगतान गेटवे')}</h3>
             </div>
-            <p className="text-xs opacity-60 mt-0.5">Secure 256-Bit Encrypted Healthcare Checkout</p>
+            <p className="text-xs opacity-60 mt-0.5">{tr('Secure 256-Bit Encrypted Healthcare Checkout', 'सुरक्षित 256-बिट एन्क्रिप्टेड हेल्थकेयर चेकआउट')}</p>
           </div>
           {step !== 'confirmed' && (
             <button
@@ -227,21 +230,21 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
             {/* Amount Summary */}
             <div className={`p-4 rounded-2xl ${isDark ? 'bg-zinc-900 border border-zinc-800' : 'bg-zinc-50 border border-zinc-200'} flex items-center justify-between`}>
               <div>
-                <span className="text-[11px] font-bold opacity-60 uppercase tracking-wider">Total Payable Amount</span>
+                <span className="text-[11px] font-bold opacity-60 uppercase tracking-wider">{tr('Total Payable Amount', 'कुल देय राशि')}</span>
                 <div className="text-2xl font-black text-emerald-500 mt-0.5">₹{totalAmount.toLocaleString('en-IN')}</div>
               </div>
               <div className="text-right">
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase">
-                  {items.reduce((sum, item) => sum + item.quantity, 0)} Items Selected
+                  {items.reduce((sum, item) => sum + item.quantity, 0)} {tr('Items Selected', 'आइटम चयनित')}
                 </span>
-                <p className="text-[11px] opacity-60 mt-1">Free Clinical Shipping Included</p>
+                <p className="text-[11px] opacity-60 mt-1">{tr('Free Clinical Shipping Included', 'मुफ्त क्लिनिकल शिपिंग शामिल')}</p>
               </div>
             </div>
 
             {/* Payment Method Tabs */}
             <div className="space-y-3">
               <label className="block text-xs font-black uppercase tracking-wider opacity-80">
-                Select Payment Option
+                {tr('Select Payment Option', 'भुगतान विकल्प चुनें')}
               </label>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -261,8 +264,8 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
                     </div>
                     {selectedMethod === 'razorpay' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
                   </div>
-                  <div className="text-sm font-extrabold">Razorpay Gateway</div>
-                  <div className="text-[11px] opacity-65 mt-0.5">Instant Card, NetBanking & UPI</div>
+                  <div className="text-sm font-extrabold">{tr('Razorpay Gateway', 'Razorpay गेटवे')}</div>
+                  <div className="text-[11px] opacity-65 mt-0.5">{tr('Instant Card, NetBanking & UPI', 'तुरंत कार्ड, नेटबैंकिंग व UPI')}</div>
                 </button>
 
                 {/* Option 2: QR Code with UPI ID */}
@@ -281,8 +284,8 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
                     </div>
                     {selectedMethod === 'qr_upi' && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
                   </div>
-                  <div className="text-sm font-extrabold">UPI QR Code</div>
-                  <div className="text-[11px] opacity-65 mt-0.5">Scan with GPay, PhonePe, Paytm</div>
+                  <div className="text-sm font-extrabold">{tr('UPI QR Code', 'UPI QR कोड')}</div>
+                  <div className="text-[11px] opacity-65 mt-0.5">{tr('Scan with GPay, PhonePe, Paytm', 'GPay, PhonePe, Paytm से स्कैन करें')}</div>
                 </button>
               </div>
             </div>
@@ -291,11 +294,11 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
             {selectedMethod === 'razorpay' && (
               <div className={`p-4 rounded-2xl border ${isDark ? 'bg-zinc-900/50 border-zinc-800' : 'bg-zinc-50 border-zinc-200'} space-y-3`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold">Supported Modes:</span>
+                  <span className="text-xs font-bold">{tr('Supported Modes:', 'समर्थित तरीके:')}</span>
                   <span className="text-[11px] font-mono opacity-60">Visa • Mastercard • RuPay • UPI</span>
                 </div>
                 <p className="text-xs opacity-75 leading-relaxed">
-                  Clicking the button below invokes the Razorpay payment modal with automatic signature verification.
+                  {tr('Clicking the button below invokes the Razorpay payment modal with automatic signature verification.', 'नीचे दिया बटन दबाने से स्वचालित सिग्नेचर सत्यापन के साथ Razorpay भुगतान मॉडल खुलेगा।')}
                 </p>
                 <button
                   type="button"
@@ -306,12 +309,12 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
                   {isProcessing ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Contacting Razorpay Gateway...</span>
+                      <span>{tr('Contacting Razorpay Gateway...', 'Razorpay गेटवे से संपर्क हो रहा है...')}</span>
                     </>
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4" />
-                      <span>Pay ₹{totalAmount.toLocaleString('en-IN')} via Razorpay</span>
+                      <span>{tr('Pay', 'भुगतान करें')} ₹{totalAmount.toLocaleString('en-IN')} {tr('via Razorpay', 'Razorpay के माध्यम से')}</span>
                     </>
                   )}
                 </button>
@@ -330,9 +333,9 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
                     />
                   </div>
                   <div className="space-y-2.5 text-left w-full">
-                    <div className="text-xs font-bold opacity-80">1. Scan & Pay ₹{totalAmount} with any UPI app</div>
-                    <div className="text-xs font-bold opacity-80">2. Or copy official UPI ID:</div>
-                    
+                    <div className="text-xs font-bold opacity-80">{tr(`1. Scan & Pay ₹${totalAmount} with any UPI app`, `1. किसी भी UPI ऐप से ₹${totalAmount} स्कैन कर भुगतान करें`)}</div>
+                    <div className="text-xs font-bold opacity-80">{tr('2. Or copy official UPI ID:', '2. या आधिकारिक UPI ID कॉपी करें:')}</div>
+
                     <div className={`flex items-center justify-between p-2.5 rounded-xl border ${isDark ? 'bg-zinc-950 border-zinc-800' : 'bg-white border-zinc-300'}`}>
                       <span className="text-xs font-mono font-bold text-emerald-500">{upiId}</span>
                       <button
@@ -341,12 +344,12 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
                         className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 text-[11px] font-bold flex items-center gap-1 transition-colors"
                       >
                         {copiedUpi ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                        <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
+                        <span>{copiedUpi ? tr('Copied', 'कॉपी हुआ') : tr('Copy', 'कॉपी करें')}</span>
                       </button>
                     </div>
 
                     <p className="text-[11px] opacity-60">
-                      Merchant: UrCare Health Nutrition (HDFC Bank)
+                      {tr('Merchant:', 'व्यापारी:')} UrCare Health Nutrition (HDFC Bank)
                     </p>
                   </div>
                 </div>
@@ -357,7 +360,7 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
                   className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all"
                 >
                   <Upload className="w-4 h-4" />
-                  <span>I Have Paid • Upload Receipt / UTR</span>
+                  <span>{tr('I Have Paid • Upload Receipt / UTR', 'मैंने भुगतान कर दिया • रसीद / UTR अपलोड करें')}</span>
                 </button>
               </div>
             )}
@@ -370,17 +373,17 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
           <div className="space-y-5">
             <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5 shrink-0" />
-              <span>Payment initiated for Order #{createdOrder?.id}. Upload your transaction receipt below.</span>
+              <span>{tr(`Payment initiated for Order #${createdOrder?.id}. Upload your transaction receipt below.`, `ऑर्डर #${createdOrder?.id} के लिए भुगतान शुरू हुआ। नीचे अपनी ट्रांज़ैक्शन रसीद अपलोड करें।`)}</span>
             </div>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold opacity-80 mb-1.5">
-                  Transaction / UTR Reference Number
+                  {tr('Transaction / UTR Reference Number', 'ट्रांज़ैक्शन / UTR संदर्भ संख्या')}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 429381029481 or UPI-Ref-9921"
+                  placeholder={tr('e.g. 429381029481 or UPI-Ref-9921', 'जैसे 429381029481 या UPI-Ref-9921')}
                   value={transactionId}
                   onChange={(e) => setTransactionId(e.target.value)}
                   className={`w-full px-4 py-2.5 rounded-xl border text-xs font-medium outline-none ${
@@ -391,9 +394,9 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
 
               <div>
                 <label className="block text-xs font-bold opacity-80 mb-1.5">
-                  Upload Payment Screenshot / Receipt (Optional but recommended)
+                  {tr('Upload Payment Screenshot / Receipt (Optional but recommended)', 'भुगतान स्क्रीनशॉट / रसीद अपलोड करें (वैकल्पिक पर अनुशंसित)')}
                 </label>
-                
+
                 <label className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors ${
                   isDark ? 'border-zinc-800 hover:border-emerald-500 bg-zinc-900/40' : 'border-zinc-300 hover:border-emerald-600 bg-zinc-50'
                 }`}>
@@ -406,13 +409,13 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
                   {receiptPreview ? (
                     <div className="flex flex-col items-center space-y-2">
                       <img src={receiptPreview} alt="Receipt Preview" className="max-h-32 rounded-lg object-contain" />
-                      <span className="text-[11px] font-bold text-emerald-500">Receipt Attached. Click to replace</span>
+                      <span className="text-[11px] font-bold text-emerald-500">{tr('Receipt Attached. Click to replace', 'रसीद जुड़ी हुई है। बदलने के लिए क्लिक करें')}</span>
                     </div>
                   ) : (
                     <div className="text-center space-y-1.5">
                       <Upload className="w-6 h-6 mx-auto text-emerald-500 opacity-80" />
-                      <div className="text-xs font-bold">Select Receipt Image or PDF</div>
-                      <div className="text-[10px] opacity-60">PNG, JPG, PDF up to 10MB</div>
+                      <div className="text-xs font-bold">{tr('Select Receipt Image or PDF', 'रसीद इमेज या PDF चुनें')}</div>
+                      <div className="text-[10px] opacity-60">PNG, JPG, PDF — {tr('up to 10MB', '10MB तक')}</div>
                     </div>
                   )}
                 </label>
@@ -428,12 +431,12 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
               {isProcessing ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Attaching Receipt & Syncing to Supabase...</span>
+                  <span>{tr('Attaching Receipt & Syncing to Supabase...', 'रसीद जोड़ी जा रही है व Supabase से सिंक हो रही है...')}</span>
                 </>
               ) : (
                 <>
                   <Check className="w-4 h-4 stroke-[3]" />
-                  <span>Confirm & Complete Order</span>
+                  <span>{tr('Confirm & Complete Order', 'पुष्टि करें व ऑर्डर पूर्ण करें')}</span>
                 </>
               )}
             </button>
@@ -448,27 +451,27 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
             </div>
 
             <div>
-              <h4 className="text-xl font-black">Order Placed Successfully</h4>
-              <p className="text-xs opacity-65 mt-1 font-mono">Order ID: {createdOrder.id}</p>
+              <h4 className="text-xl font-black">{tr('Order Placed Successfully', 'ऑर्डर सफलतापूर्वक दिया गया')}</h4>
+              <p className="text-xs opacity-65 mt-1 font-mono">{tr('Order ID:', 'ऑर्डर ID:')} {createdOrder.id}</p>
             </div>
 
             <div className={`p-4 rounded-2xl text-left text-xs ${isDark ? 'bg-zinc-900 border border-zinc-800' : 'bg-zinc-50 border border-zinc-200'} space-y-2`}>
               <div className="flex justify-between">
-                <span className="opacity-60">Payment Method:</span>
+                <span className="opacity-60">{tr('Payment Method:', 'भुगतान विधि:')}</span>
                 <span className="font-bold uppercase">{createdOrder.paymentMethod.replace('_', ' ')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="opacity-60">Transaction Reference:</span>
+                <span className="opacity-60">{tr('Transaction Reference:', 'ट्रांज़ैक्शन संदर्भ:')}</span>
                 <span className="font-mono font-bold text-emerald-500">{createdOrder.transactionId}</span>
               </div>
               <div className="flex justify-between">
-                <span className="opacity-60">Estimated Delivery:</span>
+                <span className="opacity-60">{tr('Estimated Delivery:', 'अनुमानित डिलीवरी:')}</span>
                 <span className="font-bold">{createdOrder.estimatedDelivery}</span>
               </div>
               <div className="flex justify-between">
-                <span className="opacity-60">Receipt Status:</span>
+                <span className="opacity-60">{tr('Receipt Status:', 'रसीद स्थिति:')}</span>
                 <span className="text-emerald-500 font-bold">
-                  {createdOrder.receiptImageUrl ? 'Receipt Uploaded & Verified' : 'Standard Digital Invoice Generated'}
+                  {createdOrder.receiptImageUrl ? tr('Receipt Uploaded & Verified', 'रसीद अपलोड व सत्यापित') : tr('Standard Digital Invoice Generated', 'मानक डिजिटल इनवॉइस बनाया गया')}
                 </span>
               </div>
             </div>
@@ -478,7 +481,7 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
               onClick={onClose}
               className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20"
             >
-              Done & Return to Dashboard
+              {tr('Done & Return to Dashboard', 'पूर्ण हुआ व डैशबोर्ड पर वापस जाएं')}
             </button>
           </div>
         )}

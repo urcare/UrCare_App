@@ -49,7 +49,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onResetOnboarding,
   onOpenAdminPortal,
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   // Navigation Tabs — 'profile' is Your Daily Plan (the default/main screen),
   // 'premium' is UrCare Camera (the food scanner, gated), 'account' is the
@@ -65,13 +66,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
     { id: 'profile' as const, label: t('navHome'), icon: Clock },
     { id: 'premium' as const, label: account.isPro ? t('navPro') : t('navPremium'), icon: Camera },
     { id: 'account' as const, label: t('navProfile'), icon: User },
-    { id: 'reports' as const, label: 'My Reports', icon: FileText },
-    { id: 'assessment' as const, label: 'Assessment', icon: ClipboardCheck },
-    { id: 'store' as const, label: 'Store', icon: ShoppingBag },
+    { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
+    { id: 'assessment' as const, label: tr('Assessment', 'मूल्यांकन'), icon: ClipboardCheck },
+    { id: 'store' as const, label: tr('Store', 'स्टोर'), icon: ShoppingBag },
     // Not a tab — opens the Settings modal directly (see the drawer's onClick).
-    { id: 'settings' as const, label: 'Settings', icon: Settings },
+    { id: 'settings' as const, label: tr('Settings', 'सेटिंग्स'), icon: Settings },
     // Not a tab either — opens the sign-out confirmation (see the drawer's onClick).
-    { id: 'logout' as const, label: 'Sign Out', icon: LogOut },
+    { id: 'logout' as const, label: tr('Sign Out', 'साइन आउट'), icon: LogOut },
   ];
 
   // Without this, switching tabs while scrolled down on the previous tab
@@ -258,7 +259,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1">
-                  <span className="text-xs font-black truncate text-zinc-950">{profile.name || 'Member'}</span>
+                  <span className="text-xs font-black truncate text-zinc-950">{profile.name || tr('Member', 'सदस्य')}</span>
                 </div>
                 <p className="text-[10px] text-zinc-500 truncate font-medium">{profile.phone || profile.email || account.email}</p>
               </div>
@@ -299,16 +300,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="p-3.5 rounded-2xl bg-teal-50 border border-teal-200/80 text-teal-950 space-y-2">
             <div className="flex items-center gap-2">
               <Stethoscope className="w-4 h-4 text-teal-600" />
-              <span className="text-[11px] font-black uppercase tracking-wider text-teal-900">Doctor Hotline</span>
+              <span className="text-[11px] font-black uppercase tracking-wider text-teal-900">{tr('Doctor Hotline', 'डॉक्टर हॉटलाइन')}</span>
             </div>
-            <p className="text-[10px] text-teal-700 leading-tight font-medium">Board-certified clinical supervision available.</p>
+            <p className="text-[10px] text-teal-700 leading-tight font-medium">{tr('Board-certified clinical supervision available.', 'बोर्ड-प्रमाणित क्लिनिकल निगरानी उपलब्ध है।')}</p>
             <button
               type="button"
               onClick={() => handleOpenDoctorConsult()}
               className="w-full py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm transition-all cursor-pointer"
             >
               <PhoneCall className="w-3 h-3" />
-              <span>Call Specialist</span>
+              <span>{tr('Call Specialist', 'विशेषज्ञ को कॉल करें')}</span>
             </button>
           </div>
 
@@ -321,7 +322,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               type="button"
               onClick={() => setIsModuleMenuOpen(true)}
               className="p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
-              title="More"
+              title={tr('More', 'अधिक')}
             >
               <MoreVertical className="w-4 h-4 text-zinc-700" />
             </button>
@@ -330,7 +331,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               type="button"
               onClick={() => setIsMyOrdersOpen(true)}
               className="p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
-              title="Orders & Receipts"
+              title={tr('Orders & Receipts', 'ऑर्डर व रसीदें')}
             >
               <Package className="w-4 h-4 text-emerald-600" />
             </button>
@@ -339,7 +340,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               type="button"
               onClick={() => setActiveTab('account')}
               className="p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
-              title="My Profile"
+              title={tr('My Profile', 'मेरी प्रोफ़ाइल')}
             >
               <User className="w-4 h-4 text-zinc-700" />
             </button>
@@ -349,7 +350,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 type="button"
                 onClick={onOpenAdminPortal}
                 className="p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
-                title="Admin Portal"
+                title={tr('Admin Portal', 'एडमिन पोर्टल')}
               >
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
               </button>
@@ -359,7 +360,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               type="button"
               onClick={() => setShowLogoutConfirm(true)}
               className="p-2.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-all cursor-pointer"
-              title="Sign Out"
+              title={tr('Sign Out', 'साइन आउट')}
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -384,7 +385,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             type="button"
             onClick={() => setIsModuleMenuOpen(true)}
             className="p-2 rounded-xl text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 border border-zinc-200 bg-white transition-all cursor-pointer shrink-0"
-            title="More"
+            title={tr('More', 'अधिक')}
           >
             <MoreVertical className="w-4 h-4" />
           </button>
@@ -400,7 +401,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             type="button"
             onClick={() => setActiveTab('account')}
             className="p-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shrink-0"
-            title="Profile"
+            title={tr('Profile', 'प्रोफ़ाइल')}
           >
             <User className="w-4 h-4 text-emerald-600 shrink-0" />
           </button>
@@ -564,16 +565,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-black text-zinc-950">Unlock UrCare Premium</h3>
+                    <h3 className="text-xl sm:text-2xl font-black text-zinc-950">{tr('Unlock UrCare Premium', 'UrCare प्रीमियम अनलॉक करें')}</h3>
                     <p className="text-sm text-zinc-500 mt-1 max-w-md mx-auto">
-                      Premium gives you one powerful thing — nothing complicated.
+                      {tr('Premium gives you one powerful thing — nothing complicated.', 'प्रीमियम आपको एक शक्तिशाली चीज़ देता है — कोई जटिलता नहीं।')}
                     </p>
                   </div>
                   <div className="max-w-sm mx-auto text-left">
                     <div className={`p-4 rounded-2xl ${subCardClass} space-y-1.5`}>
                       <Camera className="w-5 h-5 text-emerald-600" />
-                      <h4 className="text-sm font-black text-zinc-900">UrCare Food Scan</h4>
-                      <p className="text-xs text-zinc-500">Scan any meal — instantly know if it's good for YOUR health, or not.</p>
+                      <h4 className="text-sm font-black text-zinc-900">{tr('UrCare Food Scan', 'UrCare फूड स्कैन')}</h4>
+                      <p className="text-xs text-zinc-500">{tr("Scan any meal — instantly know if it's good for YOUR health, or not.", 'किसी भी भोजन को स्कैन करें — तुरंत जानें कि यह आपके स्वास्थ्य के लिए अच्छा है या नहीं।')}</p>
                     </div>
                   </div>
                   <button
@@ -582,7 +583,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     className="px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 mx-auto cursor-pointer"
                   >
                     <Lock className="w-4 h-4" />
-                    <span>Upgrade to Premium — ₹400/mo</span>
+                    <span>{tr('Upgrade to Premium', 'प्रीमियम में अपग्रेड करें')} — ₹400/{tr('mo', 'माह')}</span>
                   </button>
                 </div>
               ) : (
@@ -590,7 +591,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   {/* Pro Badge */}
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-xs font-black uppercase tracking-wider">
                     <Crown className="w-3.5 h-3.5" />
-                    <span>Pro Member</span>
+                    <span>{tr('Pro Member', 'प्रो सदस्य')}</span>
                   </div>
 
                   {/* AI Food Scan */}
@@ -600,9 +601,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <Camera className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <h3 className="text-base font-black text-zinc-950">UrCare Food Scan</h3>
+                        <h3 className="text-base font-black text-zinc-950">{tr('UrCare Food Scan', 'UrCare फूड स्कैन')}</h3>
                         <p className="text-xs text-zinc-500 max-w-md mt-0.5">
-                          Snap a photo or describe your meal — UrCare tells you if it's good for your health profile, or not, and why.
+                          {tr("Snap a photo or describe your meal — UrCare tells you if it's good for your health profile, or not, and why.", 'फोटो लें या अपना भोजन बताएं — UrCare आपको बताएगा कि यह आपकी स्वास्थ्य प्रोफ़ाइल के लिए अच्छा है या नहीं, और क्यों।')}
                         </p>
                       </div>
                     </div>
@@ -612,7 +613,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       className="w-full sm:w-auto shrink-0 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
                     >
                       <Sparkles className="w-4 h-4" />
-                      <span>Scan Food Now</span>
+                      <span>{tr('Scan Food Now', 'अभी भोजन स्कैन करें')}</span>
                     </button>
                   </div>
                 </div>
@@ -643,9 +644,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <FileText className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-zinc-950">My Reports</h3>
+                    <h3 className="text-base font-black text-zinc-950">{tr('My Reports', 'मेरी रिपोर्ट्स')}</h3>
                     <p className="text-xs text-zinc-500 max-w-md mt-0.5">
-                      Free for everyone — upload a lab report photo or document. It's saved to your log below, and your doctor/admin can review it too.
+                      {tr("Free for everyone — upload a lab report photo or document. It's saved to your log below, and your doctor/admin can review it too.", 'सभी के लिए मुफ्त — लैब रिपोर्ट फोटो या दस्तावेज़ अपलोड करें। यह नीचे आपके लॉग में सहेजा जाता है, और आपका डॉक्टर/एडमिन भी इसकी समीक्षा कर सकता है।')}
                     </p>
                   </div>
                 </div>
@@ -655,7 +656,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   className="w-full sm:w-auto shrink-0 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Upload Report</span>
+                  <span>{tr('Upload Report', 'रिपोर्ट अपलोड करें')}</span>
                 </button>
               </div>
 
@@ -677,9 +678,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <Stethoscope className="w-7 h-7" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-base font-black text-zinc-900">No Reports Uploaded Yet</p>
+                        <p className="text-base font-black text-zinc-900">{tr('No Reports Uploaded Yet', 'अभी तक कोई रिपोर्ट अपलोड नहीं की गई')}</p>
                         <p className="text-xs max-w-sm mx-auto text-zinc-500">
-                          Upload a photo or document with fasting sugar, HbA1c, or lipid panel to receive personalized guidance.
+                          {tr('Upload a photo or document with fasting sugar, HbA1c, or lipid panel to receive personalized guidance.', 'व्यक्तिगत मार्गदर्शन पाने हेतु फास्टिंग शुगर, HbA1c, या लिपिड पैनल के साथ फोटो या दस्तावेज़ अपलोड करें।')}
                         </p>
                       </div>
                     </div>
@@ -689,7 +690,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 return (
                   <div className="space-y-4">
                     <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500 px-1">
-                      Submission Log ({reportsToShow.length})
+                      {tr('Submission Log', 'सबमिशन लॉग')} ({reportsToShow.length})
                     </h4>
                     {reportsToShow.map((report, idx) => (
                       <ReportPhotoViewer
@@ -861,8 +862,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <AlertCircle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-black text-zinc-950">Sign Out</h3>
-                <p className="text-xs text-zinc-500">Are you sure you want to log out of your session?</p>
+                <h3 className="text-base font-black text-zinc-950">{tr('Sign Out', 'साइन आउट')}</h3>
+                <p className="text-xs text-zinc-500">{tr('Are you sure you want to log out of your session?', 'क्या आप वाकई अपने सत्र से लॉग आउट करना चाहते हैं?')}</p>
               </div>
             </div>
 
@@ -872,14 +873,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 onClick={() => setShowLogoutConfirm(false)}
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors"
               >
-                Cancel
+                {tr('Cancel', 'रद्द करें')}
               </button>
               <button
                 type="button"
                 onClick={handleLogout}
                 className="px-4 py-2 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-500 text-white uppercase tracking-wider transition-colors shadow-sm"
               >
-                Sign Out
+                {tr('Sign Out', 'साइन आउट')}
               </button>
             </div>
           </div>

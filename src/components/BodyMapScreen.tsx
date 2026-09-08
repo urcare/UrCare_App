@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowRight, X, RotateCw, Plus, Minus, Sparkles, Loader2 } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { Logo } from './Logo';
+import { useLanguage, AppLanguage } from '../context/LanguageContext';
 
 // The body meshes are dense (~60k verts / 300k+ tris each). drei's Html
 // `occlude` prop raycasts every marker against the mesh on every frame —
@@ -59,6 +60,26 @@ const REGION_LABELS: Record<string, string> = {
   feet: 'Feet',
 };
 
+const REGION_LABELS_HI: Record<string, string> = {
+  head: 'सिर',
+  eyes: 'आंखें',
+  neck: 'गर्दन',
+  shoulders: 'कंधे',
+  chest: 'छाती',
+  arms: 'बांहें',
+  stomach: 'पेट व उदर',
+  hips: 'कूल्हे',
+  lowerBack: 'पीठ का निचला हिस्सा',
+  knees: 'घुटने',
+  legs: 'पैर',
+  ankles: 'टखने',
+  feet: 'पैर के तलवे',
+};
+
+function regionLabel(id: string, language: AppLanguage): string {
+  return language === 'hi' ? (REGION_LABELS_HI[id] || REGION_LABELS[id]) : REGION_LABELS[id];
+}
+
 // Exact points on the surface of each real 3D body model (public/models/*.glb),
 // found once by raycasting against the mesh — see scripts/generate-body-hotspots.mjs.
 // Both models are already centered at the origin, so these read the same way
@@ -98,14 +119,43 @@ const BODY_HOTSPOTS: Record<Gender, Record<string, [number, number, number][]>> 
 
 const STATUS_COLOR: Record<Status, string> = { good: '#22c55e', attention: '#f97316', high: '#ef4444' };
 const STATUS_LABEL: Record<Status, string> = { good: 'Healthy', attention: 'Needs Attention', high: 'High Attention' };
+const STATUS_LABEL_HI: Record<Status, string> = { good: 'स्वस्थ', attention: 'ध्यान देने की ज़रूरत', high: 'अधिक ध्यान देने की ज़रूरत' };
 const RANK: Record<Status, number> = { good: 0, attention: 1, high: 2 };
+const VIEW_LABEL: Record<ViewName, string> = { front: 'front', side: 'side', back: 'back' };
+const VIEW_LABEL_HI: Record<ViewName, string> = { front: 'सामने', side: 'बगल', back: 'पीछे' };
+
+// Hindi display text for the raw onboarding symptom/condition strings that
+// get shown verbatim as "contributing factors" below — the English value is
+// what's actually stored in profile data and matched against (via
+// conditions.has(...) / s.includes(...)), so only the displayed factor text
+// is translated, never the underlying match.
+const FACTOR_LABEL_HI: Record<string, string> = {
+  'Diabetes / Pre-Diabetes': 'डायबिटीज / प्री-डायबिटीज',
+  'Neuropathy (Nerve Pain/Tingling)': 'न्यूरोपैथी (नस दर्द/झनझनाहट)',
+  'High Blood Pressure': 'उच्च रक्तचाप',
+  'Heart Disease': 'हृदय रोग',
+  'Erectile Dysfunction': 'इरेक्टाइल डिसफंक्शन',
+  'High Cholesterol / Fatty Liver': 'उच्च कोलेस्ट्रॉल / फैटी लिवर',
+  'Digestive / IBS': 'पाचन संबंधी समस्या / IBS',
+  'PCOS / PCOD': 'PCOS / PCOD',
+  'Kidney Disease': 'किडनी रोग',
+  'Joint Pain / Arthritis': 'जोड़ों का दर्द / गठिया',
+  'Uric Acid / Gout': 'यूरिक एसिड / गठिया रोग',
+  'Thyroid (Hypo/Hyper)': 'थायरॉइड (हाइपो/हाइपर)',
+  'Chronic Fatigue': 'लगातार थकान',
+  'Sleep Apnea / Sleep Issues': 'स्लीप एपनिया / नींद की समस्या',
+  'Diabetic Retinopathy': 'डायबिटिक रेटिनोपैथी',
+  'Obesity': 'मोटापा',
+};
 
 /** Reads the user's real onboarding answers and produces a wellness
  *  indicator for every tracked body region — defaulting to "good" and only
  *  escalating where an actual condition or symptom points to it. Nothing
  *  here is a diagnosis, and unmatched regions are never invented as a
  *  concern just to fill space. */
-function computeRegionStatuses(profile: UserHealthProfile): Record<string, RegionStatus> {
+function computeRegionStatuses(profile: UserHealthProfile, language: AppLanguage): Record<string, RegionStatus> {
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
+  const factorLabel = (f: string) => tr(f, FACTOR_LABEL_HI[f] || f);
   const conditions = new Set(profile.medicalConditions || []);
   const dd: any = profile.healthDeepDive || {};
   const organSymptoms: string[] = dd.organSymptoms || [];
@@ -114,49 +164,56 @@ function computeRegionStatuses(profile: UserHealthProfile): Record<string, Regio
   const ids = ['head', 'eyes', 'neck', 'shoulders', 'chest', 'arms', 'stomach', 'hips', 'knees', 'legs', 'feet', 'lowerBack', 'ankles'];
   const out: Record<string, RegionStatus> = {};
   ids.forEach((id) => {
-    out[id] = { status: 'good', concern: 'No specific concerns flagged from your onboarding answers', factors: [], nextSteps: ['Keep up your current habits'], wellnessScore: 88 };
+    out[id] = {
+      status: 'good',
+      concern: tr('No specific concerns flagged from your onboarding answers', 'आपके onboarding जवाबों के अनुसार कोई विशेष चिंता नहीं मिली'),
+      factors: [],
+      nextSteps: [tr('Keep up your current habits', 'अपनी मौजूदा आदतें जारी रखें')],
+      wellnessScore: 88,
+    };
   });
 
   const flag = (id: string, status: Status, concern: string, factor: string, steps: string[], score: number) => {
     const cur = out[id];
+    const translatedFactor = factorLabel(factor);
     if (RANK[status] >= RANK[cur.status]) {
-      out[id] = { status, concern, factors: [...new Set([...(cur.status === 'good' ? [] : cur.factors), factor])], nextSteps: steps, wellnessScore: score };
+      out[id] = { status, concern, factors: [...new Set([...(cur.status === 'good' ? [] : cur.factors), translatedFactor])], nextSteps: steps, wellnessScore: score };
     } else {
-      out[id] = { ...cur, factors: [...new Set([...cur.factors, factor])] };
+      out[id] = { ...cur, factors: [...new Set([...cur.factors, translatedFactor])] };
     }
   };
 
   if (conditions.has('Diabetes / Pre-Diabetes')) {
-    flag('feet', 'attention', 'Reduced circulation & sensation risk', 'Diabetes / Pre-Diabetes', ['Check your feet daily', 'Wear comfortable, well-fitted footwear', 'Keep blood sugar in your target range'], 58);
+    flag('feet', 'attention', tr('Reduced circulation & sensation risk', 'रक्त संचार व संवेदना में कमी का जोखिम'), 'Diabetes / Pre-Diabetes', [tr('Check your feet daily', 'रोज़ अपने पैर जांचें'), tr('Wear comfortable, well-fitted footwear', 'आरामदायक व सही नाप के जूते पहनें'), tr('Keep blood sugar in your target range', 'ब्लड शुगर को लक्ष्य सीमा में रखें')], 58);
   }
   if (conditions.has('Neuropathy (Nerve Pain/Tingling)')) {
-    flag('feet', 'high', 'Nerve sensitivity (tingling or numbness)', 'Neuropathy (Nerve Pain/Tingling)', ['Check your feet daily for cuts or sores', 'Include B-vitamin rich foods', 'Gentle daily circulation exercises'], 45);
-    flag('arms', 'attention', 'Nerve sensitivity in hands', 'Neuropathy (Nerve Pain/Tingling)', ['Hand & wrist stretches', 'Include B-vitamin rich foods'], 55);
+    flag('feet', 'high', tr('Nerve sensitivity (tingling or numbness)', 'नस संवेदनशीलता (झनझनाहट या सुन्नपन)'), 'Neuropathy (Nerve Pain/Tingling)', [tr('Check your feet daily for cuts or sores', 'रोज़ पैरों में कट या घाव जांचें'), tr('Include B-vitamin rich foods', 'विटामिन-B युक्त भोजन शामिल करें'), tr('Gentle daily circulation exercises', 'रोज़ हल्के रक्त संचार व्यायाम करें')], 45);
+    flag('arms', 'attention', tr('Nerve sensitivity in hands', 'हाथों में नस संवेदनशीलता'), 'Neuropathy (Nerve Pain/Tingling)', [tr('Hand & wrist stretches', 'हाथ व कलाई की स्ट्रेचिंग'), tr('Include B-vitamin rich foods', 'विटामिन-B युक्त भोजन शामिल करें')], 55);
   }
-  if (conditions.has('High Blood Pressure')) flag('chest', 'high', 'Cardiovascular load', 'High Blood Pressure', ['Reduce sodium intake', 'Daily light movement', 'Track your blood pressure regularly'], 48);
-  if (conditions.has('Heart Disease')) flag('chest', 'high', 'Cardiovascular strain', 'Heart Disease', ['Follow your cardiologist\'s guidance', 'Low-sodium, heart-friendly meals', 'Gentle, doctor-approved activity'], 42);
-  if (conditions.has('Erectile Dysfunction')) flag('chest', 'attention', 'Vascular health signal', 'Erectile Dysfunction', ['Heart-healthy diet', 'Regular movement to support circulation'], 60);
-  if (conditions.has('High Cholesterol / Fatty Liver')) flag('stomach', 'attention', 'Liver & lipid load', 'High Cholesterol / Fatty Liver', ['Reduce fried & processed foods', 'Add more fiber-rich vegetables'], 60);
-  if (conditions.has('Digestive / IBS')) flag('stomach', 'attention', 'Digestive sensitivity', 'Digestive / IBS', ['Smaller, more regular meals', 'Identify and avoid trigger foods'], 62);
-  if (conditions.has('PCOS / PCOD')) flag('stomach', 'attention', 'Hormonal-metabolic link', 'PCOS / PCOD', ['Low-GI, anti-inflammatory meals', 'Consistent daily movement'], 62);
-  if (conditions.has('Kidney Disease')) flag('lowerBack', 'high', 'Kidney function support needed', 'Kidney Disease', ['Controlled protein & sodium intake', 'Stay well hydrated', 'Keep up with regular check-ups'], 42);
-  if (conditions.has('Joint Pain / Arthritis')) flag('knees', 'attention', 'Joint discomfort', 'Joint Pain / Arthritis', ['Low-impact movement', 'Anti-inflammatory foods', 'Maintain a healthy weight'], 55);
-  if (conditions.has('Uric Acid / Gout')) flag('knees', 'attention', 'Joint discomfort (uric acid related)', 'Uric Acid / Gout', ['Low-purine diet', 'Stay well hydrated'], 55);
-  if (conditions.has('Thyroid (Hypo/Hyper)')) flag('neck', 'attention', 'Thyroid balance', 'Thyroid (Hypo/Hyper)', ['Consistent sleep schedule', 'Iodine-mindful diet'], 60);
-  if (conditions.has('Chronic Fatigue')) flag('head', 'attention', 'Low energy levels', 'Chronic Fatigue', ['Consistent sleep & wake time', 'Steady, balanced meals through the day'], 58);
-  if (conditions.has('Sleep Apnea / Sleep Issues')) flag('head', 'attention', 'Disrupted rest', 'Sleep Apnea / Sleep Issues', ['Consistent sleep schedule', 'Reduce late-day caffeine'], 58);
-  if (conditions.has('Diabetic Retinopathy')) flag('eyes', 'high', 'Eye health monitoring needed', 'Diabetic Retinopathy', ['Regular eye check-ups', 'Keep blood sugar in range'], 50);
-  if (conditions.has('Obesity')) flag('hips', 'attention', 'Weight-related joint load', 'Obesity', ['Gradual, sustainable calorie deficit', 'Low-impact daily movement'], 58);
+  if (conditions.has('High Blood Pressure')) flag('chest', 'high', tr('Cardiovascular load', 'हृदय पर दबाव'), 'High Blood Pressure', [tr('Reduce sodium intake', 'नमक का सेवन कम करें'), tr('Daily light movement', 'रोज़ हल्की गतिविधि करें'), tr('Track your blood pressure regularly', 'नियमित रूप से बीपी जांचें')], 48);
+  if (conditions.has('Heart Disease')) flag('chest', 'high', tr('Cardiovascular strain', 'हृदय पर तनाव'), 'Heart Disease', [tr('Follow your cardiologist\'s guidance', 'अपने हृदय रोग विशेषज्ञ की सलाह मानें'), tr('Low-sodium, heart-friendly meals', 'कम नमक वाला हृदय-अनुकूल भोजन'), tr('Gentle, doctor-approved activity', 'डॉक्टर द्वारा स्वीकृत हल्की गतिविधि')], 42);
+  if (conditions.has('Erectile Dysfunction')) flag('chest', 'attention', tr('Vascular health signal', 'रक्त वाहिका स्वास्थ्य संकेत'), 'Erectile Dysfunction', [tr('Heart-healthy diet', 'हृदय-अनुकूल आहार'), tr('Regular movement to support circulation', 'रक्त संचार हेतु नियमित गतिविधि')], 60);
+  if (conditions.has('High Cholesterol / Fatty Liver')) flag('stomach', 'attention', tr('Liver & lipid load', 'लिवर व लिपिड भार'), 'High Cholesterol / Fatty Liver', [tr('Reduce fried & processed foods', 'तला व प्रोसेस्ड भोजन कम करें'), tr('Add more fiber-rich vegetables', 'फाइबर युक्त सब्ज़ियां बढ़ाएं')], 60);
+  if (conditions.has('Digestive / IBS')) flag('stomach', 'attention', tr('Digestive sensitivity', 'पाचन संवेदनशीलता'), 'Digestive / IBS', [tr('Smaller, more regular meals', 'छोटे व नियमित भोजन'), tr('Identify and avoid trigger foods', 'ट्रिगर खाद्य पदार्थों की पहचान कर बचें')], 62);
+  if (conditions.has('PCOS / PCOD')) flag('stomach', 'attention', tr('Hormonal-metabolic link', 'हार्मोनल-मेटाबॉलिक संबंध'), 'PCOS / PCOD', [tr('Low-GI, anti-inflammatory meals', 'कम GI वाला सूजन-रोधी भोजन'), tr('Consistent daily movement', 'रोज़ नियमित गतिविधि')], 62);
+  if (conditions.has('Kidney Disease')) flag('lowerBack', 'high', tr('Kidney function support needed', 'किडनी कार्यक्षमता को सहयोग चाहिए'), 'Kidney Disease', [tr('Controlled protein & sodium intake', 'नियंत्रित प्रोटीन व नमक सेवन'), tr('Stay well hydrated', 'पर्याप्त पानी पिएं'), tr('Keep up with regular check-ups', 'नियमित जांच कराते रहें')], 42);
+  if (conditions.has('Joint Pain / Arthritis')) flag('knees', 'attention', tr('Joint discomfort', 'जोड़ों में असुविधा'), 'Joint Pain / Arthritis', [tr('Low-impact movement', 'कम प्रभाव वाली गतिविधि'), tr('Anti-inflammatory foods', 'सूजन-रोधी भोजन'), tr('Maintain a healthy weight', 'स्वस्थ वज़न बनाए रखें')], 55);
+  if (conditions.has('Uric Acid / Gout')) flag('knees', 'attention', tr('Joint discomfort (uric acid related)', 'जोड़ों में असुविधा (यूरिक एसिड संबंधी)'), 'Uric Acid / Gout', [tr('Low-purine diet', 'कम प्यूरीन वाला आहार'), tr('Stay well hydrated', 'पर्याप्त पानी पिएं')], 55);
+  if (conditions.has('Thyroid (Hypo/Hyper)')) flag('neck', 'attention', tr('Thyroid balance', 'थायरॉइड संतुलन'), 'Thyroid (Hypo/Hyper)', [tr('Consistent sleep schedule', 'नियमित नींद का समय'), tr('Iodine-mindful diet', 'आयोडीन के प्रति सजग आहार')], 60);
+  if (conditions.has('Chronic Fatigue')) flag('head', 'attention', tr('Low energy levels', 'कम ऊर्जा स्तर'), 'Chronic Fatigue', [tr('Consistent sleep & wake time', 'नियमित सोने व उठने का समय'), tr('Steady, balanced meals through the day', 'दिनभर संतुलित भोजन')], 58);
+  if (conditions.has('Sleep Apnea / Sleep Issues')) flag('head', 'attention', tr('Disrupted rest', 'बाधित नींद'), 'Sleep Apnea / Sleep Issues', [tr('Consistent sleep schedule', 'नियमित नींद का समय'), tr('Reduce late-day caffeine', 'देर दिन कैफीन कम करें')], 58);
+  if (conditions.has('Diabetic Retinopathy')) flag('eyes', 'high', tr('Eye health monitoring needed', 'आंखों के स्वास्थ्य की निगरानी ज़रूरी'), 'Diabetic Retinopathy', [tr('Regular eye check-ups', 'नियमित आंखों की जांच'), tr('Keep blood sugar in range', 'ब्लड शुगर सीमा में रखें')], 50);
+  if (conditions.has('Obesity')) flag('hips', 'attention', tr('Weight-related joint load', 'वज़न संबंधी जोड़ों का भार'), 'Obesity', [tr('Gradual, sustainable calorie deficit', 'धीमी, स्थायी कैलोरी कमी'), tr('Low-impact daily movement', 'कम प्रभाव वाली दैनिक गतिविधि')], 58);
 
   organSymptoms.forEach((s) => {
-    if (s.includes('Tingling')) { flag('feet', 'attention', 'Nerve sensitivity', s, ['Check your feet daily'], 55); flag('arms', 'attention', 'Nerve sensitivity', s, ['Hand & wrist stretches'], 58); }
-    if (s.includes('Blurry vision')) flag('eyes', 'attention', 'Vision changes reported', s, ['Regular eye check-ups'], 55);
-    if (s.includes('Swelling')) flag('feet', 'attention', 'Fluid retention', s, ['Elevate legs when resting', 'Reduce sodium intake'], 55);
-    if (s.includes('Chest pain')) flag('chest', 'high', 'Reported chest discomfort', s, ['Discuss with your doctor soon', 'Avoid strenuous exertion until reviewed'], 40);
-    if (s.includes('Joint pain')) flag('knees', 'attention', 'Joint discomfort', s, ['Low-impact movement'], 55);
-    if (s.includes('Headaches')) flag('head', 'attention', 'Frequent headaches / brain fog', s, ['Consistent sleep schedule', 'Stay well hydrated'], 58);
+    if (s.includes('Tingling')) { flag('feet', 'attention', tr('Nerve sensitivity', 'नस संवेदनशीलता'), s, [tr('Check your feet daily', 'रोज़ अपने पैर जांचें')], 55); flag('arms', 'attention', tr('Nerve sensitivity', 'नस संवेदनशीलता'), s, [tr('Hand & wrist stretches', 'हाथ व कलाई की स्ट्रेचिंग')], 58); }
+    if (s.includes('Blurry vision')) flag('eyes', 'attention', tr('Vision changes reported', 'दृष्टि में बदलाव दर्ज'), s, [tr('Regular eye check-ups', 'नियमित आंखों की जांच')], 55);
+    if (s.includes('Swelling')) flag('feet', 'attention', tr('Fluid retention', 'शरीर में सूजन/तरल जमाव'), s, [tr('Elevate legs when resting', 'आराम के समय पैर ऊंचे रखें'), tr('Reduce sodium intake', 'नमक का सेवन कम करें')], 55);
+    if (s.includes('Chest pain')) flag('chest', 'high', tr('Reported chest discomfort', 'सीने में असुविधा दर्ज'), s, [tr('Discuss with your doctor soon', 'जल्द डॉक्टर से चर्चा करें'), tr('Avoid strenuous exertion until reviewed', 'जांच होने तक कठिन परिश्रम से बचें')], 40);
+    if (s.includes('Joint pain')) flag('knees', 'attention', tr('Joint discomfort', 'जोड़ों में असुविधा'), s, [tr('Low-impact movement', 'कम प्रभाव वाली गतिविधि')], 55);
+    if (s.includes('Headaches')) flag('head', 'attention', tr('Frequent headaches / brain fog', 'बार-बार सिरदर्द / दिमागी थकान'), s, [tr('Consistent sleep schedule', 'नियमित नींद का समय'), tr('Stay well hydrated', 'पर्याप्त पानी पिएं')], 58);
   });
-  digestiveSymptoms.forEach((s) => { if (s && s !== 'None') flag('stomach', 'attention', 'Digestive discomfort', s, ['Smaller, more regular meals'], 62); });
+  digestiveSymptoms.forEach((s) => { if (s && s !== 'None') flag('stomach', 'attention', tr('Digestive discomfort', 'पाचन संबंधी असुविधा'), s, [tr('Smaller, more regular meals', 'छोटे व नियमित भोजन')], 62); });
 
   return out;
 }
@@ -226,19 +283,19 @@ const BodyMesh = React.forwardRef<THREE.Mesh, { gender: Gender }>(({ gender }, r
 
 function Marker({
   id,
-  label,
   position,
   status,
   onSelect,
   occluder,
 }: {
   id: string;
-  label: string;
   position: [number, number, number];
   status: Status;
   onSelect: (id: string) => void;
   occluder: React.MutableRefObject<THREE.Mesh | null>;
 }) {
+  const { language } = useLanguage();
+  const label = regionLabel(id, language);
   const color = STATUS_COLOR[status];
   return (
     <Html position={position} center distanceFactor={2.6} zIndexRange={[10, 0]} occlude={[occluder]} style={{ pointerEvents: 'auto' }}>
@@ -292,7 +349,6 @@ function Scene({
           <Marker
             key={`${id}-${i}`}
             id={id}
-            label={REGION_LABELS[id]}
             position={p}
             status={statuses[id]?.status || 'good'}
             onSelect={onSelectRegion}
@@ -309,21 +365,24 @@ function Scene({
 }
 
 function LoadingOverlay() {
+  const { language } = useLanguage();
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#F8FAFC]/70 backdrop-blur-sm z-20 pointer-events-none">
       <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
-      <span className="text-xs font-bold text-zinc-400">Preparing your 3D body model…</span>
+      <span className="text-xs font-bold text-zinc-400">{language === 'hi' ? 'आपका 3D बॉडी मॉडल तैयार हो रहा है…' : 'Preparing your 3D body model…'}</span>
     </div>
   );
 }
 
 export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext }) => {
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const gender: Gender = profile.gender === 'female' ? 'female' : 'male';
   const [preset, setPreset] = useState<ViewName>('front');
   const [selected, setSelected] = useState<SelectedRegion | null>(null);
   const [modelReady, setModelReady] = useState(false);
 
-  const statuses = useMemo(() => computeRegionStatuses(profile), [profile]);
+  const statuses = useMemo(() => computeRegionStatuses(profile, language), [profile, language]);
   const overallScore = useMemo(() => {
     const scores = (Object.values(statuses) as RegionStatus[]).map((s) => s.wellnessScore);
     return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
@@ -428,8 +487,8 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
       };
     }
     const info = statuses[id];
-    window.setTimeout(() => setSelected({ id, label: REGION_LABELS[id], ...info }), 280);
-  }, [gender, statuses]);
+    window.setTimeout(() => setSelected({ id, label: regionLabel(id, language), ...info }), 280);
+  }, [gender, statuses, language]);
 
   const closeSheet = useCallback(() => {
     setSelected(null);
@@ -445,9 +504,9 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
       </header>
 
       <div className="flex-1 flex flex-col items-center px-4 text-center min-h-0">
-        <h1 className="text-xl sm:text-2xl font-black text-zinc-950 mt-3">Your Body Health Map</h1>
+        <h1 className="text-xl sm:text-2xl font-black text-zinc-950 mt-3">{tr('Your Body Health Map', 'आपका बॉडी हेल्थ मैप')}</h1>
         <p className="text-xs text-zinc-500 max-w-sm mt-1.5">
-          Based on your onboarding, we've identified areas that may need attention.
+          {tr("Based on your onboarding, we've identified areas that may need attention.", 'आपके onboarding के आधार पर, हमने उन क्षेत्रों की पहचान की है जिन पर ध्यान देने की ज़रूरत हो सकती है।')}
         </p>
 
         {/* Overall wellness score + legend */}
@@ -455,12 +514,12 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
           <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white border border-zinc-200 shadow-sm">
             <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
             <span className="text-lg font-black text-zinc-950">{overallScore}<span className="text-xs font-bold text-zinc-400">/100</span></span>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-400">Overall Wellness</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-400">{tr('Overall Wellness', 'समग्र स्वास्थ्य')}</span>
           </div>
           <div className="flex items-center gap-3 text-[10px] font-bold text-zinc-500">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR.good }} />Healthy</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR.attention }} />Needs Attention</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR.high }} />High Attention</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR.good }} />{tr(STATUS_LABEL.good, STATUS_LABEL_HI.good)}</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR.attention }} />{tr(STATUS_LABEL.attention, STATUS_LABEL_HI.attention)}</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR.high }} />{tr(STATUS_LABEL.high, STATUS_LABEL_HI.high)}</span>
           </div>
         </div>
 
@@ -475,7 +534,7 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
                 preset === v ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-800'
               }`}
             >
-              {v}
+              {tr(VIEW_LABEL[v], VIEW_LABEL_HI[v])}
             </button>
           ))}
         </div>
@@ -523,7 +582,7 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
 
         <p className="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-2.5">
           <RotateCw className="w-3.5 h-3.5 shrink-0" />
-          Drag to rotate the body — pinch or scroll to zoom — tap a glowing marker for details.
+          {tr('Drag to rotate the body — pinch or scroll to zoom — tap a glowing marker for details.', 'शरीर को घुमाने के लिए खींचें — ज़ूम करने के लिए पिंच या स्क्रॉल करें — विवरण हेतु चमकते मार्कर पर टैप करें।')}
         </p>
       </div>
 
@@ -550,7 +609,7 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
                 <div className="w-10 h-1 rounded-full bg-zinc-300 mx-auto mb-4" />
 
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">Body Area</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">{tr('Body Area', 'शरीर का क्षेत्र')}</span>
                   <button type="button" onClick={closeSheet} className="p-1.5 rounded-full hover:bg-black/5 cursor-pointer">
                     <X className="w-4 h-4 text-zinc-500" />
                   </button>
@@ -561,18 +620,18 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
                   style={{ background: `${STATUS_COLOR[selected.status]}1a`, color: STATUS_COLOR[selected.status] }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_COLOR[selected.status] }} />
-                  {STATUS_LABEL[selected.status]}
+                  {tr(STATUS_LABEL[selected.status], STATUS_LABEL_HI[selected.status])}
                 </span>
 
                 <div className="space-y-3.5 text-left">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-wide text-zinc-400 mb-1">Possible Concern</p>
+                    <p className="text-[10px] font-black uppercase tracking-wide text-zinc-400 mb-1">{tr('Possible Concern', 'संभावित चिंता')}</p>
                     <p className="text-sm font-bold text-zinc-800">{selected.concern}</p>
                   </div>
 
                   {selected.factors.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-wide text-zinc-400 mb-1.5">Possible Contributing Factors</p>
+                      <p className="text-[10px] font-black uppercase tracking-wide text-zinc-400 mb-1.5">{tr('Possible Contributing Factors', 'संभावित योगदान कारक')}</p>
                       <ul className="space-y-1">
                         {selected.factors.map((f) => (
                           <li key={f} className="text-xs font-semibold text-zinc-700 flex items-center gap-2">
@@ -585,7 +644,7 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
                   )}
 
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-wide text-zinc-400 mb-1.5">Recommended Next Steps</p>
+                    <p className="text-[10px] font-black uppercase tracking-wide text-zinc-400 mb-1.5">{tr('Recommended Next Steps', 'सुझाए गए अगले कदम')}</p>
                     <ul className="space-y-1">
                       {selected.nextSteps.map((s) => (
                         <li key={s} className="text-xs font-semibold text-zinc-700 flex items-center gap-2">
@@ -597,7 +656,7 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
                   </div>
 
                   <div className="p-3.5 rounded-2xl bg-white/70 border border-zinc-200 flex items-center justify-between">
-                    <span className="text-xs font-bold text-zinc-600">Wellness Score</span>
+                    <span className="text-xs font-bold text-zinc-600">{tr('Wellness Score', 'स्वास्थ्य स्कोर')}</span>
                     <span className="text-base font-black text-zinc-950">{selected.wellnessScore}<span className="text-xs font-bold text-zinc-400">/100</span></span>
                   </div>
                 </div>
@@ -607,12 +666,12 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
                   onClick={onNext}
                   className="w-full mt-5 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer"
                 >
-                  <span>View Personalized Plan</span>
+                  <span>{tr('View Personalized Plan', 'व्यक्तिगत योजना देखें')}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
                 <p className="text-[10px] text-zinc-400 text-center mt-3">
-                  This is a wellness indicator, not a diagnosis — always confirm with your doctor.
+                  {tr('This is a wellness indicator, not a diagnosis — always confirm with your doctor.', 'यह एक स्वास्थ्य संकेतक है, निदान नहीं — हमेशा अपने डॉक्टर से पुष्टि करें।')}
                 </p>
               </div>
             </motion.div>
@@ -626,7 +685,7 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
           onClick={onNext}
           className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 active:scale-95 transition-all cursor-pointer"
         >
-          <span>View Personalized Plan</span>
+          <span>{tr('View Personalized Plan', 'व्यक्तिगत योजना देखें')}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
