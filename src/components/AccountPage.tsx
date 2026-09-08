@@ -1,12 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Mail, Phone, Flame, Edit3, Stethoscope, LogOut, RefreshCw,
   Package, FileText, Camera, BadgeCheck, Sparkles,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
-import { useLanguage, LanguageSwitchButton } from '../context/LanguageContext';
+import { useLanguage } from '../context/LanguageContext';
 import { updateAvatar } from '../utils/supabase';
 import { EditHealthProfileModal } from './EditHealthProfileModal';
+import { StreakWidget } from './StreakWidget';
+import { REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL } from './RecommendationsView';
 
 function formatGoalLabel(goal?: string): string {
   if (!goal) return 'Reversal Plan';
@@ -20,6 +22,29 @@ const GOAL_LABEL_HI: Record<string, string> = {
   improve_health: 'स्वास्थ्य सुधारना',
   reverse_condition: 'स्थिति को उलटना',
   '': 'रिवर्सल योजना',
+};
+
+// Hindi display text for the REVERSAL_GOALS tiles (imported from
+// RecommendationsView) — keyed by the English label since that's what
+// REVERSAL_GOALS itself uses as the display value, not a stored/matched id.
+const REVERSAL_GOAL_LABEL_HI: Record<string, { label: string; note: string }> = {
+  'Diabetes Reversal': { label: 'डायबिटीज रिवर्सल', note: 'कम-GI भोजन, स्थिर ब्लड शुगर' },
+  'Weight Reversal': { label: 'वज़न रिवर्सल', note: 'कैलोरी डेफिसिट, उच्च प्रोटीन' },
+  'Blood Pressure Control': { label: 'ब्लड प्रेशर नियंत्रण', note: 'कम सोडियम, पोटैशियम युक्त भोजन' },
+  'Liver & Lipid Reversal': { label: 'लिवर व लिपिड रिवर्सल', note: 'कम सैचुरेटेड फैट, अधिक फाइबर' },
+  'Thyroid Balance': { label: 'थायरॉइड संतुलन', note: 'आयोडीन के प्रति सजग, सूजन-रोधी' },
+  'Hormonal Reversal': { label: 'हार्मोनल रिवर्सल', note: 'कम-GI, सूजन-रोधी आहार' },
+  'Nerve Health': { label: 'नस स्वास्थ्य', note: 'विटामिन-B युक्त, ब्लड शुगर नियंत्रण' },
+  'Eye Health Support': { label: 'आंखों के स्वास्थ्य हेतु सहयोग', note: 'एंटीऑक्सीडेंट युक्त, शुगर नियंत्रण' },
+  'Heart Reversal': { label: 'हृदय रिवर्सल', note: 'कम सोडियम, ओमेगा-3 युक्त' },
+  'Kidney Reversal': { label: 'किडनी रिवर्सल', note: 'नियंत्रित प्रोटीन व सोडियम' },
+  'Joint & Mobility Support': { label: 'जोड़ व गतिशीलता सहयोग', note: 'सूजन-रोधी भोजन' },
+  'Energy Restoration': { label: 'ऊर्जा पुनर्स्थापन', note: 'आयरन व B12 युक्त, स्थिर भोजन' },
+  'Sleep Quality Support': { label: 'नींद गुणवत्ता सहयोग', note: 'हल्का रात्रि भोजन, देर रात कैफीन नहीं' },
+  'Vascular Health': { label: 'रक्त वाहिका स्वास्थ्य', note: 'हृदय-अनुकूल, रक्त संचार सहयोग' },
+  'Uric Acid Reversal': { label: 'यूरिक एसिड रिवर्सल', note: 'कम प्यूरीन, अधिक पानी' },
+  'Gut Health Reversal': { label: 'आंत स्वास्थ्य रिवर्सल', note: 'फाइबर-संतुलित, आंत-अनुकूल' },
+  'Metabolic Health': { label: 'मेटाबॉलिक स्वास्थ्य', note: 'संतुलित पोषण, स्थिर ऊर्जा' },
 };
 
 interface AccountPageProps {
@@ -103,17 +128,22 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   const { calculatedPlan, heightCm = 170, age = 28, gender = 'male' } = profile;
   const bmi = calculatedPlan?.bmi || Number((profile.currentWeightKg / Math.pow(heightCm / 100, 2)).toFixed(1));
 
+  // Same condition-by-condition "reversal focus" tiles the Daily Plan used
+  // to lead with — purely derived from the profile, so it belongs here.
+  const reversalGoals = useMemo(() => {
+    const conditions = (profile.medicalConditions || []).filter((c) => c !== 'None' && c !== 'Other');
+    const goals = conditions.map((c) => REVERSAL_GOALS[c]).filter(Boolean);
+    return goals.length > 0 ? goals : [DEFAULT_REVERSAL_GOAL];
+  }, [profile.medicalConditions]);
+
   return (
     <div id="urcare-account-page" className="min-h-screen bg-[#F8FAFC] text-zinc-900 pb-16">
 
       <header className="sticky top-0 z-30 bg-white border-b border-zinc-200 px-3 sm:px-8 py-3 sm:py-3.5 shadow-xs">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-2">
+        <div className="max-w-3xl mx-auto flex items-center gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 min-w-0">
             <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
             <span className="text-xs font-black text-emerald-700 tracking-wide whitespace-nowrap">{t('navProfile')}</span>
-          </div>
-          <div className="flex items-center justify-end shrink-0">
-            <LanguageSwitchButton />
           </div>
         </div>
       </header>
@@ -187,6 +217,37 @@ export const AccountPage: React.FC<AccountPageProps> = ({
           {avatarError && (
             <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">{avatarError}</p>
           )}
+        </div>
+
+        {/* Streak — moved here from the Daily Plan's top header, since it's
+            a personal stat about the user rather than part of today's plan. */}
+        <div className="flex justify-start">
+          <StreakWidget profile={profile} />
+        </div>
+
+        {/* YOUR REVERSAL FOCUS — condition-derived focus tiles, the same
+            data the Daily Plan used to lead with; purely static (no daily
+            task tracking), so it belongs here rather than on that page. */}
+        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-zinc-200 shadow-sm space-y-3">
+          <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-600">
+            {tr('Your Reversal Focus', 'आपका रिवर्सल फोकस')}
+          </h3>
+          <div className={`grid gap-2.5 sm:gap-3 ${reversalGoals.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+            {reversalGoals.map((goal) => {
+              const GoalIcon = goal.icon;
+              return (
+                <div key={goal.label} className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center gap-3 min-w-0">
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${goal.gradient} flex items-center justify-center shrink-0 shadow-sm`}>
+                    <GoalIcon className="w-4.5 h-4.5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs sm:text-sm font-black text-zinc-900 truncate">{tr(goal.label, REVERSAL_GOAL_LABEL_HI[goal.label]?.label || goal.label)}</div>
+                    <div className="text-[10px] sm:text-[11px] text-zinc-500 font-semibold truncate">{tr(goal.note, REVERSAL_GOAL_LABEL_HI[goal.label]?.note || goal.note)}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* BODY & HEALTH OVERVIEW STATS (SIMPLE & EASY TO UNDERSTAND) */}

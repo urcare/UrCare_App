@@ -23,7 +23,6 @@ import { ClinicalFeedbackModal } from './ClinicalFeedbackModal';
 import { RootCauseAssessmentModal } from './RootCauseAssessmentModal';
 import { ProfilePage } from './ProfilePage';
 import { AccountPage } from './AccountPage';
-import { StreakWidget } from './StreakWidget';
 import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { Logo } from './Logo';
@@ -62,10 +61,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // persistent header/sidebar (never inline in a tab's scrolling content), so
   // it never jumps position when the tab changes or the page scrolls.
   const [isModuleMenuOpen, setIsModuleMenuOpen] = useState(false);
+  // 'Daily Plan', 'UrCare Camera' and 'Profile' are deliberately left out
+  // here — they already have their own permanent spot in the bottom/side
+  // nav bar, so listing them again in this drawer was pure duplication.
   const moduleMenuItems = [
-    { id: 'profile' as const, label: t('navHome'), icon: Clock },
-    { id: 'premium' as const, label: account.isPro ? t('navPro') : t('navPremium'), icon: Camera },
-    { id: 'account' as const, label: t('navProfile'), icon: User },
     { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
     { id: 'assessment' as const, label: tr('Assessment', 'मूल्यांकन'), icon: ClipboardCheck },
     { id: 'store' as const, label: tr('Store', 'स्टोर'), icon: ShoppingBag },
@@ -376,10 +375,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
           sit on top of the buttons. The left spacer mirrors the button
           cluster's width so the logo still lands at the true visual center. */}
       <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2">
-        {/* '⋮' module switcher, plus the Streak/Days widget right next to it —
-            both live here, in the one persistent sticky header shown on every
-            tab, so neither jumps position when you switch tabs or scroll
-            (unlike an inline element placed inside each tab's content). */}
+        {/* '⋮' module switcher — lives here, in the one persistent sticky
+            header shown on every tab, so it never jumps position when you
+            switch tabs or scroll (unlike an inline element placed inside
+            each tab's content). The streak widget used to sit next to it
+            here; it now lives on the Profile page instead. */}
         <div className="shrink-0 flex items-center gap-1.5 min-w-0">
           <button
             type="button"
@@ -389,7 +389,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           >
             <MoreVertical className="w-4 h-4" />
           </button>
-          <StreakWidget profile={profile} />
         </div>
 
         <div className="flex-1 min-w-0 flex justify-center px-1">
@@ -517,15 +516,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* 4. MAIN CONTENT CONTAINER (Desktop pl-64) */}
       <div className="md:pl-64 w-full">
-
-        {/* Streak & points — desktop only here; on mobile the same widget
-            already lives in the sticky header next to the '⋮' menu, so it
-            isn't duplicated on small screens. Outside every tab's own
-            content, so it stays visible no matter which module you switch
-            to, instead of only showing on the Daily Plan tab. */}
-        <div className="hidden md:block max-w-6xl mx-auto px-4 sm:px-6 pt-3 pb-1">
-          <StreakWidget profile={profile} />
-        </div>
 
         {activeTab === 'profile' ? (
           <ProfilePage
