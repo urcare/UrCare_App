@@ -14,6 +14,7 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
   const { language, setLanguage } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [authModal, setAuthModal] = useState<'signin' | 'signup' | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -45,7 +46,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
     playClickSound(680);
     setError(null);
     if (!isSupabaseConfigured()) {
-      setError('Sign-in is not configured yet. Please try again shortly.');
+      setError(tr('Sign-in is not configured yet. Please try again shortly.', 'साइन-इन अभी कॉन्फ़िगर नहीं है। कृपया थोड़ी देर बाद पुनः प्रयास करें।'));
       return;
     }
     setGoogleLoading(true);
@@ -72,7 +73,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
       return;
     }
     if (!isSupabaseConfigured()) {
-      setError('Sign-in is not configured yet. Please try again shortly.');
+      setError(tr('Sign-in is not configured yet. Please try again shortly.', 'साइन-इन अभी कॉन्फ़िगर नहीं है। कृपया थोड़ी देर बाद पुनः प्रयास करें।'));
       return;
     }
 
@@ -216,7 +217,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
               onClick={onOpenAdmin}
               className="text-[10px] text-zinc-400 hover:text-zinc-700 font-bold transition-colors cursor-pointer"
             >
-              Admin Console Portal
+              {tr('Admin Console Portal', 'एडमिन कंसोल पोर्टल')}
             </button>
           </div>
         )}
@@ -240,15 +241,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
 
             <div>
               <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                {authModal === 'signup' ? 'Get Started' : 'Welcome Back'}
+                {authModal === 'signup' ? tr('Get Started', 'शुरू करें') : tr('Welcome Back', 'वापसी पर स्वागत है')}
               </span>
               <h2 className="text-xl font-black text-zinc-950 mt-1">
-                {authModal === 'signup' ? 'Create Your Account' : 'Sign In to Your Account'}
+                {authModal === 'signup' ? tr('Create Your Account', 'अपना खाता बनाएं') : tr('Sign In to Your Account', 'अपने खाते में साइन इन करें')}
               </h2>
               <p className="text-xs text-zinc-500">
                 {authModal === 'signup'
-                  ? 'Your health data is saved securely to your account.'
-                  : 'Your saved health profile and data will load automatically.'}
+                  ? tr('Your health data is saved securely to your account.', 'आपका स्वास्थ्य डेटा आपके खाते में सुरक्षित रूप से सहेजा जाता है।')
+                  : tr('Your saved health profile and data will load automatically.', 'आपकी सहेजी गई स्वास्थ्य प्रोफ़ाइल व डेटा अपने आप लोड हो जाएगा।')}
               </p>
             </div>
 
@@ -293,26 +294,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
                   />
                 </svg>
               )}
-              <span>{googleLoading ? 'Redirecting to Google...' : 'Continue with Google'}</span>
+              <span>{googleLoading ? tr('Redirecting to Google...', 'Google पर भेजा जा रहा है...') : tr('Continue with Google', 'Google से जारी रखें')}</span>
             </button>
 
             {/* Divider */}
             <div className="relative flex items-center justify-center my-1">
               <div className="border-t border-zinc-200 w-full" />
-              <span className="bg-white px-2.5 text-[10px] font-bold text-zinc-400 uppercase">or use email</span>
+              <span className="bg-white px-2.5 text-[10px] font-bold text-zinc-400 uppercase">{tr('or use email', 'या ईमेल का उपयोग करें')}</span>
             </div>
 
             {/* Email / Password Form */}
             <form onSubmit={handleEmailSubmit} className="space-y-3">
               {authModal === 'signup' && (
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 mb-1">Full Name</label>
+                  <label className="block text-xs font-bold text-zinc-700 mb-1">{tr('Full Name', 'पूरा नाम')}</label>
                   <div className="relative">
                     <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                     <input
                       type="text"
                       required
-                      placeholder="Your name"
+                      placeholder={tr('Your name', 'आपका नाम')}
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-zinc-300 bg-zinc-50 focus:bg-white text-zinc-900 text-xs font-semibold focus:border-zinc-900 outline-none"
@@ -322,7 +323,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
               )}
 
               <div>
-                <label className="block text-xs font-bold text-zinc-700 mb-1">Email</label>
+                <label className="block text-xs font-bold text-zinc-700 mb-1">{tr('Email', 'ईमेल')}</label>
                 <div className="relative">
                   <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
@@ -337,7 +338,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-zinc-700 mb-1">Password</label>
+                <label className="block text-xs font-bold text-zinc-700 mb-1">{tr('Password', 'पासवर्ड')}</label>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
@@ -358,7 +359,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
                   onClick={handleForgotPassword}
                   className="text-[11px] font-bold text-zinc-500 hover:text-zinc-800 cursor-pointer"
                 >
-                  Forgot password?
+                  {tr('Forgot password?', 'पासवर्ड भूल गए?')}
                 </button>
               )}
 
@@ -367,21 +368,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
                 disabled={loading}
                 className="w-full py-3 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-60"
               >
-                {loading ? 'Please wait...' : authModal === 'signup' ? 'Create Account' : 'Sign In'}
+                {loading ? tr('Please wait...', 'कृपया प्रतीक्षा करें...') : authModal === 'signup' ? tr('Create Account', 'खाता बनाएं') : tr('Sign In', 'साइन इन करें')}
               </button>
             </form>
 
             <div className="text-center text-[11px] text-zinc-500">
               {authModal === 'signup' ? (
-                <span>Already have an account? <button type="button" onClick={() => openModal('signin')} className="font-black text-zinc-900 underline cursor-pointer">Sign in</button></span>
+                <span>{tr('Already have an account?', 'क्या आपके पास पहले से खाता है?')} <button type="button" onClick={() => openModal('signin')} className="font-black text-zinc-900 underline cursor-pointer">{tr('Sign in', 'साइन इन करें')}</button></span>
               ) : (
-                <span>New here? <button type="button" onClick={() => openModal('signup')} className="font-black text-zinc-900 underline cursor-pointer">Create an account</button></span>
+                <span>{tr('New here?', 'नए हैं?')} <button type="button" onClick={() => openModal('signup')} className="font-black text-zinc-900 underline cursor-pointer">{tr('Create an account', 'खाता बनाएं')}</button></span>
               )}
             </div>
 
             <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-400 pt-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Secure encrypted healthcare login</span>
+              <span>{tr('Secure encrypted healthcare login', 'सुरक्षित एन्क्रिप्टेड हेल्थकेयर लॉगिन')}</span>
             </div>
 
           </div>

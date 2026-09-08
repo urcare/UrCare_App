@@ -5,12 +5,14 @@ import { Heart, Check, X, Calendar, Target, BarChart3, Trophy } from 'lucide-rea
 import { UserHealthProfile } from '../types';
 import { toDateKey } from './DailyCalendar';
 import { getActiveDates } from '../utils/supabase';
+import { useLanguage } from '../context/LanguageContext';
 
 interface StreakWidgetProps {
   profile: UserHealthProfile;
 }
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAY_LABELS_HI = ['सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि', 'रवि'];
 
 /** The uploaded 3D green heart-with-flame asset — resized/compressed from
  *  the original 2.1MB upload (public/Streak.png) down to a ~420px-wide,
@@ -147,6 +149,8 @@ const StreakBar: React.FC<{ streak: number; onOpen: () => void }> = ({ streak, o
  *  outside the tab content, so it stays visible no matter which module you
  *  switch to. */
 export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const userId = profile.id || '';
   const [expanded, setExpanded] = useState(false);
   const [markedDates, setMarkedDates] = useState<Set<string>>(new Set());
@@ -228,23 +232,25 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
                 </button>
 
                 <div>
-                  <h2 className="text-2xl font-black text-zinc-950">Your Streak</h2>
-                  <p className="text-xs text-zinc-500 mt-0.5">Small steps. A healthier you!</p>
+                  <h2 className="text-2xl font-black text-zinc-950">{tr('Your Streak', 'आपकी स्ट्रीक')}</h2>
+                  <p className="text-xs text-zinc-500 mt-0.5">{tr('Small steps. A healthier you!', 'छोटे कदम। एक स्वस्थ आप!')}</p>
                 </div>
 
                 <div className="flex items-center gap-3.5">
                   <StreakHeartImage size={68} />
                   <div className="flex-1 min-w-0">
                     <div className="text-3xl font-black text-zinc-950 leading-none">{streak}</div>
-                    <div className="text-xs font-bold text-zinc-500 mt-1">Day Streak</div>
+                    <div className="text-xs font-bold text-zinc-500 mt-1">{tr('Day Streak', 'दिन की स्ट्रीक')}</div>
                     <p className="text-[11px] text-zinc-400 mt-1 leading-snug">
-                      {streak > 0 ? 'Great job! Keep going and stay consistent.' : 'Complete a task today to start your streak!'}
+                      {streak > 0
+                        ? tr('Great job! Keep going and stay consistent.', 'बढ़िया! ऐसे ही जारी रखें और निरंतर बने रहें।')
+                        : tr('Complete a task today to start your streak!', 'स्ट्रीक शुरू करने के लिए आज एक काम पूरा करें!')}
                     </p>
                   </div>
                   <div className="shrink-0 w-[92px] flex flex-col items-center text-center gap-1 px-2.5 py-2.5 rounded-2xl bg-emerald-50 border border-emerald-100">
                     <Calendar className="w-4 h-4 text-emerald-600" />
-                    <span className="text-[9px] font-bold text-emerald-700 leading-tight">Your longest streak</span>
-                    <span className="text-sm font-black text-emerald-700">{longestStreak} days</span>
+                    <span className="text-[9px] font-bold text-emerald-700 leading-tight">{tr('Your longest streak', 'आपकी सबसे लंबी स्ट्रीक')}</span>
+                    <span className="text-sm font-black text-emerald-700">{longestStreak} {tr('days', 'दिन')}</span>
                   </div>
                 </div>
 
@@ -265,7 +271,7 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
                           {isDone && <Check className="relative w-3.5 h-3.5 text-white stroke-[3]" />}
                         </div>
                         <span className={`text-[10px] font-bold ${isToday ? 'text-emerald-600' : 'text-zinc-400'}`}>
-                          {WEEKDAY_LABELS[weekDates.indexOf(d)]}
+                          {tr(WEEKDAY_LABELS[weekDates.indexOf(d)], WEEKDAY_LABELS_HI[weekDates.indexOf(d)])}
                         </span>
                       </div>
                     );
@@ -277,17 +283,17 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
                     <div className="w-7 h-7 rounded-xl bg-white border border-zinc-200 flex items-center justify-center">
                       <Target className="w-3.5 h-3.5 text-emerald-600" />
                     </div>
-                    <div className="text-xs font-black text-zinc-900 mt-1.5">Streak Goal</div>
-                    <p className="text-[10px] text-zinc-500 leading-snug">Build a healthier tomorrow, one day at a time.</p>
+                    <div className="text-xs font-black text-zinc-900 mt-1.5">{tr('Streak Goal', 'स्ट्रीक लक्ष्य')}</div>
+                    <p className="text-[10px] text-zinc-500 leading-snug">{tr('Build a healthier tomorrow, one day at a time.', 'एक-एक दिन करके एक स्वस्थ कल बनाएं।')}</p>
                   </div>
                   <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-100 space-y-1">
                     <div className="w-7 h-7 rounded-xl bg-white border border-zinc-200 flex items-center justify-center">
                       <BarChart3 className="w-3.5 h-3.5 text-emerald-600" />
                     </div>
-                    <div className="text-xs font-black text-zinc-900 mt-1.5">Total Active Days</div>
-                    <div className="text-lg font-black text-emerald-600 leading-none mt-0.5">{totalActiveDays} days</div>
+                    <div className="text-xs font-black text-zinc-900 mt-1.5">{tr('Total Active Days', 'कुल सक्रिय दिन')}</div>
+                    <div className="text-lg font-black text-emerald-600 leading-none mt-0.5">{totalActiveDays} {tr('days', 'दिन')}</div>
                     <p className="text-[10px] text-zinc-500 leading-snug">
-                      {streakPoints > 0 ? `${streakPoints} pts earned so far` : "You're on the right track!"}
+                      {streakPoints > 0 ? tr(`${streakPoints} pts earned so far`, `अब तक ${streakPoints} पॉइंट्स मिले`) : tr("You're on the right track!", 'आप सही राह पर हैं!')}
                     </p>
                   </div>
                 </div>
@@ -298,7 +304,7 @@ export const StreakWidget: React.FC<StreakWidgetProps> = ({ profile }) => {
                   className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer"
                 >
                   <Trophy className="w-4 h-4" />
-                  <span>Keep Going!</span>
+                  <span>{tr('Keep Going!', 'जारी रखें!')}</span>
                 </button>
               </motion.div>
             </div>

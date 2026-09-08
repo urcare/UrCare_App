@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, RefreshCw, Scale, Target, ShieldCheck, Mail, CheckCircle2, SlidersHorizontal, Globe2 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { calculateNutritionPlan } from '../utils/calculator';
-import { LanguageSwitchButton } from '../context/LanguageContext';
+import { LanguageSwitchButton, useLanguage } from '../context/LanguageContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -20,6 +20,14 @@ const formatLabel = (value?: string): string => {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
+const GOAL_LABEL_HI: Record<string, string> = {
+  lose_weight: 'वज़न घटाना',
+  build_muscle: 'मांसपेशी बनाना',
+  maintain_tone: 'टोन बनाए रखना',
+  improve_health: 'स्वास्थ्य सुधारना',
+  reverse_condition: 'स्थिति को उलटना',
+};
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
@@ -30,6 +38,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [weightInput, setWeightInput] = useState(profile.currentWeightKg.toString());
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   if (!isOpen) return null;
 
@@ -75,8 +85,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <SlidersHorizontal className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-black text-zinc-950">Settings</h3>
-              <p className="text-[11px] text-zinc-500 font-medium">Account, language & health metrics</p>
+              <h3 className="text-base font-black text-zinc-950">{tr('Settings', 'सेटिंग्स')}</h3>
+              <p className="text-[11px] text-zinc-500 font-medium">{tr('Account, language & health metrics', 'खाता, भाषा व स्वास्थ्य मेट्रिक्स')}</p>
             </div>
           </div>
           <button
@@ -112,7 +122,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
           <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 shrink-0">
             <ShieldCheck className="w-3 h-3" />
-            <span>{account.authProvider === 'google' ? 'Google' : 'Email'}</span>
+            <span>{account.authProvider === 'google' ? 'Google' : tr('Email', 'ईमेल')}</span>
           </span>
         </div>
 
@@ -123,8 +133,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <Globe2 className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-xs font-bold text-zinc-900">App Language</h4>
-              <p className="text-[10px] text-zinc-500">Switch between English & Hindi</p>
+              <h4 className="text-xs font-bold text-zinc-900">{tr('App Language', 'ऐप की भाषा')}</h4>
+              <p className="text-[10px] text-zinc-500">{tr('Switch between English & Hindi', 'अंग्रेज़ी व हिंदी के बीच स्विच करें')}</p>
             </div>
           </div>
           <LanguageSwitchButton />
@@ -135,11 +145,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-zinc-800 flex items-center gap-1.5">
               <Scale className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Update Today's Body Weight (kg)</span>
+              <span>{tr("Update Today's Body Weight (kg)", 'आज का वज़न अपडेट करें (kg)')}</span>
             </label>
             <span className="text-[10px] font-bold text-zinc-500 flex items-center gap-1">
               <Target className="w-3 h-3" />
-              Goal: {profile.targetWeightKg} kg
+              {tr('Goal:', 'लक्ष्य:')} {profile.targetWeightKg} kg
             </span>
           </div>
           <div className="flex gap-2">
@@ -156,7 +166,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-60"
             >
               {saved ? <CheckCircle2 className="w-3.5 h-3.5" /> : <RefreshCw className={`w-3.5 h-3.5 ${isSaving ? 'animate-spin' : ''}`} />}
-              <span>{saved ? 'Saved' : 'Save'}</span>
+              <span>{saved ? tr('Saved', 'सहेजा गया') : tr('Save', 'सहेजें')}</span>
             </button>
           </div>
 
@@ -164,28 +174,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="grid grid-cols-2 gap-2 pt-1">
             <div className="p-2 rounded-xl bg-zinc-50 border border-zinc-100 text-center">
               <div className="text-xs font-black text-zinc-900">
-                {weightDelta > 0 ? `${weightDelta} kg to go` : weightDelta < 0 ? `${Math.abs(weightDelta)} kg past goal` : 'Goal reached'}
+                {weightDelta > 0 ? tr(`${weightDelta} kg to go`, `${weightDelta} kg शेष`) : weightDelta < 0 ? tr(`${Math.abs(weightDelta)} kg past goal`, `लक्ष्य से ${Math.abs(weightDelta)} kg आगे`) : tr('Goal reached', 'लक्ष्य पूरा हुआ')}
               </div>
-              <span className="text-[9px] text-zinc-500 font-semibold">Progress to Target</span>
+              <span className="text-[9px] text-zinc-500 font-semibold">{tr('Progress to Target', 'लक्ष्य की ओर प्रगति')}</span>
             </div>
             <div className="p-2 rounded-xl bg-zinc-50 border border-zinc-100 text-center">
-              <div className="text-xs font-black text-zinc-900">{formatLabel(profile.goal)}</div>
-              <span className="text-[9px] text-zinc-500 font-semibold">Health Goal</span>
+              <div className="text-xs font-black text-zinc-900">{tr(formatLabel(profile.goal), GOAL_LABEL_HI[profile.goal || ''] || formatLabel(profile.goal))}</div>
+              <span className="text-[9px] text-zinc-500 font-semibold">{tr('Health Goal', 'स्वास्थ्य लक्ष्य')}</span>
             </div>
           </div>
         </form>
 
         {/* Data reassurance — accurate, no exposed schema/table names */}
         <p className="text-[10px] text-center text-zinc-400 font-medium px-2">
-          Your health data is private, encrypted in transit, and saved securely to your account automatically.
+          {tr('Your health data is private, encrypted in transit, and saved securely to your account automatically.', 'आपका स्वास्थ्य डेटा निजी है, ट्रांज़िट में एन्क्रिप्टेड है, और आपके खाते में स्वतः सुरक्षित रूप से सहेजा जाता है।')}
         </p>
 
         {/* Pointer to the full profile editor, which now lives as its own
             module on the Profile page instead of a destructive "retake
             onboarding" reset here. */}
         <p className="text-[10px] text-center text-zinc-400 font-medium px-2 pt-1 border-t border-zinc-100">
-          Want to update your goal, activity level, or medical history? Open{' '}
-          <span className="font-bold text-emerald-600">Profile → Edit Health Profile</span>.
+          {tr('Want to update your goal, activity level, or medical history? Open', 'अपना लक्ष्य, गतिविधि स्तर, या मेडिकल इतिहास अपडेट करना चाहते हैं? खोलें')}{' '}
+          <span className="font-bold text-emerald-600">{tr('Profile → Edit Health Profile', 'प्रोफ़ाइल → स्वास्थ्य प्रोफ़ाइल संपादित करें')}</span>.
         </p>
 
       </div>

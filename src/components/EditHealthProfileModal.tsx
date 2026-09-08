@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, User, Scale, Target, Activity, Gauge, Apple, Stethoscope, Check, Save } from 'lucide-react';
 import { UserHealthProfile, GenderType, GoalType, ActivityLevel, GoalPace } from '../types';
 import { calculateNutritionPlan } from '../utils/calculator';
+import { useLanguage } from '../context/LanguageContext';
 
 interface EditHealthProfileModalProps {
   isOpen: boolean;
@@ -61,6 +62,64 @@ const CONDITION_OPTIONS = [
 const pillActive = 'bg-emerald-600 border-emerald-600 text-white shadow-sm';
 const pillInactive = 'bg-white border-zinc-200 text-zinc-700 hover:border-emerald-300';
 
+// Hindi display labels — the English id/value stored in state (and matched
+// server-side for conditions) is never translated, only what's shown.
+const GOAL_LABEL_HI: Record<GoalType, { title: string; desc: string }> = {
+  lose_weight: { title: 'वज़न घटाएं व चर्बी कम करें', desc: 'कैलोरी डेफिसिट, उच्च-प्रोटीन तृप्ति' },
+  build_muscle: { title: 'मांसपेशी बनाएं व टोन करें', desc: 'हाइपरट्रॉफी मैक्रो विभाजन' },
+  maintain_tone: { title: 'वज़न बनाए रखें व फिट रहें', desc: 'आइसो-कैलोरिक मेटाबॉलिक संतुलन' },
+  improve_health: { title: 'ब्लड शुगर प्रबंधित करें व ऊर्जा बढ़ाएं', desc: 'कम ग्लाइसेमिक इंडेक्स पर फोकस' },
+  reverse_condition: { title: 'डायबिटीज व अन्य स्थितियों को उलटें', desc: 'डॉक्टर-निर्देशित मूल-कारण रिवर्सल' },
+};
+
+const ACTIVITY_LABEL_HI: Record<ActivityLevel, string> = {
+  sedentary: 'निष्क्रिय (कोई/बहुत कम व्यायाम)',
+  lightly_active: 'हल्की सक्रियता (सप्ताह में 1-2 दिन)',
+  moderately_active: 'मध्यम सक्रियता (सप्ताह में 3-5 दिन)',
+  very_active: 'अत्यधिक सक्रिय (सप्ताह में 6+ दिन)',
+  athlete: 'एथलीट (गहन दैनिक प्रशिक्षण)',
+};
+
+const PACE_LABEL_HI: Record<GoalPace, string> = {
+  slow: 'सौम्य',
+  steady: 'अनुशंसित',
+  moderate: 'मध्यम',
+  fast: 'तेज़',
+};
+
+const DIET_LABEL_HI: Record<string, string> = {
+  Vegetarian: 'शाकाहारी',
+  Eggetarian: 'अंडा-शाकाहारी',
+  'Non-Vegetarian': 'मांसाहारी',
+  Vegan: 'वीगन',
+  Jain: 'जैन',
+  'Keto / Low-Carb': 'कीटो / लो-कार्ब',
+  'Gluten-Free': 'ग्लूटेन-फ्री',
+  Other: 'अन्य',
+};
+
+const CONDITION_LABEL_HI: Record<string, string> = {
+  'None': 'कोई नहीं',
+  'Diabetes / Pre-Diabetes': 'डायबिटीज / प्री-डायबिटीज',
+  'Obesity': 'मोटापा',
+  'High Blood Pressure': 'उच्च रक्तचाप (बीपी)',
+  'High Cholesterol / Fatty Liver': 'उच्च कोलेस्ट्रॉल / फैटी लिवर',
+  'Thyroid (Hypo/Hyper)': 'थायरॉइड (हाइपो/हाइपर)',
+  'PCOS / PCOD': 'PCOS / PCOD',
+  'Neuropathy (Nerve Pain/Tingling)': 'न्यूरोपैथी (नस दर्द/झनझनाहट)',
+  'Diabetic Retinopathy': 'डायबिटिक रेटिनोपैथी',
+  'Heart Disease': 'हृदय रोग',
+  'Kidney Disease': 'किडनी रोग',
+  'Joint Pain / Arthritis': 'जोड़ों का दर्द / गठिया',
+  'Chronic Fatigue': 'लगातार थकान',
+  'Sleep Apnea / Sleep Issues': 'स्लीप एपनिया / नींद की समस्या',
+  'Erectile Dysfunction': 'इरेक्टाइल डिसफंक्शन',
+  'Uric Acid / Gout': 'यूरिक एसिड / गठिया रोग',
+  'Digestive / IBS': 'पाचन संबंधी समस्या / IBS',
+};
+
+const GENDER_LABEL_HI: Record<GenderType, string> = { male: 'पुरुष', female: 'महिला', other: 'अन्य' };
+
 export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
   isOpen,
   onClose,
@@ -80,6 +139,8 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
   const [medicalConditions, setMedicalConditions] = useState<string[]>(profile.medicalConditions || []);
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   if (!isOpen) return null;
 
@@ -149,8 +210,8 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
               <User className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-base font-black text-zinc-950">Edit Health Profile</h3>
-              <p className="text-[11px] text-zinc-500 font-medium truncate">Update the details you gave us at sign-up, any time</p>
+              <h3 className="text-base font-black text-zinc-950">{tr('Edit Health Profile', 'स्वास्थ्य प्रोफ़ाइल संपादित करें')}</h3>
+              <p className="text-[11px] text-zinc-500 font-medium truncate">{tr('Update the details you gave us at sign-up, any time', 'साइन-अप के समय दी गई जानकारी कभी भी अपडेट करें')}</p>
             </div>
           </div>
           <button
@@ -169,11 +230,11 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
           <section className="space-y-2.5">
             <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-emerald-600" />
-              Personal Details
+              {tr('Personal Details', 'व्यक्तिगत जानकारी')}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-[11px] font-bold text-zinc-600 mb-1">Full Name</label>
+                <label className="block text-[11px] font-bold text-zinc-600 mb-1">{tr('Full Name', 'पूरा नाम')}</label>
                 <input
                   type="text"
                   value={name}
@@ -182,7 +243,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-zinc-600 mb-1">Age (years)</label>
+                <label className="block text-[11px] font-bold text-zinc-600 mb-1">{tr('Age (years)', 'आयु (वर्ष)')}</label>
                 <input
                   type="number"
                   value={age}
@@ -191,7 +252,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-zinc-600 mb-1">Height (cm)</label>
+                <label className="block text-[11px] font-bold text-zinc-600 mb-1">{tr('Height (cm)', 'कद (cm)')}</label>
                 <input
                   type="number"
                   value={heightCm}
@@ -200,7 +261,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-zinc-600 mb-1">Gender</label>
+                <label className="block text-[11px] font-bold text-zinc-600 mb-1">{tr('Gender', 'लिंग')}</label>
                 <div className="flex gap-1.5">
                   {(['male', 'female', 'other'] as GenderType[]).map((g) => (
                     <button
@@ -209,7 +270,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
                       onClick={() => setGender(g)}
                       className={`flex-1 py-2.5 rounded-xl border text-[11px] font-bold capitalize transition-all cursor-pointer ${gender === g ? pillActive : pillInactive}`}
                     >
-                      {g}
+                      {tr(g, GENDER_LABEL_HI[g])}
                     </button>
                   ))}
                 </div>
@@ -221,11 +282,11 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
           <section className="space-y-2.5">
             <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
               <Scale className="w-3.5 h-3.5 text-emerald-600" />
-              Weight Goals
+              {tr('Weight Goals', 'वज़न लक्ष्य')}
             </h4>
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-[11px] font-bold text-zinc-600 mb-1">Current Weight (kg)</label>
+                <label className="block text-[11px] font-bold text-zinc-600 mb-1">{tr('Current Weight (kg)', 'वर्तमान वज़न (kg)')}</label>
                 <input
                   type="number"
                   step="0.1"
@@ -236,7 +297,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-zinc-600 mb-1 flex items-center gap-1">
-                  <Target className="w-3 h-3" /> Target Weight (kg)
+                  <Target className="w-3 h-3" /> {tr('Target Weight (kg)', 'लक्ष्य वज़न (kg)')}
                 </label>
                 <input
                   type="number"
@@ -253,7 +314,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
           <section className="space-y-2.5">
             <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
               <Stethoscope className="w-3.5 h-3.5 text-emerald-600" />
-              Primary Goal
+              {tr('Primary Goal', 'मुख्य लक्ष्य')}
             </h4>
             <div className="space-y-1.5">
               {GOAL_OPTIONS.map((g) => (
@@ -264,8 +325,8 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
                   className={`w-full p-3 rounded-xl border flex items-center justify-between gap-2 text-left transition-all cursor-pointer ${goal === g.id ? pillActive : pillInactive}`}
                 >
                   <div className="min-w-0">
-                    <div className="text-xs font-black truncate">{g.title}</div>
-                    <div className={`text-[10px] truncate ${goal === g.id ? 'text-emerald-50' : 'text-zinc-500'}`}>{g.desc}</div>
+                    <div className="text-xs font-black truncate">{tr(g.title, GOAL_LABEL_HI[g.id].title)}</div>
+                    <div className={`text-[10px] truncate ${goal === g.id ? 'text-emerald-50' : 'text-zinc-500'}`}>{tr(g.desc, GOAL_LABEL_HI[g.id].desc)}</div>
                   </div>
                   {goal === g.id && <Check className="w-4 h-4 shrink-0" />}
                 </button>
@@ -277,7 +338,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
           <section className="space-y-2.5">
             <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5 text-emerald-600" />
-              Activity Level
+              {tr('Activity Level', 'गतिविधि स्तर')}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {ACTIVITY_OPTIONS.map((a) => (
@@ -287,7 +348,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
                   onClick={() => setActivityLevel(a.id)}
                   className={`p-2.5 rounded-xl border text-[11px] font-bold text-left transition-all cursor-pointer ${activityLevel === a.id ? pillActive : pillInactive}`}
                 >
-                  {a.title}
+                  {tr(a.title, ACTIVITY_LABEL_HI[a.id])}
                 </button>
               ))}
             </div>
@@ -297,7 +358,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
           <section className="space-y-2.5">
             <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
               <Gauge className="w-3.5 h-3.5 text-emerald-600" />
-              Reversal Pace
+              {tr('Reversal Pace', 'रिवर्सल गति')}
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {PACE_OPTIONS.map((p) => (
@@ -307,7 +368,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
                   onClick={() => setPace(p.id)}
                   className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${pace === p.id ? pillActive : pillInactive}`}
                 >
-                  <div className="text-[11px] font-black">{p.title}</div>
+                  <div className="text-[11px] font-black">{tr(p.title, PACE_LABEL_HI[p.id])}</div>
                   <div className={`text-[9px] ${pace === p.id ? 'text-emerald-50' : 'text-zinc-500'}`}>{p.rate}</div>
                 </button>
               ))}
@@ -318,7 +379,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
           <section className="space-y-2.5">
             <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
               <Apple className="w-3.5 h-3.5 text-emerald-600" />
-              Dietary Preference
+              {tr('Dietary Preference', 'खानपान की प्राथमिकता')}
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {DIET_OPTIONS.map((diet) => (
@@ -328,7 +389,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
                   onClick={() => setDietaryPreference(diet)}
                   className={`p-2.5 rounded-xl border text-[11px] font-bold text-center transition-all cursor-pointer ${dietaryPreference === diet ? pillActive : pillInactive}`}
                 >
-                  {diet}
+                  {tr(diet, DIET_LABEL_HI[diet] || diet)}
                 </button>
               ))}
             </div>
@@ -338,7 +399,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
           <section className="space-y-2.5 pb-1">
             <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
               <Stethoscope className="w-3.5 h-3.5 text-emerald-600" />
-              Medical Conditions
+              {tr('Medical Conditions', 'मेडिकल स्थितियां')}
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {CONDITION_OPTIONS.map((cond) => {
@@ -350,7 +411,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
                     onClick={() => toggleCondition(cond)}
                     className={`p-2.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${isSelected ? pillActive : pillInactive}`}
                   >
-                    <span className="text-[11px] font-bold">{cond}</span>
+                    <span className="text-[11px] font-bold">{tr(cond, CONDITION_LABEL_HI[cond] || cond)}</span>
                     {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                   </button>
                 );
@@ -368,7 +429,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
             className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer transition-all disabled:opacity-70"
           >
             {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-            <span>{saved ? 'Saved to Your Account' : 'Save Changes'}</span>
+            <span>{saved ? tr('Saved to Your Account', 'आपके खाते में सहेजा गया') : tr('Save Changes', 'बदलाव सहेजें')}</span>
           </button>
         </div>
 

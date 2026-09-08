@@ -690,7 +690,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
               type="button"
               onClick={onOpenAdmin}
               className="p-2 rounded-xl text-xs font-bold flex items-center gap-1 bg-white text-zinc-600 hover:text-black border border-zinc-200 shadow-xs"
-              title="Admin Portal"
+              title={tr('Admin Portal', 'एडमिन पोर्टल')}
             >
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
             </button>

@@ -4,6 +4,7 @@ import {
   Send, Calendar, AlertCircle, RefreshCw, CheckCircle2, TrendingUp
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { FeedbackSubmission } from '../types';
 import { submitClinicalFeedback } from '../utils/supabase';
 
@@ -26,6 +27,8 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   const [energyRating, setEnergyRating] = useState<number>(4);
   const [digestionRating, setDigestionRating] = useState<number>(4);
@@ -44,13 +47,13 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
     const feedback: FeedbackSubmission = {
       id: 'fb_' + Date.now(),
       userId: userId || 'usr_active',
-      userName: userName || 'Valued Patient',
+      userName: userName || tr('Valued Patient', 'सम्मानित रोगी'),
       dayCycleNumber,
       energyRating,
       digestionRating,
       adherencePercentage,
       satietyLevel,
-      improvementSuggestions: suggestions.trim() || 'No specific improvements requested. Protocol running smoothly.',
+      improvementSuggestions: suggestions.trim() || tr('No specific improvements requested. Protocol running smoothly.', 'कोई विशेष सुधार अनुरोधित नहीं। प्रोटोकॉल सुचारू रूप से चल रहा है।'),
       createdAt: new Date().toISOString(),
     };
 
@@ -79,16 +82,16 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">
-              3 to 6 Day Clinical Adherence Check-In
+              {tr('3 to 6 Day Clinical Adherence Check-In', '3 से 6 दिन का क्लिनिकल पालन चेक-इन')}
             </span>
           </div>
           <h3 className="text-xl font-black">
-            {isSubmitted ? 'Feedback Logged' : `Day ${dayCycleNumber} Progress & Platform Input`}
+            {isSubmitted ? tr('Feedback Logged', 'फीडबैक दर्ज हुआ') : tr(`Day ${dayCycleNumber} Progress & Platform Input`, `दिन ${dayCycleNumber} प्रगति व प्लेटफ़ॉर्म इनपुट`)}
           </h3>
           <p className="text-xs opacity-65 mt-1">
-            {isSubmitted 
-              ? 'Thank you for your clinical feedback. Data has been synchronized with Supabase for nutritional algorithm refinement.' 
-              : 'Every 3 to 6 days, this evaluation measures dietary adaptation, metabolic tolerance, and requested enhancements.'}
+            {isSubmitted
+              ? tr('Thank you for your clinical feedback. Data has been synchronized with Supabase for nutritional algorithm refinement.', 'आपके क्लिनिकल फीडबैक के लिए धन्यवाद। डेटा को पोषण एल्गोरिदम सुधार हेतु Supabase के साथ सिंक कर दिया गया है।')
+              : tr('Every 3 to 6 days, this evaluation measures dietary adaptation, metabolic tolerance, and requested enhancements.', 'हर 3 से 6 दिन में, यह मूल्यांकन आहार अनुकूलन, मेटाबॉलिक सहनशीलता व अनुरोधित सुधारों को मापता है।')}
           </p>
         </div>
 
@@ -98,9 +101,9 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
               <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
             </div>
             <div className="space-y-1">
-              <h4 className="text-base font-extrabold">Assessment Synchronized</h4>
+              <h4 className="text-base font-extrabold">{tr('Assessment Synchronized', 'मूल्यांकन सिंक हो गया')}</h4>
               <p className="text-xs opacity-70 max-w-sm mx-auto">
-                Next scheduled clinical feedback checkpoint will open in 3 to 6 days. Your dietary recommendations will adapt dynamically.
+                {tr('Next scheduled clinical feedback checkpoint will open in 3 to 6 days. Your dietary recommendations will adapt dynamically.', 'अगला निर्धारित क्लिनिकल फीडबैक चेकपॉइंट 3 से 6 दिनों में खुलेगा। आपकी आहार सिफारिशें गतिशील रूप से अनुकूलित होंगी।')}
               </p>
             </div>
             <button
@@ -108,7 +111,7 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
               onClick={onClose}
               className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/20 transition-all"
             >
-              Return to Dashboard
+              {tr('Return to Dashboard', 'डैशबोर्ड पर वापस जाएं')}
             </button>
           </div>
         ) : (
@@ -117,7 +120,7 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
             {/* Metric 1: Energy & Vitality */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <label className="font-bold opacity-80">Overall Daytime Energy & Focus</label>
+                <label className="font-bold opacity-80">{tr('Overall Daytime Energy & Focus', 'समग्र दिनभर की ऊर्जा व फोकस')}</label>
                 <span className="font-mono text-emerald-500 font-bold">{energyRating} / 5</span>
               </div>
               <div className="grid grid-cols-5 gap-2">
@@ -141,7 +144,7 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
             {/* Metric 2: Digestion & GI Comfort */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <label className="font-bold opacity-80">Digestion & GI Tolerance</label>
+                <label className="font-bold opacity-80">{tr('Digestion & GI Tolerance', 'पाचन व GI सहनशीलता')}</label>
                 <span className="font-mono text-emerald-500 font-bold">{digestionRating} / 5</span>
               </div>
               <div className="grid grid-cols-5 gap-2">
@@ -164,12 +167,12 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
 
             {/* Metric 3: Satiety & Caloric Satisfaction */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold opacity-80">Meal Satiety & Hunger Management</label>
+              <label className="block text-xs font-bold opacity-80">{tr('Meal Satiety & Hunger Management', 'भोजन तृप्ति व भूख प्रबंधन')}</label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: 'low', label: 'Hungry Often' },
-                  { id: 'optimal', label: 'Well Balanced' },
-                  { id: 'excessive', label: 'Too Full' },
+                  { id: 'low', label: tr('Hungry Often', 'अक्सर भूख लगती है') },
+                  { id: 'optimal', label: tr('Well Balanced', 'अच्छी तरह संतुलित') },
+                  { id: 'excessive', label: tr('Too Full', 'बहुत भरा हुआ') },
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -190,7 +193,7 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
             {/* Metric 4: Adherence Percentage Slider */}
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <label className="font-bold opacity-80">Protocol Adherence Rate (Past 3-6 Days)</label>
+                <label className="font-bold opacity-80">{tr('Protocol Adherence Rate (Past 3-6 Days)', 'प्रोटोकॉल पालन दर (पिछले 3-6 दिन)')}</label>
                 <span className="font-mono text-emerald-500 font-bold">{adherencePercentage}%</span>
               </div>
               <input
@@ -207,11 +210,11 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
             {/* Metric 5: Open Improvement Suggestions */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold opacity-80">
-                User Feedback & Improvement Suggestions
+                {tr('User Feedback & Improvement Suggestions', 'उपयोगकर्ता फीडबैक व सुधार सुझाव')}
               </label>
               <textarea
                 rows={3}
-                placeholder="Suggest new meal ideas, request specific food items, or mention app UI adjustments..."
+                placeholder={tr('Suggest new meal ideas, request specific food items, or mention app UI adjustments...', 'नए भोजन विचार सुझाएं, विशेष खाद्य पदार्थों का अनुरोध करें, या ऐप UI समायोजन बताएं...')}
                 value={suggestions}
                 onChange={(e) => setSuggestions(e.target.value)}
                 className={`w-full p-3 rounded-xl border text-xs font-medium outline-none resize-none ${
@@ -229,12 +232,12 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
               {isSubmitting ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Submitting to Clinical Registry...</span>
+                  <span>{tr('Submitting to Clinical Registry...', 'क्लिनिकल रजिस्ट्री में सबमिट हो रहा है...')}</span>
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4" />
-                  <span>Submit Day {dayCycleNumber} Clinical Feedback</span>
+                  <span>{tr(`Submit Day ${dayCycleNumber} Clinical Feedback`, `दिन ${dayCycleNumber} क्लिनिकल फीडबैक सबमिट करें`)}</span>
                 </>
               )}
             </button>

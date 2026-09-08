@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { playScrollTickSound, playClickSound } from '../utils/soundEffects';
+import { useLanguage } from '../context/LanguageContext';
 
 interface RulerWheelPickerProps {
   min: number;
@@ -31,6 +32,8 @@ export const RulerWheelPicker: React.FC<RulerWheelPickerProps> = ({
   className = '',
   decimals = 0,
 }) => {
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const containerRef = useRef<HTMLDivElement>(null);
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -126,7 +129,7 @@ export const RulerWheelPicker: React.FC<RulerWheelPickerProps> = ({
                 ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-emerald-400 hover:border-emerald-500/40' 
                 : 'bg-zinc-100 border border-zinc-200 text-zinc-700 hover:text-emerald-600 hover:border-emerald-500/40'
           }`}
-          aria-label="Decrease"
+          aria-label={tr('Decrease', 'घटाएं')}
         >
           <Minus className="w-4 h-4" />
         </button>
@@ -153,7 +156,7 @@ export const RulerWheelPicker: React.FC<RulerWheelPickerProps> = ({
                 ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-emerald-400 hover:border-emerald-500/40' 
                 : 'bg-zinc-100 border border-zinc-200 text-zinc-700 hover:text-emerald-600 hover:border-emerald-500/40'
           }`}
-          aria-label="Increase"
+          aria-label={tr('Increase', 'बढ़ाएं')}
         >
           <Plus className="w-4 h-4" />
         </button>

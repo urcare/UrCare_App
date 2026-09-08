@@ -7,6 +7,7 @@ import { MedicalReportAnalysis, Biomarker } from '../types';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { Language, translations } from '../utils/translations';
 import { playClickSound, playSuccessChime } from '../utils/soundEffects';
+import { useLanguage } from '../context/LanguageContext';
 import { authedFetch } from '../utils/supabase';
 
 interface ReportUploaderProps {
@@ -25,11 +26,16 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
   onSkip,
   onDone,
   standalone = false,
-  lang = 'en',
+  lang,
   userAccount,
 }) => {
-  const t = translations[lang] || translations.en;
-  
+  // The global language toggle (useLanguage) is the source of truth — the
+  // `lang` prop is legacy and only overrides it if a caller explicitly passes one.
+  const { language: globalLanguage } = useLanguage();
+  const lang2: Language = lang || globalLanguage;
+  const t = translations[lang2] || translations.en;
+  const tr = (en: string, hi: string) => (lang2 === 'hi' ? hi : en);
+
   // 2 Modes: 'upload' | 'text' (Edit)
   const [inputMode, setInputMode] = useState<'upload' | 'text'>('upload');
   
@@ -80,7 +86,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       };
       reader.onerror = () => {
         setIsReadingFile(false);
-        setError(lang === 'hi' ? 'फ़ाइल पढ़ी नहीं जा सकी। कृपया दोबारा कोशिश करें।' : 'Could not read this file. Please try again.');
+        setError(lang2 === 'hi' ? 'फ़ाइल पढ़ी नहीं जा सकी। कृपया दोबारा कोशिश करें।' : 'Could not read this file. Please try again.');
       };
       reader.readAsDataURL(file);
     }
@@ -101,21 +107,21 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
 
   const handleAnalyze = async () => {
     if (inputMode === 'upload' && !selectedFile) {
-      setError(lang === 'hi' ? 'कृपया अपनी रिपोर्ट (PDF या फोटो) चुनें।' : 'Please select a lab report PDF or photo.');
+      setError(lang2 === 'hi' ? 'कृपया अपनी रिपोर्ट (PDF या फोटो) चुनें।' : 'Please select a lab report PDF or photo.');
       return;
     }
     if (inputMode === 'text' && !reportText.trim()) {
-      setError(lang === 'hi' ? 'कृपया अपनी रिपोर्ट के पैरामीटर्स या टेक्स्ट यहाँ लिखें।' : 'Please enter or paste your lab report text.');
+      setError(lang2 === 'hi' ? 'कृपया अपनी रिपोर्ट के पैरामीटर्स या टेक्स्ट यहाँ लिखें।' : 'Please enter or paste your lab report text.');
       return;
     }
     if (inputMode === 'upload' && selectedFile && isReadingFile) {
-      setError(lang === 'hi' ? 'फ़ाइल अभी तैयार हो रही है, एक पल रुकें।' : 'Still preparing your file — please wait a moment and try again.');
+      setError(lang2 === 'hi' ? 'फ़ाइल अभी तैयार हो रही है, एक पल रुकें।' : 'Still preparing your file — please wait a moment and try again.');
       return;
     }
     // Claude reads PDF pages directly (text, tables, scanned images), so a PDF upload
     // no longer needs the values retyped by hand — just needs the file to have loaded.
     if (inputMode === 'upload' && selectedFile && !fileBase64) {
-      setError(lang === 'hi'
+      setError(lang2 === 'hi'
         ? 'फ़ाइल पढ़ी नहीं जा सकी। कृपया दोबारा अपलोड करें।'
         : "We couldn't read that file. Please try uploading it again.");
       return;
@@ -130,8 +136,8 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
     const progressTimer2 = setTimeout(() => setScanProgress(95), 320);
 
     const reportName = inputMode === 'upload'
-      ? (selectedFile?.name || 'Diagnostic Lab Report')
-      : 'Diagnostic Lab Record';
+      ? (selectedFile?.name || tr('Diagnostic Lab Report', 'डायग्नोस्टिक लैब रिपोर्ट'))
+      : tr('Diagnostic Lab Record', 'डायग्नोस्टिक लैब रिकॉर्ड');
 
     try {
       const res = await authedFetch('/api/analyze-report', {
@@ -146,7 +152,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       const data = await res.json();
 
       if (res.status === 401) {
-        setError(lang === 'hi' ? 'कृपया दोबारा साइन इन करें।' : 'Please sign in again.');
+        setError(lang2 === 'hi' ? 'कृपया दोबारा साइन इन करें।' : 'Please sign in again.');
         setScanProgress(0);
         setIsAnalyzing(false);
         return;
@@ -157,7 +163,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
 
       if (data.isValidReport === false) {
         // Not an actual medical report — reject it instead of filing fake biomarkers.
-        setError(data.rejectionReason || (lang === 'hi'
+        setError(data.rejectionReason || (lang2 === 'hi'
           ? 'यह एक वास्तविक मेडिकल/लैब रिपोर्ट नहीं लगती। कृपया असली लैब रिपोर्ट अपलोड करें।'
           : 'This does not look like a real medical/lab report. Please upload an actual lab report.'));
         setScanProgress(0);
@@ -166,7 +172,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       }
 
       if (data.analysisFailed || data.isValidReport == null) {
-        setError(data.rejectionReason || (lang === 'hi' ? 'अभी जांच नहीं हो सकी, दोबारा कोशिश करें।' : 'Could not analyze this right now. Please try again.'));
+        setError(data.rejectionReason || (lang2 === 'hi' ? 'अभी जांच नहीं हो सकी, दोबारा कोशिश करें।' : 'Could not analyze this right now. Please try again.'));
         setScanProgress(0);
         setIsAnalyzing(false);
         return;
@@ -177,12 +183,12 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
         // never mint a new one client-side.
         id: data.id,
         userId: userAccount?.uid || 'usr_current',
-        userName: userAccount?.displayName || 'Active Member',
+        userName: userAccount?.displayName || tr('Active Member', 'सक्रिय सदस्य'),
         reportName: data.reportName || reportName,
         uploadedAt: data.uploadedAt || new Date().toISOString(),
         imageUrl: previewUrl || undefined,
         reportText: reportText.trim() || undefined,
-        summary: data.summary || 'Diagnostic report document uploaded and filed in clinical records.',
+        summary: data.summary || tr('Diagnostic report document uploaded and filed in clinical records.', 'डायग्नोस्टिक रिपोर्ट दस्तावेज़ अपलोड कर क्लिनिकल रिकॉर्ड में दर्ज किया गया।'),
         biomarkers: (data.biomarkers as Biomarker[]) || [],
         identifiedRisks: data.identifiedRisks || [],
         dietaryRecommendations: data.dietaryRecommendations || [],
@@ -201,7 +207,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       clearTimeout(progressTimer1);
       clearTimeout(progressTimer2);
       console.error(err);
-      setError(lang === 'hi' ? 'स्कैन सर्विस से संपर्क नहीं हो सका। कृपया दोबारा कोशिश करें।' : 'Could not reach the scanning service. Please check your connection and try again.');
+      setError(lang2 === 'hi' ? 'स्कैन सर्विस से संपर्क नहीं हो सका। कृपया दोबारा कोशिश करें।' : 'Could not reach the scanning service. Please check your connection and try again.');
       setScanProgress(0);
       setIsAnalyzing(false);
     }
@@ -232,7 +238,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
           }`}
         >
           <Upload className="w-4 h-4" />
-          <span>Upload File</span>
+          <span>{tr('Upload File', 'फाइल अपलोड करें')}</span>
         </button>
 
         <button
@@ -245,7 +251,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>Edit</span>
+          <span>{tr('Edit', 'संपादित करें')}</span>
         </button>
       </div>
 
@@ -256,13 +262,13 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
             <Upload className="w-7 h-7 animate-pulse text-emerald-400" />
           </div>
           <div className="space-y-1">
-            <h4 className="text-base font-bold text-white">Uploading Medical Report...</h4>
-            <p className="text-xs text-zinc-400">Attaching document securely to your health records</p>
+            <h4 className="text-base font-bold text-white">{tr('Uploading Medical Report...', 'मेडिकल रिपोर्ट अपलोड हो रही है...')}</h4>
+            <p className="text-xs text-zinc-400">{tr('Attaching document securely to your health records', 'दस्तावेज़ को सुरक्षित रूप से आपके स्वास्थ्य रिकॉर्ड से जोड़ा जा रहा है')}</p>
           </div>
 
           <div className="space-y-1.5 max-w-xs mx-auto pt-2">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-zinc-400 font-medium">Uploading</span>
+              <span className="text-zinc-400 font-medium">{tr('Uploading', 'अपलोड हो रहा है')}</span>
               <span className="font-mono font-bold text-emerald-400">{scanProgress}%</span>
             </div>
             <div className="w-full h-2 rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden">
@@ -281,7 +287,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
           <ReportPhotoViewer
             report={analysisResult}
             onReupload={() => setAnalysisResult(null)}
-            userName={userAccount?.displayName || 'Member Patient'}
+            userName={userAccount?.displayName || tr('Member Patient', 'सदस्य रोगी')}
             theme="dark"
           />
 
@@ -293,7 +299,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
               className="flex-1 w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2"
             >
               <Check className="w-4 h-4 stroke-[3]" />
-              <span>Done • Apply & View Dashboard</span>
+              <span>{tr('Done • Apply & View Dashboard', 'पूर्ण • लागू करें व डैशबोर्ड देखें')}</span>
             </button>
 
             <button
@@ -301,7 +307,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
               onClick={() => setAnalysisResult(null)}
               className="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition-colors cursor-pointer"
             >
-              Upload Another
+              {tr('Upload Another', 'एक और अपलोड करें')}
             </button>
           </div>
         </div>
@@ -329,10 +335,10 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-black text-white">
-                  {selectedFile ? selectedFile.name : 'Click to Upload PDF or Report Photo'}
+                  {selectedFile ? selectedFile.name : tr('Click to Upload PDF or Report Photo', 'PDF या रिपोर्ट फोटो अपलोड करने हेतु क्लिक करें')}
                 </p>
                 <p className="text-xs text-zinc-400">
-                  Supports PDF lab reports, doctor prescriptions, or blood test photos
+                  {tr('Supports PDF lab reports, doctor prescriptions, or blood test photos', 'PDF लैब रिपोर्ट, डॉक्टर पर्चे, या ब्लड टेस्ट फोटो समर्थित हैं')}
                 </p>
               </div>
               {selectedFile && (
@@ -344,8 +350,8 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
                   {isReadingFile && <RefreshCw className="w-3 h-3 animate-spin" />}
                   <span>
                     {isReadingFile
-                      ? 'Reading file…'
-                      : `Ready to upload: ${(selectedFile.size / 1024).toFixed(0)} KB`}
+                      ? tr('Reading file…', 'फाइल पढ़ी जा रही है…')
+                      : tr(`Ready to upload: ${(selectedFile.size / 1024).toFixed(0)} KB`, `अपलोड हेतु तैयार: ${(selectedFile.size / 1024).toFixed(0)} KB`)}
                   </span>
                 </span>
               )}
@@ -358,41 +364,44 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-emerald-400" />
-                  <span>Edit or Enter Lab Report Data</span>
+                  <span>{tr('Edit or Enter Lab Report Data', 'लैब रिपोर्ट डेटा संपादित करें या दर्ज करें')}</span>
                 </label>
               </div>
               <textarea
                 rows={5}
-                placeholder="Type or paste your lab results here (e.g. Fasting Blood Sugar: 115 mg/dL, HbA1c: 6.4%, Total Cholesterol: 215 mg/dL, Vitamin D3: 20 ng/mL, Thyroid: Normal)..."
+                placeholder={tr(
+                  'Type or paste your lab results here (e.g. Fasting Blood Sugar: 115 mg/dL, HbA1c: 6.4%, Total Cholesterol: 215 mg/dL, Vitamin D3: 20 ng/mL, Thyroid: Normal)...',
+                  'यहां अपने लैब परिणाम टाइप या पेस्ट करें (जैसे फास्टिंग ब्लड शुगर: 115 mg/dL, HbA1c: 6.4%, कुल कोलेस्ट्रॉल: 215 mg/dL, विटामिन D3: 20 ng/mL, थायरॉइड: सामान्य)...'
+                )}
                 value={reportText}
                 onChange={(e) => setReportText(e.target.value)}
                 className="w-full p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 focus:border-emerald-500 text-white text-xs outline-none transition-colors"
               />
-              
+
               {/* Presets */}
               <div className="space-y-1.5 pt-1">
-                <div className="text-[10px] font-bold text-zinc-400 uppercase">Quick sample presets:</div>
+                <div className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Quick sample presets:', 'त्वरित नमूना प्रीसेट:')}</div>
                 <div className="flex flex-wrap gap-1.5">
                   <button
                     type="button"
                     onClick={() => handleLoadSample('diabetic')}
                     className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center gap-1 border border-zinc-700 cursor-pointer"
                   >
-                    <span>🩸 Diabetic HbA1c (7.2%)</span>
+                    <span>🩸 {tr('Diabetic HbA1c (7.2%)', 'डायबिटिक HbA1c (7.2%)')}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleLoadSample('lipid')}
                     className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center gap-1 border border-zinc-700 cursor-pointer"
                   >
-                    <span>🫀 High Cholesterol (242 mg/dL)</span>
+                    <span>🫀 {tr('High Cholesterol (242 mg/dL)', 'उच्च कोलेस्ट्रॉल (242 mg/dL)')}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleLoadSample('thyroid')}
                     className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center gap-1 border border-zinc-700 cursor-pointer"
                   >
-                    <span>⚡ Thyroid & Vit D3 Test</span>
+                    <span>⚡ {tr('Thyroid & Vit D3 Test', 'थायरॉइड व विटामिन D3 टेस्ट')}</span>
                   </button>
                 </div>
               </div>
@@ -415,7 +424,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
             className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-500/25"
           >
             <Upload className="w-4 h-4 stroke-[2.5]" />
-            <span>Upload</span>
+            <span>{tr('Upload', 'अपलोड करें')}</span>
           </button>
 
           {/* Skip option if inside modal */}
@@ -426,7 +435,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
                 onClick={onSkip}
                 className="w-full py-2.5 rounded-xl text-zinc-400 hover:text-white text-xs font-bold transition-all cursor-pointer"
               >
-                Skip for now
+                {tr('Skip for now', 'अभी के लिए छोड़ें')}
               </button>
             </div>
           )}

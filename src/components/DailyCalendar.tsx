@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface DailyCalendarProps {
   selectedDate: Date;
@@ -36,6 +37,8 @@ export const DailyCalendar: React.FC<DailyCalendarProps> = ({
   completedDates,
   isDark,
 }) => {
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const today = startOfDay(new Date());
   const [viewMonth, setViewMonth] = useState(() => new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
 
@@ -63,7 +66,7 @@ export const DailyCalendar: React.FC<DailyCalendarProps> = ({
         <div className="flex items-center gap-1.5 text-emerald-500">
           <CalendarIcon className="w-4 h-4" />
           <span className="text-xs font-black uppercase tracking-wider">
-            {viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            {viewMonth.toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-US', { month: 'long', year: 'numeric' })}
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -71,7 +74,7 @@ export const DailyCalendar: React.FC<DailyCalendarProps> = ({
             type="button"
             onClick={goPrevMonth}
             className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900'}`}
-            title="Previous month"
+            title={tr('Previous month', 'पिछला महीना')}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -84,7 +87,7 @@ export const DailyCalendar: React.FC<DailyCalendarProps> = ({
                 ? 'opacity-25 cursor-not-allowed'
                 : `cursor-pointer ${isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900'}`
             }`}
-            title="Next month"
+            title={tr('Next month', 'अगला महीना')}
           >
             <ChevronRight className="w-4 h-4" />
           </button>

@@ -6,6 +6,7 @@ import {
   Stethoscope, ShieldCheck, Search, TrendingDown
 } from 'lucide-react';
 import { playClickSound } from '../utils/soundEffects';
+import { useLanguage } from '../context/LanguageContext';
 
 interface AppSimulationVideoProps {
   onGetStarted?: () => void;
@@ -16,13 +17,15 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [sceneProgress, setSceneProgress] = useState<number>(0);
   const [scanLaserPos, setScanLaserPos] = useState<number>(0);
+  const { language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   // The 4-step reversal journey — matches how UrCare actually works end to end.
   const scenes = [
-    { id: 'rootcause', title: '1. Find Your Root Causes', duration: 3800 },
-    { id: 'plan', title: '2. Follow The Treatment Plan', duration: 4000 },
-    { id: 'progress', title: '3. Track Your Progress', duration: 3800 },
-    { id: 'scan', title: '4. UrCare Food Scan', duration: 4000 },
+    { id: 'rootcause', title: tr('1. Find Your Root Causes', '1. अपनी मूल समस्या खोजें'), duration: 3800 },
+    { id: 'plan', title: tr('2. Follow The Treatment Plan', '2. उपचार योजना का पालन करें'), duration: 4000 },
+    { id: 'progress', title: tr('3. Track Your Progress', '3. अपनी प्रगति ट्रैक करें'), duration: 3800 },
+    { id: 'scan', title: tr('4. UrCare Food Scan', '4. UrCare फूड स्कैन'), duration: 4000 },
   ];
 
   // Timer loop for simulation scenes
@@ -115,7 +118,7 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-[10px] font-black tracking-wider uppercase text-emerald-800">
-              UrCare • LIVE SIMULATION
+              UrCare • {tr('LIVE SIMULATION', 'लाइव सिमुलेशन')}
             </span>
           </div>
 
@@ -125,7 +128,7 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
               type="button"
               onClick={handlePrevScene}
               className="p-0.5 text-zinc-500 hover:text-zinc-900 cursor-pointer"
-              title="Previous"
+              title={tr('Previous', 'पिछला')}
             >
               <ChevronLeft className="w-3 h-3" />
             </button>
@@ -134,7 +137,7 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
               type="button"
               onClick={togglePlay}
               className="p-0.5 text-zinc-800 hover:text-emerald-600 cursor-pointer"
-              title={isPlaying ? 'Pause' : 'Play'}
+              title={isPlaying ? tr('Pause', 'रोकें') : tr('Play', 'चलाएं')}
             >
               {isPlaying ? <Pause className="w-3 h-3 fill-zinc-800" /> : <Play className="w-3 h-3 fill-emerald-600 text-emerald-600" />}
             </button>
@@ -143,7 +146,7 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
               type="button"
               onClick={handleNextScene}
               className="p-0.5 text-zinc-500 hover:text-zinc-900 cursor-pointer"
-              title="Next"
+              title={tr('Next', 'अगला')}
             >
               <ChevronRight className="w-3 h-3" />
             </button>
@@ -170,15 +173,15 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
               <div className="p-3 rounded-2xl bg-white border border-emerald-200/80 shadow-xs space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                    Step 1: Root-Cause Assessment
+                    {tr('Step 1: Root-Cause Assessment', 'चरण 1: मूल-कारण मूल्यांकन')}
                   </span>
                   <Search className="w-3.5 h-3.5 text-emerald-600" />
                 </div>
                 <div className="text-xs font-black text-zinc-900">
-                  Diabetes & Other Conditions — We Find the Real Cause
+                  {tr('Diabetes & Other Conditions — We Find the Real Cause', 'डायबिटीज व अन्य स्थितियां — हम असली कारण खोजते हैं')}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {['Type 2 Diabetes', 'Thyroid', 'PCOS', 'Insulin Resistance'].map((tag) => (
+                  {[tr('Type 2 Diabetes', 'टाइप 2 डायबिटीज'), tr('Thyroid', 'थायरॉइड'), 'PCOS', tr('Insulin Resistance', 'इंसुलिन प्रतिरोध')].map((tag) => (
                     <span key={tag} className="text-[9px] font-bold px-2 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
                       {tag}
                     </span>
@@ -189,28 +192,28 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
               {/* Root Causes Identified Output */}
               <div className="p-3 rounded-2xl bg-white border border-zinc-200/80 shadow-xs space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-black text-zinc-900">Root Causes Identified</span>
-                  <span className="text-[10px] font-black text-emerald-600">Diagnosed ✓</span>
+                  <span className="font-black text-zinc-900">{tr('Root Causes Identified', 'मूल कारण पहचाने गए')}</span>
+                  <span className="text-[10px] font-black text-emerald-600">{tr('Diagnosed ✓', 'निदान हुआ ✓')}</span>
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-700">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Chronic insulin resistance from processed carbs</span>
+                    <span>{tr('Chronic insulin resistance from processed carbs', 'प्रोसेस्ड कार्ब्स से पुराना इंसुलिन प्रतिरोध')}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-700">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Sub-optimal sleep disrupting hormone balance</span>
+                    <span>{tr('Sub-optimal sleep disrupting hormone balance', 'कम नींद से हार्मोन संतुलन बिगड़ना')}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-700">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span>Key nutrient deficiencies (D3, Magnesium)</span>
+                    <span>{tr('Key nutrient deficiencies (D3, Magnesium)', 'मुख्य पोषक तत्वों की कमी (D3, मैग्नीशियम)')}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 pt-1 border-t border-zinc-100">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Reviewed by a Doctor Before Your Plan Starts</span>
+                  <span>{tr('Reviewed by a Doctor Before Your Plan Starts', 'योजना शुरू होने से पहले डॉक्टर द्वारा समीक्षा')}</span>
                 </div>
               </div>
             </motion.div>
@@ -239,33 +242,36 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
                       <span>Dr. Alok Sharma, MD</span>
                       <ShieldCheck className="w-3 h-3 text-emerald-600 fill-emerald-100" />
                     </div>
-                    <span className="text-[9px] text-zinc-500 font-medium">Chief Diabetologist • UrCare</span>
+                    <span className="text-[9px] text-zinc-500 font-medium">{tr('Chief Diabetologist • UrCare', 'चीफ डायबिटोलॉजिस्ट • UrCare')}</span>
                   </div>
                 </div>
 
                 <div className="p-2 rounded-xl bg-zinc-50 text-[9px] text-zinc-700 border border-zinc-200/70 leading-relaxed font-medium">
-                  "Your reversal treatment plan is ready — a low-carb, high-protein meal split plus daily movement targets built around your root causes."
+                  {tr(
+                    '"Your reversal treatment plan is ready — a low-carb, high-protein meal split plus daily movement targets built around your root causes."',
+                    '"आपकी रिवर्सल उपचार योजना तैयार है — कम कार्ब, उच्च प्रोटीन भोजन विभाजन व आपके मूल कारणों के अनुसार दैनिक गतिविधि लक्ष्य।"'
+                  )}
                 </div>
               </div>
 
               {/* Personalized Blueprint */}
               <div className="p-3 rounded-2xl bg-white border border-zinc-200/80 shadow-xs space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-black text-zinc-900">Your Reversal Treatment Plan</span>
-                  <span className="text-[10px] font-black text-emerald-600">Active</span>
+                  <span className="font-black text-zinc-900">{tr('Your Reversal Treatment Plan', 'आपकी रिवर्सल उपचार योजना')}</span>
+                  <span className="text-[10px] font-black text-emerald-600">{tr('Active', 'सक्रिय')}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-1.5 text-center text-[10px]">
                   <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-800 font-black">
                     <div>1,850</div>
-                    <span className="text-[8px] font-semibold text-emerald-600">kcal/day</span>
+                    <span className="text-[8px] font-semibold text-emerald-600">kcal/{tr('day', 'दिन')}</span>
                   </div>
                   <div className="p-1.5 rounded-xl bg-rose-50 text-rose-800 font-black">
                     <div>140g</div>
-                    <span className="text-[8px] font-semibold text-rose-600">Protein</span>
+                    <span className="text-[8px] font-semibold text-rose-600">{tr('Protein', 'प्रोटीन')}</span>
                   </div>
                   <div className="p-1.5 rounded-xl bg-teal-50 text-teal-800 font-black">
                     <div>3.2 L</div>
-                    <span className="text-[8px] font-semibold text-teal-600">Water</span>
+                    <span className="text-[8px] font-semibold text-teal-600">{tr('Water', 'पानी')}</span>
                   </div>
                 </div>
               </div>
@@ -273,12 +279,12 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
               {/* Clinical Botanical Supplement */}
               <div className="p-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-black text-emerald-950">Botanical Protocol</span>
-                  <span className="text-[9px] font-bold text-emerald-700">Before Lunch</span>
+                  <span className="font-black text-emerald-950">{tr('Botanical Protocol', 'वानस्पतिक प्रोटोकॉल')}</span>
+                  <span className="text-[9px] font-bold text-emerald-700">{tr('Before Lunch', 'दोपहर के भोजन से पहले')}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-[9px] text-zinc-800 font-medium">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>Karela Jamun & Berberine Extract (500mg)</span>
+                  <span>{tr('Karela Jamun & Berberine Extract (500mg)', 'करेला जामुन व बर्बेरिन अर्क (500mg)')}</span>
                 </div>
               </div>
             </motion.div>
@@ -300,10 +306,10 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <Activity className="w-4 h-4 text-emerald-600" />
-                    <span className="text-xs font-black text-zinc-950">Glucose Reversal Curve</span>
+                    <span className="text-xs font-black text-zinc-950">{tr('Glucose Reversal Curve', 'ग्लूकोज रिवर्सल वक्र')}</span>
                   </div>
                   <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                    98 mg/dL (In Target)
+                    98 mg/dL ({tr('In Target', 'लक्ष्य में')})
                   </span>
                 </div>
 
@@ -321,22 +327,22 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
                     <circle cx="85" cy="22" r="3" fill="#059669" className="animate-ping" />
                     <circle cx="85" cy="22" r="2.5" fill="#ffffff" stroke="#059669" strokeWidth="1.5" />
                   </svg>
-                  <div className="absolute top-1 left-2 text-[8px] font-bold text-zinc-400">Target: 70-140 mg/dL</div>
-                  <div className="absolute bottom-1 right-2 text-[8px] font-bold text-emerald-600">Zero Glycemic Spikes</div>
+                  <div className="absolute top-1 left-2 text-[8px] font-bold text-zinc-400">{tr('Target:', 'लक्ष्य:')} 70-140 mg/dL</div>
+                  <div className="absolute bottom-1 right-2 text-[8px] font-bold text-emerald-600">{tr('Zero Glycemic Spikes', 'शून्य ग्लाइसेमिक स्पाइक')}</div>
                 </div>
               </div>
 
               {/* HbA1c Reversal Status */}
               <div className="p-2.5 rounded-2xl bg-white border border-zinc-200/80 shadow-xs space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-zinc-700">HbA1c Clinical Reversal</span>
+                  <span className="font-bold text-zinc-700">{tr('HbA1c Clinical Reversal', 'HbA1c क्लिनिकल रिवर्सल')}</span>
                   <span className="font-black text-emerald-600">7.2% → 5.6%</span>
                 </div>
                 <div className="w-full h-2 bg-zinc-100 rounded-full overflow-hidden flex">
                   <div className="w-[75%] bg-gradient-to-r from-amber-400 via-emerald-400 to-emerald-600 rounded-full" />
                 </div>
                 <span className="text-[9px] text-zinc-500 font-medium block">
-                  Normal Non-Diabetic Range achieved within protocol.
+                  {tr('Normal Non-Diabetic Range achieved within protocol.', 'प्रोटोकॉल के भीतर सामान्य गैर-डायबिटिक सीमा प्राप्त हुई।')}
                 </span>
               </div>
 
@@ -346,12 +352,12 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
                   <TrendingDown className="w-4 h-4 text-emerald-600" />
                   <div>
                     <div className="text-xs font-black text-zinc-900">76 kg → 70.8 kg</div>
-                    <span className="text-[9px] text-zinc-400">-5.2 kg lost so far</span>
+                    <span className="text-[9px] text-zinc-400">{tr('-5.2 kg lost so far', 'अब तक -5.2 kg घटा')}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[9px] font-black">
                   <Flame className="w-3 h-3" />
-                  <span>On Track</span>
+                  <span>{tr('On Track', 'सही राह पर')}</span>
                 </div>
               </div>
             </motion.div>
@@ -393,21 +399,21 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
                 <div className="absolute top-6 left-6 p-1.5 rounded-lg bg-black/80 backdrop-blur-md border border-emerald-400/80 text-white text-[10px] space-y-0.5">
                   <div className="flex items-center gap-1 font-black text-emerald-400">
                     <Sparkles className="w-3 h-3" />
-                    <span>Grilled Paneer & Quinoa</span>
+                    <span>{tr('Grilled Paneer & Quinoa', 'ग्रिल्ड पनीर व क्विनोआ')}</span>
                   </div>
-                  <div className="text-[9px] text-zinc-300">Confidence: 99.4% • Low GI</div>
+                  <div className="text-[9px] text-zinc-300">{tr('Confidence:', 'विश्वसनीयता:')} 99.4% • {tr('Low GI', 'कम GI')}</div>
                 </div>
 
                 <div className="absolute bottom-2 left-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/80 text-white text-[9px] font-bold">
                   <Camera className="w-3 h-3 text-emerald-400 animate-pulse" />
-                  <span>Live Scanning</span>
+                  <span>{tr('Live Scanning', 'लाइव स्कैनिंग')}</span>
                 </div>
               </div>
 
               {/* Instant Nutrition Breakdown */}
               <div className="p-2.5 rounded-2xl bg-white border border-emerald-200/80 shadow-xs space-y-1.5 text-left">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-zinc-950">Nutritional Recognition</span>
+                  <span className="text-xs font-black text-zinc-950">{tr('Nutritional Recognition', 'पोषण पहचान')}</span>
                   <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
                     380 kcal
                   </span>
@@ -416,15 +422,15 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
                 <div className="grid grid-cols-3 gap-1.5 text-center text-[10px]">
                   <div className="p-1 rounded-lg bg-rose-50 font-bold text-rose-700">
                     <div>26g</div>
-                    <span className="text-[8px] font-semibold text-rose-500">Protein</span>
+                    <span className="text-[8px] font-semibold text-rose-500">{tr('Protein', 'प्रोटीन')}</span>
                   </div>
                   <div className="p-1 rounded-lg bg-amber-50 font-bold text-amber-700">
                     <div>22g</div>
-                    <span className="text-[8px] font-semibold text-amber-500">Carbs</span>
+                    <span className="text-[8px] font-semibold text-amber-500">{tr('Carbs', 'कार्ब्स')}</span>
                   </div>
                   <div className="p-1 rounded-lg bg-teal-50 font-bold text-teal-700">
                     <div>12g</div>
-                    <span className="text-[8px] font-semibold text-teal-500">Fats</span>
+                    <span className="text-[8px] font-semibold text-teal-500">{tr('Fats', 'फैट्स')}</span>
                   </div>
                 </div>
               </div>
@@ -459,7 +465,7 @@ export const AppSimulationVideo: React.FC<AppSimulationVideoProps> = ({ onGetSta
             onClick={onGetStarted}
             className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs shrink-0 cursor-pointer transition-all active:scale-95"
           >
-            <span>Start</span>
+            <span>{tr('Start', 'शुरू करें')}</span>
             <ChevronRight className="w-3 h-3" />
           </button>
         )}
