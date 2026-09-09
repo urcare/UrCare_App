@@ -12,6 +12,7 @@ import {
   UserHealthProfile, MealItem, UserAccount, MedicalReportAnalysis, 
   Order, Prescription, BurnActivity, MedicationLogItem 
 } from '../types';
+import AppBackground from './AppBackground';
 import { HealthReportModal } from './HealthReportModal';
 import { SettingsModal } from './SettingsModal';
 import { ProductsModule } from './ProductsModule';
@@ -305,56 +306,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div id="urcare-dashboard-root" className="w-full min-h-screen bg-[#F8FAFC] text-zinc-900 pb-24 md:pb-12">
 
       {/* App-wide backdrop — shown everywhere once onboarding is done (this
-          root only ever mounts post-onboarding, see App.tsx). Fixed to the
-          viewport and painted first, so every tab's content (which now
-          leaves its own root transparent, see ProfilePage/AccountPage)
-          scrolls over the same still backdrop instead of each tab carrying
-          its own flat page color. Hand-drawn (no photo asset): a pair of
-          soft emerald→teal wave washes, blurred into a quiet glow rather
-          than a hard shape, one hugging the top and one the bottom, plus a
-          faint flowing line for a touch of motion — calm enough that it
-          never competes with the white cards sitting on top of it. */}
-      <div className="fixed inset-0 -z-10 pointer-events-none select-none overflow-hidden">
-        <svg viewBox="0 0 1200 2000" preserveAspectRatio="xMidYMid slice" className="w-full h-full" aria-hidden="true">
-          <defs>
-            <linearGradient id="waveTopGradient" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#6ee7b7" />
-              <stop offset="100%" stopColor="#14b8a6" />
-            </linearGradient>
-            <linearGradient id="waveBottomGradient" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#14b8a6" />
-              <stop offset="100%" stopColor="#6ee7b7" />
-            </linearGradient>
-            <filter id="waveSoften" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="60" />
-            </filter>
-          </defs>
-
-          {/* Top wash */}
-          <path
-            d="M0,0 L1200,0 L1200,300 C950,420 760,180 500,260 C300,320 150,200 0,280 Z"
-            fill="url(#waveTopGradient)"
-            opacity="0.28"
-            filter="url(#waveSoften)"
-          />
-          {/* Thin flowing accent line, drifting across the upper third */}
-          <path
-            d="M0,420 C300,360 500,480 800,420 C1000,380 1100,440 1200,410"
-            fill="none"
-            stroke="#10b981"
-            strokeWidth="3"
-            opacity="0.14"
-          />
-
-          {/* Bottom wash */}
-          <path
-            d="M0,2000 L1200,2000 L1200,1720 C950,1600 720,1840 460,1760 C260,1700 120,1820 0,1740 Z"
-            fill="url(#waveBottomGradient)"
-            opacity="0.26"
-            filter="url(#waveSoften)"
-          />
-        </svg>
-      </div>
+          root only ever mounts post-onboarding, see App.tsx). AppBackground
+          positions itself fixed with z-index:-1 (see AppBackground.css), so
+          every tab's content (which leaves its own root transparent, see
+          ProfilePage/AccountPage) scrolls over this one same still backdrop
+          instead of each tab carrying its own flat page color. */}
+      <AppBackground />
 
       {/* 1. STATIC SIDEBAR NAVIGATION (DESKTOP) */}
       <aside className="hidden md:flex flex-col justify-between w-64 fixed left-0 top-0 bottom-0 z-40 bg-white border-r border-zinc-200 p-5 shadow-xs">

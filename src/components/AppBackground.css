@@ -1,0 +1,242 @@
+.urcare-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 15% 10%,
+      rgba(218, 248, 213, 0.85),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 90% 20%,
+      rgba(231, 250, 232, 0.8),
+      transparent 30%
+    ),
+    linear-gradient(
+      135deg,
+      #f7fff7 0%,
+      #ffffff 45%,
+      #f8fff8 100%
+    );
+}
+
+/* -------------------------
+   TOP LEFT LEAVES
+-------------------------- */
+
+.leaves-top {
+  position: absolute;
+
+  width: 300px;
+  height: 280px;
+
+  top: -45px;
+  left: -30px;
+
+  opacity: 0.9;
+
+  filter: blur(1px);
+}
+
+/* -------------------------
+   HEART ECG
+-------------------------- */
+
+.heart-ecg {
+  position: absolute;
+
+  width: 105px;
+  height: 105px;
+
+  right: 7%;
+  top: 10%;
+
+  opacity: 0.75;
+}
+
+/* -------------------------
+   MEDICAL CROSS
+-------------------------- */
+
+.medical-cross {
+  position: absolute;
+
+  left: 12px;
+  top: 40%;
+
+  width: 92px;
+  height: 92px;
+
+  opacity: 0.4;
+}
+
+.medical-cross span {
+  position: absolute;
+
+  background: #d5f2d2;
+
+  border-radius: 14px;
+}
+
+.medical-cross span:first-child {
+  width: 92px;
+  height: 30px;
+
+  left: 0;
+  top: 31px;
+}
+
+.medical-cross span:last-child {
+  width: 30px;
+  height: 92px;
+
+  left: 31px;
+  top: 0;
+}
+
+/* -------------------------
+   FLOATING LEAVES
+-------------------------- */
+
+.floating-leaf {
+  position: absolute;
+
+  width: 80px;
+  height: 80px;
+
+  pointer-events: none;
+}
+
+.leaf-one {
+  right: 5%;
+  top: 27%;
+}
+
+.leaf-two {
+  right: 12%;
+  bottom: 31%;
+
+  width: 65px;
+}
+
+.leaf-three {
+  left: 18%;
+  bottom: 29%;
+
+  width: 75px;
+}
+
+/* -------------------------
+   BOTTOM WAVE
+-------------------------- */
+
+.bottom-wave {
+  position: absolute;
+
+  left: 0;
+  bottom: 0;
+
+  width: 100%;
+  height: 310px;
+
+  pointer-events: none;
+}
+
+/* -------------------------
+   BOTTOM PLANT
+-------------------------- */
+
+.bottom-plant {
+  position: absolute;
+
+  left: -25px;
+  bottom: -25px;
+
+  width: 290px;
+  height: 270px;
+
+  filter: blur(0.6px);
+}
+
+/* -------------------------
+   MOBILE
+-------------------------- */
+
+@media (max-width: 600px) {
+
+  .leaves-top {
+    width: 210px;
+    height: 200px;
+
+    top: -35px;
+    left: -25px;
+  }
+
+  .heart-ecg {
+    width: 70px;
+    height: 70px;
+
+    right: 5%;
+    top: 9%;
+  }
+
+  .medical-cross {
+    width: 60px;
+    height: 60px;
+
+    left: -8px;
+    top: 42%;
+
+    opacity: 0.3;
+  }
+
+  .medical-cross span:first-child {
+    width: 60px;
+    height: 20px;
+
+    top: 20px;
+  }
+
+  .medical-cross span:last-child {
+    width: 20px;
+    height: 60px;
+
+    left: 20px;
+  }
+
+  .floating-leaf {
+    width: 55px;
+    height: 55px;
+  }
+
+  .leaf-one {
+    right: 3%;
+    top: 25%;
+  }
+
+  .leaf-two {
+    right: 5%;
+    bottom: 32%;
+  }
+
+  .leaf-three {
+    left: 10%;
+    bottom: 28%;
+  }
+
+  .bottom-wave {
+    height: 190px;
+  }
+
+  .bottom-plant {
+    width: 210px;
+    height: 200px;
+
+    left: -30px;
+    bottom: -20px;
+  }
+}
