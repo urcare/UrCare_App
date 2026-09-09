@@ -193,8 +193,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     // countdown, even), so repeating it here would just be the same
     // information twice on the same screen.
 
-    // 4. Nutrition — meals actually logged today (daily_logs.meals).
-    const mealsCount = dailyLog?.meals?.length ?? 0;
+    // 4. Nutrition — real scanned/typed meals only. Quick macro/calorie
+    // logs (Profile's +10g protein etc. buttons) are also stored as
+    // lightweight "meal" entries (id prefixed "quick_") so they sum into
+    // the same real totals — but they aren't an actual food item, so they
+    // shouldn't inflate "meals logged" here.
+    const mealsCount = (dailyLog?.meals || []).filter((m) => !m.id.startsWith('quick_')).length;
     cards.push({
       id: 'nutrition',
       icon: Utensils,

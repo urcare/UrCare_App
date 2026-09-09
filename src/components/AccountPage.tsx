@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import confetti from 'canvas-confetti';
 import {
   Mail, Phone, Flame, Edit3, Stethoscope, LogOut, RefreshCw,
   Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight, Droplets,
@@ -144,13 +145,25 @@ export const AccountPage: React.FC<AccountPageProps> = ({
     return () => window.removeEventListener('urcare:daily-log-changed', refreshDailyLog);
   }, [refreshDailyLog]);
 
+  // Real water intake, capped at the real target — never invents an
+  // "over target" number the way the macros deliberately allow (protein/
+  // carbs/fat going over is useful info; hydration is a simpler
+  // "did you hit it" goal), and celebrates the moment it's actually hit.
   const handleAddWater = async (deltaMl: number) => {
     if (!userId) return;
+    const remaining = Math.max(0, waterTargetMl - waterMl);
+    if (remaining <= 0) return; // already at/over target — nothing more to log
+    const cappedDelta = Math.min(deltaMl, remaining);
+    const willReachTarget = waterMl + cappedDelta >= waterTargetMl;
+
     setIsSavingWater(true);
-    setWaterMl((prev) => Math.max(0, prev + deltaMl)); // optimistic
+    setWaterMl((prev) => Math.min(waterTargetMl, prev + cappedDelta)); // optimistic
     try {
-      const confirmed = await addWaterIntake(userId, todayKey, deltaMl);
-      setWaterMl(confirmed);
+      const confirmed = await addWaterIntake(userId, todayKey, cappedDelta);
+      setWaterMl(Math.min(waterTargetMl, confirmed));
+      if (willReachTarget) {
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 }, colors: ['#0ea5e9', '#2dd4bf', '#ffffff'] });
+      }
     } finally {
       setIsSavingWater(false);
     }
@@ -174,13 +187,25 @@ export const AccountPage: React.FC<AccountPageProps> = ({
     });
   };
 
+  // Real macro intake, capped at the real target — same "won't go past,
+  // celebrates the moment it's actually hit" treatment as water below.
   const handleAddMacro = async (macro: 'protein' | 'carbs' | 'fats', grams: number) => {
     if (!userId) return;
+    const target = macroTargets[macro];
+    const current = consumedMacros[macro];
+    const remaining = Math.max(0, target - current);
+    if (remaining <= 0) return; // already at/over target — nothing more to log
+    const cappedGrams = Math.min(grams, remaining);
+    const willReachTarget = current + cappedGrams >= target;
+
     setIsSavingMacro(true);
-    setConsumedMacros((prev) => ({ ...prev, [macro]: prev[macro] + grams })); // optimistic
+    setConsumedMacros((prev) => ({ ...prev, [macro]: Math.min(target, prev[macro] + cappedGrams) })); // optimistic
     try {
-      await addQuickMacroLog(userId, todayKey, macro, grams);
+      await addQuickMacroLog(userId, todayKey, macro, cappedGrams);
       refreshDailyLog(); // addMealToLog doesn't return a confirmed total, so re-sync from the real row
+      if (willReachTarget) {
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 }, colors: ['#10b981', '#ffffff'] });
+      }
     } finally {
       setIsSavingMacro(false);
     }
@@ -216,11 +241,19 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 
   const handleAddCalories = async (kcal: number) => {
     if (!userId) return;
+    const remaining = Math.max(0, calorieTarget - consumedCalories);
+    if (remaining <= 0) return; // already at/over target — nothing more to log
+    const cappedKcal = Math.min(kcal, remaining);
+    const willReachTarget = consumedCalories + cappedKcal >= calorieTarget;
+
     setIsSavingCalories(true);
-    setConsumedCalories((prev) => prev + kcal); // optimistic
+    setConsumedCalories((prev) => Math.min(calorieTarget, prev + cappedKcal)); // optimistic
     try {
-      await addQuickCalorieLog(userId, todayKey, kcal);
+      await addQuickCalorieLog(userId, todayKey, cappedKcal);
       refreshDailyLog();
+      if (willReachTarget) {
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 }, colors: ['#f59e0b', '#ffffff'] });
+      }
     } finally {
       setIsSavingCalories(false);
     }
@@ -268,6 +301,13 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 
   const { calculatedPlan, heightCm = 170, age = 28, gender = 'male' } = profile;
   const bmi = calculatedPlan?.bmi || Number((profile.currentWeightKg / Math.pow(heightCm / 100, 2)).toFixed(1));
+  const waterTargetMl = profile.preferences?.customWaterTargetMl ?? (calculatedPlan?.waterLiters || 3.2) * 1000;
+  const calorieTarget = profile.preferences?.customCalorieTarget ?? (calculatedPlan?.targetCalories || 1850);
+  const macroTargets: Record<'protein' | 'carbs' | 'fats', number> = {
+    protein: profile.preferences?.customMacroTargets?.protein ?? (calculatedPlan?.proteinGrams || 130),
+    carbs: profile.preferences?.customMacroTargets?.carbs ?? (calculatedPlan?.carbsGrams || 180),
+    fats: profile.preferences?.customMacroTargets?.fats ?? (calculatedPlan?.fatsGrams || 50),
+  };
 
   // Same condition-by-condition "reversal focus" tiles the Daily Plan used
   // to lead with — purely derived from the profile, so it belongs here.
@@ -437,8 +477,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             label={tr('Calories', 'कैलोरी')}
             color="#f59e0b"
             unit=" kcal"
-            currentG={Math.round(consumedCalories)}
-            targetG={profile.preferences?.customCalorieTarget ?? (calculatedPlan?.targetCalories || 1850)}
+            currentG={Math.min(calorieTarget, Math.round(consumedCalories))}
+            targetG={calorieTarget}
             quickAdds={[100, 250]}
             onAdd={handleAddCalories}
             onEditTarget={handleEditCalorieTarget}
@@ -454,8 +494,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <MacroLogRow
               label={tr('Protein', 'प्रोटीन')}
               color="#1baf7a"
-              currentG={Math.round(consumedMacros.protein)}
-              targetG={profile.preferences?.customMacroTargets?.protein ?? (calculatedPlan?.proteinGrams || 130)}
+              currentG={Math.min(macroTargets.protein, Math.round(consumedMacros.protein))}
+              targetG={macroTargets.protein}
               quickAdds={[10, 20]}
               onAdd={(g) => handleAddMacro('protein', g)}
               onEditTarget={(g) => handleEditMacroTarget('protein', g)}
@@ -466,8 +506,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <MacroLogRow
               label={tr('Carbs', 'कार्ब्स')}
               color="#2a78d6"
-              currentG={Math.round(consumedMacros.carbs)}
-              targetG={profile.preferences?.customMacroTargets?.carbs ?? (calculatedPlan?.carbsGrams || 180)}
+              currentG={Math.min(macroTargets.carbs, Math.round(consumedMacros.carbs))}
+              targetG={macroTargets.carbs}
               quickAdds={[15, 30]}
               onAdd={(g) => handleAddMacro('carbs', g)}
               onEditTarget={(g) => handleEditMacroTarget('carbs', g)}
@@ -478,8 +518,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <MacroLogRow
               label={tr('Fats', 'फैट्स')}
               color="#78716c"
-              currentG={Math.round(consumedMacros.fats)}
-              targetG={profile.preferences?.customMacroTargets?.fats ?? (calculatedPlan?.fatsGrams || 50)}
+              currentG={Math.min(macroTargets.fats, Math.round(consumedMacros.fats))}
+              targetG={macroTargets.fats}
               quickAdds={[5, 10]}
               onAdd={(g) => handleAddMacro('fats', g)}
               onEditTarget={(g) => handleEditMacroTarget('fats', g)}
@@ -502,8 +542,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({
               <span className="text-[10px] text-zinc-400 font-medium">{tr('Daily hydration', 'दैनिक जल सेवन')}</span>
             </div>
             <WaterIntakeRing
-              currentMl={waterMl}
-              targetMl={profile.preferences?.customWaterTargetMl ?? (calculatedPlan?.waterLiters || 3.2) * 1000}
+              currentMl={Math.min(waterMl, waterTargetMl)}
+              targetMl={waterTargetMl}
               onAdd={handleAddWater}
               onEditTarget={handleEditWaterTarget}
               onReset={handleResetWater}

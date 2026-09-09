@@ -502,12 +502,20 @@ function conditionLabelsToTags(labels: string[] | null | undefined): Set<string>
  *  at 14 (Day 14's protocol repeats as maintenance guidance after that).
  *  `referenceDateIso` lets the calendar look back at what a past date's step
  *  would have been, instead of always answering for today. */
+/** Reduces any timestamp/date string to a UTC calendar-day number. Never
+ *  Date.setHours(0,0,0,0) to "zero out" a time-of-day — that mutates in
+ *  the server PROCESS's own local timezone, which can silently land on a
+ *  different calendar day whenever that isn't UTC. That was the actual bug
+ *  behind a brand-new user's real Day 1 sometimes rendering as Day 2. */
+function toUtcDayNumber(dateOrIso: string): number {
+  const d = new Date(dateOrIso);
+  return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 86400000);
+}
+
 function computeProgramDay(startedAtIso: string, referenceDateIso?: string): number {
-  const start = new Date(startedAtIso);
-  start.setHours(0, 0, 0, 0);
-  const reference = referenceDateIso ? new Date(referenceDateIso) : new Date();
-  reference.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((reference.getTime() - start.getTime()) / 86400000);
+  const startDay = toUtcDayNumber(startedAtIso);
+  const referenceDay = toUtcDayNumber(referenceDateIso || new Date().toISOString());
+  const diffDays = referenceDay - startDay;
   return Math.min(14, Math.max(1, diffDays + 1));
 }
 
@@ -662,12 +670,16 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
 
     // First time this user opens their plan — pin "Day 1" to today. Never
     // overwritten again, so later profile edits don't reset their progress.
-    // The write is fire-and-forget: today's response can already use the
-    // value we just computed, it doesn't need to wait for it to land in the
-    // DB — only a future request does, and by then it'll have committed.
+    // Pinned as the caller's own local date key (e.g. "2026-09-10", same
+    // format toDateKey sends as `date`) rather than a server-clock
+    // timestamp — toUtcDayNumber reads it back exactly, with nothing left
+    // to a server-vs-client timezone mismatch. The write is fire-and-forget:
+    // today's response can already use the value we just computed, it
+    // doesn't need to wait for it to land in the DB — only a future
+    // request does, and by then it'll have committed.
     let startedAt = hp?.program_started_at as string | undefined;
     if (!startedAt) {
-      startedAt = new Date().toISOString();
+      startedAt = date || new Date().toISOString().slice(0, 10);
       supabase.from('health_profiles').update({ program_started_at: startedAt }).eq('user_id', user.id).is('program_started_at', null)
         .then(({ error }) => { if (error) console.error('Could not pin program_started_at:', error); });
     }
