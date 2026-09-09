@@ -4,7 +4,7 @@ import { Html, ContactShadows, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, X, RotateCw, Plus, Minus, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowRight, X, RotateCw, Plus, Minus, Sparkles, Loader2, Brain, Heart } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { Logo } from './Logo';
 import { useLanguage, AppLanguage } from '../context/LanguageContext';
@@ -27,6 +27,11 @@ interface BodyMapScreenProps {
 
 type Status = 'good' | 'attention' | 'high';
 type Gender = 'male' | 'female';
+/** "Organs" (new default) shows the 6 internal-organ markers below with the
+ *  sidebar quick-select list; "Systems" shows the original full body-surface
+ *  region markers exactly as before — same data, same interaction, just one
+ *  tab over instead of the only mode. */
+type ViewMode = 'organs' | 'systems';
 
 interface RegionStatus {
   status: Status;
@@ -116,6 +121,80 @@ const BODY_HOTSPOTS: Record<Gender, Record<string, [number, number, number][]>> 
   },
 };
 
+// Internal-organ landmarks — same raycasting technique as BODY_HOTSPOTS
+// above (see scripts/generate-body-hotspots.mjs), aimed at the skin surface
+// directly over where each organ sits. Powers the "Organs" view; the
+// original body-surface regions above remain exactly as they were and
+// power the "Systems" view — nothing about that data or interaction changed.
+type OrganId = 'brain' | 'lungs' | 'heart' | 'stomach' | 'liver' | 'intestines';
+const ORGAN_IDS: OrganId[] = ['brain', 'lungs', 'heart', 'stomach', 'liver', 'intestines'];
+
+const ORGAN_HOTSPOTS: Record<Gender, Record<OrganId, [number, number, number][]>> = {
+  male: {
+    brain: [[-0.0012, 0.8626, 0.2055]],
+    lungs: [[0.0538, 0.4615, 0.1744], [-0.0546, 0.4623, 0.1901]],
+    heart: [[-0.0318, 0.3995, 0.1893]],
+    stomach: [[0.0188, 0.1656, 0.1638]],
+    liver: [[0.0572, 0.1962, 0.169]],
+    intestines: [[-0.0017, 0.0008, 0.1823]],
+  },
+  female: {
+    brain: [[-0.0008, 0.8641, 0.1774]],
+    lungs: [[0.0445, 0.4646, 0.1734], [-0.0449, 0.4646, 0.1858]],
+    heart: [[-0.0269, 0.4012, 0.2007]],
+    stomach: [[0.0116, 0.1676, 0.1293]],
+    liver: [[0.0477, 0.1968, 0.1355]],
+    intestines: [[0.0001, -0.0011, 0.1452]],
+  },
+};
+
+const ORGAN_LABELS: Record<OrganId, string> = {
+  brain: 'Brain',
+  lungs: 'Lungs',
+  heart: 'Heart',
+  stomach: 'Stomach',
+  liver: 'Liver',
+  intestines: 'Intestines',
+};
+const ORGAN_LABELS_HI: Record<OrganId, string> = {
+  brain: 'दिमाग',
+  lungs: 'फेफड़े',
+  heart: 'हृदय',
+  stomach: 'पेट',
+  liver: 'लिवर',
+  intestines: 'आंतें',
+};
+function organLabel(id: OrganId, language: AppLanguage): string {
+  return language === 'hi' ? ORGAN_LABELS_HI[id] : ORGAN_LABELS[id];
+}
+
+// Simple, clean single-stroke glyphs in lucide's own visual language (24x24,
+// currentColor, rounded strokes) for the organs lucide doesn't ship an icon
+// for — Brain and Heart below reuse the real lucide icons instead.
+const LungsGlyph: React.FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M12 3v7" />
+    <path d="M12 10c-1 -2 -2.5 -2.6 -2.5 -4.6" />
+    <path d="M9.2 9.2c-2.6 0 -4.7 2.4 -4.7 5.6v2.7c0 1.7 1.2 2.5 2.3 2.5c1.4 0 2.2 -1 2.2 -2.6v-4.6c0 -1.4 .6 -2.3 1.3 -3.1" />
+    <path d="M14.8 9.2c2.6 0 4.7 2.4 4.7 5.6v2.7c0 1.7 -1.2 2.5 -2.3 2.5c-1.4 0 -2.2 -1 -2.2 -2.6v-4.6c0 -1.4 -.6 -2.3 -1.3 -3.1" />
+  </svg>
+);
+const LiverGlyph: React.FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M4 11c0 -3.5 3 -6 7.5 -6c4.8 0 8.5 2.3 8.5 6.5c0 4.3 -3.4 7.5 -8.5 7.5c-4.3 0 -7.5 -3 -7.5 -8Z" />
+  </svg>
+);
+const StomachGlyph: React.FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M9 3.5c-1.8 0 -3 1.4 -3 3.2c0 2.6 1.8 3.6 1.8 6.3c0 3.8 2.7 6.5 6 6.5c2.8 0 5.2 -1.9 5.2 -5c0 -2.6 -1.7 -3.4 -3.4 -3.4c-0.9 0 -1.7 .8 -2.7 .8c-2.5 0 -1.9 -3.7 -1.9 -5.4c0 -1.7 -0.8 -3 -2 -3Z" />
+  </svg>
+);
+const IntestinesGlyph: React.FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M4.5 6.5c0 -1.8 1.6 -3 3.5 -3s3.5 1.2 3.5 3s-1.6 3 -3.5 3h8c1.9 0 3.5 1.2 3.5 3s-1.6 3 -3.5 3h-8c-1.9 0 -3.5 1.2 -3.5 3s1.6 3 3.5 3" />
+  </svg>
+);
+
 const STATUS_COLOR: Record<Status, string> = { good: '#008000', attention: '#f97316', high: '#ef4444' };
 const STATUS_LABEL: Record<Status, string> = { good: 'Healthy', attention: 'Needs Attention', high: 'High Attention' };
 const STATUS_LABEL_HI: Record<Status, string> = { good: 'स्वस्थ', attention: 'ध्यान देने की ज़रूरत', high: 'अधिक ध्यान देने की ज़रूरत' };
@@ -158,7 +237,7 @@ function computeRegionStatuses(profile: UserHealthProfile, language: AppLanguage
   const organSymptoms: string[] = dd.organSymptoms || [];
   const digestiveSymptoms: string[] = dd.digestiveSymptoms || [];
 
-  const ids = ['head', 'eyes', 'neck', 'shoulders', 'chest', 'arms', 'stomach', 'hips', 'knees', 'legs', 'feet', 'lowerBack', 'ankles'];
+  const ids = ['head', 'eyes', 'neck', 'shoulders', 'chest', 'arms', 'stomach', 'hips', 'knees', 'legs', 'feet', 'lowerBack', 'ankles', 'lungs', 'heart', 'liver', 'intestines'];
   const out: Record<string, RegionStatus> = {};
   ids.forEach((id) => {
     out[id] = {
@@ -187,11 +266,20 @@ function computeRegionStatuses(profile: UserHealthProfile, language: AppLanguage
     flag('feet', 'high', tr('Nerve sensitivity (tingling or numbness)', 'नस संवेदनशीलता (झनझनाहट या सुन्नपन)'), 'Neuropathy (Nerve Pain/Tingling)', [tr('Check your feet daily for cuts or sores', 'रोज़ पैरों में कट या घाव जांचें'), tr('Include B-vitamin rich foods', 'विटामिन-B युक्त भोजन शामिल करें'), tr('Gentle daily circulation exercises', 'रोज़ हल्के रक्त संचार व्यायाम करें')], 45);
     flag('arms', 'attention', tr('Nerve sensitivity in hands', 'हाथों में नस संवेदनशीलता'), 'Neuropathy (Nerve Pain/Tingling)', [tr('Hand & wrist stretches', 'हाथ व कलाई की स्ट्रेचिंग'), tr('Include B-vitamin rich foods', 'विटामिन-B युक्त भोजन शामिल करें')], 55);
   }
-  if (conditions.has('High Blood Pressure')) flag('chest', 'high', tr('Cardiovascular load', 'हृदय पर दबाव'), 'High Blood Pressure', [tr('Reduce sodium intake', 'नमक का सेवन कम करें'), tr('Daily light movement', 'रोज़ हल्की गतिविधि करें'), tr('Track your blood pressure regularly', 'नियमित रूप से बीपी जांचें')], 48);
-  if (conditions.has('Heart Disease')) flag('chest', 'high', tr('Cardiovascular strain', 'हृदय पर तनाव'), 'Heart Disease', [tr('Follow your cardiologist\'s guidance', 'अपने हृदय रोग विशेषज्ञ की सलाह मानें'), tr('Low-sodium, heart-friendly meals', 'कम नमक वाला हृदय-अनुकूल भोजन'), tr('Gentle, doctor-approved activity', 'डॉक्टर द्वारा स्वीकृत हल्की गतिविधि')], 42);
-  if (conditions.has('Erectile Dysfunction')) flag('chest', 'attention', tr('Vascular health signal', 'रक्त वाहिका स्वास्थ्य संकेत'), 'Erectile Dysfunction', [tr('Heart-healthy diet', 'हृदय-अनुकूल आहार'), tr('Regular movement to support circulation', 'रक्त संचार हेतु नियमित गतिविधि')], 60);
-  if (conditions.has('High Cholesterol / Fatty Liver')) flag('stomach', 'attention', tr('Liver & lipid load', 'लिवर व लिपिड भार'), 'High Cholesterol / Fatty Liver', [tr('Reduce fried & processed foods', 'तला व प्रोसेस्ड भोजन कम करें'), tr('Add more fiber-rich vegetables', 'फाइबर युक्त सब्ज़ियां बढ़ाएं')], 60);
-  if (conditions.has('Digestive / IBS')) flag('stomach', 'attention', tr('Digestive sensitivity', 'पाचन संवेदनशीलता'), 'Digestive / IBS', [tr('Smaller, more regular meals', 'छोटे व नियमित भोजन'), tr('Identify and avoid trigger foods', 'ट्रिगर खाद्य पदार्थों की पहचान कर बचें')], 62);
+  if (conditions.has('High Blood Pressure')) {
+    flag('chest', 'high', tr('Cardiovascular load', 'हृदय पर दबाव'), 'High Blood Pressure', [tr('Reduce sodium intake', 'नमक का सेवन कम करें'), tr('Daily light movement', 'रोज़ हल्की गतिविधि करें'), tr('Track your blood pressure regularly', 'नियमित रूप से बीपी जांचें')], 48);
+    flag('heart', 'high', tr('Cardiovascular load', 'हृदय पर दबाव'), 'High Blood Pressure', [tr('Reduce sodium intake', 'नमक का सेवन कम करें'), tr('Daily light movement', 'रोज़ हल्की गतिविधि करें'), tr('Track your blood pressure regularly', 'नियमित रूप से बीपी जांचें')], 48);
+  }
+  if (conditions.has('Heart Disease')) {
+    flag('chest', 'high', tr('Cardiovascular strain', 'हृदय पर तनाव'), 'Heart Disease', [tr('Follow your cardiologist\'s guidance', 'अपने हृदय रोग विशेषज्ञ की सलाह मानें'), tr('Low-sodium, heart-friendly meals', 'कम नमक वाला हृदय-अनुकूल भोजन'), tr('Gentle, doctor-approved activity', 'डॉक्टर द्वारा स्वीकृत हल्की गतिविधि')], 42);
+    flag('heart', 'high', tr('Cardiovascular strain', 'हृदय पर तनाव'), 'Heart Disease', [tr('Follow your cardiologist\'s guidance', 'अपने हृदय रोग विशेषज्ञ की सलाह मानें'), tr('Low-sodium, heart-friendly meals', 'कम नमक वाला हृदय-अनुकूल भोजन'), tr('Gentle, doctor-approved activity', 'डॉक्टर द्वारा स्वीकृत हल्की गतिविधि')], 42);
+  }
+  if (conditions.has('Erectile Dysfunction')) {
+    flag('chest', 'attention', tr('Vascular health signal', 'रक्त वाहिका स्वास्थ्य संकेत'), 'Erectile Dysfunction', [tr('Heart-healthy diet', 'हृदय-अनुकूल आहार'), tr('Regular movement to support circulation', 'रक्त संचार हेतु नियमित गतिविधि')], 60);
+    flag('heart', 'attention', tr('Vascular health signal', 'रक्त वाहिका स्वास्थ्य संकेत'), 'Erectile Dysfunction', [tr('Heart-healthy diet', 'हृदय-अनुकूल आहार'), tr('Regular movement to support circulation', 'रक्त संचार हेतु नियमित गतिविधि')], 60);
+  }
+  if (conditions.has('High Cholesterol / Fatty Liver')) flag('liver', 'attention', tr('Liver & lipid load', 'लिवर व लिपिड भार'), 'High Cholesterol / Fatty Liver', [tr('Reduce fried & processed foods', 'तला व प्रोसेस्ड भोजन कम करें'), tr('Add more fiber-rich vegetables', 'फाइबर युक्त सब्ज़ियां बढ़ाएं')], 60);
+  if (conditions.has('Digestive / IBS')) flag('intestines', 'attention', tr('Digestive sensitivity', 'पाचन संवेदनशीलता'), 'Digestive / IBS', [tr('Smaller, more regular meals', 'छोटे व नियमित भोजन'), tr('Identify and avoid trigger foods', 'ट्रिगर खाद्य पदार्थों की पहचान कर बचें')], 62);
   if (conditions.has('PCOS / PCOD')) flag('stomach', 'attention', tr('Hormonal-metabolic link', 'हार्मोनल-मेटाबॉलिक संबंध'), 'PCOS / PCOD', [tr('Low-GI, anti-inflammatory meals', 'कम GI वाला सूजन-रोधी भोजन'), tr('Consistent daily movement', 'रोज़ नियमित गतिविधि')], 62);
   if (conditions.has('Kidney Disease')) flag('lowerBack', 'high', tr('Kidney function support needed', 'किडनी कार्यक्षमता को सहयोग चाहिए'), 'Kidney Disease', [tr('Controlled protein & sodium intake', 'नियंत्रित प्रोटीन व नमक सेवन'), tr('Stay well hydrated', 'पर्याप्त पानी पिएं'), tr('Keep up with regular check-ups', 'नियमित जांच कराते रहें')], 42);
   if (conditions.has('Joint Pain / Arthritis')) flag('knees', 'attention', tr('Joint discomfort', 'जोड़ों में असुविधा'), 'Joint Pain / Arthritis', [tr('Low-impact movement', 'कम प्रभाव वाली गतिविधि'), tr('Anti-inflammatory foods', 'सूजन-रोधी भोजन'), tr('Maintain a healthy weight', 'स्वस्थ वज़न बनाए रखें')], 55);
@@ -206,11 +294,11 @@ function computeRegionStatuses(profile: UserHealthProfile, language: AppLanguage
     if (s.includes('Tingling')) { flag('feet', 'attention', tr('Nerve sensitivity', 'नस संवेदनशीलता'), s, [tr('Check your feet daily', 'रोज़ अपने पैर जांचें')], 55); flag('arms', 'attention', tr('Nerve sensitivity', 'नस संवेदनशीलता'), s, [tr('Hand & wrist stretches', 'हाथ व कलाई की स्ट्रेचिंग')], 58); }
     if (s.includes('Blurry vision')) flag('eyes', 'attention', tr('Vision changes reported', 'दृष्टि में बदलाव दर्ज'), s, [tr('Regular eye check-ups', 'नियमित आंखों की जांच')], 55);
     if (s.includes('Swelling')) flag('feet', 'attention', tr('Fluid retention', 'शरीर में सूजन/तरल जमाव'), s, [tr('Elevate legs when resting', 'आराम के समय पैर ऊंचे रखें'), tr('Reduce sodium intake', 'नमक का सेवन कम करें')], 55);
-    if (s.includes('Chest pain')) flag('chest', 'high', tr('Reported chest discomfort', 'सीने में असुविधा दर्ज'), s, [tr('Discuss with your doctor soon', 'जल्द डॉक्टर से चर्चा करें'), tr('Avoid strenuous exertion until reviewed', 'जांच होने तक कठिन परिश्रम से बचें')], 40);
+    if (s.includes('Chest pain')) { flag('chest', 'high', tr('Reported chest discomfort', 'सीने में असुविधा दर्ज'), s, [tr('Discuss with your doctor soon', 'जल्द डॉक्टर से चर्चा करें'), tr('Avoid strenuous exertion until reviewed', 'जांच होने तक कठिन परिश्रम से बचें')], 40); flag('heart', 'high', tr('Reported chest discomfort', 'सीने में असुविधा दर्ज'), s, [tr('Discuss with your doctor soon', 'जल्द डॉक्टर से चर्चा करें'), tr('Avoid strenuous exertion until reviewed', 'जांच होने तक कठिन परिश्रम से बचें')], 40); }
     if (s.includes('Joint pain')) flag('knees', 'attention', tr('Joint discomfort', 'जोड़ों में असुविधा'), s, [tr('Low-impact movement', 'कम प्रभाव वाली गतिविधि')], 55);
     if (s.includes('Headaches')) flag('head', 'attention', tr('Frequent headaches / brain fog', 'बार-बार सिरदर्द / दिमागी थकान'), s, [tr('Consistent sleep schedule', 'नियमित नींद का समय'), tr('Stay well hydrated', 'पर्याप्त पानी पिएं')], 58);
   });
-  digestiveSymptoms.forEach((s) => { if (s && s !== 'None') flag('stomach', 'attention', tr('Digestive discomfort', 'पाचन संबंधी असुविधा'), s, [tr('Smaller, more regular meals', 'छोटे व नियमित भोजन')], 62); });
+  digestiveSymptoms.forEach((s) => { if (s && s !== 'None') flag('intestines', 'attention', tr('Digestive discomfort', 'पाचन संबंधी असुविधा'), s, [tr('Smaller, more regular meals', 'छोटे व नियमित भोजन')], 62); });
 
   return out;
 }
@@ -282,53 +370,97 @@ function Marker({
   id,
   position,
   status,
+  label,
+  Icon,
   onSelect,
   occluder,
 }: {
   id: string;
   position: [number, number, number];
   status: Status;
+  /** Body-region markers (Systems view) resolve their own label from `id`;
+   *  organ markers (Organs view) pass one in since ORGAN_LABELS isn't keyed
+   *  the same way regionLabel() is. */
+  label?: string;
+  /** Organ markers only — draws the organ's own glyph inside the dot
+   *  instead of a plain circle, and enables the larger "pain" styling. */
+  Icon?: React.FC<{ className?: string }>;
   onSelect: (id: string) => void;
   occluder: React.MutableRefObject<THREE.Mesh | null>;
 }) {
   const { language } = useLanguage();
-  const label = regionLabel(id, language);
+  const resolvedLabel = label ?? regionLabel(id, language);
   const color = STATUS_COLOR[status];
+  const isHigh = status === 'high';
+  const size = Icon ? 34 : 26;
+  const haloSize = size + (Icon ? 10 : 0);
+
   return (
     <Html position={position} center distanceFactor={2.6} zIndexRange={[10, 0]} occlude={[occluder]} style={{ pointerEvents: 'auto' }}>
       <button
         type="button"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => { e.stopPropagation(); onSelect(id); }}
-        title={label}
-        style={{ width: 26, height: 26, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', padding: 0 }}
+        title={resolvedLabel}
+        style={{ width: size, height: size, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', padding: 0 }}
       >
+        {/* The blinking/fading halo — reserved for "high attention" (pain)
+            markers so it reads as a distinct alert, not decoration on
+            everything; good/attention markers stay calm and static. */}
+        {isHigh && (
+          <span
+            style={{
+              position: 'absolute', width: haloSize + 10, height: haloSize + 10, borderRadius: '9999px', background: color,
+              animation: 'urcare-marker-blink 1.6s ease-in-out infinite',
+            }}
+          />
+        )}
+        {!isHigh && (
+          <span style={{ position: 'absolute', width: haloSize, height: haloSize, borderRadius: '9999px', background: color, opacity: 0.16 }} />
+        )}
         <span
           style={{
-            position: 'absolute', width: 26, height: 26, borderRadius: '9999px', background: color, opacity: 0.3,
-            animation: 'urcare-marker-pulse 1.8s ease-in-out infinite',
+            position: 'relative', width: size, height: size, borderRadius: '9999px',
+            background: Icon ? `radial-gradient(circle at 35% 30%, ${color}, ${color}dd)` : color,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+            boxShadow: `0 0 0 2px rgba(255,255,255,0.95), 0 2px 8px ${color}66`,
           }}
-        />
-        <span style={{ position: 'relative', width: 11, height: 11, borderRadius: '9999px', background: color, boxShadow: '0 0 0 2px rgba(255,255,255,0.9), 0 1px 4px rgba(0,0,0,0.35)' }} />
+        >
+          {Icon && <Icon className="w-4.5 h-4.5" />}
+        </span>
       </button>
     </Html>
   );
 }
 
+const ORGAN_ICONS: Record<OrganId, React.FC<{ className?: string }>> = {
+  brain: Brain,
+  lungs: LungsGlyph,
+  heart: Heart,
+  stomach: StomachGlyph,
+  liver: LiverGlyph,
+  intestines: IntestinesGlyph,
+};
+
 function Scene({
   gender,
+  viewMode,
   statuses,
   current,
   target,
   onSelectRegion,
+  language,
 }: {
   gender: Gender;
+  viewMode: ViewMode;
   statuses: Record<string, RegionStatus>;
   current: React.MutableRefObject<OrbitState>;
   target: React.MutableRefObject<OrbitState>;
   onSelectRegion: (id: string) => void;
+  language: AppLanguage;
 }) {
   const hotspots = BODY_HOTSPOTS[gender];
+  const organHotspots = ORGAN_HOTSPOTS[gender];
   const bodyRef = useRef<THREE.Mesh | null>(null);
   return (
     <>
@@ -341,18 +473,35 @@ function Scene({
 
       <BodyMesh gender={gender} ref={bodyRef} />
 
-      {Object.entries(hotspots).map(([id, points]) =>
-        points.map((p, i) => (
-          <Marker
-            key={`${id}-${i}`}
-            id={id}
-            position={p}
-            status={statuses[id]?.status || 'good'}
-            onSelect={onSelectRegion}
-            occluder={bodyRef}
-          />
-        ))
-      )}
+      {viewMode === 'systems' &&
+        Object.entries(hotspots).map(([id, points]) =>
+          points.map((p, i) => (
+            <Marker
+              key={`${id}-${i}`}
+              id={id}
+              position={p}
+              status={statuses[id]?.status || 'good'}
+              onSelect={onSelectRegion}
+              occluder={bodyRef}
+            />
+          ))
+        )}
+
+      {viewMode === 'organs' &&
+        ORGAN_IDS.map((id) =>
+          organHotspots[id].map((p, i) => (
+            <Marker
+              key={`organ-${id}-${i}`}
+              id={id}
+              position={p}
+              status={statuses[id]?.status || 'good'}
+              label={organLabel(id, language)}
+              Icon={ORGAN_ICONS[id]}
+              onSelect={onSelectRegion}
+              occluder={bodyRef}
+            />
+          ))
+        )}
 
       {/* frames=1: the body never deforms and only the camera orbits, so the
           shadow only needs to be baked once instead of re-rendered every frame. */}
@@ -377,6 +526,7 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
   const gender: Gender = profile.gender === 'female' ? 'female' : 'male';
   const [selected, setSelected] = useState<SelectedRegion | null>(null);
   const [modelReady, setModelReady] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('organs');
 
   const statuses = useMemo(() => computeRegionStatuses(profile, language), [profile, language]);
   const overallScore = useMemo(() => {
@@ -465,19 +615,21 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
   }, []);
 
   const handleSelectRegion = useCallback((id: string) => {
-    const points = BODY_HOTSPOTS[gender][id];
+    const isOrgan = viewMode === 'organs';
+    const points = isOrgan ? ORGAN_HOTSPOTS[gender][id as OrganId] : BODY_HOTSPOTS[gender][id];
     const p = points?.[0];
     if (p) {
       target.current = {
         azimuth: Math.atan2(p[0], p[2]),
         polar: DEFAULT_ORBIT.polar,
-        radius: 1.2,
+        radius: isOrgan ? 0.95 : 1.2,
         y: p[1],
       };
     }
     const info = statuses[id];
-    window.setTimeout(() => setSelected({ id, label: regionLabel(id, language), ...info }), 280);
-  }, [gender, statuses, language]);
+    const label = isOrgan ? organLabel(id as OrganId, language) : regionLabel(id, language);
+    window.setTimeout(() => setSelected({ id, label, ...info }), 280);
+  }, [gender, statuses, language, viewMode]);
 
   const closeSheet = useCallback(() => {
     setSelected(null);
@@ -486,7 +638,14 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
 
   return (
     <div id="body-map-screen" className="min-h-screen bg-[#F8FAFC] flex flex-col">
-      <style>{`@keyframes urcare-marker-pulse { 0%,100% { transform: scale(0.85); opacity: 0.35; } 50% { transform: scale(1.6); opacity: 0.05; } }`}</style>
+      <style>{`
+        @keyframes urcare-marker-blink {
+          0%   { transform: scale(0.75); opacity: 0.55; }
+          45%  { transform: scale(1.5);  opacity: 0.12; }
+          55%  { transform: scale(1.5);  opacity: 0.12; }
+          100% { transform: scale(0.75); opacity: 0.55; }
+        }
+      `}</style>
 
       <header className="w-full max-w-xl mx-auto flex items-center justify-center pt-6 pb-1 px-4">
         <Logo size="md" />
@@ -508,57 +667,107 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
           <div className="flex items-center gap-3 text-[10px] font-bold text-zinc-500">
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR.good }} />{tr(STATUS_LABEL.good, STATUS_LABEL_HI.good)}</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR.attention }} />{tr(STATUS_LABEL.attention, STATUS_LABEL_HI.attention)}</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: STATUS_COLOR.high }} />{tr(STATUS_LABEL.high, STATUS_LABEL_HI.high)}</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full animate-pulse" style={{ background: STATUS_COLOR.high }} />{tr(STATUS_LABEL.high, STATUS_LABEL_HI.high)}</span>
           </div>
         </div>
 
-        {/* The 3D body viewer — deliberately borderless/full-bleed (no card
-            background or rounded box around it) so the body itself is the
-            focus instead of looking boxed-in; front/side/back preset
-            buttons were removed, the drag-to-rotate hint below covers it. */}
-        <div
-          ref={containerRef}
-          className="relative w-full max-w-lg h-[58vh] min-h-[420px] max-h-[620px] mt-4 -mx-4 sm:mx-0 select-none touch-none overflow-visible cursor-grab active:cursor-grabbing"
-          onPointerDown={handlePointerDown}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          <Canvas
-            camera={{ fov: 32, position: [0, 0, DEFAULT_ORBIT.radius] }}
-            gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-            dpr={[1, 1.75]}
-            onCreated={() => setModelReady(true)}
+        {/* Organs / Systems toggle */}
+        <div className="flex items-center gap-1 mt-3.5 p-1 rounded-2xl bg-zinc-100 border border-zinc-200">
+          {(['organs', 'systems'] as ViewMode[]).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setViewMode(mode)}
+              className={`px-5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wide transition-all cursor-pointer ${
+                viewMode === mode ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              {mode === 'organs' ? tr('Organs', 'अंग') : tr('Systems', 'सिस्टम')}
+            </button>
+          ))}
+        </div>
+
+        {/* Body viewer row — an organ quick-select sidebar sits to the left
+            in Organs mode (same tap-a-marker interaction as clicking it
+            directly on the body, just faster to reach); the 3D body itself
+            is deliberately borderless/full-bleed (no card or rounded box)
+            so it stays the focus instead of looking boxed-in. */}
+        <div className="w-full max-w-lg mt-3 flex items-stretch gap-2">
+          {viewMode === 'organs' && (
+            <div className="flex flex-col gap-1.5 shrink-0 justify-center">
+              {ORGAN_IDS.map((id) => {
+                const Icon = ORGAN_ICONS[id];
+                const status = statuses[id]?.status || 'good';
+                const color = STATUS_COLOR[status];
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => handleSelectRegion(id)}
+                    title={organLabel(id, language)}
+                    className="w-12 flex flex-col items-center gap-1 p-1.5 rounded-xl hover:bg-white transition-colors cursor-pointer group"
+                  >
+                    <span
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-sm border ${status === 'high' ? 'animate-pulse' : ''}`}
+                      style={{ background: `${color}1a`, borderColor: `${color}55`, color }}
+                    >
+                      <Icon className="w-4.5 h-4.5" />
+                    </span>
+                    <span className="text-[9px] font-bold text-zinc-500 group-hover:text-zinc-800 leading-none truncate w-full text-center">
+                      {organLabel(id, language)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div
+            ref={containerRef}
+            className="relative flex-1 min-w-0 h-[54vh] min-h-[380px] max-h-[600px] select-none touch-none overflow-visible cursor-grab active:cursor-grabbing"
+            onPointerDown={handlePointerDown}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
-            <Suspense fallback={null}>
-              <Scene gender={gender} statuses={statuses} current={current} target={target} onSelectRegion={handleSelectRegion} />
-            </Suspense>
-          </Canvas>
-
-          {!modelReady && <LoadingOverlay />}
-
-          {/* Zoom controls */}
-          <div className="absolute bottom-3 right-3 flex flex-col gap-1.5 z-10">
-            <button
-              type="button"
-              onClick={() => zoomBy(-0.3)}
-              className="w-8 h-8 rounded-xl bg-white/90 backdrop-blur border border-zinc-200 shadow-sm flex items-center justify-center text-zinc-600 hover:text-emerald-600 cursor-pointer"
+            <Canvas
+              camera={{ fov: 32, position: [0, 0, DEFAULT_ORBIT.radius] }}
+              gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+              dpr={[1, 1.75]}
+              onCreated={() => setModelReady(true)}
             >
-              <Plus className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => zoomBy(0.3)}
-              className="w-8 h-8 rounded-xl bg-white/90 backdrop-blur border border-zinc-200 shadow-sm flex items-center justify-center text-zinc-600 hover:text-emerald-600 cursor-pointer"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
+              <Suspense fallback={null}>
+                <Scene gender={gender} viewMode={viewMode} statuses={statuses} current={current} target={target} onSelectRegion={handleSelectRegion} language={language} />
+              </Suspense>
+            </Canvas>
+
+            {!modelReady && <LoadingOverlay />}
+
+            {/* Zoom controls */}
+            <div className="absolute bottom-3 right-3 flex flex-col gap-1.5 z-10">
+              <button
+                type="button"
+                onClick={() => zoomBy(-0.3)}
+                className="w-8 h-8 rounded-xl bg-white/90 backdrop-blur border border-zinc-200 shadow-sm flex items-center justify-center text-zinc-600 hover:text-emerald-600 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => zoomBy(0.3)}
+                className="w-8 h-8 rounded-xl bg-white/90 backdrop-blur border border-zinc-200 shadow-sm flex items-center justify-center text-zinc-600 hover:text-emerald-600 cursor-pointer"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
         <p className="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-2.5">
           <RotateCw className="w-3.5 h-3.5 shrink-0" />
-          {tr('Drag to rotate the body — pinch or scroll to zoom — tap a glowing marker for details.', 'शरीर को घुमाने के लिए खींचें — ज़ूम करने के लिए पिंच या स्क्रॉल करें — विवरण हेतु चमकते मार्कर पर टैप करें।')}
+          {viewMode === 'organs'
+            ? tr('Drag to rotate — pinch or scroll to zoom — tap an organ (on the body or the list) for details.', 'घुमाने के लिए खींचें — ज़ूम हेतु पिंच या स्क्रॉल करें — विवरण हेतु किसी अंग पर टैप करें।')
+            : tr('Drag to rotate the body — pinch or scroll to zoom — tap a glowing marker for details.', 'शरीर को घुमाने के लिए खींचें — ज़ूम करने के लिए पिंच या स्क्रॉल करें — विवरण हेतु चमकते मार्कर पर टैप करें।')}
         </p>
       </div>
 
