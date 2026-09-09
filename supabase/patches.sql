@@ -112,3 +112,21 @@ create policy "public read reversal plan sections" on public.reversal_plan_secti
 -- plan is fetched (never overwritten by later profile edits), so "program
 -- day" (1-14) can be computed as (today - program_started_at).
 alter table public.health_profiles add column if not exists program_started_at timestamptz;
+
+-- 5. CUSTOM DAILY PLAN — a user's own uploaded daily schedule (photo/PDF,
+--    e.g. one their own doctor gave them), extracted by Claude into the same
+--    {timeLabel, title, body} shape as the built-in reversal plan. When a
+--    row exists here and hasn't expired yet, /api/daily-plan returns THESE
+--    sections instead of the built-in program. One active plan per user —
+--    a new upload replaces the old one — valid for 35 days from upload.
+create table if not exists public.custom_daily_plans (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  uploaded_at timestamptz default now(),
+  expires_at timestamptz not null,
+  source_image_url text,
+  sections jsonb not null default '[]'
+);
+alter table public.custom_daily_plans enable row level security;
+drop policy if exists "own custom daily plan" on public.custom_daily_plans;
+create policy "own custom daily plan" on public.custom_daily_plans
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

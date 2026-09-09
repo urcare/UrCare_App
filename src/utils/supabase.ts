@@ -368,6 +368,33 @@ export async function getDailyPlan(date: string): Promise<{ plan?: any; error?: 
   return { plan: data.plan };
 }
 
+// Upload-your-own daily plan — a photo/PDF of a schedule the user already
+// has, extracted by Claude and swapped in for the built-in reversal plan for
+// the next 35 days. See /api/analyze-daily-plan in server.ts.
+export interface CustomDailyPlanResult {
+  isValidPlan: boolean;
+  rejectionReason?: string;
+  analysisFailed?: boolean;
+  sections?: { id: string; timeLabel: string | null; title: string; body: string }[];
+  uploadedAt?: string;
+  expiresAt?: string;
+}
+
+export async function uploadCustomDailyPlan(fileBase64: string, mimeType: string): Promise<CustomDailyPlanResult> {
+  try {
+    const res = await authedFetch('/api/analyze-daily-plan', {
+      method: 'POST',
+      body: JSON.stringify({ imageBase64: fileBase64, mimeType }),
+    });
+    const data = await res.json();
+    if (res.status === 401) return { isValidPlan: false, rejectionReason: 'Please sign in again.' };
+    if (!res.ok) return { isValidPlan: false, analysisFailed: true, rejectionReason: data.rejectionReason || data.error || 'Could not read this plan right now.' };
+    return data;
+  } catch (e) {
+    return { isValidPlan: false, analysisFailed: true, rejectionReason: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
 // ============================================================================
 // LAB REPORTS / PRESCRIPTIONS
 // ============================================================================

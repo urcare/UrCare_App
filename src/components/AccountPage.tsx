@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Mail, Phone, Flame, Edit3, Stethoscope, LogOut, RefreshCw,
-  Package, FileText, Camera, BadgeCheck, Sparkles,
+  Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -150,72 +150,55 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 space-y-5 text-left">
 
-        {/* SIMPLE USER INFO CARD */}
-        <div className="p-6 rounded-3xl bg-white border border-zinc-200 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-
-            <div className="flex items-center gap-4 min-w-0 w-full sm:w-auto">
-              <div className="relative shrink-0">
-                <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarSelected}
-                />
-                <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl font-black shadow-md overflow-hidden">
-                  {account.avatarUrl ? (
-                    <img src={account.avatarUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    (profile.name || account.displayName || 'U').charAt(0).toUpperCase()
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={isUploadingAvatar}
-                  title={tr('Change photo', 'फोटो बदलें')}
-                  className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-white border-2 border-white shadow-md flex items-center justify-center text-emerald-600 hover:text-emerald-700 cursor-pointer disabled:opacity-60"
-                >
-                  {isUploadingAvatar ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Camera className="w-3.5 h-3.5" />
-                  )}
-                </button>
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-lg sm:text-xl font-black text-zinc-950 break-words">
-                    {profile.name || account.displayName || tr('UrCare Member', 'UrCare सदस्य')}
-                  </h1>
-                  <span className="flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-                    <BadgeCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-500/15 shrink-0" strokeWidth={2.5} />
-                    <span>{tr('Verified Member', 'सत्यापित सदस्य')}</span>
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 font-medium mt-1">
-                  {profile.email && <span className="flex items-center gap-1 min-w-0 break-all"><Mail className="w-3.5 h-3.5 shrink-0" />{profile.email}</span>}
-                  {profile.phone && <span className="flex items-center gap-1 shrink-0"><Phone className="w-3.5 h-3.5" />{profile.phone}</span>}
-                  <span className="shrink-0">{gender.toUpperCase()} • {age} {tr('YRS', 'वर्ष')}</span>
-                </div>
-              </div>
+        {/* IDENTITY — centered avatar with an edit badge, name, email below;
+            a plain, calm identity header instead of a side-by-side card. */}
+        <div className="flex flex-col items-center text-center pt-2 pb-1">
+          <div className="relative shrink-0">
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarSelected}
+            />
+            <div className="w-24 h-24 rounded-full bg-emerald-600 text-white flex items-center justify-center text-3xl font-black shadow-md overflow-hidden ring-4 ring-white">
+              {account.avatarUrl ? (
+                <img src={account.avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                (profile.name || account.displayName || 'U').charAt(0).toUpperCase()
+              )}
             </div>
-
             <button
               type="button"
-              onClick={() => setIsEditProfileOpen(true)}
-              className="px-4 py-2 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 text-zinc-800 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 w-full sm:w-auto justify-center"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={isUploadingAvatar}
+              title={tr('Change photo', 'फोटो बदलें')}
+              className="absolute bottom-0.5 right-0.5 w-7 h-7 rounded-full bg-emerald-600 border-2 border-white shadow-md flex items-center justify-center text-white hover:bg-emerald-500 cursor-pointer disabled:opacity-60"
             >
-              <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{tr('Edit Health Profile', 'स्वास्थ्य प्रोफ़ाइल संपादित करें')}</span>
+              {isUploadingAvatar ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Camera className="w-3.5 h-3.5" />
+              )}
             </button>
           </div>
 
+          <div className="flex items-center gap-1.5 flex-wrap justify-center mt-3">
+            <h1 className="text-xl font-black text-zinc-950 break-words">
+              {profile.name || account.displayName || tr('UrCare Member', 'UrCare सदस्य')}
+            </h1>
+            <BadgeCheck className="w-4 h-4 text-blue-500 fill-blue-500/15 shrink-0" strokeWidth={2.5} />
+          </div>
+          <p className="text-xs text-zinc-500 font-medium mt-0.5 break-all">
+            {profile.email || account.email}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 justify-center text-[11px] text-zinc-400 font-semibold mt-1.5">
+            {profile.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{profile.phone}</span>}
+            <span>{gender.toUpperCase()} • {age} {tr('YRS', 'वर्ष')}</span>
+          </div>
+
           {avatarError && (
-            <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">{avatarError}</p>
+            <p className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2 mt-3">{avatarError}</p>
           )}
         </div>
 
@@ -336,62 +319,67 @@ export const AccountPage: React.FC<AccountPageProps> = ({
           </div>
         </div>
 
-        {/* QUICK SHORTCUTS & SUPPORT */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* ACCOUNT — a single tappable list, one row per action, instead of
+            a grid of separate cards; each row keeps its real destination. */}
+        <div className="rounded-3xl bg-white border border-zinc-200 shadow-sm overflow-hidden divide-y divide-zinc-100">
+          <button
+            type="button"
+            onClick={() => setIsEditProfileOpen(true)}
+            className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left"
+          >
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Edit3 className="w-4.5 h-4.5" />
+            </div>
+            <span className="text-sm font-bold text-zinc-900 flex-1 min-w-0 truncate">{tr('Edit Health Profile', 'स्वास्थ्य प्रोफ़ाइल संपादित करें')}</span>
+            <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
+          </button>
+
           <button
             type="button"
             onClick={onOpenReports}
-            className="p-4 rounded-2xl bg-white hover:bg-zinc-50 border border-zinc-200 shadow-xs flex items-center gap-3 transition-all cursor-pointer text-left"
+            className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left"
           >
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
-              <FileText className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <FileText className="w-4.5 h-4.5" />
             </div>
-            <div>
-              <div className="text-xs font-black text-zinc-900">{tr('Lab & Diab Reports', 'लैब व डायबिटीज़ रिपोर्ट्स')}</div>
-              <span className="text-[10px] text-zinc-500">{tr('Upload PDF or type text', 'PDF अपलोड करें या टेक्स्ट टाइप करें')}</span>
-            </div>
+            <span className="text-sm font-bold text-zinc-900 flex-1 min-w-0 truncate">{tr('Lab & Diab Reports', 'लैब व डायबिटीज़ रिपोर्ट्स')}</span>
+            <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
           </button>
 
           <button
             type="button"
             onClick={onOpenDoctorConsult}
-            className="p-4 rounded-2xl bg-white hover:bg-zinc-50 border border-zinc-200 shadow-xs flex items-center gap-3 transition-all cursor-pointer text-left"
+            className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left"
           >
-            <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold">
-              <Stethoscope className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Stethoscope className="w-4.5 h-4.5" />
             </div>
-            <div>
-              <div className="text-xs font-black text-zinc-900">{tr('Doctor Hotline', 'डॉक्टर हॉटलाइन')}</div>
-              <span className="text-[10px] text-zinc-500">{tr('Consult clinical MD', 'क्लिनिकल MD से परामर्श')}</span>
-            </div>
+            <span className="text-sm font-bold text-zinc-900 flex-1 min-w-0 truncate">{tr('Doctor Hotline', 'डॉक्टर हॉटलाइन')}</span>
+            <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
           </button>
 
           <button
             type="button"
             onClick={onOpenOrders}
-            className="p-4 rounded-2xl bg-white hover:bg-zinc-50 border border-zinc-200 shadow-xs flex items-center gap-3 transition-all cursor-pointer text-left"
+            className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left"
           >
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
-              <Package className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Package className="w-4.5 h-4.5" />
             </div>
-            <div>
-              <div className="text-xs font-black text-zinc-900">{tr('My Orders', 'मेरे ऑर्डर')}</div>
-              <span className="text-[10px] text-zinc-500">{tr('Supplements & delivery', 'सप्लीमेंट्स व डिलीवरी')}</span>
-            </div>
+            <span className="text-sm font-bold text-zinc-900 flex-1 min-w-0 truncate">{tr('My Orders', 'मेरे ऑर्डर')}</span>
+            <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
           </button>
         </div>
 
-        {/* SIGN OUT */}
-        <div className="pt-2 flex justify-center">
-          <button
-            type="button"
-            onClick={onLogOut}
-            className="px-4 py-2.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>{tr('Sign Out of UrCare', 'UrCare से साइन आउट करें')}</span>
-          </button>
-        </div>
+        {/* LOG OUT */}
+        <button
+          type="button"
+          onClick={onLogOut}
+          className="w-full py-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>{tr('Log Out', 'लॉग आउट')}</span>
+        </button>
 
       </main>
 

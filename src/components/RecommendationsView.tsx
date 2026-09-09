@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   CheckCircle2, ChevronRight, ChevronDown,
-  FileText, Award, Circle, Check,
+  FileText, Award, Circle, Check, Plus,
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon,
   Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles,
@@ -12,6 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { DailyCalendar, toDateKey } from './DailyCalendar';
 import { PlanSection } from './ReversalLibraryPanel';
+import { UploadDailyPlanModal } from './UploadDailyPlanModal';
 import {
   getDailyPlan, getDailyLog, getTaskCompletion,
   toggleDailyTask, getActiveDates,
@@ -106,7 +107,8 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const userId = profile.id || '';
 
   const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
@@ -117,6 +119,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
   const [programDay, setProgramDay] = useState<number | null>(null);
   const [sections, setSections] = useState<PlanSection[]>([]);
+  const [customPlanExpiresAt, setCustomPlanExpiresAt] = useState<string | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
   const [planError, setPlanError] = useState<string | null>(null);
   const [completedToday, setCompletedToday] = useState<Record<string, boolean>>({});
@@ -131,6 +134,12 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   // The calendar starts collapsed — a "Change Date" button opens it, and
   // picking a date closes it again, instead of always taking up space.
   const [showCalendar, setShowCalendar] = useState(false);
+
+  // "Upload Your Own Daily Plan" — bumping this forces the plan-fetch effect
+  // below to re-run right after a successful upload, so the newly-extracted
+  // plan shows up immediately instead of waiting for the next date change.
+  const [isUploadPlanOpen, setIsUploadPlanOpen] = useState(false);
+  const [planRefreshKey, setPlanRefreshKey] = useState(0);
 
   // Ticks once a minute purely to force a re-render, so "today"'s timeline
   // re-evaluates which period is current as the real clock moves — without
@@ -159,12 +168,13 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       } else {
         setProgramDay(result.plan?.programDay ?? null);
         setSections(result.plan?.sections || []);
+        setCustomPlanExpiresAt(result.plan?.isCustom ? result.plan?.expiresAt ?? null : null);
       }
       setPlanLoading(false);
     })();
 
     return () => { cancelled = true; };
-  }, [userId, dateKey]);
+  }, [userId, dateKey, planRefreshKey]);
 
   // Load this day's actual logged activity (meals + task checkboxes).
   useEffect(() => {
@@ -248,15 +258,11 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
   const activePeriod = isToday ? currentPeriod() : null;
 
-  // For today, show ONLY the period matching the real clock right now — as
-  // time moves into the next period, this section swaps to match (no other
-  // period is shown until then). Viewing a past/future day via the calendar
-  // has no "current time" to match, so it still shows the full day; today
-  // also falls back to the full day if the live period happens to be empty
-  // (e.g. nothing scheduled for "Night") so the timeline is never blank.
-  const visiblePeriods = isToday && activePeriod && grouped[activePeriod].length > 0
-    ? PERIODS.filter((p) => p.key === activePeriod)
-    : PERIODS;
+  // Always show the full day — Morning/Afternoon/Evening/Night all open at
+  // once below, nothing collapsed or hidden. Only the "Right Now" hero card
+  // above swaps by the real clock; this timeline is the complete plan for
+  // whichever day is selected.
+  const visiblePeriods = PERIODS;
 
   // The reference library (condition notes, recipes, vitamins...) is not
   // rendered here — it's lifted up so a parent can show it statically in its
@@ -315,24 +321,46 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           treatment, to read as a professional schedule rather than a
           playful app screen. */}
       <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4`}>
-        <div className="flex items-start gap-3 min-w-0">
-          <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 ${isDark ? 'bg-emerald-500/10 border-emerald-500/30' : ''}`}>
-            <Clock className="w-5 h-5 text-emerald-600" />
+        <div className="flex items-start justify-between gap-3 min-w-0">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 ${isDark ? 'bg-emerald-500/10 border-emerald-500/30' : ''}`}>
+              <Clock className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div className="min-w-0">
+              <h2 className={`text-lg sm:text-xl font-black tracking-tight break-words ${isDark ? 'text-white' : 'text-zinc-950'}`}>
+                {t('dailyPlanTitle')}
+              </h2>
+              <p className="text-xs opacity-60 mt-0.5 break-words">
+                {t('dailyPlanSubtitle')}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h2 className={`text-lg sm:text-xl font-black tracking-tight break-words ${isDark ? 'text-white' : 'text-zinc-950'}`}>
-              {t('dailyPlanTitle')}
-            </h2>
-            <p className="text-xs opacity-60 mt-0.5 break-words">
-              {t('dailyPlanSubtitle')}
-            </p>
-          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsUploadPlanOpen(true)}
+            title={tr('Upload your own daily plan', 'अपना डेली प्लान अपलोड करें')}
+            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 border transition-colors cursor-pointer ${
+              isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-emerald-400 hover:border-emerald-500/40' : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:text-emerald-600 hover:border-emerald-300'
+            }`}
+          >
+            <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+          </button>
         </div>
+
+        {customPlanExpiresAt && (
+          <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5 w-fit">
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              {tr('Your uploaded plan is active', 'आपका अपलोड किया प्लान सक्रिय है')} — {tr('until', 'तक')} {new Date(customPlanExpiresAt).toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'short' })}
+            </span>
+          </div>
+        )}
 
         <div className={`pt-3 border-t ${isDark ? 'border-zinc-800' : 'border-zinc-100'} flex items-center justify-between gap-3 flex-wrap`}>
           <div className="text-xs opacity-70 font-semibold flex items-center gap-2 flex-wrap min-w-0">
             <span className="break-words">{t('showingLabel')}: <span className="text-emerald-600 font-black">{isToday ? `${t('showingToday')} (${formatDate(selectedDate)})` : formatDate(selectedDate)}</span></span>
-            {programDay != null && (
+            {programDay != null && !customPlanExpiresAt && (
               <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">Day {programDay} of 14</span>
             )}
           </div>
@@ -520,7 +548,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               <div className="flex items-center gap-2 text-emerald-500 min-w-0">
                 <Clock className="w-5 h-5 shrink-0" />
                 <h3 className="text-sm sm:text-base font-black tracking-tight truncate">
-                  {visiblePeriods.length === 1 ? `Rest of Your ${visiblePeriods[0].label}` : '24-Hour Reversal Timeline'}
+                  24-Hour Reversal Timeline
                 </h3>
               </div>
               <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 shrink-0">
@@ -640,6 +668,15 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           </div>
         </div>
       )}
+
+      <UploadDailyPlanModal
+        isOpen={isUploadPlanOpen}
+        onClose={() => setIsUploadPlanOpen(false)}
+        onUploaded={() => {
+          setSelectedDate(startOfToday());
+          setPlanRefreshKey((k) => k + 1);
+        }}
+      />
 
     </div>
   );
