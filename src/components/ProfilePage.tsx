@@ -1,11 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, BadgeCheck } from 'lucide-react';
+import { Bell, ChevronRight, Camera, FileText, BookOpen, ShoppingBag, Utensils, Sparkles, Leaf, MoreVertical } from 'lucide-react';
 import { UserHealthProfile, UserAccount, Prescription } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { RecommendationsView, REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL } from './RecommendationsView';
+import { RecommendationsView, REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL, labelMinutes } from './RecommendationsView';
 import { ReversalLibraryPanel, PlanSection } from './ReversalLibraryPanel';
 import { StreakWidget } from './StreakWidget';
+import { BrandMark } from './Logo';
+import { getDailyPlan, getTaskCompletion } from '../utils/supabase';
+import { toDateKey } from './DailyCalendar';
 
 // Hindi for the primary reversal-goal label used in the greeting subtitle —
 // same English keys/values as REVERSAL_GOALS (see AccountPage's own copy).
@@ -24,25 +27,84 @@ interface ProfilePageProps {
   prescriptions?: Prescription[];
   /** Jumps to the standalone Profile tab (full identity/stats/edit page). */
   onOpenProfile: () => void;
+  /** Jumps to the full Daily Plan timeline tab. */
+  onOpenPlan: () => void;
+  /** Jumps to the UrCare Camera (food scanner) tab. */
+  onOpenScan: () => void;
+  /** Jumps to the Reports tab. */
+  onOpenReports: () => void;
+  /** Jumps to the Store tab. */
+  onOpenStore: () => void;
+  /** Opens the '⋮' module drawer (Assessment/Store/Settings/Sign Out) —
+   *  Home has its own full header instead of the shared one every other tab
+   *  uses, so it needs its own trigger for the same drawer. */
+  onOpenMoreMenu: () => void;
 }
 
-/** "Your Daily Plan" — the app's default/main screen. The condition-specific
- *  reference library is fetched inside RecommendationsView (it already knows
- *  the day's plan) and lifted up here so it can render statically in the
- *  sidebar instead of inline in the scrolling daily-plan column. */
+/** "Home" — a calm, focused landing summary: today's next step, this
+ *  program's overall progress, and one-tap shortcuts to everywhere else.
+ *  The full day-by-day timeline lives on its own Plan tab now. */
 export const ProfilePage: React.FC<ProfilePageProps> = ({
   profile,
   account,
   prescriptions = [],
   onOpenProfile,
+  onOpenPlan,
+  onOpenScan,
+  onOpenReports,
+  onOpenStore,
+  onOpenMoreMenu,
 }) => {
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
-  const [referenceSections, setReferenceSections] = useState<PlanSection[]>([]);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  // The header shows the real UrCare artwork, same as the sidebar/loading
+  // screen — not the generic vector mark. Falls back to that vector mark
+  // only if the PNG itself ever fails to load (flaky network/cache miss).
+  const [brandImgFailed, setBrandImgFailed] = useState(false);
+
+  const userId = profile.id || '';
+  const todayKey = toDateKey(new Date());
+
+  const [programDay, setProgramDay] = useState<number | null>(null);
+  const [sections, setSections] = useState<PlanSection[]>([]);
+  const [completedToday, setCompletedToday] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    getDailyPlan(todayKey).then((result) => {
+      if (cancelled) return;
+      setProgramDay(result.plan?.programDay ?? null);
+      setSections(result.plan?.sections || []);
+    });
+    getTaskCompletion(userId, todayKey).then((c) => { if (!cancelled) setCompletedToday(c); });
+    return () => { cancelled = true; };
+  }, [userId, todayKey]);
+
+  const timelineSections = useMemo(() => sections.filter((s) => !!s.timeLabel), [sections]);
+  const referenceSections = useMemo(() => sections.filter((s) => !s.timeLabel), [sections]);
+  const doneCount = timelineSections.filter((s) => completedToday[s.id]).length;
+
+  // The next step whose time hasn't fully passed yet — same "what's up next"
+  // logic RecommendationsView's own hero card uses, kept in sync since both
+  // read labelMinutes the same way.
+  const { current, next } = useMemo(() => {
+    const sorted = [...timelineSections].sort((a, b) => labelMinutes(a.timeLabel || '') - labelMinutes(b.timeLabel || ''));
+    const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+    let cur: PlanSection | null = null;
+    let nxt: PlanSection | null = null;
+    for (const item of sorted) {
+      const mins = labelMinutes(item.timeLabel || '');
+      if (mins <= nowMinutes) cur = item;
+      else { nxt = item; break; }
+    }
+    return { current: cur || nxt, next: cur ? nxt : null };
+  }, [timelineSections]);
 
   // Time-of-day greeting, and the same real condition-derived reversal focus
-  // AccountPage leads with — reused here just for the subtitle line, so it
-  // never claims a condition the user doesn't actually have.
+  // AccountPage leads with — reused here for the plan-continue card + the
+  // greeting subtitle, so it never claims a condition the user doesn't have.
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     return hour < 12 ? tr('Good Morning', 'सुप्रभात') : hour < 17 ? tr('Good Afternoon', 'नमस्कार') : tr('Good Evening', 'शुभ संध्या');
@@ -53,85 +115,214 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     const goal = conditions.map((c) => REVERSAL_GOALS[c]).find(Boolean);
     return goal || DEFAULT_REVERSAL_GOAL;
   }, [profile.medicalConditions]);
+  const PlanIcon = primaryGoal.icon;
 
   return (
-    <div id="urcare-profile-page" className="min-h-screen bg-[#F8FAFC] text-zinc-900 pb-16">
+    <div id="urcare-profile-page" className="min-h-screen bg-transparent text-zinc-900 pb-16 relative overflow-hidden">
 
-      {/* Top Header — no logo here on purpose: Dashboard's own sidebar/mobile
-          header already shows the UrCare brand (and the '⋮' module switcher)
-          on every tab, so repeating either here just looked like it was
-          printed twice on the same screen. This bar only titles the page. */}
-      <header className="sticky top-0 z-30 bg-white border-b border-zinc-200 px-3 sm:px-8 py-3 sm:py-3.5 shadow-xs">
-        <div className="max-w-6xl mx-auto flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 min-w-0">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span className="text-xs font-black text-emerald-700 tracking-wide whitespace-nowrap">{t('navHome')}</span>
+      {/* Faint decorative leaf watermark, matching the mockup's soft branded
+          backdrop — purely decorative, sits behind everything. */}
+      <Leaf className="absolute -top-6 -right-10 w-56 h-56 text-emerald-100 rotate-12 pointer-events-none" strokeWidth={1} aria-hidden="true" />
+
+      {/* Header — brand mark + tagline on the left; the streak, the '⋮'
+          module menu, a (decorative, for now) notification bell, and the
+          account avatar on the right. */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-4 sm:px-8 py-3 sm:py-3.5">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            {brandImgFailed ? (
+              <BrandMark className="w-8 h-8 text-emerald-600 shrink-0" />
+            ) : (
+              <img
+                src="/UrCare.png"
+                alt="UrCare"
+                width={64}
+                height={64}
+                decoding="async"
+                onError={() => setBrandImgFailed(true)}
+                className="w-8 h-8 shrink-0 object-contain"
+              />
+            )}
+            <div className="min-w-0">
+              <div className="text-sm font-black tracking-tight truncate">
+                <span className="text-zinc-950">UR</span><span className="text-emerald-500">CARE</span>
+              </div>
+              <div className="text-[9px] font-bold uppercase tracking-wide text-emerald-700 truncate">
+                {tr('Your Health, Our Care', 'आपका स्वास्थ्य, हमारी देखभाल')}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <StreakWidget profile={profile} />
+            <button
+              type="button"
+              onClick={onOpenMoreMenu}
+              className="w-9 h-9 rounded-full border border-zinc-200 bg-white flex items-center justify-center text-zinc-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors cursor-pointer"
+              title={tr('More', 'अधिक')}
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="w-9 h-9 rounded-full border border-zinc-200 bg-white flex items-center justify-center text-zinc-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors cursor-pointer"
+              title={tr('Notifications', 'सूचनाएं')}
+            >
+              <Bell className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-black overflow-hidden shrink-0 cursor-pointer"
+            >
+              {account.avatarUrl ? (
+                <img src={account.avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                (profile.name || account.displayName || 'U').slice(0, 2).toUpperCase()
+              )}
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Main Container — a two-column dashboard on wide screens: the daily
-          plan is the one thing in the main column (the actual "main focus"
-          for today), while the reversal reference library sits statically in
-          a sticky sidebar on the right, always in view rather than requiring
-          a menu. On narrow screens it stacks: plan first, library below. */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-4 space-y-5 text-left">
+      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-4 space-y-5 text-left">
 
-        {/* Personal greeting hero — a warm "who's plan this is" opener above
-            the plan itself, with today's streak at a glance. Tapping it
-            still opens the full identity card on the standalone Profile
-            tab, same as the old compact strip did. */}
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="w-full p-4 sm:p-5 rounded-3xl bg-white border border-zinc-200 shadow-sm flex items-center gap-3"
-        >
-          <button
-            type="button"
-            onClick={onOpenProfile}
-            className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-base font-black shadow-xs overflow-hidden shrink-0 cursor-pointer"
-          >
-            {account.avatarUrl ? (
-              <img src={account.avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              (profile.name || account.displayName || 'U').charAt(0).toUpperCase()
-            )}
-          </button>
-
-          <button type="button" onClick={onOpenProfile} className="min-w-0 flex-1 text-left cursor-pointer">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <h2 className="text-sm sm:text-base font-black text-zinc-950 truncate">
-                {greeting}{firstName ? `, ${firstName}` : ''} <span className="inline-block">👋</span>
-              </h2>
-              <BadgeCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-500/15 shrink-0" strokeWidth={2.5} />
-            </div>
-            <p className="text-[11px] text-zinc-500 font-semibold truncate mt-0.5">
-              {tr('Small steps.', 'छोटे कदम।')} {tr(primaryGoal.label, GOAL_LABEL_HI[primaryGoal.label] || primaryGoal.label)} {tr('is on track.', 'सही दिशा में है।')}
-            </p>
-          </button>
-
-          <div className="shrink-0">
-            <StreakWidget profile={profile} />
-          </div>
+        {/* Greeting */}
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }}>
+          <h1 className="text-xl sm:text-2xl font-black text-zinc-950">
+            {greeting}{firstName ? `, ${firstName}` : ''} <span className="inline-block">👋</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-zinc-500 font-semibold mt-1">
+            {tr('Small steps.', 'छोटे कदम।')} {tr('A healthier tomorrow.', 'एक स्वस्थ कल।')}
+          </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5 items-start">
+        {/* Quote card */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05, ease: 'easeOut' }}
+          className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5"
+        >
+          <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <p className="text-sm font-bold text-emerald-900 italic">
+            "{tr('Discipline today, freedom tomorrow.', 'आज अनुशासन, कल आज़ादी।')}"
+          </p>
+        </motion.div>
 
-          <div className="min-w-0">
-            <RecommendationsView
-              profile={profile}
-              prescriptions={prescriptions}
-              onReferenceSections={setReferenceSections}
-            />
+        {/* Plan-continue card */}
+        <motion.button
+          type="button"
+          onClick={onOpenPlan}
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1, ease: 'easeOut' }}
+          className="w-full p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm flex items-center gap-3 text-left cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all"
+        >
+          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${primaryGoal.gradient} flex items-center justify-center shrink-0 shadow-sm`}>
+            <PlanIcon className="w-5 h-5 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-black text-zinc-950 truncate">{tr(primaryGoal.label, GOAL_LABEL_HI[primaryGoal.label] || primaryGoal.label)}</div>
+            <div className="text-[11px] text-zinc-500 font-semibold">{tr('Continue today', 'आज जारी रखें')}</div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
+        </motion.button>
+
+        {/* Today's Plan */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15, ease: 'easeOut' }} className="space-y-2.5">
+          <div className="flex items-center justify-between px-0.5">
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-sm font-black text-zinc-950">{tr("Today's Plan", 'आज की योजना')}</h2>
+              {programDay != null && (
+                <span className="text-[10px] font-bold text-zinc-400">{tr(`Day ${programDay} of 14`, `दिन ${programDay} / 14`)}</span>
+              )}
+            </div>
+            <button type="button" onClick={onOpenPlan} className="text-xs font-bold text-emerald-600 hover:underline cursor-pointer">
+              {tr('View All', 'सभी देखें')}
+            </button>
           </div>
 
-          <aside className="min-w-0 xl:sticky xl:top-20">
-            <ReversalLibraryPanel sections={referenceSections} />
-          </aside>
-        </div>
+          {current ? (
+            <button
+              type="button"
+              onClick={onOpenPlan}
+              className="w-full p-3.5 rounded-2xl bg-white border border-zinc-200 shadow-sm flex items-center gap-3 text-left cursor-pointer hover:border-emerald-300 transition-all"
+            >
+              <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center shrink-0 ${completedToday[current.id] ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-emerald-400 text-emerald-500'}`}>
+                <Utensils className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-bold text-zinc-400">{tr('Next', 'अगला')}</div>
+                <div className="text-sm font-black text-zinc-950 truncate">{current.title}</div>
+                <div className="text-[11px] text-emerald-600 font-bold">{current.timeLabel}</div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
+            </button>
+          ) : (
+            <div className="p-3.5 rounded-2xl bg-white border border-zinc-200 shadow-sm text-xs font-semibold text-zinc-400 text-center">
+              {tr('No plan available for today.', 'आज के लिए कोई योजना उपलब्ध नहीं है।')}
+            </div>
+          )}
+
+          {next && (
+            <div className="w-full p-3 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-white border border-zinc-200 flex items-center justify-center shrink-0 text-zinc-500">
+                <Utensils className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Up next', 'इसके बाद')}</div>
+                <div className="text-xs font-bold text-zinc-800 truncate">{next.timeLabel} — {next.title}</div>
+              </div>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Quick actions — 2x2 grid, matching the mockup's four shortcuts. */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2, ease: 'easeOut' }}
+          className="grid grid-cols-2 gap-3"
+        >
+          <button type="button" onClick={onOpenScan} className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm flex flex-col items-center gap-1.5 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all">
+            <Camera className="w-5 h-5 text-emerald-600" />
+            <span className="text-xs font-bold text-zinc-800">{tr('Scan Food', 'फूड स्कैन करें')}</span>
+          </button>
+          <button type="button" onClick={onOpenReports} className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm flex flex-col items-center gap-1.5 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all">
+            <FileText className="w-5 h-5 text-emerald-600" />
+            <span className="text-xs font-bold text-zinc-800">{tr('My Reports', 'मेरी रिपोर्ट्स')}</span>
+          </button>
+          <button type="button" onClick={() => setIsLibraryOpen(true)} className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm flex flex-col items-center gap-1.5 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all">
+            <BookOpen className="w-5 h-5 text-emerald-600" />
+            <span className="text-xs font-bold text-zinc-800">{tr('Reversal Library', 'रिवर्सल लाइब्रेरी')}</span>
+          </button>
+          <button type="button" onClick={onOpenStore} className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm flex flex-col items-center gap-1.5 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all">
+            <ShoppingBag className="w-5 h-5 text-emerald-600" />
+            <span className="text-xs font-bold text-zinc-800">{tr('Store', 'स्टोर')}</span>
+          </button>
+        </motion.div>
+
+        {/* Bottom quote banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3, ease: 'easeOut' }}
+          className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center gap-2 text-center"
+        >
+          <Leaf className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span className="text-xs font-bold text-emerald-800 italic">
+            {tr('Discipline today, freedom tomorrow.', 'आज अनुशासन, कल आज़ादी।')}
+          </span>
+        </motion.div>
       </main>
 
+      {/* Reversal Library — a bottom sheet on mobile/tablet since it doesn't
+          have a permanent sidebar spot outside the Plan tab's wide layout. */}
+      {isLibraryOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIsLibraryOpen(false)}>
+          <div
+            className="w-full sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-3">
+              <ReversalLibraryPanel sections={referenceSections} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

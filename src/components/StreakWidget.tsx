@@ -14,13 +14,6 @@ interface StreakWidgetProps {
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const WEEKDAY_LABELS_HI = ['सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि', 'रवि'];
 
-/** The uploaded 3D green heart-with-flame asset — resized/compressed from
- *  the original 2.1MB upload (public/Streak.png) down to a ~420px-wide,
- *  ~75KB PNG that still looks identical at the small sizes this actually
- *  renders at. Used as-is (never redrawn/recolored) everywhere a "streak
- *  heart" appears, per the brief. */
-const STREAK_HEART_SRC = '/streak-heart.png';
-
 /** A day's worth of full plan completion is worth this many points. Every
  *  30-day streak milestone adds a one-time bonus on top. */
 const POINTS_PER_DAY = 30;
@@ -86,34 +79,60 @@ function computeLongestStreak(markedDates: Set<string>): number {
   return longest;
 }
 
-/** The streak glyph: the uploaded green 3D heart-with-flame image, held
- *  completely still — no float, no breathing, no tilt, nothing on the
- *  heart itself. The only motion is a small flickering glow sitting right
- *  over the flame in the artwork, so it reads as "the flame is burning"
- *  rather than the heart moving. The image pixels are never redrawn,
- *  recolored, or distorted. */
+/** The streak glyph: a heart on fire, drawn as inline vector art (never a
+ *  raster asset, so it can't 404 or go blurry at odd sizes) — a warm
+ *  crimson-to-gold heart with a small flame lick rising from its notch. The
+ *  heart itself is held completely still — no float, no breathing, no tilt.
+ *  The only motion is a small flickering glow sitting right over the flame
+ *  tip, so it reads as "the flame is burning" rather than the heart moving. */
 const StreakHeartImage: React.FC<{ size?: number }> = ({ size = 28 }) => (
   <div className="relative inline-flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-    <img
-      src={STREAK_HEART_SRC}
-      alt="Streak"
-      draggable={false}
-      className="relative pointer-events-none select-none"
-      style={{ width: size, height: size, objectFit: 'contain' }}
-    />
+    <svg viewBox="0 0 48 48" className="relative pointer-events-none select-none" style={{ width: size, height: size }} aria-hidden="true">
+      <defs>
+        <linearGradient id="streakHeartGradient" x1="24" y1="41" x2="24" y2="4" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#9f1239" />
+          <stop offset="45%" stopColor="#e11d48" />
+          <stop offset="78%" stopColor="#f97316" />
+          <stop offset="100%" stopColor="#fbbf24" />
+        </linearGradient>
+        <linearGradient id="streakFlameGradient" x1="24" y1="15" x2="24" y2="2" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#f97316" />
+          <stop offset="55%" stopColor="#fbbf24" />
+          <stop offset="100%" stopColor="#fef9c3" />
+        </linearGradient>
+      </defs>
+      {/* Heart body */}
+      <path
+        d="M24 41C24 41 6 29.5 6 15.5C6 8.6 11.2 4 17 4C20.3 4 22.7 5.9 24 8.6C25.3 5.9 27.7 4 31 4C36.8 4 42 8.6 42 15.5C42 29.5 24 41 24 41Z"
+        fill="url(#streakHeartGradient)"
+      />
+      {/* A soft highlight for a little 3D gloss */}
+      <path
+        d="M13.5 12.5C15.3 9.7 18 8.3 20.6 9"
+        stroke="rgba(255,255,255,0.55)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Flame lick rising from the heart's notch */}
+      <path
+        d="M24 2.4C25.6 5.1 27.6 7.6 27.6 10.5C27.6 12.8 26 14.5 24 14.5C22 14.5 20.4 12.8 20.4 10.5C20.4 7.6 22.4 5.1 24 2.4Z"
+        fill="url(#streakFlameGradient)"
+      />
+    </svg>
 
-    {/* Flickering flame glow, positioned over the flame at the heart's
-        center — an irregular multi-step flicker reads more like real fire
+    {/* Flickering flame glow, positioned over the flame tip at the heart's
+        notch — an irregular multi-step flicker reads more like real fire
         than a smooth pulse would. */}
     <motion.div
       className="absolute rounded-full pointer-events-none"
       style={{
         width: size * 0.32,
-        height: size * 0.46,
+        height: size * 0.4,
         left: '50%',
-        top: '48%',
+        top: '20%',
         transform: 'translate(-50%, -50%)',
-        background: 'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(200,255,150,0.75) 40%, rgba(120,255,120,0) 75%)',
+        background: 'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,214,120,0.8) 45%, rgba(249,115,22,0) 75%)',
         mixBlendMode: 'plus-lighter',
         filter: 'blur(1px)',
       }}
