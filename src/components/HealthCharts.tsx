@@ -2,13 +2,14 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Pencil, RotateCcw, Check, X, Droplet } from 'lucide-react';
 
-/** One macro (Protein/Carbs/Fats) — today's real logged-so-far amount vs
- *  the day's real target, as an animated bar, and directly editable right
- *  here: quick-add chips sized to common servings, plus a custom amount,
- *  instead of only ever being a read-only target display. A manual add is
- *  logged as a lightweight "meal" entry (see addQuickMacroLog in
- *  utils/supabase) so it sums into the same real daily total the food
- *  scanner's own scanned meals do — never a separate, parallel tally. */
+/** One tracked number (Protein/Carbs/Fats/Calories) — today's real
+ *  logged-so-far amount vs the day's real target, as an animated bar, and
+ *  directly editable right here: quick-add chips sized to common servings,
+ *  plus a custom amount, instead of only ever being a read-only target
+ *  display. A manual add is logged as a lightweight "meal" entry (see
+ *  addQuickMacroLog/addQuickCalorieLog in utils/supabase) so it sums into
+ *  the same real daily total the food scanner's own scanned meals do —
+ *  never a separate, parallel tally. */
 export const MacroLogRow: React.FC<{
   label: string;
   color: string;
@@ -24,7 +25,10 @@ export const MacroLogRow: React.FC<{
   onReset?: () => void;
   isSaving: boolean;
   tr: (en: string, hi: string) => string;
-}> = ({ label, color, currentG, targetG, quickAdds, onAdd, onEditTarget, onReset, isSaving, tr }) => {
+  /** Unit suffix appended to every number shown/typed — 'g' for macros,
+   *  ' kcal' (with its own leading space) for calories. Defaults to 'g'. */
+  unit?: string;
+}> = ({ label, color, currentG, targetG, quickAdds, onAdd, onEditTarget, onReset, isSaving, tr, unit = 'g' }) => {
   const [customValue, setCustomValue] = React.useState('');
   const [isEditingTarget, setIsEditingTarget] = React.useState(false);
   const [targetInput, setTargetInput] = React.useState(String(targetG));
@@ -69,7 +73,7 @@ export const MacroLogRow: React.FC<{
               onKeyDown={(e) => { if (e.key === 'Enter') confirmEditTarget(); if (e.key === 'Escape') setIsEditingTarget(false); }}
               className="w-14 px-1.5 py-0.5 rounded-md border border-zinc-300 text-xs font-bold text-zinc-800 focus:outline-none"
             />
-            <span className="text-[10px] text-zinc-400 font-semibold">g</span>
+            <span className="text-[10px] text-zinc-400 font-semibold">{unit}</span>
             <button type="button" onClick={confirmEditTarget} className="p-1 rounded-md text-white cursor-pointer" style={{ background: color }} title={tr('Save target', 'लक्ष्य सहेजें')}>
               <Check className="w-3 h-3" />
             </button>
@@ -80,7 +84,7 @@ export const MacroLogRow: React.FC<{
         ) : (
           <div className="flex items-center gap-1 shrink-0">
             <span className="text-xs font-black tabular-nums" style={{ color: over ? '#e11d48' : '#18181b' }}>
-              {currentG}g <span className="text-zinc-400 font-semibold">/ {targetG}g</span>
+              {currentG}{unit} <span className="text-zinc-400 font-semibold">/ {targetG}{unit}</span>
             </span>
             {onEditTarget && (
               <button type="button" onClick={startEditTarget} className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200 transition-colors cursor-pointer" title={tr('Edit target', 'लक्ष्य संपादित करें')}>
@@ -122,14 +126,14 @@ export const MacroLogRow: React.FC<{
             className="px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95"
             style={{ background: `${color}18`, borderColor: `${color}45`, color }}
           >
-            +{g}g
+            +{g}{unit}
           </button>
         ))}
         <input
           type="number"
           inputMode="numeric"
           min={1}
-          placeholder={tr('Custom g', 'कस्टम g')}
+          placeholder={tr(`Custom ${unit}`, `कस्टम ${unit}`)}
           value={customValue}
           onChange={(e) => setCustomValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleCustomAdd(); }}

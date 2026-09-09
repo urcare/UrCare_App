@@ -19,6 +19,9 @@ export interface UserPreferences {
   /** Same override idea as customMacroTargets, for the daily water target
    *  (millilitres). Absent means "use the calculated plan's waterLiters". */
   customWaterTargetMl?: number;
+  /** Same override idea, for the daily calorie target. Absent means "use
+   *  the calculated plan's targetCalories". */
+  customCalorieTarget?: number;
   colorBurnsBack: boolean;
   rolloverCalories: boolean;
   workoutDaysPerWeek: '0-2' | '3-5' | '6+';

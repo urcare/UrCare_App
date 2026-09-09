@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { updateAvatar, getDailyLog, addWaterIntake, resetWaterIntake, addQuickMacroLog, resetQuickMacroLog } from '../utils/supabase';
+import { updateAvatar, getDailyLog, addWaterIntake, resetWaterIntake, addQuickMacroLog, resetQuickMacroLog, addQuickCalorieLog, resetQuickCalorieLog } from '../utils/supabase';
 import { EditHealthProfileModal } from './EditHealthProfileModal';
 import { StreakWidget } from './StreakWidget';
 import { MacroLogRow, BmiRangeBar, WaterIntakeRing } from './HealthCharts';
@@ -114,8 +114,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   const todayKey = toDateKey(new Date());
   const [waterMl, setWaterMl] = useState(0);
   const [consumedMacros, setConsumedMacros] = useState({ protein: 0, carbs: 0, fats: 0 });
+  const [consumedCalories, setConsumedCalories] = useState(0);
   const [isSavingWater, setIsSavingWater] = useState(false);
   const [isSavingMacro, setIsSavingMacro] = useState(false);
+  const [isSavingCalories, setIsSavingCalories] = useState(false);
 
   const refreshDailyLog = useCallback(() => {
     if (!userId) return;
@@ -127,6 +129,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         carbs: meals.reduce((sum, m) => sum + (m.carbs || 0), 0),
         fats: meals.reduce((sum, m) => sum + (m.fats || 0), 0),
       });
+      setConsumedCalories(meals.reduce((sum, m) => sum + (m.calories || 0), 0));
     });
   }, [userId, todayKey]);
 
@@ -208,6 +211,36 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         ...(profile.preferences as any || {}),
         customMacroTargets: { ...(profile.preferences?.customMacroTargets || {}), [macro]: newTargetG },
       },
+    });
+  };
+
+  const handleAddCalories = async (kcal: number) => {
+    if (!userId) return;
+    setIsSavingCalories(true);
+    setConsumedCalories((prev) => prev + kcal); // optimistic
+    try {
+      await addQuickCalorieLog(userId, todayKey, kcal);
+      refreshDailyLog();
+    } finally {
+      setIsSavingCalories(false);
+    }
+  };
+
+  const handleResetCalories = async () => {
+    if (!userId) return;
+    setIsSavingCalories(true);
+    try {
+      await resetQuickCalorieLog(userId, todayKey);
+      refreshDailyLog();
+    } finally {
+      setIsSavingCalories(false);
+    }
+  };
+
+  const handleEditCalorieTarget = (newTarget: number) => {
+    onUpdateProfile({
+      ...profile,
+      preferences: { ...(profile.preferences as any || {}), customCalorieTarget: newTarget },
     });
   };
 
@@ -389,17 +422,30 @@ export const AccountPage: React.FC<AccountPageProps> = ({
 
         {/* DAILY NUTRITION & WATER TARGETS */}
         <div className="p-5 sm:p-6 rounded-3xl bg-white border border-zinc-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-            <div className="flex items-center gap-2">
-              <Flame className="w-5 h-5 text-emerald-600" />
-              <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight">
-                {tr('Daily Nutrition & Water Targets', 'दैनिक पोषण व पानी के लक्ष्य')}
-              </h3>
-            </div>
-            <span className="text-xs font-extrabold text-emerald-700">
-              {calculatedPlan?.targetCalories || 1850} kcal / {tr('day', 'दिन')}
-            </span>
+          <div className="flex items-center gap-2 border-b border-zinc-100 pb-3">
+            <Flame className="w-5 h-5 text-emerald-600" />
+            <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight">
+              {tr('Daily Nutrition & Water Targets', 'दैनिक पोषण व पानी के लक्ष्य')}
+            </h3>
           </div>
+
+          {/* Calories — real, editable, logged-so-far vs target, same as
+              the macros below; full-width since it's the headline number
+              (replaces the old static "kcal / day" text, which couldn't
+              reflect a custom target once one is set here). */}
+          <MacroLogRow
+            label={tr('Calories', 'कैलोरी')}
+            color="#f59e0b"
+            unit=" kcal"
+            currentG={Math.round(consumedCalories)}
+            targetG={profile.preferences?.customCalorieTarget ?? (calculatedPlan?.targetCalories || 1850)}
+            quickAdds={[100, 250]}
+            onAdd={handleAddCalories}
+            onEditTarget={handleEditCalorieTarget}
+            onReset={handleResetCalories}
+            isSaving={isSavingCalories}
+            tr={tr}
+          />
 
           {/* Macros — each one real, editable, logged-so-far vs target
               (with the target itself editable too), instead of three flat

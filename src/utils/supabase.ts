@@ -432,6 +432,44 @@ export async function resetQuickMacroLog(userId: string, date: string, macro: 'p
   }
 }
 
+/** A quick manual calorie log ("+100 kcal") — same idea as
+ *  addQuickMacroLog, but with no macro breakdown attached (a scanned meal
+ *  already carries its own real macros; this is only for a number typed in
+ *  directly), so it doesn't skew the Protein/Carbs/Fats totals. */
+export async function addQuickCalorieLog(userId: string, date: string, kcal: number): Promise<void> {
+  const meal: MealItem = {
+    id: `quick_calories_${Date.now()}`,
+    name: 'Quick log — Calories',
+    calories: kcal,
+    protein: 0,
+    carbs: 0,
+    fats: 0,
+    category: 'snack',
+    timestamp: new Date().toISOString(),
+    aiSuggested: false,
+  };
+  await addMealToLog(userId, date, meal);
+}
+
+/** Clears today's manually-logged calories only (never a real scanned
+ *  meal), same guard as resetQuickMacroLog. */
+export async function resetQuickCalorieLog(userId: string, date: string): Promise<void> {
+  const existing = await getDailyLog(userId, date);
+  const meals = (existing?.meals || []).filter((m) => !m.id.startsWith('quick_calories_'));
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    await supabase.from('daily_logs').upsert({
+      user_id: userId,
+      date,
+      meals,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,date' });
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('urcare:daily-log-changed', { detail: { userId, date } }));
+  }
+}
+
 /** All dates (in the last ~120 days) that have any logged activity — used to mark the calendar. */
 export async function getActiveDates(userId: string): Promise<Set<string>> {
   const supabase = getSupabaseClient();
