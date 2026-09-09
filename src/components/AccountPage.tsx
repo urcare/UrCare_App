@@ -1,13 +1,15 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Mail, Phone, Flame, Edit3, Stethoscope, LogOut, RefreshCw,
   Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { updateAvatar } from '../utils/supabase';
+import { updateAvatar, getDailyLog, addWaterIntake } from '../utils/supabase';
 import { EditHealthProfileModal } from './EditHealthProfileModal';
 import { StreakWidget } from './StreakWidget';
+import { MacroCompositionBar, BmiRangeBar, WaterIntakeRing } from './HealthCharts';
+import { toDateKey } from './DailyCalendar';
 import { REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL } from './RecommendationsView';
 
 function formatGoalLabel(goal?: string): string {
@@ -102,6 +104,40 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+
+  // Today's real logged water intake — see WaterIntakeRing (editable) below.
+  const userId = profile.id || '';
+  const todayKey = toDateKey(new Date());
+  const [waterMl, setWaterMl] = useState(0);
+  const [isSavingWater, setIsSavingWater] = useState(false);
+
+  const refreshDailyLog = useCallback(() => {
+    if (!userId) return;
+    getDailyLog(userId, todayKey).then((log) => setWaterMl(log?.waterMl || 0));
+  }, [userId, todayKey]);
+
+  useEffect(() => {
+    refreshDailyLog();
+  }, [refreshDailyLog]);
+
+  // Scanning a meal, or logging water from elsewhere (e.g. Home), fires this
+  // — keeps this screen's ring in sync without needing its own polling.
+  useEffect(() => {
+    window.addEventListener('urcare:daily-log-changed', refreshDailyLog);
+    return () => window.removeEventListener('urcare:daily-log-changed', refreshDailyLog);
+  }, [refreshDailyLog]);
+
+  const handleAddWater = async (deltaMl: number) => {
+    if (!userId) return;
+    setIsSavingWater(true);
+    setWaterMl((prev) => Math.max(0, prev + deltaMl)); // optimistic
+    try {
+      const confirmed = await addWaterIntake(userId, todayKey, deltaMl);
+      setWaterMl(confirmed);
+    } finally {
+      setIsSavingWater(false);
+    }
+  };
 
   const handleAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -274,12 +310,13 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <span className="text-[10px] font-bold text-emerald-700 block">
               {bmi < 18.5 ? tr('Underweight', 'कम वज़न') : bmi < 25 ? tr('Normal (Healthy)', 'सामान्य (स्वस्थ)') : bmi < 30 ? tr('Overweight', 'अधिक वज़न') : tr('Need Reversal', 'रिवर्सल आवश्यक')}
             </span>
+            <BmiRangeBar bmi={bmi} tr={tr} />
           </div>
 
         </div>
 
-        {/* DAILY NUTRITION TARGETS */}
-        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-zinc-200 shadow-xs space-y-3">
+        {/* DAILY NUTRITION & WATER TARGETS */}
+        <div className="p-5 sm:p-6 rounded-3xl bg-white border border-zinc-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
             <div className="flex items-center gap-2">
               <Flame className="w-5 h-5 text-emerald-600" />
@@ -292,30 +329,31 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
-            <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Protein Target', 'प्रोटीन लक्ष्य')}</span>
-              <div className="text-lg font-black text-emerald-600">{calculatedPlan?.proteinGrams || 130}g</div>
-              <span className="text-[10px] text-zinc-500 font-medium">{tr('For muscle & sugar control', 'मांसपेशी व शुगर नियंत्रण हेतु')}</span>
-            </div>
+          {/* Macro composition — one real, animated bar instead of three flat
+              stat boxes; grams still shown directly (never color-alone). */}
+          <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/70">
+            <MacroCompositionBar
+              proteinG={calculatedPlan?.proteinGrams || 130}
+              carbsG={calculatedPlan?.carbsGrams || 180}
+              fatsG={calculatedPlan?.fatsGrams || 50}
+              tr={tr}
+            />
+          </div>
 
-            <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Carb Target', 'कार्ब्स लक्ष्य')}</span>
-              <div className="text-lg font-black text-zinc-900">{calculatedPlan?.carbsGrams || 180}g</div>
-              <span className="text-[10px] text-zinc-500 font-medium">{tr('Whole grains & fiber', 'साबुत अनाज व फाइबर')}</span>
+          {/* Water — real, editable log against the plan's real target, not
+              just a static number. */}
+          <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/70">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Water Intake Today', 'आज पानी की मात्रा')}</span>
+              <span className="text-[10px] text-zinc-400 font-medium">{tr('Daily hydration', 'दैनिक जल सेवन')}</span>
             </div>
-
-            <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Healthy Fats', 'हेल्दी फैट्स')}</span>
-              <div className="text-lg font-black text-zinc-900">{calculatedPlan?.fatsGrams || 50}g</div>
-              <span className="text-[10px] text-zinc-500 font-medium">{tr('Nuts & seeds', 'मेवे व बीज')}</span>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Water Intake', 'पानी की मात्रा')}</span>
-              <div className="text-lg font-black text-teal-600">{calculatedPlan?.waterLiters || 3.2}L</div>
-              <span className="text-[10px] text-zinc-500 font-medium">{tr('Daily hydration', 'दैनिक जल सेवन')}</span>
-            </div>
+            <WaterIntakeRing
+              currentMl={waterMl}
+              targetMl={(calculatedPlan?.waterLiters || 3.2) * 1000}
+              onAdd={handleAddWater}
+              isSaving={isSavingWater}
+              tr={tr}
+            />
           </div>
         </div>
 

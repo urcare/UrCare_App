@@ -178,7 +178,7 @@ function requireAdmin(handler: (req: express.Request, res: express.Response) => 
 async function createNotification(
   supabase: SupabaseClient,
   userId: string,
-  type: 'prescription' | 'report' | 'order' | 'system',
+  type: 'prescription' | 'report' | 'order' | 'plan' | 'system',
   title: string,
   body?: string,
   data?: Record<string, any>,
@@ -312,6 +312,7 @@ Only report biomarkers you can actually read from the provided report/text — n
         macro_adjustments: parsed.macroAdjustments || {},
         admin_reviewed: false,
       });
+      await createNotification(supabase, user.id, 'report', 'Report uploaded', parsed.reportName || 'Your report was analyzed and saved.', { reportId });
     }
 
     return res.json({ ...parsed, id: reportId, uploadedAt: new Date().toISOString() });
@@ -566,6 +567,7 @@ Call the record_daily_plan tool exactly once with the complete result.`;
         sections,
       }, { onConflict: 'user_id' });
       if (upsertError) throw upsertError;
+      await createNotification(supabase, user.id, 'plan', 'Your custom daily plan is ready', `${sections.length} steps extracted and active for the next 35 days.`, {});
     }
 
     return res.json({
@@ -722,6 +724,9 @@ app.patch('/api/orders/:id', requireUser(async (req, res, user) => {
 
     const { data, error } = await supabase.from('orders').update(patch).eq('id', req.params.id).select().single();
     if (error) throw error;
+    if (receiptImageUrl) {
+      await createNotification(supabase, user.id, 'order', 'Payment receipt uploaded', `Order #${req.params.id} — awaiting verification.`, { orderId: req.params.id });
+    }
     res.json({ success: true, order: data });
   } catch (e: any) {
     console.error('Order update failed:', e);
@@ -732,10 +737,10 @@ app.patch('/api/orders/:id', requireUser(async (req, res, user) => {
 // ----------------------------------------------------------------------------
 // NOTIFICATIONS — real `notifications` rows only (see createNotification
 // above for where they're actually written: a prescription issued, a report
-// reviewed, an order's status/payment changed). These two endpoints only
-// ever read/update the caller's own rows, scoped by user.id server-side
-// (the service-role client bypasses RLS, so this filter IS the access
-// control here, not just belt-and-suspenders).
+// reviewed, an order's status/payment changed, a report/plan uploaded). These
+// endpoints only ever read/update the caller's own rows, scoped by user.id
+// server-side (the service-role client bypasses RLS, so this filter IS the
+// access control here, not just belt-and-suspenders).
 // ----------------------------------------------------------------------------
 app.get('/api/notifications', requireUser(async (req, res, user) => {
   const supabase = getSupabaseAdmin();
@@ -763,6 +768,34 @@ app.post('/api/notifications/read-all', requireUser(async (req, res, user) => {
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
   const { error } = await supabase.from('notifications').update({ read: true }).eq('user_id', user.id).eq('read', false);
   if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+}));
+
+// The client detects "the next plan step starts in <=5 minutes" itself (it
+// already has the day's real timeline) and calls this to actually write the
+// reminder — this endpoint's only job is turning that into one real
+// notification, once, per section per day. `dedupeKey` is a stable id the
+// client derives from the section + date; a second call with the same key
+// (a re-render, a second tab, whatever) is a no-op rather than a duplicate
+// notification.
+app.post('/api/notifications/reminder', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { title, body, dedupeKey } = req.body as { title?: string; body?: string; dedupeKey?: string };
+  if (!title || !dedupeKey) return res.status(400).json({ error: 'title and dedupeKey are required.' });
+
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: existing } = await supabase
+    .from('notifications')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('type', 'plan')
+    .gte('created_at', since)
+    .contains('data', { dedupeKey })
+    .maybeSingle();
+  if (existing) return res.json({ success: true, deduped: true });
+
+  await createNotification(supabase, user.id, 'plan', title, body, { dedupeKey });
   res.json({ success: true });
 }));
 

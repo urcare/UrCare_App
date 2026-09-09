@@ -333,6 +333,28 @@ export async function toggleDailyTask(userId: string, date: string, taskId: stri
   return next;
 }
 
+/** Adds (or subtracts, for a correction) to today's real logged water
+ *  intake — the actual editable log, not just the static target display.
+ *  Returns the new real total so the caller can update its UI without a
+ *  round-trip re-fetch. */
+export async function addWaterIntake(userId: string, date: string, deltaMl: number): Promise<number> {
+  const existing = await getDailyLog(userId, date);
+  const nextMl = Math.max(0, (existing?.waterMl || 0) + deltaMl);
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    await supabase.from('daily_logs').upsert({
+      user_id: userId,
+      date,
+      water_ml: nextMl,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,date' });
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('urcare:daily-log-changed', { detail: { userId, date } }));
+  }
+  return nextMl;
+}
+
 export async function addMealToLog(userId: string, date: string, meal: MealItem): Promise<void> {
   const existing = await getDailyLog(userId, date);
   const meals = [...(existing?.meals || []), meal];
@@ -611,6 +633,14 @@ export async function markNotificationRead(id: string): Promise<void> {
 
 export async function markAllNotificationsRead(): Promise<void> {
   await authedFetch('/api/notifications/read-all', { method: 'POST' });
+}
+
+/** Fires a real "your next plan step starts soon" notification — the
+ *  server only actually writes it once per dedupeKey (see
+ *  /api/notifications/reminder), so calling this more than once for the
+ *  same section/day is harmless. */
+export async function sendPlanReminder(title: string, body: string, dedupeKey: string): Promise<void> {
+  await authedFetch('/api/notifications/reminder', { method: 'POST', body: JSON.stringify({ title, body, dedupeKey }) });
 }
 
 export async function getMyOrders(userId: string): Promise<Order[]> {

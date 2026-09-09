@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Bell, FileText, Pill, Package, CheckCheck } from 'lucide-react';
+import { X, Bell, FileText, Pill, Package, CheckCheck, ClipboardCheck } from 'lucide-react';
 import { AppNotification } from '../types';
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../utils/supabase';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,6 +10,7 @@ const ICONS: Record<AppNotification['type'], React.ComponentType<{ className?: s
   prescription: Pill,
   report: FileText,
   order: Package,
+  plan: ClipboardCheck,
   system: Bell,
 };
 

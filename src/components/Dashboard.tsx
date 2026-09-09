@@ -28,8 +28,9 @@ import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
-import { signOutUser, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport } from '../utils/supabase';
+import { signOutUser, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, getDailyPlan, getTaskCompletion, sendPlanReminder } from '../utils/supabase';
 import { calculateNutritionPlan } from '../utils/calculator';
+import { labelMinutes } from './RecommendationsView';
 import { useLanguage } from '../context/LanguageContext';
 
 interface DashboardProps {
@@ -124,6 +125,64 @@ export const Dashboard: React.FC<DashboardProps> = ({
     refreshAccountData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.uid]);
+
+  // "Up Next" plan reminder — checks the day's real timeline every 30s and
+  // fires one real notification ~5 minutes before whichever step is next,
+  // once per step per day (deduped both locally and, belt-and-suspenders,
+  // server-side — see /api/notifications/reminder). Lives here rather than
+  // inside Home/Plan specifically so it keeps checking no matter which tab
+  // is open. Note: this only works while the app itself is open in a tab —
+  // there's no service-worker/push setup yet for a true background alert
+  // when the app or browser is fully closed. Respects the real Notifications
+  // toggle in Settings (profile.preferences.enableNotifications) — off means
+  // this reminder simply never fires, rather than the switch being decorative.
+  useEffect(() => {
+    if (!account?.uid) return;
+    if (profile.preferences?.enableNotifications === false) return;
+    let cancelled = false;
+
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+
+    const check = async () => {
+      const todayKey = toDateKey(new Date());
+      const [{ plan }, completedToday] = await Promise.all([
+        getDailyPlan(todayKey),
+        getTaskCompletion(account.uid, todayKey),
+      ]);
+      if (cancelled) return;
+
+      const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+      const next = (plan?.sections || [])
+        .filter((s: any) => !!s.timeLabel && !completedToday[s.id])
+        .map((s: any) => ({ ...s, mins: labelMinutes(s.timeLabel) }))
+        .filter((s: any) => s.mins > nowMinutes)
+        .sort((a: any, b: any) => a.mins - b.mins)[0];
+      if (!next) return;
+
+      const minsUntil = next.mins - nowMinutes;
+      if (minsUntil > 5) return;
+
+      const remindedKey = `urcare:reminded:${account.uid}:${todayKey}:${next.id}`;
+      if (localStorage.getItem(remindedKey)) return;
+      localStorage.setItem(remindedKey, '1');
+
+      sendPlanReminder(
+        `${next.title} starts ${minsUntil <= 1 ? 'in a minute' : `in ${minsUntil} minutes`}`,
+        next.timeLabel,
+        `${todayKey}:${next.id}`,
+      ).catch(() => {});
+
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        try { new Notification(next.title, { body: `Starting at ${next.timeLabel}`, icon: '/UrCare.png' }); } catch {}
+      }
+    };
+
+    check();
+    const interval = setInterval(check, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [account?.uid, profile.preferences?.enableNotifications]);
 
   // Modals state
   const [isHealthReportOpen, setIsHealthReportOpen] = useState(false);
@@ -924,6 +983,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
           account={account}
           onClose={() => setIsSettingsOpen(false)}
           onUpdateProfile={onUpdateProfile}
+          onOpenProUpgrade={() => { setIsSettingsOpen(false); handleOpenProModalFor('UrCare Premium'); }}
+          onOpenAccountTab={() => setActiveTab('account')}
+          onOpenReports={() => setActiveTab('reports')}
+          onOpenOrders={() => setIsMyOrdersOpen(true)}
+          onOpenDoctorConsult={() => handleOpenDoctorConsult()}
+          onLogOut={() => { setIsSettingsOpen(false); setShowLogoutConfirm(true); }}
         />
       )}
 

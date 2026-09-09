@@ -8,6 +8,9 @@ export type GoalPace = 'slow' | 'steady' | 'moderate' | 'fast';
 
 export interface UserPreferences {
   enableNotifications: boolean;
+  /** Display units for weight/height across the app. Defaults to 'metric'
+   *  when absent (every existing account before this setting existed). */
+  units?: 'metric' | 'imperial';
   colorBurnsBack: boolean;
   rolloverCalories: boolean;
   workoutDaysPerWeek: '0-2' | '3-5' | '6+';
@@ -506,7 +509,7 @@ export interface DailyLog {
  *  server.ts); never fabricated or client-generated. */
 export interface AppNotification {
   id: string;
-  type: 'prescription' | 'report' | 'order' | 'system';
+  type: 'prescription' | 'report' | 'order' | 'plan' | 'system';
   title: string;
   body?: string;
   data?: Record<string, any>;
