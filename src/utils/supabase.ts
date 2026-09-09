@@ -469,6 +469,20 @@ export async function getDailyPlan(date: string): Promise<{ plan?: any; error?: 
   return { plan: data.plan };
 }
 
+/** Today's real, Claude-generated motivational line (same for every user,
+ *  regenerated once per calendar day server-side — see /api/daily-quote).
+ *  Not personalized, so a plain fetch — no auth token needed. Falls back to
+ *  the same static line the server itself falls back to if anything fails,
+ *  so the quote card is never blank. */
+export async function getDailyQuote(): Promise<{ en: string; hi: string }> {
+  try {
+    const res = await fetch('/api/daily-quote');
+    const data = await res.json();
+    if (data?.en && data?.hi) return data;
+  } catch {}
+  return { en: 'Discipline today, freedom tomorrow.', hi: 'आज अनुशासन, कल आज़ादी।' };
+}
+
 // Upload-your-own daily plan — a photo/PDF of a schedule the user already
 // has, extracted by Claude and swapped in for the built-in reversal plan for
 // the next 35 days. See /api/analyze-daily-plan in server.ts.

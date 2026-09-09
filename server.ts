@@ -203,6 +203,49 @@ app.get('/api/health', (req, res) => {
 });
 
 // ----------------------------------------------------------------------------
+// DAILY QUOTE — one real Claude-generated line per calendar day, cached in
+// memory so every user gets the same quote for the day and Claude is only
+// called once per day (on the first request after midnight), not once per
+// page load. Not personalized, so no auth needed.
+// ----------------------------------------------------------------------------
+let dailyQuoteCache: { date: string; en: string; hi: string } | null = null;
+const DAILY_QUOTE_FALLBACK = { en: 'Discipline today, freedom tomorrow.', hi: 'आज अनुशासन, कल आज़ादी।' };
+
+app.get('/api/daily-quote', async (req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  if (dailyQuoteCache && dailyQuoteCache.date === today) {
+    return res.json({ en: dailyQuoteCache.en, hi: dailyQuoteCache.hi });
+  }
+
+  const ai = getClaudeClient();
+  if (!ai) return res.json(DAILY_QUOTE_FALLBACK);
+
+  try {
+    const parsed = await callClaudeForJson({
+      client: ai,
+      system: 'You write one short, original, motivating line for a metabolic-health/diabetes-reversal app\'s home screen, in the spirit of "Discipline today, freedom tomorrow." Under 10 words, no clichés about "journeys", no medical claims, no emoji. Provide an English version and a natural (not literally/machine-translated-sounding) Hindi version with the same meaning.',
+      text: `Write today's motivational line (today is ${today}).`,
+      toolName: 'record_daily_quote',
+      toolDescription: 'Record the short motivational quote in English and Hindi.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          en: { type: 'string', description: "The English quote, under 10 words." },
+          hi: { type: 'string', description: 'The Hindi quote, same meaning, natural Hindi phrasing.' },
+        },
+        required: ['en', 'hi'],
+      },
+    });
+    if (!parsed.en || !parsed.hi) throw new Error('Incomplete quote from Claude');
+    dailyQuoteCache = { date: today, en: parsed.en, hi: parsed.hi };
+    res.json({ en: parsed.en, hi: parsed.hi });
+  } catch (error) {
+    console.error('Error generating daily quote:', error);
+    res.json(DAILY_QUOTE_FALLBACK);
+  }
+});
+
+// ----------------------------------------------------------------------------
 // ADMIN LOGIN
 // ----------------------------------------------------------------------------
 app.post('/api/admin/login', (req, res) => {
