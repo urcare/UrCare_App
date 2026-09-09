@@ -367,14 +367,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </aside>
 
-      {/* 2. MOBILE TOP HEADER — a real 3-track flex row (spacer / logo / buttons)
-          instead of absolute-centering the logo over the row. Absolute
-          positioning let the logo's box visually overlap the button cluster
-          on narrow phones; a dedicated flex-1 track for the logo can only
-          shrink/truncate into the space it's actually given, so it can never
-          sit on top of the buttons. The left spacer mirrors the button
-          cluster's width so the logo still lands at the true visual center. */}
-      <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2">
+      {/* 2. MOBILE TOP HEADER — module menu on the left, actions on the
+          right; no logo here (it already lives in the desktop sidebar and
+          at the top of the '⋮' drawer, so it doesn't need a third spot). */}
+      <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2">
         {/* '⋮' module switcher — lives here, in the one persistent sticky
             header shown on every tab, so it never jumps position when you
             switch tabs or scroll (unlike an inline element placed inside
@@ -389,10 +385,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           >
             <MoreVertical className="w-4 h-4" />
           </button>
-        </div>
-
-        <div className="flex-1 min-w-0 flex justify-center px-1">
-          <Logo size="sm" showSubtitle={false} compact className="min-w-0 max-w-full" />
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
