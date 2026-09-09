@@ -170,6 +170,26 @@ function requireAdmin(handler: (req: express.Request, res: express.Response) => 
   };
 }
 
+/** Writes one real notification row for a real event — never called
+ *  speculatively/on a timer, only right after something has actually
+ *  happened to this user (a prescription was issued, a report was
+ *  reviewed, an order changed). Swallows its own errors: a notification
+ *  failing to write should never fail the request that triggered it. */
+async function createNotification(
+  supabase: SupabaseClient,
+  userId: string,
+  type: 'prescription' | 'report' | 'order' | 'system',
+  title: string,
+  body?: string,
+  data?: Record<string, any>,
+): Promise<void> {
+  try {
+    await supabase.from('notifications').insert({ user_id: userId, type, title, body: body || null, data: data || {} });
+  } catch (err) {
+    console.warn('createNotification failed:', err);
+  }
+}
+
 // ================= API ENDPOINTS =================
 
 // Health check
@@ -710,6 +730,43 @@ app.patch('/api/orders/:id', requireUser(async (req, res, user) => {
 }));
 
 // ----------------------------------------------------------------------------
+// NOTIFICATIONS — real `notifications` rows only (see createNotification
+// above for where they're actually written: a prescription issued, a report
+// reviewed, an order's status/payment changed). These two endpoints only
+// ever read/update the caller's own rows, scoped by user.id server-side
+// (the service-role client bypasses RLS, so this filter IS the access
+// control here, not just belt-and-suspenders).
+// ----------------------------------------------------------------------------
+app.get('/api/notifications', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ notifications: data || [] });
+}));
+
+app.post('/api/notifications/:id/read', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('id', req.params.id).eq('user_id', user.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+}));
+
+app.post('/api/notifications/read-all', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { error } = await supabase.from('notifications').update({ read: true }).eq('user_id', user.id).eq('read', false);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+}));
+
+// ----------------------------------------------------------------------------
 // RAZORPAY — real REST API when configured, clearly-labelled simulation otherwise.
 // ----------------------------------------------------------------------------
 function isRazorpayConfigured() {
@@ -960,7 +1017,15 @@ app.post('/api/admin/prescribe', requireAdmin(async (req, res) => {
 
   if (reportId) {
     await supabase.from('lab_reports').update({ admin_reviewed: true, admin_notes: notes || null }).eq('id', reportId);
+    await createNotification(supabase, userId, 'report', 'Your lab report has been reviewed', 'A clinician has reviewed your report.', { reportId });
   }
+
+  await createNotification(
+    supabase, userId, 'prescription',
+    `New prescription from ${doctorName || 'the UrCare Clinical Team'}`,
+    diagnosis || 'Your prescription is ready to view.',
+    { prescriptionId },
+  );
 
   res.json({ success: true, prescription, message: 'Prescription issued and attached to the patient’s health profile.' });
 }));
@@ -983,6 +1048,16 @@ app.patch('/api/admin/orders/:id', requireAdmin(async (req, res) => {
   if (paymentStatus) patch.payment_status = paymentStatus;
   const { data, error } = await supabase.from('orders').update(patch).eq('id', id).select().single();
   if (error) return res.status(404).json({ error: error.message });
+
+  if (data?.user_id) {
+    if (status) {
+      await createNotification(supabase, data.user_id, 'order', `Your order is now ${status}`, `Order #${id}`, { orderId: id, status });
+    }
+    if (paymentStatus) {
+      await createNotification(supabase, data.user_id, 'order', `Payment ${paymentStatus} for your order`, `Order #${id}`, { orderId: id, paymentStatus });
+    }
+  }
+
   res.json({ success: true, order: data });
 }));
 

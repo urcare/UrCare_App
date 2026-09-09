@@ -500,6 +500,20 @@ export interface DailyLog {
   notes?: string;
 }
 
+/** A real event that actually happened to this user — a prescription was
+ *  issued, a report was reviewed, an order changed. Only ever written
+ *  server-side when the real thing happens (see createNotification in
+ *  server.ts); never fabricated or client-generated. */
+export interface AppNotification {
+  id: string;
+  type: 'prescription' | 'report' | 'order' | 'system';
+  title: string;
+  body?: string;
+  data?: Record<string, any>;
+  read: boolean;
+  createdAt: string;
+}
+
 export interface FeedbackSubmission {
   id: string;
   userId: string;

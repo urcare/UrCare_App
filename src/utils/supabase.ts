@@ -3,7 +3,7 @@ import {
   UserHealthProfile, UserAccount, DailyLog, MealItem,
   FeedbackSubmission, Order, Prescription, DoctorContact,
   MedicalReportAnalysis, Product, UserReview, CalculatedPlan,
-  GoalType, GenderType, ActivityLevel, GoalPace,
+  GoalType, GenderType, ActivityLevel, GoalPace, AppNotification,
 } from '../types';
 import { calculateNutritionPlan } from './calculator';
 
@@ -582,6 +582,35 @@ export async function updateOrderPayment(orderId: string, patch: { transactionId
   const data = await res.json();
   if (!res.ok) return { success: false, error: data.error };
   return { success: true };
+}
+
+// ============================================================================
+// NOTIFICATIONS — real rows only, written server-side when something real
+// happens (prescription issued, report reviewed, order updated). These just
+// read/mark-read the caller's own notifications.
+// ============================================================================
+
+export async function getNotifications(): Promise<AppNotification[]> {
+  const res = await authedFetch('/api/notifications');
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.notifications || []).map((n: any) => ({
+    id: n.id,
+    type: n.type,
+    title: n.title,
+    body: n.body || undefined,
+    data: n.data || {},
+    read: !!n.read,
+    createdAt: n.created_at,
+  }));
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  await authedFetch(`/api/notifications/${id}/read`, { method: 'POST' });
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await authedFetch('/api/notifications/read-all', { method: 'POST' });
 }
 
 export async function getMyOrders(userId: string): Promise<Order[]> {

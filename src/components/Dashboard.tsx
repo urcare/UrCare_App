@@ -250,14 +250,52 @@ export const Dashboard: React.FC<DashboardProps> = ({
           viewport and painted first, so every tab's content (which now
           leaves its own root transparent, see ProfilePage/AccountPage)
           scrolls over the same still backdrop instead of each tab carrying
-          its own flat page color. */}
-      <img
-        src="/background.png"
-        alt=""
-        aria-hidden="true"
-        draggable={false}
-        className="fixed inset-0 -z-10 w-full h-full object-cover pointer-events-none select-none"
-      />
+          its own flat page color. Hand-drawn (no photo asset): a pair of
+          soft emerald→teal wave washes, blurred into a quiet glow rather
+          than a hard shape, one hugging the top and one the bottom, plus a
+          faint flowing line for a touch of motion — calm enough that it
+          never competes with the white cards sitting on top of it. */}
+      <div className="fixed inset-0 -z-10 pointer-events-none select-none overflow-hidden">
+        <svg viewBox="0 0 1200 2000" preserveAspectRatio="xMidYMid slice" className="w-full h-full" aria-hidden="true">
+          <defs>
+            <linearGradient id="waveTopGradient" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#6ee7b7" />
+              <stop offset="100%" stopColor="#14b8a6" />
+            </linearGradient>
+            <linearGradient id="waveBottomGradient" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#14b8a6" />
+              <stop offset="100%" stopColor="#6ee7b7" />
+            </linearGradient>
+            <filter id="waveSoften" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="60" />
+            </filter>
+          </defs>
+
+          {/* Top wash */}
+          <path
+            d="M0,0 L1200,0 L1200,300 C950,420 760,180 500,260 C300,320 150,200 0,280 Z"
+            fill="url(#waveTopGradient)"
+            opacity="0.28"
+            filter="url(#waveSoften)"
+          />
+          {/* Thin flowing accent line, drifting across the upper third */}
+          <path
+            d="M0,420 C300,360 500,480 800,420 C1000,380 1100,440 1200,410"
+            fill="none"
+            stroke="#10b981"
+            strokeWidth="3"
+            opacity="0.14"
+          />
+
+          {/* Bottom wash */}
+          <path
+            d="M0,2000 L1200,2000 L1200,1720 C950,1600 720,1840 460,1760 C260,1700 120,1820 0,1740 Z"
+            fill="url(#waveBottomGradient)"
+            opacity="0.26"
+            filter="url(#waveSoften)"
+          />
+        </svg>
+      </div>
 
       {/* 1. STATIC SIDEBAR NAVIGATION (DESKTOP) */}
       <aside className="hidden md:flex flex-col justify-between w-64 fixed left-0 top-0 bottom-0 z-40 bg-white border-r border-zinc-200 p-5 shadow-xs">
@@ -474,9 +512,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
           wrapper instead of nudged with a negative margin inside the flex
           row (which never centered cleanly against the bar). A center
           spacer the same width as the button keeps the flanking items from
-          drifting into its footprint. */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-zinc-200 px-1 pt-1.5 pb-1.5">
-        <div className="relative flex items-center justify-around">
+          drifting into its footprint.
+          Each of the 4 tab buttons is `flex-1` (equal width) rather than
+          `justify-around`-spaced — around-spacing puts half-size gaps at
+          the outer edges too, so the two end tabs never sit as flush/even
+          as the two beside the spacer; equal-width flex fixes that
+          regardless of viewport width. Bottom padding adds the device's
+          safe-area inset on top of its own space, so the bar clears the
+          home-indicator gesture area on notched phones instead of the
+          labels sitting flush against it. */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-zinc-200 px-1 pt-1.5"
+        style={{ paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom))' }}
+      >
+        <div className="relative flex items-center">
           {navItems.slice(0, 2).map((item) => {
             const ItemIcon = item.icon;
             const isActive = activeTab === item.id;
@@ -485,18 +534,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => setActiveTab(item.id as any)}
-                className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+                className={`flex-1 min-w-0 flex flex-col items-center gap-1 py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
                   isActive ? 'text-emerald-600 font-extrabold' : 'text-zinc-500 font-medium'
                 }`}
               >
                 <ItemIcon className="w-4 h-4" />
-                <span className="text-[10px] tracking-tight">{item.label}</span>
+                <span className="text-[10px] tracking-tight truncate max-w-full">{item.label}</span>
               </button>
             );
           })}
 
           {/* Spacer — reserves the center button's footprint in the flex
-              row so "My Reports" and "Store" space out around it instead of
+              row so the flanking tabs space out around it instead of
               crowding toward the middle. */}
           <div className="w-14 shrink-0" aria-hidden="true" />
 
@@ -508,12 +557,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => setActiveTab(item.id as any)}
-                className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+                className={`flex-1 min-w-0 flex flex-col items-center gap-1 py-1.5 px-1 rounded-xl transition-all cursor-pointer ${
                   isActive ? 'text-emerald-600 font-extrabold' : 'text-zinc-500 font-medium'
                 }`}
               >
                 <ItemIcon className="w-4 h-4" />
-                <span className="text-[10px] tracking-tight">{item.label}</span>
+                <span className="text-[10px] tracking-tight truncate max-w-full">{item.label}</span>
               </button>
             );
           })}
@@ -626,11 +675,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
             profile={profile}
             account={account}
             prescriptions={prescriptions}
+            reports={myReports}
             onOpenProfile={() => setActiveTab('account')}
             onOpenPlan={() => setActiveTab('plan')}
             onOpenScan={() => setActiveTab('premium')}
             onOpenReports={() => setActiveTab('reports')}
-            onOpenStore={() => setActiveTab('store')}
+            onOpenAssessment={() => setIsAssessmentModalOpen(true)}
             onOpenMoreMenu={() => setIsModuleMenuOpen(true)}
           />
         ) : activeTab === 'plan' ? (

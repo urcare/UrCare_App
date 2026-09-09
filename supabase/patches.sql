@@ -130,3 +130,26 @@ alter table public.custom_daily_plans enable row level security;
 drop policy if exists "own custom daily plan" on public.custom_daily_plans;
 create policy "own custom daily plan" on public.custom_daily_plans
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- 6. NOTIFICATIONS — the Home header's bell was purely decorative (no
+--    backend at all); this makes it real. Rows are only ever created
+--    server-side (service_role) when something real actually happens to a
+--    user — a prescription issued, a report reviewed, an order's
+--    status/payment updated — never client-side, and never fabricated.
+create table if not exists public.notifications (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  type text not null, -- 'prescription' | 'report' | 'order' | 'system'
+  title text not null,
+  body text,
+  data jsonb default '{}',
+  read boolean not null default false,
+  created_at timestamptz default now()
+);
+create index if not exists notifications_user_id_created_at_idx on public.notifications (user_id, created_at desc);
+alter table public.notifications enable row level security;
+drop policy if exists "own notifications select" on public.notifications;
+create policy "own notifications select" on public.notifications for select using (auth.uid() = user_id);
+drop policy if exists "own notifications update" on public.notifications;
+create policy "own notifications update" on public.notifications for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+-- Inserts go through the server (service_role) only — no anon/user insert policy.
