@@ -81,6 +81,22 @@ export async function getCurrentSession(): Promise<Session | null> {
   return data.session;
 }
 
+/** Network-verifies the session's user still actually exists — unlike
+ *  getSession() above, which only reads the locally cached token and has no
+ *  way to notice the account was deleted server-side (e.g. removed directly
+ *  from the Supabase dashboard) since that cached token can go on looking
+ *  valid until it naturally expires. Used once on app load so a stale
+ *  session for a deleted account gets signed out to the auth screen instead
+ *  of silently falling through to "Begin Onboarding" (no profile found for
+ *  that id looks identical to a genuinely new signup otherwise). */
+export async function verifySessionUser(): Promise<{ id: string; email: string } | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user) return null;
+  return { id: data.user.id, email: data.user.email || '' };
+}
+
 export function onAuthStateChange(callback: (session: Session | null) => void) {
   const supabase = getSupabaseClient();
   if (!supabase) return { unsubscribe: () => {} };
