@@ -444,64 +444,75 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </header>
 
       {/* 3. MOBILE BOTTOM NAVIGATION DOCK — a raised, animated circular
-          button for UrCare Camera (the food scanner) floats in the middle,
-          two real destinations either side of it. */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-zinc-200 px-1 pt-1.5 pb-1.5 flex items-end justify-around">
-        {navItems.slice(0, 2).map((item) => {
-          const ItemIcon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveTab(item.id as any)}
-              className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
-                isActive ? 'text-emerald-600 font-extrabold' : 'text-zinc-500 font-medium'
-              }`}
-            >
-              <ItemIcon className="w-4 h-4" />
-              <span className="text-[10px] tracking-tight">{item.label}</span>
-            </button>
-          );
-        })}
+          button for UrCare Camera (the food scanner) floats dead-center
+          above the bar, absolutely positioned against this `relative`
+          wrapper instead of nudged with a negative margin inside the flex
+          row (which never centered cleanly against the bar). A center
+          spacer the same width as the button keeps the flanking items from
+          drifting into its footprint. */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-zinc-200 px-1 pt-1.5 pb-1.5">
+        <div className="relative flex items-center justify-around">
+          {navItems.slice(0, 2).map((item) => {
+            const ItemIcon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id as any)}
+                className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+                  isActive ? 'text-emerald-600 font-extrabold' : 'text-zinc-500 font-medium'
+                }`}
+              >
+                <ItemIcon className="w-4 h-4" />
+                <span className="text-[10px] tracking-tight">{item.label}</span>
+              </button>
+            );
+          })}
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('premium')}
-          title={account.isPro ? t('navPro') : t('navPremium')}
-          className="relative -mt-7 shrink-0 cursor-pointer"
-        >
-          <motion.span
-            className="absolute inset-0 rounded-full bg-emerald-500"
-            animate={{ opacity: [0.35, 0, 0.35], scale: [1, 1.35, 1] }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <span
-            className={`relative w-13 h-13 rounded-full flex items-center justify-center text-white shadow-lg shadow-emerald-600/40 ring-4 ring-white transition-transform active:scale-95 ${
-              activeTab === 'premium' ? 'bg-emerald-600' : 'bg-emerald-500'
-            }`}
+          {/* Spacer — reserves the center button's footprint in the flex
+              row so "My Reports" and "Store" space out around it instead of
+              crowding toward the middle. */}
+          <div className="w-14 shrink-0" aria-hidden="true" />
+
+          {navItems.slice(2).map((item) => {
+            const ItemIcon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id as any)}
+                className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+                  isActive ? 'text-emerald-600 font-extrabold' : 'text-zinc-500 font-medium'
+                }`}
+              >
+                <ItemIcon className="w-4 h-4" />
+                <span className="text-[10px] tracking-tight">{item.label}</span>
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('premium')}
+            title={account.isPro ? t('navPro') : t('navPremium')}
+            className="absolute left-1/2 -translate-x-1/2 -top-7 cursor-pointer"
           >
-            <Camera className="w-5.5 h-5.5" />
-          </span>
-        </button>
-
-        {navItems.slice(2).map((item) => {
-          const ItemIcon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveTab(item.id as any)}
-              className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
-                isActive ? 'text-emerald-600 font-extrabold' : 'text-zinc-500 font-medium'
+            <motion.span
+              className="absolute inset-0 rounded-full bg-emerald-500"
+              animate={{ opacity: [0.35, 0, 0.35], scale: [1, 1.35, 1] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            <span
+              className={`relative w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg shadow-emerald-600/40 ring-4 ring-white transition-transform active:scale-95 ${
+                activeTab === 'premium' ? 'bg-emerald-600' : 'bg-emerald-500'
               }`}
             >
-              <ItemIcon className="w-4 h-4" />
-              <span className="text-[10px] tracking-tight">{item.label}</span>
-            </button>
-          );
-        })}
+              <Camera className="w-6 h-6" />
+            </span>
+          </button>
+        </div>
       </nav>
 
       {/* '⋮' module switcher drawer — a single instance, mounted once here (not
