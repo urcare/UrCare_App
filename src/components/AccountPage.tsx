@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Mail, Phone, Flame, Edit3, Stethoscope, LogOut, RefreshCw,
-  Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight,
+  Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight, Droplets,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { updateAvatar, getDailyLog, addWaterIntake } from '../utils/supabase';
+import { updateAvatar, getDailyLog, addWaterIntake, resetWaterIntake, addQuickMacroLog, resetQuickMacroLog } from '../utils/supabase';
 import { EditHealthProfileModal } from './EditHealthProfileModal';
 import { StreakWidget } from './StreakWidget';
-import { MacroCompositionBar, BmiRangeBar, WaterIntakeRing } from './HealthCharts';
+import { MacroLogRow, BmiRangeBar, WaterIntakeRing } from './HealthCharts';
 import { toDateKey } from './DailyCalendar';
 import { REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL } from './RecommendationsView';
 
@@ -105,23 +105,37 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
-  // Today's real logged water intake — see WaterIntakeRing (editable) below.
+  // Today's real logged water + macros — see WaterIntakeRing / MacroLogRow
+  // (both editable) below. Macros are summed from the same real `meals`
+  // array the food scanner writes to (a manual "+10g protein" tap just adds
+  // a lightweight meal entry — see addQuickMacroLog), so a quick log and a
+  // scanned meal both count toward the same real daily total.
   const userId = profile.id || '';
   const todayKey = toDateKey(new Date());
   const [waterMl, setWaterMl] = useState(0);
+  const [consumedMacros, setConsumedMacros] = useState({ protein: 0, carbs: 0, fats: 0 });
   const [isSavingWater, setIsSavingWater] = useState(false);
+  const [isSavingMacro, setIsSavingMacro] = useState(false);
 
   const refreshDailyLog = useCallback(() => {
     if (!userId) return;
-    getDailyLog(userId, todayKey).then((log) => setWaterMl(log?.waterMl || 0));
+    getDailyLog(userId, todayKey).then((log) => {
+      setWaterMl(log?.waterMl || 0);
+      const meals = log?.meals || [];
+      setConsumedMacros({
+        protein: meals.reduce((sum, m) => sum + (m.protein || 0), 0),
+        carbs: meals.reduce((sum, m) => sum + (m.carbs || 0), 0),
+        fats: meals.reduce((sum, m) => sum + (m.fats || 0), 0),
+      });
+    });
   }, [userId, todayKey]);
 
   useEffect(() => {
     refreshDailyLog();
   }, [refreshDailyLog]);
 
-  // Scanning a meal, or logging water from elsewhere (e.g. Home), fires this
-  // — keeps this screen's ring in sync without needing its own polling.
+  // Scanning a meal, or logging water/macros from elsewhere (e.g. Home),
+  // fires this — keeps this screen in sync without needing its own polling.
   useEffect(() => {
     window.addEventListener('urcare:daily-log-changed', refreshDailyLog);
     return () => window.removeEventListener('urcare:daily-log-changed', refreshDailyLog);
@@ -137,6 +151,64 @@ export const AccountPage: React.FC<AccountPageProps> = ({
     } finally {
       setIsSavingWater(false);
     }
+  };
+
+  const handleResetWater = async () => {
+    if (!userId) return;
+    setIsSavingWater(true);
+    setWaterMl(0); // optimistic — safe here, unlike macros every ml comes through this same UI
+    try {
+      await resetWaterIntake(userId, todayKey);
+    } finally {
+      setIsSavingWater(false);
+    }
+  };
+
+  const handleEditWaterTarget = (newTargetMl: number) => {
+    onUpdateProfile({
+      ...profile,
+      preferences: { ...(profile.preferences as any || {}), customWaterTargetMl: newTargetMl },
+    });
+  };
+
+  const handleAddMacro = async (macro: 'protein' | 'carbs' | 'fats', grams: number) => {
+    if (!userId) return;
+    setIsSavingMacro(true);
+    setConsumedMacros((prev) => ({ ...prev, [macro]: prev[macro] + grams })); // optimistic
+    try {
+      await addQuickMacroLog(userId, todayKey, macro, grams);
+      refreshDailyLog(); // addMealToLog doesn't return a confirmed total, so re-sync from the real row
+    } finally {
+      setIsSavingMacro(false);
+    }
+  };
+
+  // Clears only the manually-logged amount (never a real scanned meal — see
+  // resetQuickMacroLog) — no optimistic zeroing, since a real scanned meal's
+  // contribution to this macro should stay visible until refreshDailyLog
+  // confirms the real post-reset total.
+  const handleResetMacro = async (macro: 'protein' | 'carbs' | 'fats') => {
+    if (!userId) return;
+    setIsSavingMacro(true);
+    try {
+      await resetQuickMacroLog(userId, todayKey, macro);
+      refreshDailyLog();
+    } finally {
+      setIsSavingMacro(false);
+    }
+  };
+
+  // A macro's target is the profile's own calculated plan value, unless the
+  // user has overridden it here (persisted to profile.preferences — see
+  // customMacroTargets in types.ts).
+  const handleEditMacroTarget = (macro: 'protein' | 'carbs' | 'fats', newTargetG: number) => {
+    onUpdateProfile({
+      ...profile,
+      preferences: {
+        ...(profile.preferences as any || {}),
+        customMacroTargets: { ...(profile.preferences?.customMacroTargets || {}), [macro]: newTargetG },
+      },
+    });
   };
 
   const handleAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -329,28 +401,66 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             </span>
           </div>
 
-          {/* Macro composition — one real, animated bar instead of three flat
-              stat boxes; grams still shown directly (never color-alone). */}
-          <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-            <MacroCompositionBar
-              proteinG={calculatedPlan?.proteinGrams || 130}
-              carbsG={calculatedPlan?.carbsGrams || 180}
-              fatsG={calculatedPlan?.fatsGrams || 50}
+          {/* Macros — each one real, editable, logged-so-far vs target
+              (with the target itself editable too), instead of three flat
+              read-only stat boxes. */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <MacroLogRow
+              label={tr('Protein', 'प्रोटीन')}
+              color="#1baf7a"
+              currentG={Math.round(consumedMacros.protein)}
+              targetG={profile.preferences?.customMacroTargets?.protein ?? (calculatedPlan?.proteinGrams || 130)}
+              quickAdds={[10, 20]}
+              onAdd={(g) => handleAddMacro('protein', g)}
+              onEditTarget={(g) => handleEditMacroTarget('protein', g)}
+              onReset={() => handleResetMacro('protein')}
+              isSaving={isSavingMacro}
+              tr={tr}
+            />
+            <MacroLogRow
+              label={tr('Carbs', 'कार्ब्स')}
+              color="#2a78d6"
+              currentG={Math.round(consumedMacros.carbs)}
+              targetG={profile.preferences?.customMacroTargets?.carbs ?? (calculatedPlan?.carbsGrams || 180)}
+              quickAdds={[15, 30]}
+              onAdd={(g) => handleAddMacro('carbs', g)}
+              onEditTarget={(g) => handleEditMacroTarget('carbs', g)}
+              onReset={() => handleResetMacro('carbs')}
+              isSaving={isSavingMacro}
+              tr={tr}
+            />
+            <MacroLogRow
+              label={tr('Fats', 'फैट्स')}
+              color="#78716c"
+              currentG={Math.round(consumedMacros.fats)}
+              targetG={profile.preferences?.customMacroTargets?.fats ?? (calculatedPlan?.fatsGrams || 50)}
+              quickAdds={[5, 10]}
+              onAdd={(g) => handleAddMacro('fats', g)}
+              onEditTarget={(g) => handleEditMacroTarget('fats', g)}
+              onReset={() => handleResetMacro('fats')}
+              isSaving={isSavingMacro}
               tr={tr}
             />
           </div>
 
           {/* Water — real, editable log against the plan's real target, not
-              just a static number. */}
-          <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/70">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Water Intake Today', 'आज पानी की मात्रा')}</span>
+              just a static number. Its own teal-tinted gradient card (vs.
+              the macros' plain zinc-50) so hydration reads as its own
+              premium moment rather than a fourth identical macro row. */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-teal-50 via-sky-50/60 to-white border border-teal-100">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold text-teal-700 uppercase tracking-wide">
+                <Droplets className="w-3 h-3" />
+                {tr('Water Intake Today', 'आज पानी की मात्रा')}
+              </span>
               <span className="text-[10px] text-zinc-400 font-medium">{tr('Daily hydration', 'दैनिक जल सेवन')}</span>
             </div>
             <WaterIntakeRing
               currentMl={waterMl}
-              targetMl={(calculatedPlan?.waterLiters || 3.2) * 1000}
+              targetMl={profile.preferences?.customWaterTargetMl ?? (calculatedPlan?.waterLiters || 3.2) * 1000}
               onAdd={handleAddWater}
+              onEditTarget={handleEditWaterTarget}
+              onReset={handleResetWater}
               isSaving={isSavingWater}
               tr={tr}
             />

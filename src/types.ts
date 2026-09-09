@@ -11,6 +11,14 @@ export interface UserPreferences {
   /** Display units for weight/height across the app. Defaults to 'metric'
    *  when absent (every existing account before this setting existed). */
   units?: 'metric' | 'imperial';
+  /** User-overridden daily macro targets (grams) — when set, takes priority
+   *  over the auto-calculated plan's proteinGrams/carbsGrams/fatsGrams for
+   *  that one macro's display/progress-bar target. Absent/undefined means
+   *  "use the calculated plan's value", not "target is zero". */
+  customMacroTargets?: { protein?: number; carbs?: number; fats?: number };
+  /** Same override idea as customMacroTargets, for the daily water target
+   *  (millilitres). Absent means "use the calculated plan's waterLiters". */
+  customWaterTargetMl?: number;
   colorBurnsBack: boolean;
   rolloverCalories: boolean;
   workoutDaysPerWeek: '0-2' | '3-5' | '6+';

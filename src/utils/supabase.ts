@@ -355,6 +355,24 @@ export async function addWaterIntake(userId: string, date: string, deltaMl: numb
   return nextMl;
 }
 
+/** Clears today's logged water back to 0 — unlike the macros, every ml
+ *  logged for water comes through this same UI (there's no separate
+ *  "scanned" source to protect), so a plain reset to zero is safe here. */
+export async function resetWaterIntake(userId: string, date: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    await supabase.from('daily_logs').upsert({
+      user_id: userId,
+      date,
+      water_ml: 0,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,date' });
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('urcare:daily-log-changed', { detail: { userId, date } }));
+  }
+}
+
 export async function addMealToLog(userId: string, date: string, meal: MealItem): Promise<void> {
   const existing = await getDailyLog(userId, date);
   const meals = [...(existing?.meals || []), meal];
@@ -366,6 +384,51 @@ export async function addMealToLog(userId: string, date: string, meal: MealItem)
       meals,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id,date' });
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('urcare:daily-log-changed', { detail: { userId, date } }));
+  }
+}
+
+/** A quick manual macro log ("+10g protein") for when there's no meal photo
+ *  to scan, just a number to add. Implemented as a lightweight meal entry
+ *  (calories derived at 4 kcal/g protein & carbs, 9 kcal/g fat) so it sums
+ *  into the same real daily total the food scanner's own meals do, rather
+ *  than a separate parallel tally. */
+export async function addQuickMacroLog(userId: string, date: string, macro: 'protein' | 'carbs' | 'fats', grams: number): Promise<void> {
+  const kcalPerGram = macro === 'fats' ? 9 : 4;
+  const meal: MealItem = {
+    id: `quick_${macro}_${Date.now()}`,
+    name: macro === 'protein' ? 'Quick log — Protein' : macro === 'carbs' ? 'Quick log — Carbs' : 'Quick log — Fats',
+    calories: grams * kcalPerGram,
+    protein: macro === 'protein' ? grams : 0,
+    carbs: macro === 'carbs' ? grams : 0,
+    fats: macro === 'fats' ? grams : 0,
+    category: 'snack',
+    timestamp: new Date().toISOString(),
+    aiSuggested: false,
+  };
+  await addMealToLog(userId, date, meal);
+}
+
+/** Clears today's manually-logged amount for one macro — removes only the
+ *  quick-log entries this screen itself created (id prefix `quick_<macro>_`),
+ *  never a real scanned meal, so "reset" can't accidentally erase an actual
+ *  food-scan entry just because it happened to contain protein/carbs/fat. */
+export async function resetQuickMacroLog(userId: string, date: string, macro: 'protein' | 'carbs' | 'fats'): Promise<void> {
+  const existing = await getDailyLog(userId, date);
+  const meals = (existing?.meals || []).filter((m) => !m.id.startsWith(`quick_${macro}_`));
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    await supabase.from('daily_logs').upsert({
+      user_id: userId,
+      date,
+      meals,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,date' });
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('urcare:daily-log-changed', { detail: { userId, date } }));
   }
 }
 
