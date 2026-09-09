@@ -26,6 +26,37 @@ const GOAL_LABEL_HI: Record<string, string> = {
   'Gut Health Reversal': 'आंत स्वास्थ्य रिवर्सल', 'Metabolic Health': 'मेटाबॉलिक स्वास्थ्य',
 };
 
+/** A live "time until this starts" readout — ticks every real second, not
+ *  just every minute, so it's genuinely counting down rather than a static
+ *  label. Shows H:MM:SS once over an hour away, MM:SS under that. */
+const LiveCountdown: React.FC<{ timeLabel: string }> = ({ timeLabel }) => {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const targetMs = useMemo(() => {
+    const mins = labelMinutes(timeLabel);
+    const d = new Date();
+    d.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+    return d.getTime();
+  }, [timeLabel]);
+
+  const diffSec = Math.max(0, Math.round((targetMs - now) / 1000));
+  const h = Math.floor(diffSec / 3600);
+  const m = Math.floor((diffSec % 3600) / 60);
+  const s = diffSec % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  return (
+    <span className="tabular-nums font-black text-emerald-600 text-sm">
+      {diffSec <= 0 ? '00:00' : h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`}
+    </span>
+  );
+};
+
 interface ProfilePageProps {
   profile: UserHealthProfile;
   account: UserAccount;
@@ -229,7 +260,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
   // The next step whose time hasn't fully passed yet — same "what's up next"
   // logic RecommendationsView's own hero card uses, kept in sync since both
-  // read labelMinutes the same way.
+  // read labelMinutes the same way. Recomputed every 30s off `nowTick` (not
+  // just when the sections themselves change) so "Next" rolls forward into
+  // "Up Next" automatically as the day goes on, instead of freezing at
+  // whatever was current the moment this page happened to mount.
+  const [nowTick, setNowTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setNowTick((t) => t + 1), 30000);
+    return () => clearInterval(id);
+  }, []);
+
   const { current, next } = useMemo(() => {
     const sorted = [...timelineSections].sort((a, b) => labelMinutes(a.timeLabel || '') - labelMinutes(b.timeLabel || ''));
     const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
@@ -241,7 +281,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       else { nxt = item; break; }
     }
     return { current: cur || nxt, next: cur ? nxt : null };
-  }, [timelineSections]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nowTick is a deliberate re-run trigger, not a real input
+  }, [timelineSections, nowTick]);
 
   // Time-of-day greeting, and the same real condition-derived reversal focus
   // AccountPage leads with — reused here for the plan-continue card + the
@@ -405,7 +446,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
           )}
 
-          {next && (
+          {next ? (
             <div className="w-full p-3 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white border border-zinc-200 flex items-center justify-center shrink-0 text-zinc-500">
                 <Utensils className="w-3.5 h-3.5" />
@@ -414,6 +455,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <div className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Up next', 'इसके बाद')}</div>
                 <div className="text-xs font-bold text-zinc-800 truncate">{next.timeLabel} — {next.title}</div>
               </div>
+              <div className="shrink-0 flex flex-col items-end">
+                <LiveCountdown timeLabel={next.timeLabel || ''} />
+                <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wide">{tr('remaining', 'शेष')}</span>
+              </div>
+            </div>
+          ) : current && (
+            // `current` is the day's last timed step and nothing comes after
+            // it — a real, honest state (not a bug), so it says so instead
+            // of "Up Next" just silently disappearing.
+            <div className="w-full p-3 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-2.5 justify-center text-center">
+              <span className="text-sm">🎉</span>
+              <span className="text-xs font-bold text-emerald-800">{tr("That's everything for today — see you tomorrow!", 'आज के लिए सब कुछ पूरा — कल मिलते हैं!')}</span>
             </div>
           )}
         </motion.div>
