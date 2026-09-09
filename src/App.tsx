@@ -7,7 +7,7 @@ import { Dashboard } from './components/Dashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
-import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile } from './utils/supabase';
+import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser } from './utils/supabase';
 
 // The 3D body map pulls in three.js + react-three-fiber/drei — a sizeable
 // chunk that only the post-onboarding screen needs, so it's loaded lazily
@@ -36,7 +36,23 @@ function MainApp() {
     (async () => {
       const session = await getCurrentSession();
       if (active && session?.user) {
-        await loadFromSession(session.user.id, session.user.email || '');
+        // The cached local session can still look valid even after the
+        // account was deleted straight from Supabase — verify against the
+        // server before trusting it, so a deleted user's stale session is
+        // signed out to the auth screen instead of falling through to
+        // onboarding (which is what "authenticated, but no profile found"
+        // otherwise looks identical to).
+        const verifiedUser = await verifySessionUser();
+        if (!active) return;
+        if (verifiedUser) {
+          await loadFromSession(verifiedUser.id, verifiedUser.email);
+        } else {
+          await signOutUser();
+          if (active) {
+            setAccount(null);
+            setProfile(null);
+          }
+        }
       }
       if (active) setIsInitialized(true);
     })();
