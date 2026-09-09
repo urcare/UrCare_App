@@ -66,7 +66,7 @@ const PERIODS: { key: Period; label: string; range: string; Icon: typeof Sunrise
 
 /** Minutes since midnight parsed from a label like "7:35 PM" or a range like
  *  "9:15 AM – 12:45 PM" (uses the start of the range). */
-function labelMinutes(label: string): number {
+export function labelMinutes(label: string): number {
   const m = label.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   if (!m) return 12 * 60;
   let h = parseInt(m[1], 10) % 12;
@@ -117,6 +117,21 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   const todayDate = startOfToday();
   const isToday = toDateKey(selectedDate) === toDateKey(todayDate);
   const dateKey = toDateKey(selectedDate);
+
+  // Mon–Sun of the week containing the selected date, for the always-visible
+  // week strip in the header.
+  const weekDates = useMemo(() => {
+    const day = selectedDate.getDay(); // 0 = Sun
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const monday = new Date(selectedDate);
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() + mondayOffset);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      return d;
+    });
+  }, [selectedDate]);
 
   const [programDay, setProgramDay] = useState<number | null>(null);
   const [sections, setSections] = useState<PlanSection[]>([]);
@@ -381,6 +396,32 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           >
             <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
           </button>
+        </div>
+
+        {/* Week strip — always visible (not tucked behind "Change Date"),
+            matching the reference's persistent Mon–Sun row. Tapping a day
+            jumps straight to it; "Change Date" below still opens the full
+            month calendar for jumping further back. */}
+        <div className="flex items-center justify-between gap-1">
+          {weekDates.map((d) => {
+            const key = toDateKey(d);
+            const isSelectedDay = key === dateKey;
+            const isFuture = d.getTime() > todayDate.getTime();
+            return (
+              <button
+                key={key}
+                type="button"
+                disabled={isFuture}
+                onClick={() => setSelectedDate(d)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all ${
+                  isFuture ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                } ${isSelectedDay ? 'bg-emerald-600 text-white shadow-sm' : isDark ? 'text-zinc-400 hover:bg-white/5' : 'text-zinc-500 hover:bg-zinc-50'}`}
+              >
+                <span className="text-[9px] font-bold uppercase">{d.toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-US', { weekday: 'short' })}</span>
+                <span className={`text-sm font-black ${isSelectedDay ? 'text-white' : ''}`}>{d.getDate()}</span>
+              </button>
+            );
+          })}
         </div>
 
         {customPlanExpiresAt && (

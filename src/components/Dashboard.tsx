@@ -22,6 +22,7 @@ import { DoctorConsultModal } from './DoctorConsultModal';
 import { ClinicalFeedbackModal } from './ClinicalFeedbackModal';
 import { RootCauseAssessmentModal } from './RootCauseAssessmentModal';
 import { ProfilePage } from './ProfilePage';
+import { RecommendationsView } from './RecommendationsView';
 import { AccountPage } from './AccountPage';
 import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
@@ -51,11 +52,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const { t, language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
-  // Navigation Tabs — 'profile' is Your Daily Plan (the default/main screen),
-  // 'premium' is UrCare Camera (the food scanner, gated), 'account' is the
-  // standalone Profile page (identity, stats, quick actions). 'reports',
-  // 'assessment' + 'store' are always free.
-  const [activeTab, setActiveTab] = useState<'profile' | 'premium' | 'account' | 'reports' | 'assessment' | 'store'>('profile');
+  // Navigation Tabs — 'profile' is Home (the default/main summary screen),
+  // 'plan' is the full Daily Plan timeline, 'premium' is UrCare Camera (the
+  // food scanner, gated), 'account' is the standalone Profile page
+  // (identity, stats, quick actions). 'reports', 'assessment' + 'store' are
+  // always free — 'store' isn't in the primary nav (see navItems below) but
+  // is still reachable from Home's quick-actions grid.
+  const [activeTab, setActiveTab] = useState<'profile' | 'plan' | 'premium' | 'account' | 'reports' | 'assessment' | 'store'>('profile');
 
   // '⋮' module switcher — a single drawer, opened from one fixed spot in the
   // persistent header/sidebar (never inline in a tab's scrolling content), so
@@ -68,7 +71,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // below), so they're not duplicated here too — only what's genuinely
   // drawer-only stays.
   const moduleMenuItems = [
+    { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
     { id: 'assessment' as const, label: tr('Assessment', 'मूल्यांकन'), icon: ClipboardCheck },
+    { id: 'store' as const, label: tr('Store', 'स्टोर'), icon: ShoppingBag },
     // Not a tab — opens the Settings modal directly (see the drawer's onClick).
     { id: 'settings' as const, label: tr('Settings', 'सेटिंग्स'), icon: Settings },
     // Not a tab either — opens the sign-out confirmation (see the drawer's onClick).
@@ -232,8 +237,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // see the mobile dock below.
   const navItems = [
     { id: 'profile', label: t('navHome'), icon: Clock },
+    { id: 'plan', label: t('navPlan'), icon: Calendar },
     { id: 'reports', label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
-    { id: 'store', label: tr('Store', 'स्टोर'), icon: ShoppingBag },
     { id: 'account', label: t('navProfile'), icon: User },
   ];
 
@@ -283,7 +288,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               in the mobile dock below even though there's no "floating
               center button" concept in a plain vertical sidebar list. */}
           <nav className="space-y-1.5">
-            {navItems.slice(0, 1).map((item) => {
+            {navItems.slice(0, 2).map((item) => {
               const ItemIcon = item.icon;
               const isActive = activeTab === item.id;
               return (
@@ -312,7 +317,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span>{account.isPro ? t('navPro') : t('navPremium')}</span>
             </button>
 
-            {navItems.slice(1).map((item) => {
+            {navItems.slice(2).map((item) => {
               const ItemIcon = item.icon;
               const isActive = activeTab === item.id;
               return (
@@ -405,7 +410,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* 2. MOBILE TOP HEADER — module menu on the left, actions on the
           right; no logo here (it already lives in the desktop sidebar and
-          at the top of the '⋮' drawer, so it doesn't need a third spot). */}
+          at the top of the '⋮' drawer, so it doesn't need a third spot).
+          Hidden on Home specifically — that tab has its own full header
+          (brand mark, notification bell, account avatar) with its own '⋮'
+          trigger, so this one would just be a second header stacked above
+          it otherwise. */}
+      {activeTab !== 'profile' && (
       <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2">
         {/* '⋮' module switcher — lives here, in the one persistent sticky
             header shown on every tab, so it never jumps position when you
@@ -442,6 +452,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </button>
         </div>
       </header>
+      )}
 
       {/* 3. MOBILE BOTTOM NAVIGATION DOCK — a raised, animated circular
           button for UrCare Camera (the food scanner) floats dead-center
@@ -602,7 +613,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             account={account}
             prescriptions={prescriptions}
             onOpenProfile={() => setActiveTab('account')}
+            onOpenPlan={() => setActiveTab('plan')}
+            onOpenScan={() => setActiveTab('premium')}
+            onOpenReports={() => setActiveTab('reports')}
+            onOpenStore={() => setActiveTab('store')}
+            onOpenMoreMenu={() => setIsModuleMenuOpen(true)}
           />
+        ) : activeTab === 'plan' ? (
+          <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
+            <RecommendationsView profile={profile} prescriptions={prescriptions} />
+          </main>
         ) : activeTab === 'account' ? (
           <AccountPage
             profile={profile}

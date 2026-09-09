@@ -74,7 +74,8 @@ export const DICTIONARY: Translations = {
   switchLanguage: { en: 'App Language', hi: 'ऐप की भाषा' },
 
   // Dashboard bottom/side navigation
-  navHome: { en: 'Daily Plan', hi: 'डेली प्लान' },
+  navHome: { en: 'Home', hi: 'होम' },
+  navPlan: { en: 'Plan', hi: 'प्लान' },
   navPro: { en: 'UrCare Camera', hi: 'यूआरकेयर कैमरा' },
   navPremium: { en: 'UrCare Camera', hi: 'यूआरकेयर कैमरा' },
   navProfile: { en: 'Profile', hi: 'प्रोफ़ाइल' },
