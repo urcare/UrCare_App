@@ -244,7 +244,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div id="urcare-dashboard-root" className="w-full min-h-screen bg-[#F8FAFC] text-zinc-900 pb-24 md:pb-12">
-      
+
+      {/* App-wide backdrop — shown everywhere once onboarding is done (this
+          root only ever mounts post-onboarding, see App.tsx). Fixed to the
+          viewport and painted first, so every tab's content (which now
+          leaves its own root transparent, see ProfilePage/AccountPage)
+          scrolls over the same still backdrop instead of each tab carrying
+          its own flat page color. */}
+      <img
+        src="/background.png"
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        className="fixed inset-0 -z-10 w-full h-full object-cover pointer-events-none select-none"
+      />
+
       {/* 1. STATIC SIDEBAR NAVIGATION (DESKTOP) */}
       <aside className="hidden md:flex flex-col justify-between w-64 fixed left-0 top-0 bottom-0 z-40 bg-white border-r border-zinc-200 p-5 shadow-xs">
         <div className="space-y-6">

@@ -58,6 +58,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  // The header shows the real UrCare artwork, same as the sidebar/loading
+  // screen — not the generic vector mark. Falls back to that vector mark
+  // only if the PNG itself ever fails to load (flaky network/cache miss).
+  const [brandImgFailed, setBrandImgFailed] = useState(false);
 
   const userId = profile.id || '';
   const todayKey = toDateKey(new Date());
@@ -114,18 +118,31 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const PlanIcon = primaryGoal.icon;
 
   return (
-    <div id="urcare-profile-page" className="min-h-screen bg-[#F8FAFC] text-zinc-900 pb-16 relative overflow-hidden">
+    <div id="urcare-profile-page" className="min-h-screen bg-transparent text-zinc-900 pb-16 relative overflow-hidden">
 
       {/* Faint decorative leaf watermark, matching the mockup's soft branded
           backdrop — purely decorative, sits behind everything. */}
       <Leaf className="absolute -top-6 -right-10 w-56 h-56 text-emerald-100 rotate-12 pointer-events-none" strokeWidth={1} aria-hidden="true" />
 
-      {/* Header — brand mark + tagline on the left; a (decorative, for now)
-          notification bell and the account avatar on the right. */}
+      {/* Header — brand mark + tagline on the left; the streak, the '⋮'
+          module menu, a (decorative, for now) notification bell, and the
+          account avatar on the right. */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-4 sm:px-8 py-3 sm:py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <BrandMark className="w-8 h-8 text-emerald-600 shrink-0" />
+            {brandImgFailed ? (
+              <BrandMark className="w-8 h-8 text-emerald-600 shrink-0" />
+            ) : (
+              <img
+                src="/UrCare.png"
+                alt="UrCare"
+                width={64}
+                height={64}
+                decoding="async"
+                onError={() => setBrandImgFailed(true)}
+                className="w-8 h-8 shrink-0 object-contain"
+              />
+            )}
             <div className="min-w-0">
               <div className="text-sm font-black tracking-tight truncate">
                 <span className="text-zinc-950">UR</span><span className="text-emerald-500">CARE</span>
@@ -137,6 +154,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <StreakWidget profile={profile} />
             <button
               type="button"
               onClick={onOpenMoreMenu}
@@ -277,13 +295,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <ShoppingBag className="w-5 h-5 text-emerald-600" />
             <span className="text-xs font-bold text-zinc-800">{tr('Store', 'स्टोर')}</span>
           </button>
-        </motion.div>
-
-        {/* Streak — kept here at a glance too (in addition to the Profile
-            tab), since it's a quick daily-motivation signal like the quote
-            above it. */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.25 }} className="flex justify-center">
-          <StreakWidget profile={profile} />
         </motion.div>
 
         {/* Bottom quote banner */}

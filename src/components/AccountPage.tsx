@@ -137,7 +137,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   }, [profile.medicalConditions]);
 
   return (
-    <div id="urcare-account-page" className="min-h-screen bg-[#F8FAFC] text-zinc-900 pb-16">
+    <div id="urcare-account-page" className="min-h-screen bg-transparent text-zinc-900 pb-16">
 
       <header className="sticky top-0 z-30 bg-white border-b border-zinc-200 px-3 sm:px-8 py-3 sm:py-3.5 shadow-xs">
         <div className="max-w-3xl mx-auto flex items-center gap-2">
