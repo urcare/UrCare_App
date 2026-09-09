@@ -447,34 +447,168 @@ function computeProgramDay(startedAtIso: string, referenceDateIso?: string): num
   return Math.min(14, Math.max(1, diffDays + 1));
 }
 
+// Upload-your-own daily plan — a photo or PDF of a schedule the user already
+// has (from their own doctor/nutritionist, or their own handwritten
+// routine). Claude extracts it into the same {timeLabel, title, body} shape
+// the built-in reversal plan uses, and it replaces that plan for 35 days.
+app.post('/api/analyze-daily-plan', requireUser(async (req, res, user) => {
+  try {
+    const { imageBase64, mimeType = 'image/jpeg' } = req.body as { imageBase64?: string; mimeType?: string };
+    if (!imageBase64) {
+      return res.json({ isValidPlan: false, rejectionReason: 'Please upload a photo or PDF of your daily plan.' });
+    }
+    const ai = getClaudeClient();
+    if (!ai) {
+      return res.status(503).json({ analysisFailed: true, rejectionReason: 'The plan scanner is not configured right now. Please try again later.' });
+    }
+
+    const systemInstruction = `You are UrCare's clinical scheduling assistant. You are given a photo or PDF of a person's own daily routine/schedule — it may be typed, handwritten, or a printout from their doctor or nutritionist. It could be a full 24-hour schedule or just a partial list of habits/timings.
+CRITICAL FIRST STEP: Decide whether the input is genuinely someone's daily routine/schedule/plan (e.g. wake-up time, meal times, exercise, medication times, sleep time, any timed daily activity list) versus something unrelated (a random photo, a selfie, a lab report, an unreadable/blank image, or text with no actual schedule content).
+- If it is NOT a daily routine/schedule, set isValidPlan to false, explain what was actually provided in rejectionReason, and leave sections empty.
+- If it IS a genuine daily routine, set isValidPlan to true and extract EVERY distinct step into "sections", ordered chronologically by time of day. For each step: timeLabel is REQUIRED and must always be a clock time like "7:00 AM" — use the exact time if one is stated, otherwise infer the single most reasonable clock time from context (e.g. "morning walk" → "6:30 AM", "after lunch" → "1:30 PM", "before bed" → "10:00 PM") so that every step gets a real time and none are ever left blank. title is a short (3-8 word) name for the step; body is one or two sentences describing what to do, written the way a clinical daily-plan instruction reads (clear, encouraging, second person). Never invent steps that aren't in the source — only structure what's actually there, and never drop a step just because it lacked a stated time.
+Call the record_daily_plan tool exactly once with the complete result.`;
+
+    const parsed = await callClaudeForJson({
+      client: ai,
+      system: systemInstruction,
+      text: 'Please extract this daily routine/schedule into structured, time-ordered steps.',
+      imageBase64: imageBase64.startsWith('data:') ? imageBase64 : `data:${mimeType};base64,${imageBase64}`,
+      toolName: 'record_daily_plan',
+      toolDescription: 'Record whether the input is a genuine daily routine/schedule, and if so, its structured time-ordered steps.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          isValidPlan: { type: 'boolean', description: 'true only if the image/PDF is genuinely a daily routine, schedule, or timed habit list.' },
+          rejectionReason: { type: 'string', description: 'Required when isValidPlan is false — a short, specific description of what was actually provided instead.' },
+          sections: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                timeLabel: { type: 'string', description: 'A clock time like "7:00 AM" — always required, even if it must be your best inferred estimate.' },
+                title: { type: 'string' },
+                body: { type: 'string' },
+              },
+              required: ['timeLabel', 'title', 'body'],
+            },
+          },
+        },
+        required: ['isValidPlan'],
+      },
+    });
+
+    if (parsed.isValidPlan === false || !parsed.isValidPlan) {
+      return res.json({
+        isValidPlan: false,
+        rejectionReason: parsed.rejectionReason || 'This does not look like a daily routine or schedule. Please upload a photo or PDF of your actual daily plan.',
+      });
+    }
+
+    const rawSections = Array.isArray(parsed.sections) ? parsed.sections : [];
+    if (rawSections.length === 0) {
+      return res.json({ isValidPlan: false, rejectionReason: 'No timed steps could be found in this — please upload a clearer photo or PDF of your plan.' });
+    }
+
+    const uploadedAt = new Date();
+    const expiresAt = new Date(uploadedAt.getTime() + 35 * 24 * 60 * 60 * 1000);
+    // Belt-and-suspenders: the prompt asks Claude for a timeLabel on every
+    // step, but if one still comes back empty, a step with no time falls out
+    // of the visible timeline entirely on the client (it's treated as
+    // untimed reference material instead) — so no step from the user's own
+    // plan is ever silently dropped, spread any missing ones evenly across
+    // a waking day (6 AM–10 PM) in the order Claude already returned them.
+    const wakingStartMin = 6 * 60;
+    const wakingSpanMin = 16 * 60;
+    const sections = rawSections.map((s: any, i: number) => {
+      let timeLabel = typeof s.timeLabel === 'string' ? s.timeLabel.trim() : '';
+      if (!timeLabel) {
+        const totalMin = wakingStartMin + Math.round((wakingSpanMin * i) / Math.max(1, rawSections.length));
+        const h24 = Math.floor(totalMin / 60) % 24;
+        const min = totalMin % 60;
+        const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+        timeLabel = `${h12}:${String(min).padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`;
+      }
+      return {
+        id: 'custom_' + i,
+        timeLabel,
+        title: s.title || 'Step',
+        body: s.body || '',
+      };
+    });
+
+    const supabase = getSupabaseAdmin();
+    if (supabase) {
+      const { error: upsertError } = await supabase.from('custom_daily_plans').upsert({
+        user_id: user.id,
+        uploaded_at: uploadedAt.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        source_image_url: fileMediaType(imageBase64).startsWith('image/') ? imageBase64 : null,
+        sections,
+      }, { onConflict: 'user_id' });
+      if (upsertError) throw upsertError;
+    }
+
+    return res.json({
+      isValidPlan: true,
+      uploadedAt: uploadedAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      sections,
+    });
+  } catch (error: any) {
+    console.error('Error analyzing daily plan with Claude:', error);
+    return res.status(200).json({
+      isValidPlan: null,
+      analysisFailed: true,
+      rejectionReason: 'Could not read this plan right now. Please check your connection and try again.',
+    });
+  }
+}));
+
 app.post('/api/daily-plan', requireUser(async (req, res, user) => {
   try {
     const { date } = req.body as { date?: string };
     const supabase = getSupabaseAdmin();
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
 
-    const { data: hp } = await supabase
-      .from('health_profiles')
-      .select('existing_concerns, program_started_at')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // These three reads are all independent of each other — running them in
+    // parallel instead of one-after-another roughly a-thirds the round-trip
+    // time, which matters most for a brand-new user opening their plan for
+    // the very first time right after onboarding.
+    const [{ data: customPlan }, { data: hp }, { data: sections, error: sectionsError }] = await Promise.all([
+      supabase.from('custom_daily_plans').select('sections, uploaded_at, expires_at').eq('user_id', user.id).maybeSingle(),
+      supabase.from('health_profiles').select('existing_concerns, program_started_at').eq('user_id', user.id).maybeSingle(),
+      supabase.from('reversal_plan_sections').select('*').order('order_index', { ascending: true }),
+    ]);
+    if (sectionsError) throw sectionsError;
+
+    // A user's own uploaded daily plan (see /api/analyze-daily-plan) takes
+    // over completely for 35 days from upload — same schedule every day,
+    // no program-day/condition filtering, since it's THEIR plan, not ours.
+    if (customPlan && new Date(customPlan.expires_at).getTime() > Date.now()) {
+      return res.json({
+        plan: {
+          isCustom: true,
+          uploadedAt: customPlan.uploaded_at,
+          expiresAt: customPlan.expires_at,
+          sections: customPlan.sections || [],
+        },
+      });
+    }
 
     // First time this user opens their plan — pin "Day 1" to today. Never
     // overwritten again, so later profile edits don't reset their progress.
+    // The write is fire-and-forget: today's response can already use the
+    // value we just computed, it doesn't need to wait for it to land in the
+    // DB — only a future request does, and by then it'll have committed.
     let startedAt = hp?.program_started_at as string | undefined;
     if (!startedAt) {
       startedAt = new Date().toISOString();
-      await supabase.from('health_profiles').update({ program_started_at: startedAt }).eq('user_id', user.id).is('program_started_at', null);
+      supabase.from('health_profiles').update({ program_started_at: startedAt }).eq('user_id', user.id).is('program_started_at', null)
+        .then(({ error }) => { if (error) console.error('Could not pin program_started_at:', error); });
     }
 
     const programDay = computeProgramDay(startedAt, date);
     const userTags = conditionLabelsToTags(hp?.existing_concerns);
-
-    const { data: sections, error: sectionsError } = await supabase
-      .from('reversal_plan_sections')
-      .select('*')
-      .order('order_index', { ascending: true });
-    if (sectionsError) throw sectionsError;
 
     const matched = (sections || []).filter((s: any) => {
       const inDayRange = (s.day_start == null || programDay >= s.day_start) && (s.day_end == null || programDay <= s.day_end);
