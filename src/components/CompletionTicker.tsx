@@ -24,6 +24,12 @@ function useReducedMotion(): boolean {
   return reduced;
 }
 
+/** A flat list row, not its own bordered/shadowed card — six-plus of those
+ *  stacked (each with a gradient fill, a border, and its own shadow) was
+ *  what made this read as "crowded" rather than a calm glance. One thin
+ *  divider between rows and a plain colored icon circle is all the visual
+ *  weight a row needs; the ticker's own outer card supplies the one
+ *  boundary the whole list needs. */
 const Row: React.FC<{ item: TickerItem }> = ({ item }) => {
   const Icon = item.icon;
   const ok = item.state === 'ok';
@@ -32,50 +38,23 @@ const Row: React.FC<{ item: TickerItem }> = ({ item }) => {
       type="button"
       onClick={item.onClick}
       disabled={!item.onClick}
-      className={[
-        'group/row w-full flex items-center gap-3 px-3.5 py-2.5 mb-2 text-left',
-        'rounded-2xl border backdrop-blur-sm transition-all duration-300',
-        'cursor-pointer disabled:cursor-default',
-        ok
-          ? 'bg-gradient-to-r from-emerald-50/90 to-emerald-50/40 border-emerald-100'
-          : 'bg-white/90 border-zinc-100',
-        'shadow-[0_1px_2px_rgba(16,24,40,0.04),0_6px_16px_-10px_rgba(16,24,40,0.12)]',
-        'enabled:hover:-translate-y-0.5 enabled:hover:border-emerald-200',
-        'enabled:hover:shadow-[0_2px_4px_rgba(16,24,40,0.05),0_14px_26px_-14px_rgba(5,150,105,0.35)]',
-      ].join(' ')}
+      className="group/row w-full flex items-center gap-3 px-3.5 py-3 text-left border-b border-zinc-100 last:border-b-0 transition-colors cursor-pointer enabled:hover:bg-zinc-50 disabled:cursor-default"
     >
-      <div
-        className={[
-          'w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors',
-          ok
-            ? 'bg-white text-emerald-600 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)]'
-            : 'bg-zinc-50 text-zinc-400 shadow-[inset_0_0_0_1px_rgba(24,24,27,0.06)]',
-        ].join(' ')}
-      >
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${ok ? 'bg-emerald-50 text-emerald-600' : 'bg-zinc-100 text-zinc-400'}`}>
         <Icon className="w-4 h-4" strokeWidth={2.2} />
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-black tracking-tight text-zinc-900 truncate">
-          {item.title}
-        </div>
-        <div
-          className={`text-[11px] font-semibold truncate ${
-            ok ? 'text-emerald-700/70' : 'text-zinc-400'
-          }`}
-        >
+        <div className="text-sm font-bold text-zinc-900 truncate">{item.title}</div>
+        <div className={`text-[11px] font-medium truncate ${ok ? 'text-zinc-500' : 'text-zinc-400'}`}>
           {item.value}
         </div>
       </div>
 
       {ok ? (
-        <span className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 shadow-[0_6px_14px_-4px_rgba(16,185,129,0.6)]">
-          <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
-        </span>
+        <Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={3} />
       ) : (
-        <span className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center shrink-0 transition-transform group-hover/row:translate-x-0.5">
-          <ChevronRight className="w-3.5 h-3.5 text-zinc-500" strokeWidth={2.5} />
-        </span>
+        <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0 transition-transform group-hover/row:translate-x-0.5" />
       )}
     </button>
   );
@@ -103,7 +82,7 @@ export const CompletionTicker: React.FC<{
 
   if (reduced || items.length < 3) {
     return (
-      <div className="flex flex-col">
+      <div className="rounded-3xl bg-white border border-zinc-200 shadow-sm overflow-hidden">
         {items.map((item) => (
           <Row key={item.id} item={item} />
         ))}
@@ -112,7 +91,7 @@ export const CompletionTicker: React.FC<{
   }
 
   return (
-    <div>
+    <div className="rounded-3xl bg-white border border-zinc-200 shadow-sm overflow-hidden">
       <style>{`
         @keyframes ${animName} {
           from { transform: translateY(0); }

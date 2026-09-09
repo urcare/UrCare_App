@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Bell, ChevronRight, FileText, BookOpen, Utensils, Sparkles, Leaf, MoreVertical,
-  Activity, Stethoscope, ClipboardCheck, Droplets, Pill,
+  Activity, Stethoscope, Droplets, Pill,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, Prescription, MedicalReportAnalysis, DailyLog } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -150,7 +150,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
   const timelineSections = useMemo(() => sections.filter((s) => !!s.timeLabel), [sections]);
   const referenceSections = useMemo(() => sections.filter((s) => !s.timeLabel), [sections]);
-  const doneCount = timelineSections.filter((s) => completedToday[s.id]).length;
 
   // "Today's Health" — real, per-user data only. Anything not actually on
   // file becomes an 'empty' card with a genuine next action (never an
@@ -194,17 +193,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       onClick: kidneyFromAssessment ? onOpenAssessment : onOpenReports,
     });
 
-    // 3. Today's Plan / Treatment — the same completion count shown above.
-    cards.push({
-      id: 'todays-plan',
-      icon: ClipboardCheck,
-      title: tr("Today's Plan", 'आज की योजना'),
-      value: timelineSections.length > 0
-        ? tr(`${doneCount}/${timelineSections.length} completed`, `${doneCount}/${timelineSections.length} पूर्ण`)
-        : tr('No plan available for today', 'आज के लिए कोई योजना नहीं'),
-      state: timelineSections.length > 0 ? 'ok' : 'empty',
-      onClick: onOpenPlan,
-    });
+    // Note: no separate "Today's Plan" card here — the dedicated Today's
+    // Plan section right above this ticker already shows that (with a live
+    // countdown, even), so repeating it here would just be the same
+    // information twice on the same screen.
 
     // 4. Nutrition — meals actually logged today (daily_logs.meals).
     const mealsCount = dailyLog?.meals?.length ?? 0;
@@ -267,7 +259,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
     return cards;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `tr` closes over `language`, listed directly instead (same pattern as `greeting` above)
-  }, [profile.assessmentData, profile.calculatedPlan, reports, timelineSections, doneCount, dailyLog, prescriptions, onOpenAssessment, onOpenReports, onOpenPlan, onOpenScan, language]);
+  }, [profile.assessmentData, profile.calculatedPlan, reports, timelineSections, dailyLog, prescriptions, onOpenAssessment, onOpenReports, onOpenPlan, onOpenScan, language]);
 
   // The next step whose time hasn't fully passed yet — same "what's up next"
   // logic RecommendationsView's own hero card uses, kept in sync since both
@@ -398,26 +390,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </div>
       </header>
 
-      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-4 space-y-5 text-left">
+      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-4 space-y-4 text-left">
 
-        {/* Greeting */}
+        {/* Greeting — the daily quote now lives right here as the subtitle
+            instead of in its own separate bordered card below it. */}
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }}>
           <h1 className="text-xl sm:text-2xl font-black text-zinc-950">
             {greeting}{firstName ? `, ${firstName}` : ''} <span className="inline-block">👋</span>
           </h1>
-          <p className="text-xs sm:text-sm text-zinc-500 font-semibold mt-1">
-            {tr('Small steps.', 'छोटे कदम।')} {tr('A healthier tomorrow.', 'एक स्वस्थ कल।')}
-          </p>
-        </motion.div>
-
-        {/* Quote card */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05, ease: 'easeOut' }}
-          className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5"
-        >
-          <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-          <p className="text-sm font-bold text-emerald-900 italic">
-            "{language === 'hi' ? dailyQuote.hi : dailyQuote.en}"
+          <p className="flex items-center gap-1.5 text-xs sm:text-sm text-emerald-700 font-semibold mt-1">
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span className="italic truncate">"{language === 'hi' ? dailyQuote.hi : dailyQuote.en}"</span>
           </p>
         </motion.div>
 
@@ -484,48 +467,47 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
 
           {current ? (
-            <button
-              type="button"
-              onClick={onOpenPlan}
-              className="w-full p-3.5 rounded-2xl bg-white border border-zinc-200 shadow-sm flex items-center gap-3 text-left cursor-pointer hover:border-emerald-300 transition-all"
-            >
-              <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center shrink-0 ${completedToday[current.id] ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-emerald-400 text-emerald-500'}`}>
-                <Utensils className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-bold text-zinc-400">{tr('Next', 'अगला')}</div>
-                <div className="text-sm font-black text-zinc-950 truncate">{current.title}</div>
-                <div className="text-[11px] text-emerald-600 font-bold">{current.timeLabel}</div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
-            </button>
+            <div className="w-full rounded-2xl bg-white border border-zinc-200 shadow-sm overflow-hidden">
+              <button
+                type="button"
+                onClick={onOpenPlan}
+                className="w-full p-3.5 flex items-center gap-3 text-left cursor-pointer hover:bg-zinc-50 transition-colors"
+              >
+                <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center shrink-0 ${completedToday[current.id] ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-emerald-400 text-emerald-500'}`}>
+                  <Utensils className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-bold text-zinc-400">{tr('Next', 'अगला')}</div>
+                  <div className="text-sm font-black text-zinc-950 truncate">{current.title}</div>
+                  <div className="text-[11px] text-emerald-600 font-bold">{current.timeLabel}</div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
+              </button>
+
+              {next ? (
+                <div className="px-3.5 py-2.5 border-t border-zinc-100 bg-zinc-50/70 flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">{tr('Up next', 'इसके बाद')}</span>
+                    <div className="text-xs font-bold text-zinc-700 truncate">{next.timeLabel} — {next.title}</div>
+                  </div>
+                  <div className="shrink-0 flex flex-col items-end">
+                    <LiveCountdown timeLabel={next.timeLabel || ''} />
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wide">{tr('remaining', 'शेष')}</span>
+                  </div>
+                </div>
+              ) : (
+                // `current` is the day's last timed step and nothing comes
+                // after it — a real, honest state (not a bug), so it says
+                // so instead of "Up Next" just silently disappearing.
+                <div className="px-3.5 py-2.5 border-t border-zinc-100 bg-emerald-50/70 flex items-center justify-center gap-2 text-center">
+                  <span className="text-xs">🎉</span>
+                  <span className="text-[11px] font-bold text-emerald-800">{tr("That's everything for today — see you tomorrow!", 'आज के लिए सब कुछ पूरा — कल मिलते हैं!')}</span>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="p-3.5 rounded-2xl bg-white border border-zinc-200 shadow-sm text-xs font-semibold text-zinc-400 text-center">
               {tr('No plan available for today.', 'आज के लिए कोई योजना उपलब्ध नहीं है।')}
-            </div>
-          )}
-
-          {next ? (
-            <div className="w-full p-3 rounded-2xl bg-zinc-50 border border-zinc-200 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-white border border-zinc-200 flex items-center justify-center shrink-0 text-zinc-500">
-                <Utensils className="w-3.5 h-3.5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Up next', 'इसके बाद')}</div>
-                <div className="text-xs font-bold text-zinc-800 truncate">{next.timeLabel} — {next.title}</div>
-              </div>
-              <div className="shrink-0 flex flex-col items-end">
-                <LiveCountdown timeLabel={next.timeLabel || ''} />
-                <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-wide">{tr('remaining', 'शेष')}</span>
-              </div>
-            </div>
-          ) : current && (
-            // `current` is the day's last timed step and nothing comes after
-            // it — a real, honest state (not a bug), so it says so instead
-            // of "Up Next" just silently disappearing.
-            <div className="w-full p-3 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-2.5 justify-center text-center">
-              <span className="text-sm">🎉</span>
-              <span className="text-xs font-bold text-emerald-800">{tr("That's everything for today — see you tomorrow!", 'आज के लिए सब कुछ पूरा — कल मिलते हैं!')}</span>
             </div>
           )}
         </motion.div>
@@ -542,9 +524,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         >
           <h2 className="text-sm font-black text-zinc-950 px-0.5">{tr("Today's Health", 'आज का स्वास्थ्य')}</h2>
           {isDailyLogLoading ? (
-            <div className="rounded-3xl bg-emerald-50/50 border border-emerald-100 p-3 space-y-2.5" aria-live="polite" aria-busy="true">
+            <div className="rounded-3xl bg-white border border-zinc-200 shadow-sm divide-y divide-zinc-100" aria-live="polite" aria-busy="true">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="h-16 rounded-2xl bg-white/70 animate-pulse" />
+                <div key={i} className="p-3.5">
+                  <div className="h-8 w-8 rounded-full bg-zinc-100 animate-pulse" />
+                </div>
               ))}
             </div>
           ) : (
