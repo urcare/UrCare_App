@@ -5,7 +5,7 @@ import {
   FileText, Award, Circle, Check, Plus,
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon,
-  Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles,
+  Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles, Utensils,
 } from 'lucide-react';
 import { UserHealthProfile, Prescription } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -13,6 +13,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { DailyCalendar, toDateKey } from './DailyCalendar';
 import { PlanSection } from './ReversalLibraryPanel';
 import { UploadDailyPlanModal } from './UploadDailyPlanModal';
+import { TodayChecklistCard, ChecklistRow } from './TodayChecklistCard';
 import {
   getDailyPlan, getDailyLog, getTaskCompletion,
   toggleDailyTask, getActiveDates,
@@ -128,6 +129,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   const [achieved, setAchieved] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
   const [hasLoggedMeals, setHasLoggedMeals] = useState(false);
   const [mealCount, setMealCount] = useState(0);
+  const [waterMl, setWaterMl] = useState(0);
 
   const [expandedItems, toggleItem] = useToggleSet();
 
@@ -187,6 +189,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       const meals = log?.meals || [];
       setHasLoggedMeals(meals.length > 0);
       setMealCount(meals.length);
+      setWaterMl(log?.waterMl || 0);
       setAchieved({
         calories: meals.reduce((s, m) => s + (Number(m.calories) || 0), 0),
         protein: meals.reduce((s, m) => s + (Number(m.protein) || 0), 0),
@@ -227,6 +230,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   const targetProtein = calculatedPlan?.proteinGrams || 140;
   const targetCarbs = calculatedPlan?.carbsGrams || 180;
   const targetFats = calculatedPlan?.fatsGrams || 50;
+  const targetWaterMl = (calculatedPlan?.waterLiters || 3) * 1000;
 
   const formatDate = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
@@ -263,6 +267,37 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   // above swaps by the real clock; this timeline is the complete plan for
   // whichever day is selected.
   const visiblePeriods = PERIODS;
+
+  // Today's checklist — every value here is real (logged water/meals, the
+  // plan's own step-completion, calories/protein actually eaten), never a
+  // fabricated metric this app doesn't track.
+  const checklistRows: ChecklistRow[] = useMemo(() => [
+    {
+      key: 'water', Icon: Droplet, label: 'Hydration', labelHi: 'पानी',
+      value: `${(waterMl / 1000).toFixed(1)}L / ${(targetWaterMl / 1000).toFixed(1)}L`,
+      met: waterMl >= targetWaterMl,
+    },
+    {
+      key: 'steps', Icon: CheckCircle2, label: 'Plan Steps Completed', labelHi: 'प्लान स्टेप्स पूर्ण',
+      value: `${doneCount}/${taskIds.length}`,
+      met: taskIds.length > 0 && doneCount === taskIds.length,
+    },
+    {
+      key: 'meals', Icon: Utensils, label: 'Meals Logged', labelHi: 'भोजन दर्ज',
+      value: `${mealCount}`,
+      met: mealCount >= 3,
+    },
+    {
+      key: 'calories', Icon: Flame, label: 'Calories', labelHi: 'कैलोरी',
+      value: `${Math.round(achieved.calories)} / ${targetCalories}`,
+      met: hasLoggedMeals && achieved.calories > 0 && achieved.calories <= targetCalories,
+    },
+    {
+      key: 'protein', Icon: Activity, label: 'Protein Target', labelHi: 'प्रोटीन लक्ष्य',
+      value: `${Math.round(achieved.protein)}g / ${targetProtein}g`,
+      met: achieved.protein >= targetProtein,
+    },
+  ], [waterMl, targetWaterMl, doneCount, taskIds.length, mealCount, achieved, targetCalories, targetProtein, hasLoggedMeals]);
 
   // The reference library (condition notes, recipes, vitamins...) is not
   // rendered here — it's lifted up so a parent can show it statically in its
@@ -467,23 +502,21 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
       {/* Whole-day progress — the reversal-focus tiles that used to live in
           this card moved to the Profile page (a static, condition-derived
-          summary that doesn't need "today"); this compact bar is what's
-          still genuinely daily-plan-specific. Past days show meals logged
-          instead, since there's no live task list to tick off. */}
+          summary that doesn't need "today"); this checklist is what's still
+          genuinely daily-plan-specific, and folds the old steps-checked-off
+          bar into one of its rows instead of showing it twice. Past days
+          show meals logged instead, since there's no live task list to
+          tick off. */}
       {isToday ? (
-        taskIds.length > 0 && (
-          <div className={`p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl ${cardClass} flex items-center justify-between gap-3 flex-wrap`}>
-            <div className="flex items-center gap-2 min-w-0">
-              {allDone ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> : <Circle className="w-4 h-4 opacity-50 shrink-0" />}
-              <span className="text-xs font-bold truncate">
-                {allDone ? "All done for this day! 🎉" : `${doneCount}/${taskIds.length} steps checked off`}
-              </span>
+        <>
+          {taskIds.length > 0 && allDone && (
+            <div className={`p-3 rounded-2xl ${cardClass} flex items-center gap-2 text-xs font-bold text-emerald-600`}>
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>All done for this day! 🎉</span>
             </div>
-            <div className={`w-20 sm:w-24 h-1.5 rounded-full overflow-hidden shrink-0 ${isDark ? 'bg-zinc-800' : 'bg-zinc-200'}`}>
-              <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(doneCount / taskIds.length) * 100}%` }} />
-            </div>
-          </div>
-        )
+          )}
+          <TodayChecklistCard rows={checklistRows} isDark={isDark} />
+        </>
       ) : (
         <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4 min-w-0`}>
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40 flex-wrap gap-2">

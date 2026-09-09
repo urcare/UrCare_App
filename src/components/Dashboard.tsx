@@ -64,10 +64,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // 'Daily Plan', 'UrCare Camera' and 'Profile' are deliberately left out
   // here — they already have their own permanent spot in the bottom/side
   // nav bar, so listing them again in this drawer was pure duplication.
+  // Reports/Store are now also in the primary bottom/side nav (see navItems
+  // below), so they're not duplicated here too — only what's genuinely
+  // drawer-only stays.
   const moduleMenuItems = [
-    { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
     { id: 'assessment' as const, label: tr('Assessment', 'मूल्यांकन'), icon: ClipboardCheck },
-    { id: 'store' as const, label: tr('Store', 'स्टोर'), icon: ShoppingBag },
     // Not a tab — opens the Settings modal directly (see the drawer's onClick).
     { id: 'settings' as const, label: tr('Settings', 'सेटिंग्स'), icon: Settings },
     // Not a tab either — opens the sign-out confirmation (see the drawer's onClick).
@@ -224,12 +225,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const activeTabClass = 'bg-emerald-600 text-white font-black shadow-md shadow-emerald-600/20';
   const inactiveTabClass = 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100';
 
-  // The three primary destinations stay in the persistent nav — Reports/
-  // Assessment/Store/Settings moved into the '⋮' side menu instead, to avoid
-  // cluttering the always-visible nav with less-frequent destinations.
+  // The five primary destinations stay in the persistent nav — Assessment/
+  // Settings moved into the '⋮' side menu instead, to avoid cluttering the
+  // always-visible nav with less-frequent destinations. UrCare Camera (the
+  // food scanner) sits alone as the raised center action, not in this list —
+  // see the mobile dock below.
   const navItems = [
     { id: 'profile', label: t('navHome'), icon: Clock },
-    { id: 'premium', label: account.isPro ? t('navPro') : t('navPremium'), icon: Camera },
+    { id: 'reports', label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
+    { id: 'store', label: tr('Store', 'स्टोर'), icon: ShoppingBag },
     { id: 'account', label: t('navProfile'), icon: User },
   ];
 
@@ -274,9 +278,41 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </button>
           </div>
 
-          {/* Main Navigation Tabs */}
+          {/* Main Navigation Tabs — UrCare Camera (the food scanner) is
+              inserted right after Home, mirroring its raised, prominent spot
+              in the mobile dock below even though there's no "floating
+              center button" concept in a plain vertical sidebar list. */}
           <nav className="space-y-1.5">
-            {navItems.map((item) => {
+            {navItems.slice(0, 1).map((item) => {
+              const ItemIcon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActiveTab(item.id as any)}
+                  className={`w-full px-3.5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-3 transition-all cursor-pointer ${
+                    isActive ? activeTabClass : inactiveTabClass
+                  }`}
+                >
+                  <ItemIcon className="w-4 h-4" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('premium')}
+              className={`w-full px-3.5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-3 transition-all cursor-pointer ${
+                activeTab === 'premium' ? activeTabClass : inactiveTabClass
+              }`}
+            >
+              <Camera className="w-4 h-4" />
+              <span>{account.isPro ? t('navPro') : t('navPremium')}</span>
+            </button>
+
+            {navItems.slice(1).map((item) => {
               const ItemIcon = item.icon;
               const isActive = activeTab === item.id;
               return (
@@ -407,9 +443,49 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </header>
 
-      {/* 3. MOBILE BOTTOM NAVIGATION DOCK */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-zinc-200 px-2 py-1.5 flex items-center justify-around">
-        {navItems.map((item) => {
+      {/* 3. MOBILE BOTTOM NAVIGATION DOCK — a raised, animated circular
+          button for UrCare Camera (the food scanner) floats in the middle,
+          two real destinations either side of it. */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-zinc-200 px-1 pt-1.5 pb-1.5 flex items-end justify-around">
+        {navItems.slice(0, 2).map((item) => {
+          const ItemIcon = item.icon;
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveTab(item.id as any)}
+              className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+                isActive ? 'text-emerald-600 font-extrabold' : 'text-zinc-500 font-medium'
+              }`}
+            >
+              <ItemIcon className="w-4 h-4" />
+              <span className="text-[10px] tracking-tight">{item.label}</span>
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('premium')}
+          title={account.isPro ? t('navPro') : t('navPremium')}
+          className="relative -mt-7 shrink-0 cursor-pointer"
+        >
+          <motion.span
+            className="absolute inset-0 rounded-full bg-emerald-500"
+            animate={{ opacity: [0.35, 0, 0.35], scale: [1, 1.35, 1] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <span
+            className={`relative w-13 h-13 rounded-full flex items-center justify-center text-white shadow-lg shadow-emerald-600/40 ring-4 ring-white transition-transform active:scale-95 ${
+              activeTab === 'premium' ? 'bg-emerald-600' : 'bg-emerald-500'
+            }`}
+          >
+            <Camera className="w-5.5 h-5.5" />
+          </span>
+        </button>
+
+        {navItems.slice(2).map((item) => {
           const ItemIcon = item.icon;
           const isActive = activeTab === item.id;
           return (
