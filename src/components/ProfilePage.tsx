@@ -11,7 +11,6 @@ import { ReversalLibraryPanel, PlanSection } from './ReversalLibraryPanel';
 import { StreakWidget } from './StreakWidget';
 import { CompletionTicker, TickerItem } from './CompletionTicker';
 import { NotificationsPanel } from './NotificationsPanel';
-import { BrandMark } from './Logo';
 import { getDailyPlan, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote } from '../utils/supabase';
 import { toDateKey } from './DailyCalendar';
 
@@ -99,10 +98,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-  // The header shows the real UrCare artwork, same as the sidebar/loading
-  // screen — not the generic vector mark. Falls back to that vector mark
-  // only if the PNG itself ever fails to load (flaky network/cache miss).
-  const [brandImgFailed, setBrandImgFailed] = useState(false);
   // Real notifications (prescriptions/reports/orders) — see NotificationsPanel.
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -326,42 +321,23 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           backdrop — purely decorative, sits behind everything. */}
       <Leaf className="absolute -top-6 -right-10 w-56 h-56 text-emerald-100 rotate-12 pointer-events-none" strokeWidth={1} aria-hidden="true" />
 
-      {/* Header — brand mark + wordmark on the left (no tagline, per the
-          brief); the streak, the '⋮' module menu, a (decorative, for now)
-          notification bell, and the account avatar on the right. */}
+      {/* Header — the '⋮' module menu now sits on the left (the URCARE
+          logo/wordmark was dropped per the brief); the streak, a
+          (decorative, for now) notification bell, and the account avatar
+          on the right. */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-4 sm:px-8 py-3 sm:py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            {brandImgFailed ? (
-              <BrandMark className="w-8 h-8 text-emerald-600 shrink-0" />
-            ) : (
-              <img
-                src="/UrCare.png"
-                alt="UrCare"
-                width={64}
-                height={64}
-                decoding="async"
-                onError={() => setBrandImgFailed(true)}
-                className="w-8 h-8 shrink-0 object-contain"
-              />
-            )}
-            <div className="min-w-0">
-              <div className="text-sm font-black tracking-tight truncate">
-                <span className="text-zinc-950">UR</span><span className="text-emerald-500">CARE</span>
-              </div>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={onOpenMoreMenu}
+            className="w-9 h-9 rounded-full border border-zinc-200 bg-white flex items-center justify-center text-zinc-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors cursor-pointer shrink-0"
+            title={tr('More', 'अधिक')}
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
 
           <div className="flex items-center gap-2 shrink-0">
             <StreakWidget profile={profile} />
-            <button
-              type="button"
-              onClick={onOpenMoreMenu}
-              className="w-9 h-9 rounded-full border border-zinc-200 bg-white flex items-center justify-center text-zinc-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors cursor-pointer"
-              title={tr('More', 'अधिक')}
-            >
-              <MoreVertical className="w-4 h-4" />
-            </button>
             <button
               type="button"
               onClick={() => setIsNotificationsOpen(true)}
