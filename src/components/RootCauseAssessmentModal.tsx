@@ -321,6 +321,20 @@ function ratingFromEnergyLevel(v?: string): number {
     default: return 5; // Moderate / unknown
   }
 }
+/** Onboarding's DDChips lets the user type a free-text answer whenever they
+ *  pick "Other" on a question (kept in dd.otherTexts, keyed by that
+ *  question's own field name) — nothing else in this file reads that
+ *  bucket, so left alone those custom answers would silently vanish. This
+ *  folds every non-empty one into a single reviewable note instead of
+ *  dropping them. */
+function compileOtherTextsNote(otherTexts: Record<string, string> | undefined): string {
+  if (!otherTexts) return '';
+  return Object.entries(otherTexts)
+    .filter(([, v]) => v && v.trim())
+    .map(([k, v]) => `${k}: ${v.trim()}`)
+    .join(' | ');
+}
+
 function buildFamilyHistory(list: string[]): RootCauseAssessmentData['familyHistory'] {
   const has = (s: string) => list.includes(s);
   return {
@@ -600,18 +614,20 @@ function buildAssessmentFromProfile(profile: UserHealthProfile): RootCauseAssess
     reversalIntensityCustomNote: '',
 
     dailyRoutine: {
-      wakeUpTime: dd.wakeTime || '',
+      // wakeUpTime is Step 15's own field; wakeTime (Step 14 sleep) is only
+      // a fallback for anyone who filled sleep but not the routine step.
+      wakeUpTime: dd.wakeUpTime || dd.wakeTime || '',
       morningRoutine: '',
-      breakfastTime: '',
+      breakfastTime: dd.breakfastTime || '',
       midMorningSnackTime: '',
-      lunchTime: '',
+      lunchTime: dd.lunchTime || '',
       eveningSnackTeaTime: '',
-      dinnerTime: '',
+      dinnerTime: dd.dinnerTime || '',
       sleepTime: dd.sleepTime || '',
-      workHours: '',
+      workHours: dd.workSchedule || '',
       dailySittingHoursAtWork: dd.sittingHours || '',
       commuteTimeAndMode: '',
-      availableTimeForExercise: '',
+      availableTimeForExercise: [dd.exerciseTime, dd.exerciseDuration].filter(Boolean).join(' • '),
       mealPrepManager: '',
       weekendScheduleDifference: '',
     },
@@ -619,7 +635,7 @@ function buildAssessmentFromProfile(profile: UserHealthProfile): RootCauseAssess
     exercisePlan: {
       preferredExerciseTypes: [],
       gymOrEquipmentAccess: '',
-      bestTimeSlot: 'morning',
+      bestTimeSlot: /pm/i.test(dd.exerciseTime || '') ? 'evening' : dd.exerciseTime ? 'morning' : 'flexible',
       limitationsExplanation: '',
     },
 
@@ -634,7 +650,14 @@ function buildAssessmentFromProfile(profile: UserHealthProfile): RootCauseAssess
       whoManagesMeals: '',
       treatmentRequirements: '',
       questionsForDoctor: '',
-      patientExtraNotes: dd.doctorNotes || '',
+      // Nothing from onboarding is silently dropped: the free-form "anything
+      // else about your routine" note and every "Other" custom answer the
+      // user typed anywhere in onboarding both land here for review.
+      patientExtraNotes: [
+        dd.doctorNotes || '',
+        dd.dailyRoutineNotes ? `Daily routine notes: ${dd.dailyRoutineNotes}` : '',
+        compileOtherTextsNote(dd.otherTexts),
+      ].filter(Boolean).join(' | '),
     },
 
     submittedAt: new Date().toISOString(),

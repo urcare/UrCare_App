@@ -741,6 +741,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <AccountPage
             profile={profile}
             account={account}
+            reports={myReports}
             onUpdateProfile={onUpdateProfile}
             onUpdateAccount={onUpdateAccount}
             onOpenOrders={() => setIsMyOrdersOpen(true)}
@@ -919,38 +920,54 @@ export const Dashboard: React.FC<DashboardProps> = ({
           })()}
 
           {/* ===================================================================== */}
-          {/* ASSESSMENT TAB — free, standalone 22-Module Root-Cause Reversal Form   */}
+          {/* ASSESSMENT TAB — free, standalone Root-Cause Reversal Form             */}
           {/* ===================================================================== */}
           {activeTab === 'assessment' && (
             <div className="space-y-6 text-left">
-              <div className={`p-6 sm:p-8 rounded-3xl ${cardClass} space-y-5`}>
-                <div className="flex items-start gap-3.5">
-                  <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
-                    <Stethoscope className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                        UrCare Clinical Reversal
-                      </span>
-                      <span className="text-xs text-zinc-500 font-medium">22 Root-Cause Modules</span>
+              <div className="rounded-3xl p-6 sm:p-8 relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-900/10">
+                <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+                <div className="absolute right-10 bottom-0 w-24 h-24 rounded-full bg-white/10 blur-xl" />
+
+                <div className="relative max-w-xl space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/25 flex items-center justify-center shrink-0">
+                      <Stethoscope className="w-5 h-5" />
                     </div>
-                    <h3 className="text-base sm:text-lg font-black text-zinc-950 mt-0.5">
-                      All-Condition Personalised Root-Cause Reversal Form
-                    </h3>
-                    <p className="text-xs text-zinc-500 max-w-xl mt-0.5">
-                      Calibrate blood sugar patterns, insulin resistance, polyherbal treatment, sleep, gut, and organ health reversal. Free for everyone — fill at your own pace, your progress is saved automatically.
-                    </p>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 text-xs font-bold">
+                      {tr('UrCare Clinical Root-Cause Reversal', 'UrCare क्लीनिकल रूट-कॉज़ रिवर्सल')}
+                    </span>
                   </div>
+
+                  <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+                    {tr('Your Full Root-Cause Assessment', 'आपका पूरा रूट-कॉज़ असेसमेंट')}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-emerald-50/90 leading-relaxed">
+                    {tr('Blood sugar patterns, insulin resistance, polyherbal treatment, sleep, gut and organ health — one complete picture your doctor reviews. Free for everyone, fill at your own pace — your progress is saved automatically.', 'ब्लड शुगर पैटर्न, इंसुलिन प्रतिरोध, पॉलीहर्बल ट्रीटमेंट, नींद, गट व अंग स्वास्थ्य — एक पूरी तस्वीर जिसे आपका डॉक्टर देखता है। सभी के लिए मुफ्त, अपनी गति से भरें — प्रगति अपने आप सहेजी जाती है।')}
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {[
+                      tr('Blood Sugar & Vitals', 'ब्लड शुगर व वाइटल्स'),
+                      tr('Sleep & Stress', 'नींद व तनाव'),
+                      tr('Gut Health', 'गट हेल्थ'),
+                      tr('Organ Health', 'अंग स्वास्थ्य'),
+                      tr('Lifestyle & Readiness', 'जीवनशैली व तैयारी'),
+                    ].map((chip) => (
+                      <span key={chip} className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-white/10 border border-white/20">
+                        {chip}
+                      </span>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAssessmentModalOpen(true)}
+                    className="mt-2 px-6 py-3 rounded-xl bg-white hover:bg-emerald-50 text-emerald-700 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>{profile.assessmentData ? tr('Review / Update Assessment', 'असेसमेंट देखें / अपडेट करें') : tr('Start Assessment', 'असेसमेंट शुरू करें')}</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsAssessmentModalOpen(true)}
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Open 22-Module Form</span>
-                </button>
               </div>
             </div>
           )}
