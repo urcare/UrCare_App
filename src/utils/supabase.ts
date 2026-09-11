@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { Preferences } from '@capacitor/preferences';
 import {
   UserHealthProfile, UserAccount, DailyLog, MealItem,
   FeedbackSubmission, Order, Prescription, DoctorContact,
@@ -15,12 +16,29 @@ const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || '';
 
 let supabaseClient: SupabaseClient | null = null;
 
+// Android's WebView localStorage is NOT reliable across the round trip a
+// native Google sign-in takes (WebView → real browser tab → back) — the OS
+// is free to reclaim the app's process while that browser tab is open, and
+// on return the PKCE "code verifier" gotrue-js stashed in localStorage can
+// simply be gone, surfacing as "invalid flow state, no valid flow state
+// found" even though every URL/redirect in the flow was correct. Real
+// documented Capacitor+Supabase issue — the fix is to back auth storage
+// with @capacitor/preferences (native SharedPreferences/UserDefaults)
+// instead, which survives exactly that. On web it's a drop-in no-op: its
+// web implementation is just localStorage under the hood.
+const capacitorPreferencesStorage = {
+  getItem: async (key: string) => (await Preferences.get({ key })).value,
+  setItem: async (key: string, value: string) => { await Preferences.set({ key, value }); },
+  removeItem: async (key: string) => { await Preferences.remove({ key }); },
+};
+
 export function getSupabaseClient(): SupabaseClient | null {
   if (!supabaseClient && supabaseUrl && supabaseAnonKey) {
     try {
       supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
           flowType: 'pkce',
+          storage: capacitorPreferencesStorage,
           // On native, the OAuth redirect never actually lands back in this
           // WebView (Google forces the flow into a real system browser tab —
           // see signInWithGoogle below) — it comes back in via a custom URL
