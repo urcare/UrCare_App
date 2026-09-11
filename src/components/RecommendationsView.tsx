@@ -6,18 +6,23 @@ import {
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon, Edit3, AlertTriangle, Trash2,
   Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles, Utensils,
+  Pill, Dumbbell, Bath, BedDouble,
 } from 'lucide-react';
 import { UserHealthProfile, Prescription, CustomPlanStep } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { DailyCalendar, toDateKey } from './DailyCalendar';
 import { PlanSection } from './ReversalLibraryPanel';
-import { UploadDailyPlanModal } from './UploadDailyPlanModal';
 import {
   getDailyPlan, getDailyLog, getTaskCompletion,
   toggleDailyTask, getActiveDates,
   addCustomPlanStep, getCustomPlanSteps, deleteCustomPlanStep,
 } from '../utils/supabase';
+
+// Lazy — pulls in pdfjs-dist (for the "upload a long PDF" flow), which has
+// no business being in everyone's initial bundle just because this tab
+// exists; only fetched the first time someone actually opens this modal.
+const UploadDailyPlanModal = React.lazy(() => import('./UploadDailyPlanModal').then((m) => ({ default: m.UploadDailyPlanModal })));
 
 /** A timeline row is either a built-in reversal-plan section or the user's
  *  own addition (see custom_plan_steps) — the latter also carries the real
@@ -79,6 +84,45 @@ const PERIODS: { key: Period; label: string; range: string; Icon: typeof Sunrise
   { key: 'evening', label: 'Evening', range: '5 – 8:30 PM', Icon: Sunset },
   { key: 'night', label: 'Night', range: '8:30 PM onward', Icon: Moon },
 ];
+
+// Purely presentational classification of each timeline step, inferred
+// from its own title — adds a scannable "what kind of step is this" signal
+// (and, paired with computeDurationLabel below, roughly how long it takes)
+// without touching any of the actual herbal/medical content itself.
+type StepCategory = 'herbal' | 'exercise' | 'meal' | 'hygiene' | 'rest' | 'hydration' | 'other';
+const STEP_CATEGORY_META: Record<StepCategory, { Icon: typeof Pill; color: string; label: [string, string] }> = {
+  herbal: { Icon: Pill, color: '#10b981', label: ['Herbal / Supplement', 'हर्बल / सप्लीमेंट'] },
+  exercise: { Icon: Dumbbell, color: '#f97316', label: ['Exercise / Movement', 'व्यायाम / गतिविधि'] },
+  meal: { Icon: Utensils, color: '#eab308', label: ['Meal', 'भोजन'] },
+  hygiene: { Icon: Bath, color: '#0ea5e9', label: ['Hygiene', 'स्वच्छता'] },
+  rest: { Icon: BedDouble, color: '#8b5cf6', label: ['Rest / Sleep', 'आराम / नींद'] },
+  hydration: { Icon: Droplet, color: '#06b6d4', label: ['Hydration', 'जलयोजन'] },
+  other: { Icon: Clock, color: '#71717a', label: ['Step', 'कदम'] },
+};
+
+function categoryFor(title: string): StepCategory {
+  const t = (title || '').toLowerCase();
+  if (/herb|ayurvedic|churna|vati|guggulu|supplement|vitamin|medicine|reviv|glucolow/.test(t)) return 'herbal';
+  if (/exercise|cardio|stretch|yoga|walk|movement|massage|pranayama|breathwork|abhyanga|strength|hiit/.test(t)) return 'exercise';
+  if (/breakfast|lunch|dinner|snack|meal/.test(t)) return 'meal';
+  if (/shower|hygiene|tongue|oil pulling|elimination/.test(t)) return 'hygiene';
+  if (/sleep|rest|relax|screen shutdown|good night|meditation/.test(t)) return 'rest';
+  if (/hydration|water/.test(t)) return 'hydration';
+  return 'other';
+}
+
+/** Formats "5:00 AM" + next step's "5:08 AM" into a "5:00 – 5:08 AM" range —
+ *  a simple, honest stand-in for "how long this step has" (the gap until
+ *  whatever's next), rather than a made-up duration. Falls back to just the
+ *  start time for the day's very last step. */
+function computeDurationLabel(startLabel: string, nextStartLabel: string | undefined): string {
+  if (!nextStartLabel) return startLabel;
+  // A label that's already a range (e.g. "9:15 AM – 12:45 PM") already
+  // states its own end time — don't overwrite it with the next step's start.
+  if (startLabel.includes('–') || startLabel.includes('-')) return startLabel;
+  const startTime = startLabel.replace(/\s*(AM|PM)$/i, '').trim();
+  return `${startTime} – ${nextStartLabel}`;
+}
 
 /** Minutes since midnight parsed from a label like "7:35 PM" or a range like
  *  "9:15 AM – 12:45 PM" (uses the start of the range). */
@@ -372,6 +416,19 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     () => [...timelineSections].sort((a, b) => labelMinutes(a.timeLabel || '') - labelMinutes(b.timeLabel || '')),
     [timelineSections]
   );
+
+  // Each step's real "how long do I have for this" — the honest gap until
+  // whichever step comes right after it in the full day's order (see
+  // computeDurationLabel), not a fabricated duration.
+  const durationLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    sortedToday.forEach((item, i) => {
+      const next = sortedToday[i + 1];
+      map.set(item.id, computeDurationLabel(item.timeLabel || '', next?.timeLabel));
+    });
+    return map;
+  }, [sortedToday]);
+
   const heroInfo = useMemo(() => {
     if (!isToday || sortedToday.length === 0) return null;
     const now = new Date();
@@ -543,7 +600,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                 {heroInfo.isUpcoming ? 'Coming Up' : 'Right Now'}
               </span>
               {heroInfo.item.timeLabel && (
-                <span className="text-xs font-black opacity-60">{heroInfo.item.timeLabel}</span>
+                <span className="text-xs font-black opacity-60">{durationLabelById.get(heroInfo.item.id) || heroInfo.item.timeLabel}</span>
               )}
             </div>
 
@@ -564,6 +621,15 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               </button>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
+                  {(() => {
+                    const cat = STEP_CATEGORY_META[categoryFor(heroInfo.item.title)];
+                    const CatIcon = cat.Icon;
+                    return (
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg shrink-0" style={{ background: `${cat.color}1a`, color: cat.color }} title={tr(...cat.label)}>
+                        <CatIcon className="w-3.5 h-3.5" />
+                      </span>
+                    );
+                  })()}
                   <h3 className={`text-lg sm:text-xl font-black break-words ${completedToday[heroInfo.item.id] ? 'text-emerald-600' : ''}`}>
                     {heroInfo.item.title}
                   </h3>
@@ -826,8 +892,17 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-baseline gap-2 flex-wrap">
                                     {section.timeLabel && (
-                                      <span className="text-[10px] font-black text-emerald-500 shrink-0">{section.timeLabel}</span>
+                                      <span className="text-[10px] font-black text-emerald-500 shrink-0">{durationLabelById.get(section.id) || section.timeLabel}</span>
                                     )}
+                                    {(() => {
+                                      const cat = STEP_CATEGORY_META[categoryFor(section.title)];
+                                      const CatIcon = cat.Icon;
+                                      return (
+                                        <span className="inline-flex items-center justify-center w-4.5 h-4.5 rounded shrink-0" style={{ background: `${cat.color}1a`, color: cat.color }} title={tr(...cat.label)}>
+                                          <CatIcon className="w-2.5 h-2.5" />
+                                        </span>
+                                      );
+                                    })()}
                                     <span className={`text-xs sm:text-sm font-bold break-words ${done ? 'text-emerald-600' : ''}`}>{section.title}</span>
                                     {isRisky && (
                                       <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-500 shrink-0">
@@ -918,14 +993,18 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         </div>
       )}
 
-      <UploadDailyPlanModal
-        isOpen={isUploadPlanOpen}
-        onClose={() => setIsUploadPlanOpen(false)}
-        onUploaded={() => {
-          setSelectedDate(startOfToday());
-          setPlanRefreshKey((k) => k + 1);
-        }}
-      />
+      {isUploadPlanOpen && (
+        <React.Suspense fallback={null}>
+          <UploadDailyPlanModal
+            isOpen={isUploadPlanOpen}
+            onClose={() => setIsUploadPlanOpen(false)}
+            onUploaded={() => {
+              setSelectedDate(startOfToday());
+              setPlanRefreshKey((k) => k + 1);
+            }}
+          />
+        </React.Suspense>
+      )}
 
     </div>
   );

@@ -543,17 +543,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
         {/* Quick actions — Scan Food and Store were dropped from here per
             the brief (both stay reachable from the '⋮' module menu / their
-            own nav tabs, so nothing is orphaned); just the two shortcuts
-            that don't live anywhere else on Home. */}
+            own nav tabs, so nothing is orphaned); "My Reports" was dropped
+            too (still reachable from Profile → Lab & Diab Reports), leaving
+            just this one shortcut that doesn't live anywhere else on Home. */}
         <motion.div
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2, ease: 'easeOut' }}
-          className="grid grid-cols-2 gap-3"
         >
-          <button type="button" onClick={onOpenReports} className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm flex flex-col items-center gap-1.5 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all">
-            <FileText className="w-5 h-5 text-emerald-600" />
-            <span className="text-xs font-bold text-zinc-800">{tr('My Reports', 'मेरी रिपोर्ट्स')}</span>
-          </button>
-          <button type="button" onClick={() => setIsLibraryOpen(true)} className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm flex flex-col items-center gap-1.5 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all">
+          <button type="button" onClick={() => setIsLibraryOpen(true)} className="w-full p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm flex flex-col items-center gap-1.5 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all">
             <BookOpen className="w-5 h-5 text-emerald-600" />
             <span className="text-xs font-bold text-zinc-800">{tr('Reversal Library', 'रिवर्सल लाइब्रेरी')}</span>
           </button>

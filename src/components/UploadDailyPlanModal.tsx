@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Upload, FileText, Check, AlertCircle, RefreshCw, CalendarClock, Sparkles } from 'lucide-react';
-import { uploadCustomDailyPlan, CustomDailyPlanResult } from '../utils/supabase';
+import { X, Upload, FileText, Check, AlertCircle, RefreshCw, CalendarClock, Sparkles, Files } from 'lucide-react';
+import { uploadCustomDailyPlan, saveMergedDailyPlan, CustomDailyPlanResult, DailyPlanSectionInput } from '../utils/supabase';
+import { renderPdfPagesToImages, getPdfPageCount } from '../utils/pdfToImages';
 import { useLanguage } from '../context/LanguageContext';
 import { playClickSound, playSuccessChime } from '../utils/soundEffects';
 
@@ -12,29 +13,56 @@ interface UploadDailyPlanModalProps {
   onUploaded: () => void;
 }
 
-/** Lets a user upload a photo of a daily routine they already have
- *  (e.g. from their own doctor, or their own handwritten schedule) — the AI
+/** What step of a multi-page PDF upload is currently running — shown as
+ *  live "page X of Y" progress instead of one opaque spinner, since a long
+ *  PDF (this modal has been tested against 60+ page doctor printouts) can
+ *  take a while to walk through. Not shown at all for a plain photo
+ *  upload, which is still a single fast call. */
+interface PdfProgress {
+  phase: 'rendering' | 'extracting' | 'saving';
+  page?: number;
+  totalPages?: number;
+}
+
+/** Lets a user upload a daily routine they already have (e.g. from their own
+ *  doctor, or their own handwritten schedule) as a photo OR a PDF — the AI
  *  extracts it into the app's own time-ordered plan format, and it replaces
- *  the built-in reversal plan for the next 35 days. PDF isn't offered here:
- *  the vision model behind this reads images only. */
+ *  the built-in reversal plan for the next 35 days.
+ *
+ *  The vision model behind this (see /api/analyze-daily-plan) only ever
+ *  reads a single image per call, never raw PDF bytes — so a PDF is
+ *  rendered to one image per page entirely in the browser (pdfToImages.ts),
+ *  each page is read by its own AI call, and every page's extracted steps
+ *  are merged and saved together at the end. This is what lets even a long,
+ *  multi-page PDF (a real doctor's printout can easily run 40-60+ pages
+ *  once cover pages, disclaimers and diet guides are counted) work here,
+ *  instead of being rejected outright the way a photo-only flow would. */
 export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOpen, onClose, onUploaded }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileBase64, setFileBase64] = useState<string | null>(null);
+  const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
   const [isReadingFile, setIsReadingFile] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState<PdfProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CustomDailyPlanResult | null>(null);
+  const [pdfSummary, setPdfSummary] = useState<{ pagesRead: number; totalPages: number; truncated: boolean } | null>(null);
 
   if (!isOpen) return null;
+
+  const isPdf = selectedFile?.type === 'application/pdf';
 
   const reset = () => {
     setSelectedFile(null);
     setFileBase64(null);
+    setPdfPageCount(null);
     setError(null);
     setResult(null);
+    setPdfProgress(null);
+    setPdfSummary(null);
   };
 
   const handleClose = () => {
@@ -47,6 +75,23 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
     const file = e.target.files[0];
     setSelectedFile(file);
     setError(null);
+    setResult(null);
+    setPdfSummary(null);
+    setPdfPageCount(null);
+
+    if (file.type === 'application/pdf') {
+      // No FileReader/base64 needed here — pdf.js renders each page to its
+      // own image only once the user hits Analyze. Just grab the page count
+      // up front so the picker can say "62-page PDF" right away.
+      setFileBase64(null);
+      setIsReadingFile(true);
+      getPdfPageCount(file)
+        .then((count) => setPdfPageCount(count))
+        .catch(() => setError(tr('Could not open this PDF. Please try a different file.', 'यह PDF नहीं खोली जा सकी। कृपया दूसरी फ़ाइल आज़माएं।')))
+        .finally(() => setIsReadingFile(false));
+      return;
+    }
+
     setIsReadingFile(true);
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -60,28 +105,90 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
     reader.readAsDataURL(file);
   };
 
+  const handleAnalyzePdf = async (file: File) => {
+    setPdfProgress({ phase: 'rendering', page: 0, totalPages: pdfPageCount || 0 });
+    const { images, totalPages, truncated } = await renderPdfPagesToImages(file, (pageDone, totalToRender) => {
+      setPdfProgress({ phase: 'rendering', page: pageDone, totalPages: totalToRender });
+    });
+
+    const allSections: DailyPlanSectionInput[] = [];
+    for (let i = 0; i < images.length; i++) {
+      setPdfProgress({ phase: 'extracting', page: i + 1, totalPages: images.length });
+      const pageResult = await uploadCustomDailyPlan(images[i], 'image/jpeg', false);
+      if (pageResult.isValidPlan && pageResult.sections && pageResult.sections.length > 0) {
+        allSections.push(...pageResult.sections.map((s) => ({ timeLabel: s.timeLabel, title: s.title, body: s.body })));
+      }
+      // A small pacing gap between sequential vision calls — a courteous
+      // buffer against the free-tier per-minute output-token ceiling (see
+      // callGroqForJson in server.ts), not a guarantee against every
+      // possible rate limit on a very large document.
+      if (i < images.length - 1) await new Promise((r) => setTimeout(r, 350));
+    }
+
+    if (allSections.length === 0) {
+      setError(tr(
+        'Could not find a daily schedule on any page of this PDF. Please try a clearer file, or upload a photo instead.',
+        'इस PDF के किसी भी पेज पर डेली शेड्यूल नहीं मिला। कृपया साफ़ फ़ाइल आज़माएं, या फोटो अपलोड करें।'
+      ));
+      return;
+    }
+
+    setPdfProgress({ phase: 'saving' });
+    const saved = await saveMergedDailyPlan(allSections);
+    if (!saved.isValidPlan) {
+      setError(saved.rejectionReason || tr('Could not save this plan right now.', 'यह प्लान अभी सहेजा नहीं जा सका।'));
+      return;
+    }
+    setPdfSummary({ pagesRead: images.length, totalPages, truncated });
+    setResult(saved);
+    playSuccessChime();
+  };
+
   const handleAnalyze = async () => {
-    if (!fileBase64 || !selectedFile) {
-      setError(tr('Please choose a photo of your daily plan first.', 'कृपया पहले अपने डेली प्लान की फोटो चुनें।'));
+    if (!selectedFile) {
+      setError(tr('Please choose a photo or PDF of your daily plan first.', 'कृपया पहले अपने डेली प्लान की फोटो या PDF चुनें।'));
       return;
     }
     playClickSound(700);
     setIsAnalyzing(true);
     setError(null);
-    const data = await uploadCustomDailyPlan(fileBase64, selectedFile.type || 'image/jpeg');
-    setIsAnalyzing(false);
-    if (!data.isValidPlan) {
-      setError(data.rejectionReason || tr('Could not extract a plan from this. Please try a clearer photo.', 'इससे कोई प्लान नहीं निकाला जा सका। कृपया साफ़ फोटो आज़माएं।'));
-      return;
+
+    try {
+      if (isPdf) {
+        await handleAnalyzePdf(selectedFile);
+      } else {
+        if (!fileBase64) {
+          setError(tr('Please wait for the file to finish loading.', 'कृपया फ़ाइल लोड होने तक प्रतीक्षा करें।'));
+          return;
+        }
+        const data = await uploadCustomDailyPlan(fileBase64, selectedFile.type || 'image/jpeg');
+        if (!data.isValidPlan) {
+          setError(data.rejectionReason || tr('Could not extract a plan from this. Please try a clearer photo.', 'इससे कोई प्लान नहीं निकाला जा सका। कृपया साफ़ फोटो आज़माएं।'));
+          return;
+        }
+        setResult(data);
+        playSuccessChime();
+      }
+    } catch (err: any) {
+      setError(err?.message || tr('Could not read this file. Please try again.', 'यह फ़ाइल पढ़ी नहीं जा सकी। कृपया दोबारा कोशिश करें।'));
+    } finally {
+      setIsAnalyzing(false);
+      setPdfProgress(null);
     }
-    setResult(data);
-    playSuccessChime();
   };
 
   const handleDone = () => {
     onUploaded();
     handleClose();
   };
+
+  const analyzeButtonLabel = (() => {
+    if (!isAnalyzing) return tr('Extract & Use This Plan', 'निकालें व यह प्लान उपयोग करें');
+    if (pdfProgress?.phase === 'rendering') return tr(`Reading page ${pdfProgress.page || 0} of ${pdfProgress.totalPages || '…'}…`, `पेज ${pdfProgress.page || 0} / ${pdfProgress.totalPages || '…'} पढ़ा जा रहा है…`);
+    if (pdfProgress?.phase === 'extracting') return tr(`Analyzing page ${pdfProgress.page || 0} of ${pdfProgress.totalPages || '…'}…`, `पेज ${pdfProgress.page || 0} / ${pdfProgress.totalPages || '…'} का विश्लेषण हो रहा है…`);
+    if (pdfProgress?.phase === 'saving') return tr('Saving your plan…', 'आपका प्लान सहेजा जा रहा है…');
+    return tr('Extracting your plan...', 'आपका प्लान निकाला जा रहा है...');
+  })();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -116,6 +223,23 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
               </span>
             </div>
 
+            {pdfSummary && (
+              <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-400 flex items-start gap-2">
+                <Files className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <span>
+                  {pdfSummary.truncated
+                    ? tr(
+                        `Scanned the first ${pdfSummary.pagesRead} of ${pdfSummary.totalPages} pages and found ${result.sections?.length || 0} steps.`,
+                        `${pdfSummary.totalPages} में से पहले ${pdfSummary.pagesRead} पेज स्कैन किए और ${result.sections?.length || 0} चरण मिले।`
+                      )
+                    : tr(
+                        `Scanned all ${pdfSummary.totalPages} page${pdfSummary.totalPages === 1 ? '' : 's'} of your PDF and found ${result.sections?.length || 0} steps.`,
+                        `आपके PDF के सभी ${pdfSummary.totalPages} पेज स्कैन किए और ${result.sections?.length || 0} चरण मिले।`
+                      )}
+                </span>
+              </div>
+            )}
+
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {(result.sections || []).map((s) => (
                 <div key={s.id} className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 flex items-start gap-2.5">
@@ -144,8 +268,8 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
           <div className="space-y-4">
             <p className="text-xs text-zinc-400 leading-relaxed">
               {tr(
-                'Already have a daily routine from your own doctor or nutritionist, or your own handwritten schedule? Upload a photo of it here — UrCare will read it and use it as your Daily Plan for the next 35 days.',
-                'क्या आपके पास पहले से अपने डॉक्टर या न्यूट्रिशनिस्ट का दिया हुआ डेली रूटीन है, या अपना हाथ से लिखा शेड्यूल है? यहां उसकी फोटो अपलोड करें — UrCare इसे पढ़कर अगले 35 दिनों तक आपके डेली प्लान के रूप में उपयोग करेगा।'
+                'Already have a daily routine from your own doctor or nutritionist, or your own handwritten schedule? Upload a photo or PDF here — even a long, multi-page PDF — and UrCare will read it and use it as your Daily Plan for the next 35 days.',
+                'क्या आपके पास पहले से अपने डॉक्टर या न्यूट्रिशनिस्ट का दिया हुआ डेली रूटीन है, या अपना हाथ से लिखा शेड्यूल है? यहां फोटो या PDF अपलोड करें — लंबी, कई-पेज वाली PDF भी — UrCare इसे पढ़कर अगले 35 दिनों तक आपके डेली प्लान के रूप में उपयोग करेगा।'
               )}
             </p>
 
@@ -153,16 +277,18 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
               onClick={() => document.getElementById('daily-plan-file-input')?.click()}
               className="p-6 border-2 border-dashed border-zinc-700 hover:border-emerald-500 bg-zinc-900/60 hover:bg-zinc-900 rounded-3xl text-center cursor-pointer transition-all space-y-3"
             >
-              <input id="daily-plan-file-input" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+              <input id="daily-plan-file-input" type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileChange} />
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center mx-auto">
-                <Upload className="w-6 h-6" />
+                {isPdf ? <Files className="w-6 h-6" /> : <Upload className="w-6 h-6" />}
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-black text-white">
-                  {selectedFile ? selectedFile.name : tr('Click to Upload a Photo', 'फोटो अपलोड करने हेतु क्लिक करें')}
+                  {selectedFile ? selectedFile.name : tr('Click to Upload a Photo or PDF', 'फोटो या PDF अपलोड करने हेतु क्लिक करें')}
                 </p>
                 <p className="text-xs text-zinc-400">
-                  {tr('Your own daily routine, in any format', 'आपका अपना डेली रूटीन, किसी भी फॉर्मेट में')}
+                  {isPdf && pdfPageCount
+                    ? tr(`${pdfPageCount}-page PDF — long PDFs are fully supported`, `${pdfPageCount}-पेज PDF — लंबी PDF भी पूरी तरह समर्थित है`)
+                    : tr('Your own daily routine, in any format', 'आपका अपना डेली रूटीन, किसी भी फॉर्मेट में')}
                 </p>
               </div>
               {selectedFile && (
@@ -174,6 +300,18 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
                 </span>
               )}
             </div>
+
+            {isPdf && (
+              <p className="text-[10px] text-zinc-500 leading-relaxed flex items-start gap-1.5">
+                <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                <span>
+                  {tr(
+                    'A long PDF is read one page at a time, so this can take a little while — you\'ll see live progress below once you tap Extract.',
+                    'लंबी PDF को एक-एक पेज करके पढ़ा जाता है, इसलिए इसमें थोड़ा समय लग सकता है — Extract दबाने पर नीचे लाइव प्रगति दिखेगी।'
+                  )}
+                </span>
+              </p>
+            )}
 
             {error && (
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs">
@@ -190,16 +328,26 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
             >
               {isAnalyzing ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>{tr('Extracting your plan...', 'आपका प्लान निकाला जा रहा है...')}</span>
+                  <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                  <span>{analyzeButtonLabel}</span>
                 </>
               ) : (
                 <>
                   <FileText className="w-4 h-4" />
-                  <span>{tr('Extract & Use This Plan', 'निकालें व यह प्लान उपयोग करें')}</span>
+                  <span>{analyzeButtonLabel}</span>
                 </>
               )}
             </button>
+
+            {/* Live page-by-page progress bar for a multi-page PDF. */}
+            {isAnalyzing && isPdf && pdfProgress && pdfProgress.totalPages ? (
+              <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 transition-all duration-300 ease-out"
+                  style={{ width: `${Math.min(100, ((pdfProgress.page || 0) / pdfProgress.totalPages) * 100)}%` }}
+                />
+              </div>
+            ) : null}
           </div>
         )}
       </div>

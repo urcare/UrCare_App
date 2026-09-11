@@ -777,9 +777,71 @@ function computeProgramDay(startedAtIso: string, referenceDateIso?: string): num
 // has (from their own doctor/nutritionist, or their own handwritten
 // routine). Groq extracts it into the same {timeLabel, title, body} shape
 // the built-in reversal plan uses, and it replaces that plan for 35 days.
+// Spreads any step the model left without a clock time evenly across a
+// waking day (6 AM–10 PM), in the order they were given — so no step from
+// the user's own plan is ever silently dropped just for lacking a stated
+// time. Shared by both the single-image path below and the merged-PDF-pages
+// save endpoint, so a step gets exactly the same fallback treatment either way.
+function fillMissingTimeLabels(rawSections: any[]): { id: string; timeLabel: string; title: string; body: string }[] {
+  const wakingStartMin = 6 * 60;
+  const wakingSpanMin = 16 * 60;
+  return rawSections.map((s: any, i: number) => {
+    let timeLabel = typeof s.timeLabel === 'string' ? s.timeLabel.trim() : '';
+    if (!timeLabel) {
+      const totalMin = wakingStartMin + Math.round((wakingSpanMin * i) / Math.max(1, rawSections.length));
+      const h24 = Math.floor(totalMin / 60) % 24;
+      const min = totalMin % 60;
+      const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+      timeLabel = `${h12}:${String(min).padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`;
+    }
+    return {
+      id: 'custom_' + i,
+      timeLabel,
+      title: s.title || 'Step',
+      body: s.body || '',
+    };
+  });
+}
+
+// Parses a "7:00 AM"-style label into minutes-since-midnight for sorting —
+// anything unparsable sorts to the very end (stable sort keeps its
+// relative order) rather than breaking the whole ordering.
+function parseClockTimeToMinutes(label: string): number {
+  const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec((label || '').trim());
+  if (!m) return 24 * 60 + 1;
+  let h = parseInt(m[1], 10) % 12;
+  if (/PM/i.test(m[3])) h += 12;
+  return h * 60 + parseInt(m[2], 10);
+}
+
+/** Upserts the user's custom daily plan (replacing whatever was there
+ *  before) and fires the same notification + activity-log entries either
+ *  code path (single-image upload, or a multi-page PDF merged client-side)
+ *  produces. */
+async function persistCustomDailyPlan(
+  supabase: SupabaseClient,
+  user: { id: string },
+  sections: { id: string; timeLabel: string | null; title: string; body: string }[],
+  sourceImageUrl: string | null,
+): Promise<{ uploadedAt: string; expiresAt: string; sections: typeof sections }> {
+  const uploadedAt = new Date();
+  const expiresAt = new Date(uploadedAt.getTime() + 35 * 24 * 60 * 60 * 1000);
+  const { error: upsertError } = await supabase.from('custom_daily_plans').upsert({
+    user_id: user.id,
+    uploaded_at: uploadedAt.toISOString(),
+    expires_at: expiresAt.toISOString(),
+    source_image_url: sourceImageUrl,
+    sections,
+  }, { onConflict: 'user_id' });
+  if (upsertError) throw upsertError;
+  await createNotification(supabase, user.id, 'plan', 'Your custom daily plan is ready', `${sections.length} steps extracted and active for the next 35 days.`, {});
+  await createActivityLog(supabase, user.id, 'uploaded', 'plan', 'Uploaded a custom daily plan', `${sections.length} steps extracted, active for 35 days`);
+  return { uploadedAt: uploadedAt.toISOString(), expiresAt: expiresAt.toISOString(), sections };
+}
+
 app.post('/api/analyze-daily-plan', requireUser(async (req, res, user) => {
   try {
-    const { imageBase64, mimeType = 'image/jpeg' } = req.body as { imageBase64?: string; mimeType?: string };
+    const { imageBase64, mimeType = 'image/jpeg', persist = true } = req.body as { imageBase64?: string; mimeType?: string; persist?: boolean };
     if (!imageBase64) {
       return res.json({ isValidPlan: false, rejectionReason: 'Please upload a photo or PDF of your daily plan.' });
     }
@@ -788,11 +850,11 @@ app.post('/api/analyze-daily-plan', requireUser(async (req, res, user) => {
       return res.status(503).json({ analysisFailed: true, rejectionReason: 'The plan scanner is not configured right now. Please try again later.' });
     }
 
-    const systemInstruction = `You are UrCare's clinical scheduling assistant. You are given a photo or PDF of a person's own daily routine/schedule — it may be typed, handwritten, or a printout from their doctor or nutritionist. It could be a full 24-hour schedule or just a partial list of habits/timings.
-CRITICAL FIRST STEP: Decide whether the input is genuinely someone's daily routine/schedule/plan (e.g. wake-up time, meal times, exercise, medication times, sleep time, any timed daily activity list) versus something unrelated (a random photo, a selfie, a lab report, an unreadable/blank image, or text with no actual schedule content).
+    const systemInstruction = `You are UrCare's clinical scheduling assistant. You are given a photo of one page of a person's own daily routine/schedule — it may be typed, handwritten, or a printout from their doctor or nutritionist. It could be a full 24-hour schedule or just a partial list of habits/timings, and if this came from a multi-page PDF it may be only ONE page of a larger document — that's expected, just extract whatever real schedule content is on THIS page.
+CRITICAL FIRST STEP: Decide whether the input is genuinely someone's daily routine/schedule/plan (e.g. wake-up time, meal times, exercise, medication times, sleep time, any timed daily activity list) versus something unrelated (a random photo, a selfie, a lab report, an unreadable/blank page, or text with no actual schedule content — a cover page, disclaimer, or table of contents from a larger document counts as unrelated too).
 - If it is NOT a daily routine/schedule, set isValidPlan to false, explain what was actually provided in rejectionReason, and leave sections empty.
-- If it IS a genuine daily routine, set isValidPlan to true and extract EVERY distinct step into "sections", ordered chronologically by time of day. For each step: timeLabel is REQUIRED and must always be a clock time like "7:00 AM" — use the exact time if one is stated, otherwise infer the single most reasonable clock time from context (e.g. "morning walk" → "6:30 AM", "after lunch" → "1:30 PM", "before bed" → "10:00 PM") so that every step gets a real time and none are ever left blank. title is a short (3-8 word) name for the step; body is ONE short sentence (max ~12 words) describing what to do. Never invent steps that aren't in the source — only structure what's actually there, and never drop a step just because it lacked a stated time.
-OUTPUT LENGTH IS STRICTLY LIMITED — a full day can have a dozen+ steps, so keep every title/body as brief as possible: prioritize including EVERY real step over writing a longer description for any one of them.
+- If it IS a genuine daily routine, set isValidPlan to true and extract EVERY distinct step into "sections", ordered chronologically by time of day. For each step: timeLabel is REQUIRED and must always be a clock time like "7:00 AM" — use the exact time if one is stated, otherwise infer the single most reasonable clock time from context (e.g. "morning walk" → "6:30 AM", "after lunch" → "1:30 PM", "before bed" → "10:00 PM") so that every step gets a real time and none are ever left blank. title is a short (3-8 word) name for the step. body should preserve real, concrete detail from the source instead of just a generic label — up to 2-3 short sentences (roughly 40-50 words): include exact quantities/doses, durations, techniques or counts whenever the source actually states them, not invented ones. Never invent steps or details that aren't in the source — only structure and preserve what's actually there, and never drop a step just because it lacked a stated time.
+Prioritize including EVERY real step on this page over writing an even longer description for any single one of them — completeness first, then detail.
 Call the record_daily_plan tool exactly once with the complete result.`;
 
     const parsed = await callGroqForJson({
@@ -841,53 +903,24 @@ Call the record_daily_plan tool exactly once with the complete result.`;
       return res.json({ isValidPlan: false, rejectionReason: 'No timed steps could be found in this — please upload a clearer photo or PDF of your plan.' });
     }
 
-    const uploadedAt = new Date();
-    const expiresAt = new Date(uploadedAt.getTime() + 35 * 24 * 60 * 60 * 1000);
-    // Belt-and-suspenders: the prompt asks Groq for a timeLabel on every
-    // step, but if one still comes back empty, a step with no time falls out
-    // of the visible timeline entirely on the client (it's treated as
-    // untimed reference material instead) — so no step from the user's own
-    // plan is ever silently dropped, spread any missing ones evenly across
-    // a waking day (6 AM–10 PM) in the order Groq already returned them.
-    const wakingStartMin = 6 * 60;
-    const wakingSpanMin = 16 * 60;
-    const sections = rawSections.map((s: any, i: number) => {
-      let timeLabel = typeof s.timeLabel === 'string' ? s.timeLabel.trim() : '';
-      if (!timeLabel) {
-        const totalMin = wakingStartMin + Math.round((wakingSpanMin * i) / Math.max(1, rawSections.length));
-        const h24 = Math.floor(totalMin / 60) % 24;
-        const min = totalMin % 60;
-        const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-        timeLabel = `${h12}:${String(min).padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`;
-      }
-      return {
-        id: 'custom_' + i,
-        timeLabel,
-        title: s.title || 'Step',
-        body: s.body || '',
-      };
-    });
+    const sections = fillMissingTimeLabels(rawSections);
 
-    const supabase = getSupabaseAdmin();
-    if (supabase) {
-      const { error: upsertError } = await supabase.from('custom_daily_plans').upsert({
-        user_id: user.id,
-        uploaded_at: uploadedAt.toISOString(),
-        expires_at: expiresAt.toISOString(),
-        source_image_url: fileMediaType(imageBase64).startsWith('image/') ? imageBase64 : null,
-        sections,
-      }, { onConflict: 'user_id' });
-      if (upsertError) throw upsertError;
-      await createNotification(supabase, user.id, 'plan', 'Your custom daily plan is ready', `${sections.length} steps extracted and active for the next 35 days.`, {});
-      await createActivityLog(supabase, user.id, 'uploaded', 'plan', 'Uploaded a custom daily plan', `${sections.length} steps extracted, active for 35 days`);
+    // A multi-page PDF is walked one rendered page-image at a time by the
+    // client (see UploadDailyPlanModal + pdfToImages.ts) — each page calls
+    // this same endpoint with persist:false to extract without saving yet,
+    // then the client merges every page's sections and saves them all at
+    // once via /api/save-daily-plan below. A plain single-photo upload
+    // still saves immediately, exactly as before.
+    if (persist === false) {
+      return res.json({ isValidPlan: true, sections });
     }
 
-    return res.json({
-      isValidPlan: true,
-      uploadedAt: uploadedAt.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-      sections,
-    });
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      return res.json({ isValidPlan: true, uploadedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString(), sections });
+    }
+    const saved = await persistCustomDailyPlan(supabase, user, sections, fileMediaType(imageBase64).startsWith('image/') ? imageBase64 : null);
+    return res.json({ isValidPlan: true, ...saved });
   } catch (error: any) {
     if (error instanceof PdfNotSupportedError) {
       return res.json({ isValidPlan: false, rejectionReason: 'PDF plans aren\'t supported right now — please upload a clear photo of your schedule instead.' });
@@ -898,6 +931,45 @@ Call the record_daily_plan tool exactly once with the complete result.`;
       analysisFailed: true,
       rejectionReason: 'Could not read this plan right now. Please check your connection and try again.',
     });
+  }
+}));
+
+// Finalizes a multi-page PDF upload: the client has already called
+// /api/analyze-daily-plan once per rendered page (persist:false) and merged
+// every page's extracted sections together — this endpoint re-sorts that
+// merged list into real chronological order (page order isn't necessarily
+// time order — a "before bed" step could appear on page 3 of an otherwise
+// morning-focused page 1) and saves it as the one active custom plan,
+// exactly like the single-image path's save step.
+app.post('/api/save-daily-plan', requireUser(async (req, res, user) => {
+  try {
+    const { sections, sourceImageUrl } = req.body as { sections?: any[]; sourceImageUrl?: string | null };
+    if (!Array.isArray(sections) || sections.length === 0) {
+      return res.status(400).json({ error: 'No steps to save.' });
+    }
+    // Never trust client-merged input directly — re-validate shape defensively
+    // even though every section already passed through the real AI
+    // extraction once (per-page) before reaching here.
+    const cleaned = sections
+      .filter((s) => s && typeof s.title === 'string' && typeof s.body === 'string')
+      .slice(0, 400) // sane backstop against a malformed/abusive payload
+      .sort((a, b) => parseClockTimeToMinutes(a.timeLabel) - parseClockTimeToMinutes(b.timeLabel))
+      .map((s, i) => ({
+        id: 'custom_' + i,
+        timeLabel: typeof s.timeLabel === 'string' && s.timeLabel.trim() ? s.timeLabel.trim() : '',
+        title: s.title || 'Step',
+        body: s.body || '',
+      }));
+    if (cleaned.length === 0) {
+      return res.status(400).json({ error: 'No valid steps to save.' });
+    }
+    const supabase = getSupabaseAdmin();
+    if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+    const saved = await persistCustomDailyPlan(supabase, user, cleaned, typeof sourceImageUrl === 'string' ? sourceImageUrl : null);
+    return res.json({ isValidPlan: true, ...saved });
+  } catch (error) {
+    console.error('Error saving merged daily plan:', error);
+    return res.status(500).json({ error: 'Could not save this plan right now.' });
   }
 }));
 

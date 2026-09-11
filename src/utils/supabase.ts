@@ -533,16 +533,47 @@ export interface CustomDailyPlanResult {
   expiresAt?: string;
 }
 
-export async function uploadCustomDailyPlan(fileBase64: string, mimeType: string): Promise<CustomDailyPlanResult> {
+/** `persist: false` extracts sections without saving them — used once per
+ *  rendered page when the source is a multi-page PDF (see
+ *  UploadDailyPlanModal + pdfToImages.ts), so nothing is written to the
+ *  user's plan until every page has been read and merged. Defaults to
+ *  true, which is the original save-immediately behavior for a single
+ *  photo upload. */
+export async function uploadCustomDailyPlan(fileBase64: string, mimeType: string, persist: boolean = true): Promise<CustomDailyPlanResult> {
   try {
     const res = await authedFetch('/api/analyze-daily-plan', {
       method: 'POST',
-      body: JSON.stringify({ imageBase64: fileBase64, mimeType }),
+      body: JSON.stringify({ imageBase64: fileBase64, mimeType, persist }),
     });
     const data = await res.json();
     if (res.status === 401) return { isValidPlan: false, rejectionReason: 'Please sign in again.' };
     if (!res.ok) return { isValidPlan: false, analysisFailed: true, rejectionReason: data.rejectionReason || data.error || 'Could not read this plan right now.' };
     return data;
+  } catch (e) {
+    return { isValidPlan: false, analysisFailed: true, rejectionReason: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
+export interface DailyPlanSectionInput {
+  timeLabel: string | null;
+  title: string;
+  body: string;
+}
+
+/** Finalizes a multi-page PDF upload — saves the sections merged client-side
+ *  from every page's own (unsaved) extraction as the one active custom
+ *  plan. See /api/save-daily-plan in server.ts, which re-sorts them into
+ *  real chronological order before saving. */
+export async function saveMergedDailyPlan(sections: DailyPlanSectionInput[]): Promise<CustomDailyPlanResult> {
+  try {
+    const res = await authedFetch('/api/save-daily-plan', {
+      method: 'POST',
+      body: JSON.stringify({ sections, sourceImageUrl: null }),
+    });
+    const data = await res.json();
+    if (res.status === 401) return { isValidPlan: false, rejectionReason: 'Please sign in again.' };
+    if (!res.ok) return { isValidPlan: false, analysisFailed: true, rejectionReason: data.error || 'Could not save this plan right now.' };
+    return { isValidPlan: true, ...data };
   } catch (e) {
     return { isValidPlan: false, analysisFailed: true, rejectionReason: 'Could not reach the server. Please check your connection and try again.' };
   }
