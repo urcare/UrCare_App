@@ -100,16 +100,35 @@ export async function signInWithGoogle(): Promise<{ error?: string }> {
 }
 
 /** Finishes the native Google sign-in flow once the OAuth redirect comes
- *  back as a deep link (org.urcare.app://auth-callback?code=...) — exchanges
- *  that PKCE code for a real session, which fires the same
+ *  back as a deep link (org.urcare.app://auth-callback?code=...&sb_flow_id=...)
+ *  — exchanges that PKCE code for a real session, which fires the same
  *  onAuthStateChange the rest of the app already listens to (see App.tsx),
  *  so nothing else needs to know this happened via a deep link rather than
- *  a normal page load. */
+ *  a normal page load.
+ *
+ *  exchangeCodeForSession() takes the bare `code` (and, to look up the
+ *  right stored PKCE verifier, an explicit `flowId` option) — NOT a whole
+ *  URL. Passed a URL, it can't find the flow id there and falls back to
+ *  sniffing one out of `window.location.href`, which never actually
+ *  becomes this callback URL on native (Android hands the deep link to the
+ *  app as an Intent, without ever navigating the WebView to it) — so that
+ *  lookup silently comes up empty, surfacing as gotrue's "invalid flow
+ *  state, no valid flow state found". Parsing the code/flow id out here
+ *  ourselves and passing them explicitly is exactly the pattern
+ *  Supabase's own docs show for a server-side callback handler — a native
+ *  deep link handler is the same shape of problem. */
 export async function completeNativeOAuthSignIn(callbackUrl: string): Promise<{ error?: string }> {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: 'Supabase is not configured.' };
   try {
-    const { error } = await supabase.auth.exchangeCodeForSession(callbackUrl);
+    // A custom scheme ("org.urcare.app://...") isn't a URL the WHATWG URL
+    // parser accepts as-is on every platform — swap in a throwaway https
+    // origin just so its query string can be read reliably.
+    const parsed = new URL(callbackUrl.replace(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//, 'https://placeholder.invalid/'));
+    const code = parsed.searchParams.get('code');
+    const flowId = parsed.searchParams.get('sb_flow_id') || undefined;
+    if (!code) return { error: 'No authorization code found in the sign-in redirect.' };
+    const { error } = await supabase.auth.exchangeCodeForSession(code, flowId ? { flowId } : undefined);
     return { error: error?.message };
   } finally {
     // Close the browser tab the OAuth flow ran in, whether it succeeded or not.
