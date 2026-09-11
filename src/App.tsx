@@ -23,6 +23,10 @@ function MainApp() {
   const [showBodyMap, setShowBodyMap] = useState(false);
   const [isAdminPortalOpen, setIsAdminPortalOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  // Surfaced on AuthScreen if the native Google sign-in flow (see below)
+  // completes but fails — so a failure is visible instead of just silently
+  // landing back here with no explanation.
+  const [nativeAuthError, setNativeAuthError] = useState<string | null>(null);
 
   const loadFromSession = useCallback(async (userId: string, email: string) => {
     const bundle = await fetchProfileBundle(userId, email);
@@ -82,12 +86,27 @@ function MainApp() {
   // any other sign-in, so nothing else needs a native-specific code path.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
+
+    const finishSignIn = async (url: string) => {
+      if (!url.startsWith('org.urcare.app://auth-callback')) return;
+      const { error } = await completeNativeOAuthSignIn(url);
+      // A failure here is otherwise invisible — the app just falls back to
+      // AuthScreen with no explanation, which reads as "it sent me back to
+      // signup for no reason." Surface the real reason instead.
+      if (error) setNativeAuthError(error);
+    };
+
+    // Android can (and often does) kill this app's process in the
+    // background while the separate browser tab handles the Google login —
+    // when that happens, the OAuth redirect arrives as this app's COLD
+    // START launch URL rather than a live appUrlOpen event, so both paths
+    // are checked.
+    CapacitorApp.getLaunchUrl().then((result) => {
+      if (result?.url) finishSignIn(result.url);
+    });
+
     let listenerHandle: { remove: () => void } | undefined;
-    CapacitorApp.addListener('appUrlOpen', ({ url }) => {
-      if (url.startsWith('org.urcare.app://auth-callback')) {
-        completeNativeOAuthSignIn(url);
-      }
-    }).then((handle) => { listenerHandle = handle; });
+    CapacitorApp.addListener('appUrlOpen', ({ url }) => { finishSignIn(url); }).then((handle) => { listenerHandle = handle; });
     return () => { listenerHandle?.remove(); };
   }, []);
 
@@ -139,6 +158,7 @@ function MainApp() {
     return (
       <AuthScreen
         onOpenAdmin={() => setIsAdminPortalOpen(true)}
+        externalError={nativeAuthError}
       />
     );
   }

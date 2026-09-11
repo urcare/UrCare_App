@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X, ShieldCheck, RefreshCw, Lock, User, Mail, AlertCircle
 } from 'lucide-react';
@@ -10,9 +10,17 @@ import { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, 
 
 interface AuthScreenProps {
   onOpenAdmin?: () => void;
+  /** Set when the native app's own Google sign-in flow (a real browser tab,
+   *  since Google blocks embedded WebViews — see completeNativeOAuthSignIn
+   *  in utils/supabase.ts) finishes and failed. Without this, a failure
+   *  there just silently lands back on this same screen with no
+   *  explanation — which reads as "it sent me back to signup for no
+   *  reason" — so this pops the sign-in modal back open with the real
+   *  reason shown instead. */
+  externalError?: string | null;
 }
 
-export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
+export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalError }) => {
   const { language, setLanguage } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [authModal, setAuthModal] = useState<'signin' | 'signup' | null>(null);
@@ -20,6 +28,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin }) => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (externalError) {
+      setAuthModal('signin');
+      setError(externalError);
+    }
+  }, [externalError]);
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
