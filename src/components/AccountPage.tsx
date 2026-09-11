@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Mail, Phone, Flame, Edit3, Stethoscope, LogOut, RefreshCw,
+  Mail, Phone, Flame, Edit3, LogOut, RefreshCw,
   Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight, Droplets,
   HeartPulse, Activity, Gauge, Zap, Wind, FlaskConical, Pencil, Check, X, ScanLine,
 } from 'lucide-react';
@@ -202,7 +202,6 @@ interface AccountPageProps {
   reports: MedicalReportAnalysis[];
   onOpenOrders: () => void;
   onOpenReports: () => void;
-  onOpenDoctorConsult: () => void;
   onOpenAssessment: () => void;
   onLogOut: () => void;
 }
@@ -243,7 +242,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   reports,
   onOpenOrders,
   onOpenReports,
-  onOpenDoctorConsult,
   onOpenAssessment,
   onLogOut,
 }) => {
@@ -1030,19 +1028,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
               <FileText className="w-4.5 h-4.5" />
             </div>
-            <span className="text-sm font-bold text-zinc-900 flex-1 min-w-0 truncate">{tr('Lab & Diab Reports', 'लैब व डायबिटीज़ रिपोर्ट्स')}</span>
-            <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenDoctorConsult}
-            className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left"
-          >
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <Stethoscope className="w-4.5 h-4.5" />
-            </div>
-            <span className="text-sm font-bold text-zinc-900 flex-1 min-w-0 truncate">{tr('Doctor Hotline', 'डॉक्टर हॉटलाइन')}</span>
+            <span className="text-sm font-bold text-zinc-900 flex-1 min-w-0 truncate">{tr('Lab Reports', 'लैब रिपोर्ट्स')}</span>
             <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
           </button>
 

@@ -746,7 +746,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onUpdateAccount={onUpdateAccount}
             onOpenOrders={() => setIsMyOrdersOpen(true)}
             onOpenReports={() => setIsHealthReportOpen(true)}
-            onOpenDoctorConsult={handleOpenDoctorConsult}
             onOpenAssessment={() => setIsAssessmentModalOpen(true)}
             onLogOut={() => setShowLogoutConfirm(true)}
           />
@@ -982,10 +981,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           isOpen={isHealthReportOpen}
           onClose={() => setIsHealthReportOpen(false)}
           reportAnalysis={profile.reportAnalysis}
+          reports={myReports}
           onUpdateReport={(analysis, addedConditions) => {
             handleUpdateReport(analysis, addedConditions);
             refreshAccountData();
           }}
+          onDeleteReport={handleDeleteReport}
+          onRequestDoctorReview={handleOpenDoctorConsult}
+          onSaveReportText={handleSaveReportText}
           userAccount={account}
         />
       )}
