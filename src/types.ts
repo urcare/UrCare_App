@@ -418,7 +418,11 @@ export interface Biomarker {
   value: string;
   status: 'normal' | 'low' | 'high' | 'critical';
   referenceRange: string;
-  impactOnDiet: string;
+  /** No longer requested per-biomarker (see /api/analyze-report) — a dense
+   *  report's biomarker LIST alone can approach the vision model's free-tier
+   *  output-token ceiling, so general diet notes now live in the report's
+   *  top-level dietaryRecommendations instead of repeated per row. */
+  impactOnDiet?: string;
 }
 
 export interface MedicalReportAnalysis {
@@ -447,6 +451,19 @@ export interface MedicalReportAnalysis {
   adminReviewed?: boolean;
   adminNotes?: string;
   doctorNotes?: string;
+  /** Daily Plan impact — computed once at upload time from this report's OWN
+   *  abnormal biomarkers (see /api/analyze-report), never recomputed
+   *  differently later, so the report always tells the true story of what
+   *  happened when it was uploaded. */
+  /** Every condition this report's own abnormal findings imply — regardless
+   *  of whether it was already on file. */
+  recommendedConditions?: string[];
+  /** Snapshot of the user's conditions as they stood the moment BEFORE this
+   *  report was processed. */
+  preExistingConditions?: string[];
+  /** The subset of recommendedConditions that was actually NEW at that
+   *  moment — what this report really added to the Daily Plan. */
+  addedConditions?: string[];
 }
 
 export interface CalculatedPlan {
@@ -525,6 +542,36 @@ export interface AppNotification {
   body?: string;
   data?: Record<string, any>;
   read: boolean;
+  createdAt: string;
+}
+
+/** One real entry in "My Timeline" — the user's own commit-history-style
+ *  audit trail. Only ever written when something real actually happened
+ *  (a report uploaded/edited/deleted, a target changed, a plan uploaded,
+ *  a prescription issued, an order placed/updated, an assessment
+ *  completed) — never fabricated, never a placeholder row. */
+export interface ActivityLogEntry {
+  id: string;
+  action: 'created' | 'uploaded' | 'updated' | 'deleted';
+  category: 'report' | 'plan' | 'profile' | 'target' | 'prescription' | 'order' | 'assessment' | 'meal';
+  title: string;
+  detail?: string;
+  data?: Record<string, any>;
+  createdAt: string;
+}
+
+/** A user's own addition to their Daily Plan timeline (Plan tab → Edit →
+ *  Add) — checked once at creation against their real medical conditions
+ *  and lab-report findings (see /api/custom-plan-steps), never a plain
+ *  unreviewed note. 'yellow' = fits their profile, 'red' = conflicts with
+ *  it; `verdictReason` is always a real, specific explanation either way. */
+export interface CustomPlanStep {
+  id: string;
+  timeLabel: string;
+  title: string;
+  body: string;
+  verdict: 'yellow' | 'red';
+  verdictReason: string;
   createdAt: string;
 }
 

@@ -171,11 +171,12 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   };
 
   const categories = [
-    { id: 'all', label: tr('All Formulations', 'सभी फॉर्मूलेशन') },
-    { id: 'protein', label: tr('Whey & Plant Protein', 'व्हे व प्लांट प्रोटीन') },
-    { id: 'vitamins', label: tr('Vitamins & D3', 'विटामिन व D3') },
-    { id: 'superfoods', label: tr('Supergreens & Gut', 'सुपरग्रीन्स व गट हेल्थ') },
-    { id: 'snacks', label: tr('Healthy Snacks', 'हेल्दी स्नैक्स') },
+    { id: 'all', label: tr('All Products', 'सभी उत्पाद') },
+    { id: 'protein', label: tr('Reversal Kits & Polyherbal Medicine', 'रिवर्सल किट्स व पॉलीहर्बल औषधि') },
+    { id: 'vitamins', label: tr('Vitamins & Micronutrient Support', 'विटामिन व सूक्ष्म पोषक सहयोग') },
+    { id: 'superfoods', label: tr('Diet & Gut Support', 'आहार व गट सहयोग') },
+    { id: 'snacks', label: tr('Diabetic-Friendly Snacks', 'डायबिटीज-अनुकूल स्नैक्स') },
+    { id: 'accessories', label: tr('Monitoring & Accessories', 'मॉनिटरिंग व सहायक उपकरण') },
   ];
 
   const filteredProducts = selectedCategory === 'all'
@@ -195,13 +196,13 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
         <div className="max-w-xl space-y-2 relative">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 text-white text-xs font-bold">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>{tr('Doctor & Nutritionist Approved • Free for All Users', 'डॉक्टर व न्यूट्रिशनिस्ट अनुमोदित • सभी उपयोगकर्ताओं के लिए मुफ्त')}</span>
+            <span>{tr('Doctor-Led • Root-Cause Diabetes Reversal', 'डॉक्टर-नेतृत्व वाला • रूट-कॉज़ डायबिटीज रिवर्सल')}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            {tr('UrCare Nutritional Store', 'UrCare पोषण स्टोर')}
+            {tr('UrCare Diabetes Reversal Store', 'UrCare डायबिटीज रिवर्सल स्टोर')}
           </h2>
           <p className="text-xs sm:text-sm text-emerald-50/90 leading-relaxed">
-            {tr('Targeted whey proteins, pure multivitamins, and superfoods designed to complement your daily calorie and fitness goals.', 'लक्षित व्हे प्रोटीन, शुद्ध मल्टीविटामिन व सुपरफूड्स जो आपके दैनिक कैलोरी व फिटनेस लक्ष्यों के पूरक हैं।')}
+            {tr('Personalised, clinically formulated polyherbal reversal kits and doctor-led nutrition support — for Type 1, Type 1.5 (LADA), Type 2 and pre-diabetes. Built to reverse, not just manage.', 'व्यक्तिगत, क्लीनिकली फॉर्मूलेटेड पॉलीहर्बल रिवर्सल किट्स व डॉक्टर-नेतृत्व वाला पोषण सहयोग — टाइप 1, टाइप 1.5 (LADA), टाइप 2 व प्री-डायबिटीज के लिए। सिर्फ प्रबंधन नहीं, रिवर्सल के लिए बनाया गया।')}
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2 text-xs font-bold">
@@ -211,7 +212,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             </span>
             <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg">
               <ShieldCheck className="w-4 h-4" />
-              <span>{tr('100% Lab Tested Purity', '100% लैब टेस्टेड शुद्धता')}</span>
+              <span>{tr('Clinically Formulated & Doctor-Led', 'क्लीनिकली फॉर्मूलेटेड व डॉक्टर-नेतृत्व वाला')}</span>
             </span>
             {onOpenMyOrders && (
               <button

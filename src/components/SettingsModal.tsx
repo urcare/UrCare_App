@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { calculateNutritionPlan } from '../utils/calculator';
+import { logActivity } from '../utils/supabase';
 import { useLanguage } from '../context/LanguageContext';
 
 interface SettingsModalProps {
@@ -156,6 +157,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const trimmed = nameInput.trim();
     if (!trimmed) return;
     onUpdateProfile({ ...profile, name: trimmed, updatedAt: new Date().toISOString() });
+    if (account.uid) logActivity(account.uid, 'updated', 'profile', `Changed name to ${trimmed}`).catch(() => {});
     setIsEditingName(false);
   };
 
@@ -182,6 +184,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       calculatedPlan: recalculatedPlan,
       updatedAt: new Date().toISOString(),
     });
+    if (account.uid) logActivity(account.uid, 'updated', 'profile', `Updated body weight to ${val}kg`).catch(() => {});
 
     setIsSaving(false);
     setSaved(true);

@@ -3,7 +3,7 @@ import {
   UserHealthProfile, UserAccount, DailyLog, MealItem,
   FeedbackSubmission, Order, Prescription, DoctorContact,
   MedicalReportAnalysis, Product, UserReview, CalculatedPlan,
-  GoalType, GenderType, ActivityLevel, GoalPace, AppNotification,
+  GoalType, GenderType, ActivityLevel, GoalPace, AppNotification, ActivityLogEntry, CustomPlanStep,
 } from '../types';
 import { calculateNutritionPlan } from './calculator';
 
@@ -507,7 +507,7 @@ export async function getDailyPlan(date: string): Promise<{ plan?: any; error?: 
   return { plan: data.plan };
 }
 
-/** Today's real, Claude-generated motivational line (same for every user,
+/** Today's real, AI-generated motivational line (same for every user,
  *  regenerated once per calendar day server-side — see /api/daily-quote).
  *  Not personalized, so a plain fetch — no auth token needed. Falls back to
  *  the same static line the server itself falls back to if anything fails,
@@ -522,7 +522,7 @@ export async function getDailyQuote(): Promise<{ en: string; hi: string }> {
 }
 
 // Upload-your-own daily plan — a photo/PDF of a schedule the user already
-// has, extracted by Claude and swapped in for the built-in reversal plan for
+// has, extracted by the AI and swapped in for the built-in reversal plan for
 // the next 35 days. See /api/analyze-daily-plan in server.ts.
 export interface CustomDailyPlanResult {
   isValidPlan: boolean;
@@ -548,6 +548,48 @@ export async function uploadCustomDailyPlan(fileBase64: string, mimeType: string
   }
 }
 
+// A user's own addition to their Daily Plan timeline (Plan tab → Edit →
+// Add) — see /api/custom-plan-steps in server.ts for the real safety review
+// that stamps the 'yellow'/'red' verdict before this ever gets saved.
+export async function addCustomPlanStep(timeLabel: string, title: string, body: string): Promise<{ step?: CustomPlanStep; error?: string }> {
+  try {
+    const res = await authedFetch('/api/custom-plan-steps', {
+      method: 'POST',
+      body: JSON.stringify({ timeLabel, title, body }),
+    });
+    const data = await res.json();
+    if (res.status === 401) return { error: 'Please sign in again.' };
+    if (!res.ok) return { error: data.error || 'Could not add this step right now.' };
+    return { step: data.step };
+  } catch (e) {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
+export async function getCustomPlanSteps(userId: string): Promise<CustomPlanStep[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+  const { data } = await supabase.from('custom_plan_steps').select('*').eq('user_id', userId).order('created_at', { ascending: true });
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    timeLabel: r.time_label,
+    title: r.title,
+    body: r.body || '',
+    verdict: r.verdict,
+    verdictReason: r.verdict_reason || '',
+    createdAt: r.created_at,
+  }));
+}
+
+/** Removing a custom step is allowed directly (RLS: own rows only) — unlike
+ *  activity_log, this isn't an audit trail, just the user's own editable list. */
+export async function deleteCustomPlanStep(id: string): Promise<{ error?: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: 'Supabase is not configured.' };
+  const { error } = await supabase.from('custom_plan_steps').delete().eq('id', id);
+  return { error: error?.message };
+}
+
 // ============================================================================
 // LAB REPORTS / PRESCRIPTIONS
 // ============================================================================
@@ -571,6 +613,9 @@ export async function getMyReports(userId: string): Promise<MedicalReportAnalysi
     macroAdjustments: r.macro_adjustments || { keyNutrientsToBoost: [], foodsToAvoid: [] },
     adminReviewed: r.admin_reviewed,
     adminNotes: r.admin_notes,
+    recommendedConditions: r.recommended_conditions || [],
+    preExistingConditions: r.pre_existing_conditions || [],
+    addedConditions: r.added_conditions || [],
   }));
 }
 
@@ -578,6 +623,16 @@ export async function deleteReport(reportId: string): Promise<{ error?: string }
   const supabase = getSupabaseClient();
   if (!supabase) return { error: 'Supabase is not configured.' };
   const { error } = await supabase.from('lab_reports').delete().eq('id', reportId);
+  return { error: error?.message };
+}
+
+/** Lets the user correct the extracted report text themselves — e.g. if the
+ *  OCR/AI misread a value — rather than that being permanently stuck wrong
+ *  with no way to fix it. */
+export async function updateReportText(reportId: string, reportText: string): Promise<{ error?: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: 'Supabase is not configured.' };
+  const { error } = await supabase.from('lab_reports').update({ report_text: reportText }).eq('id', reportId);
   return { error: error?.message };
 }
 
@@ -756,6 +811,53 @@ export async function markAllNotificationsRead(): Promise<void> {
  *  same section/day is harmless. */
 export async function sendPlanReminder(title: string, body: string, dedupeKey: string): Promise<void> {
   await authedFetch('/api/notifications/reminder', { method: 'POST', body: JSON.stringify({ title, body, dedupeKey }) });
+}
+
+// ============================================================================
+// MY TIMELINE — a real, immutable, GitHub-commit-style audit trail of this
+// user's own actions (report uploaded/edited/deleted, a target changed, a
+// plan uploaded, an assessment completed, etc.). Written directly by the
+// user's own client (like daily_logs) for their own actions; admin-driven
+// entries (a prescription issued, an order updated) are written server-side
+// with service_role — see createActivityLog in server.ts.
+// ============================================================================
+
+export async function logActivity(
+  userId: string,
+  action: ActivityLogEntry['action'],
+  category: ActivityLogEntry['category'],
+  title: string,
+  detail?: string,
+  data?: Record<string, any>,
+): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  try {
+    await supabase.from('activity_log').insert({ user_id: userId, action, category, title, detail: detail || null, data: data || {} });
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('urcare:activity-logged'));
+  } catch (err) {
+    console.warn('logActivity failed:', err);
+  }
+}
+
+export async function getActivityLog(userId: string, limit = 50): Promise<ActivityLogEntry[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from('activity_log')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    action: r.action,
+    category: r.category,
+    title: r.title,
+    detail: r.detail || undefined,
+    data: r.data || {},
+    createdAt: r.created_at,
+  }));
 }
 
 export async function getMyOrders(userId: string): Promise<Order[]> {

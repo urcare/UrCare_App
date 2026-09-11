@@ -1686,6 +1686,12 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                 <div className={`p-4 rounded-2xl ${cardClass} space-y-3`}>
                   <span className="text-xs font-black text-zinc-800">{tr('Medicine allergies?', 'दवाओं से एलर्जी?')}</span>
                   <DDYesNo value={dd.medicineAllergy} onChange={(v) => setDdField('medicineAllergy', v as YesNo)} options={[{ id: 'yes', label: tr('Yes', 'हां') }, { id: 'no', label: tr('No', 'नहीं') }, { id: 'not_sure', label: tr('Not sure', 'पक्का नहीं') }]} />
+                  {dd.medicineAllergy === 'yes' && (
+                    <div className="space-y-2 pt-1">
+                      <span className="text-xs font-black text-zinc-800">{tr('What reaction have you experienced?', 'आपको क्या प्रतिक्रिया हुई?')}</span>
+                      <DDChips options={['Rash', 'Swelling', 'Breathing difficulty', 'Stomach problems', 'Other']} selected={dd.allergyReactions} onToggle={(v) => toggleDdItem('allergyReactions', v)}  otherValue={dd.otherTexts['allergyReactions'] || ''} onOtherChange={(v) => setOtherText('allergyReactions', v)} />
+                    </div>
+                  )}
                 </div>
                 <div className={`p-4 rounded-2xl ${cardClass} space-y-3`}>
                   <span className="text-xs font-black text-zinc-800">{tr('Food allergies?', 'भोजन से एलर्जी?')}</span>
@@ -1702,17 +1708,23 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                       />
                     </div>
                   )}
+                  {dd.foodAllergy === 'yes' && (
+                    <div className="space-y-2 pt-1">
+                      <span className="text-xs font-black text-zinc-800">{tr('What reaction have you experienced?', 'आपको क्या प्रतिक्रिया हुई?')}</span>
+                      <DDChips options={['Rash', 'Swelling', 'Breathing difficulty', 'Stomach problems', 'Other']} selected={dd.allergyReactions} onToggle={(v) => toggleDdItem('allergyReactions', v)}  otherValue={dd.otherTexts['allergyReactions'] || ''} onOtherChange={(v) => setOtherText('allergyReactions', v)} />
+                    </div>
+                  )}
                 </div>
                 <div className={`p-4 rounded-2xl ${cardClass} space-y-3`}>
                   <span className="text-xs font-black text-zinc-800">{tr('Environmental allergies?', 'पर्यावरणीय एलर्जी?')}</span>
                   <DDYesNo value={dd.envAllergy} onChange={(v) => setDdField('envAllergy', v as YesNo)} options={[{ id: 'yes', label: tr('Yes', 'हां') }, { id: 'no', label: tr('No', 'नहीं') }, { id: 'not_sure', label: tr('Not sure', 'पक्का नहीं') }]} />
+                  {dd.envAllergy === 'yes' && (
+                    <div className="space-y-2 pt-1">
+                      <span className="text-xs font-black text-zinc-800">{tr('What reaction have you experienced?', 'आपको क्या प्रतिक्रिया हुई?')}</span>
+                      <DDChips options={['Rash', 'Swelling', 'Breathing difficulty', 'Stomach problems', 'Other']} selected={dd.allergyReactions} onToggle={(v) => toggleDdItem('allergyReactions', v)}  otherValue={dd.otherTexts['allergyReactions'] || ''} onOtherChange={(v) => setOtherText('allergyReactions', v)} />
+                    </div>
+                  )}
                 </div>
-                {(dd.medicineAllergy === 'yes' || dd.foodAllergy === 'yes' || dd.envAllergy === 'yes') && (
-                  <div className="space-y-2">
-                    <span className="text-xs font-black text-zinc-800">{tr('What reaction have you experienced?', 'आपको क्या प्रतिक्रिया हुई?')}</span>
-                    <DDChips options={['Rash', 'Swelling', 'Breathing difficulty', 'Stomach problems', 'Other']} selected={dd.allergyReactions} onToggle={(v) => toggleDdItem('allergyReactions', v)}  otherValue={dd.otherTexts['allergyReactions'] || ''} onOtherChange={(v) => setOtherText('allergyReactions', v)} />
-                  </div>
-                )}
               </div>
 
               <DDContinue />

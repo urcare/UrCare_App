@@ -4,10 +4,10 @@ import {
   CheckCircle2, ChevronRight, ChevronDown,
   FileText, Award, Circle, Check, Plus,
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
-  Sunrise, Sun, Sunset, Moon,
+  Sunrise, Sun, Sunset, Moon, Edit3, AlertTriangle, Trash2,
   Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles, Utensils,
 } from 'lucide-react';
-import { UserHealthProfile, Prescription } from '../types';
+import { UserHealthProfile, Prescription, CustomPlanStep } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { DailyCalendar, toDateKey } from './DailyCalendar';
@@ -16,7 +16,24 @@ import { UploadDailyPlanModal } from './UploadDailyPlanModal';
 import {
   getDailyPlan, getDailyLog, getTaskCompletion,
   toggleDailyTask, getActiveDates,
+  addCustomPlanStep, getCustomPlanSteps, deleteCustomPlanStep,
 } from '../utils/supabase';
+
+/** A timeline row is either a built-in reversal-plan section or the user's
+ *  own addition (see custom_plan_steps) — the latter also carries the real
+ *  safety verdict it was reviewed with at creation (see /api/custom-plan-steps). */
+type TimelineItem = PlanSection & { isCustom?: boolean; verdict?: 'yellow' | 'red'; verdictReason?: string };
+
+/** Converts an <input type="time"> value ("14:05") to this app's "2:05 PM"
+ *  label convention, so a custom step sorts/groups exactly like a built-in
+ *  one (see labelMinutes/periodFor above). */
+function to12HourLabel(hhmm: string): string {
+  const [hStr, mStr] = hhmm.split(':');
+  let h = parseInt(hStr, 10) % 24;
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return `${h}:${mStr} ${suffix}`;
+}
 
 interface RecommendationsViewProps {
   profile: UserHealthProfile;
@@ -146,6 +163,47 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
   const [expandedItems, toggleItem] = useToggleSet();
 
+  // The user's own additions to the timeline (Plan tab → Edit → Add) — see
+  // custom_plan_steps. Recurs every day, same as the built-in reversal plan.
+  const [customSteps, setCustomSteps] = useState<CustomPlanStep[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+  const [newStepTime, setNewStepTime] = useState('');
+  const [newStepTitle, setNewStepTitle] = useState('');
+  const [newStepBody, setNewStepBody] = useState('');
+  const [isSubmittingStep, setIsSubmittingStep] = useState(false);
+  const [addStepError, setAddStepError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    getCustomPlanSteps(userId).then((steps) => { if (!cancelled) setCustomSteps(steps); });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  const handleAddStep = async () => {
+    if (!newStepTime || !newStepTitle.trim()) return;
+    setIsSubmittingStep(true);
+    setAddStepError(null);
+    const timeLabel = to12HourLabel(newStepTime);
+    const { step, error } = await addCustomPlanStep(timeLabel, newStepTitle.trim(), newStepBody.trim());
+    setIsSubmittingStep(false);
+    if (error || !step) {
+      setAddStepError(error || 'Could not add this step right now.');
+      return;
+    }
+    setCustomSteps((prev) => [...prev, step]);
+    setNewStepTime('');
+    setNewStepTitle('');
+    setNewStepBody('');
+    setIsAddFormOpen(false);
+  };
+
+  const handleDeleteStep = (id: string) => {
+    setCustomSteps((prev) => prev.filter((s) => s.id !== id));
+    deleteCustomPlanStep(id).catch(() => {});
+  };
+
   // The calendar starts collapsed — a "Change Date" button opens it, and
   // picking a date closes it again, instead of always taking up space.
   const [showCalendar, setShowCalendar] = useState(false);
@@ -155,6 +213,16 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   // plan shows up immediately instead of waiting for the next date change.
   const [isUploadPlanOpen, setIsUploadPlanOpen] = useState(false);
   const [planRefreshKey, setPlanRefreshKey] = useState(0);
+
+  // Same refresh, triggered from elsewhere — a report upload that adds a
+  // new condition to this user's Daily Plan (see Dashboard's
+  // handleUpdateReport) dispatches this so an already-open Plan tab picks
+  // it up immediately instead of waiting for the next date change.
+  useEffect(() => {
+    const handler = () => setPlanRefreshKey((k) => k + 1);
+    window.addEventListener('urcare:daily-plan-changed', handler);
+    return () => window.removeEventListener('urcare:daily-plan-changed', handler);
+  }, []);
 
   // Ticks once a minute purely to force a re-render, so "today"'s timeline
   // re-evaluates which period is current as the real clock moves — without
@@ -250,7 +318,16 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
   // Reference material (not time-bound — the herbal reference library and
   // advanced/optional therapies) is shown separately, below the timeline.
-  const timelineSections = useMemo(() => sections.filter((s) => !!s.timeLabel), [sections]);
+  // The user's own custom steps are folded in here too, so they sort/group
+  // into the same Morning/Afternoon/Evening/Night timeline as everything else.
+  const timelineSections = useMemo<TimelineItem[]>(() => {
+    const builtIn: TimelineItem[] = sections.filter((s) => !!s.timeLabel);
+    const custom: TimelineItem[] = customSteps.map((cs) => ({
+      id: cs.id, timeLabel: cs.timeLabel, title: cs.title, body: cs.body,
+      isCustom: true, verdict: cs.verdict, verdictReason: cs.verdictReason,
+    }));
+    return [...builtIn, ...custom];
+  }, [sections, customSteps]);
   const referenceSections = useMemo(() => sections.filter((s) => !s.timeLabel), [sections]);
 
   const taskIds = timelineSections.map((s) => s.id);
@@ -261,7 +338,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   // sorted by actual clock time — turns one long scroll into four short,
   // scannable groups.
   const grouped = useMemo(() => {
-    const byPeriod: Record<Period, PlanSection[]> = { morning: [], afternoon: [], evening: [], night: [] };
+    const byPeriod: Record<Period, TimelineItem[]> = { morning: [], afternoon: [], evening: [], night: [] };
     for (const s of timelineSections) {
       byPeriod[periodFor(s.timeLabel || '')].push(s);
     }
@@ -299,8 +376,8 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     if (!isToday || sortedToday.length === 0) return null;
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
-    let current: PlanSection | null = null;
-    let next: PlanSection | null = null;
+    let current: TimelineItem | null = null;
+    let next: TimelineItem | null = null;
     for (const item of sortedToday) {
       const mins = labelMinutes(item.timeLabel || '');
       if (mins <= nowMinutes) current = item;
@@ -486,12 +563,25 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                 )}
               </button>
               <div className="min-w-0 flex-1">
-                <h3 className={`text-lg sm:text-xl font-black break-words ${completedToday[heroInfo.item.id] ? 'text-emerald-600' : ''}`}>
-                  {heroInfo.item.title}
-                </h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className={`text-lg sm:text-xl font-black break-words ${completedToday[heroInfo.item.id] ? 'text-emerald-600' : ''}`}>
+                    {heroInfo.item.title}
+                  </h3>
+                  {heroInfo.item.isCustom && (
+                    <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${heroInfo.item.verdict === 'red' ? 'bg-rose-500/15 text-rose-500' : 'bg-amber-500/15 text-amber-600'}`}>
+                      {heroInfo.item.verdict === 'red' ? <AlertTriangle className="w-2.5 h-2.5" /> : null}
+                      {heroInfo.item.verdict === 'red' ? tr('Flagged', 'चिह्नित') : tr('Your addition', 'आपका जोड़ा हुआ')}
+                    </span>
+                  )}
+                </div>
                 <p className={`text-sm leading-relaxed mt-1.5 whitespace-pre-line break-words ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                   {heroInfo.item.body}
                 </p>
+                {heroInfo.item.isCustom && heroInfo.item.verdictReason && (
+                  <p className={`text-xs mt-1.5 font-semibold ${heroInfo.item.verdict === 'red' ? 'text-rose-500' : 'text-amber-600'}`}>
+                    {heroInfo.item.verdictReason}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -589,10 +679,94 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                   24-Hour Reversal Timeline
                 </h3>
               </div>
-              <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 shrink-0">
-                Matched to you
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500">
+                  Matched to you
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setIsEditMode((v) => !v); setIsAddFormOpen(false); setAddStepError(null); }}
+                  className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg border flex items-center gap-1 cursor-pointer transition-colors ${
+                    isEditMode
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : isDark ? 'border-zinc-700 text-zinc-300 hover:border-emerald-500/40' : 'border-zinc-200 text-zinc-600 hover:border-emerald-300'
+                  }`}
+                >
+                  <Edit3 className="w-3 h-3" />
+                  {isEditMode ? tr('Done', 'पूर्ण') : tr('Edit', 'संपादित करें')}
+                </button>
+              </div>
             </div>
+
+            {/* Add-your-own-step panel — only shown in Edit mode. Every
+                addition is reviewed against this user's real conditions and
+                lab findings before it's saved (see /api/custom-plan-steps) —
+                never inserted as a plain, unreviewed note. */}
+            {isEditMode && (
+              <div className={`p-3 sm:p-4 rounded-2xl border space-y-2.5 ${isDark ? 'border-zinc-800 bg-zinc-900/60' : 'border-zinc-200 bg-zinc-50'}`}>
+                {!isAddFormOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddFormOpen(true)}
+                    className="w-full py-2.5 rounded-xl border-2 border-dashed border-emerald-400/50 text-emerald-600 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-emerald-500/5 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {tr('Add your own step', 'अपना कदम जोड़ें')}
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-[auto_1fr] gap-2">
+                      <input
+                        type="time"
+                        value={newStepTime}
+                        onChange={(e) => setNewStepTime(e.target.value)}
+                        className={`px-2.5 py-2 rounded-lg text-xs font-bold border outline-none focus:border-emerald-500 ${isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-900'}`}
+                      />
+                      <input
+                        type="text"
+                        placeholder={tr('e.g. Evening walk, Green tea…', 'जैसे शाम की सैर, ग्रीन टी…')}
+                        value={newStepTitle}
+                        onChange={(e) => setNewStepTitle(e.target.value)}
+                        maxLength={80}
+                        className={`min-w-0 px-3 py-2 rounded-lg text-xs font-semibold border outline-none focus:border-emerald-500 ${isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-900'}`}
+                      />
+                    </div>
+                    <textarea
+                      placeholder={tr('Details (optional)', 'विवरण (वैकल्पिक)')}
+                      value={newStepBody}
+                      onChange={(e) => setNewStepBody(e.target.value)}
+                      rows={2}
+                      maxLength={300}
+                      className={`w-full px-3 py-2 rounded-lg text-xs border outline-none focus:border-emerald-500 resize-none ${isDark ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-900'}`}
+                    />
+                    {addStepError && (
+                      <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        {addStepError}
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={isSubmittingStep || !newStepTime || !newStepTitle.trim()}
+                        onClick={handleAddStep}
+                        className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        {isSubmittingStep ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                        {isSubmittingStep ? tr('Checking against your health data…', 'आपके स्वास्थ्य डेटा से जांच हो रही है…') : tr('Add & Check', 'जोड़ें व जांचें')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setIsAddFormOpen(false); setAddStepError(null); }}
+                        className={`px-3 py-2 rounded-lg text-xs font-bold border cursor-pointer ${isDark ? 'border-zinc-700 text-zinc-300' : 'border-zinc-200 text-zinc-600'}`}
+                      >
+                        {tr('Cancel', 'रद्द करें')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-5">
               {visiblePeriods.map(({ key, label, range, Icon }) => {
@@ -617,10 +791,17 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                       {items.filter((s) => s.id !== heroInfo?.item.id).map((section) => {
                         const done = !!completedToday[section.id];
                         const open = expandedItems.has(section.id);
+                        const isRisky = section.isCustom && section.verdict === 'red';
+                        const isCustomOk = section.isCustom && section.verdict === 'yellow';
                         return (
                           <div
                             key={section.id}
-                            className={`rounded-xl sm:rounded-2xl border transition-colors overflow-hidden ${done ? 'bg-emerald-500/10 border-emerald-500/40' : `${subCardClass} border-transparent`}`}
+                            className={`rounded-xl sm:rounded-2xl border transition-colors overflow-hidden ${
+                              done ? 'bg-emerald-500/10 border-emerald-500/40'
+                              : isRisky ? 'bg-rose-500/10 border-rose-400/50'
+                              : isCustomOk ? 'bg-amber-500/10 border-amber-400/40'
+                              : `${subCardClass} border-transparent`
+                            }`}
                           >
                             <div className="flex items-stretch">
                               <button
@@ -648,15 +829,45 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                                       <span className="text-[10px] font-black text-emerald-500 shrink-0">{section.timeLabel}</span>
                                     )}
                                     <span className={`text-xs sm:text-sm font-bold break-words ${done ? 'text-emerald-600' : ''}`}>{section.title}</span>
+                                    {isRisky && (
+                                      <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-500 shrink-0">
+                                        <AlertTriangle className="w-2.5 h-2.5" />{tr('Flagged', 'चिह्नित')}
+                                      </span>
+                                    )}
+                                    {isCustomOk && (
+                                      <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 shrink-0">
+                                        {tr('Your addition', 'आपका जोड़ा हुआ')}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                                 <ChevronDown className={`w-4 h-4 opacity-40 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
                               </button>
+                              {isEditMode && section.isCustom && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteStep(section.id)}
+                                  aria-label="Remove this step"
+                                  className="flex items-center px-3 shrink-0 text-zinc-400 hover:text-rose-500 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                             {open && (
-                              <p className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words px-3 sm:px-4 pb-3.5 ${isDark ? 'text-zinc-300' : 'text-zinc-700'} ${done ? 'opacity-60' : ''}`}>
-                                {section.body}
-                              </p>
+                              <div className={`px-3 sm:px-4 pb-3.5 space-y-1.5 ${done ? 'opacity-60' : ''}`}>
+                                {section.body && (
+                                  <p className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                                    {section.body}
+                                  </p>
+                                )}
+                                {section.isCustom && section.verdictReason && (
+                                  <p className={`text-xs font-semibold flex items-start gap-1.5 ${isRisky ? 'text-rose-500' : 'text-amber-600'}`}>
+                                    {isRisky ? <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
+                                    <span>{section.verdictReason}</span>
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </div>
                         );

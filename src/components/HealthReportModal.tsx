@@ -10,7 +10,7 @@ interface HealthReportModalProps {
   isOpen: boolean;
   onClose: () => void;
   reportAnalysis?: MedicalReportAnalysis;
-  onUpdateReport: (analysis: MedicalReportAnalysis) => void;
+  onUpdateReport: (analysis: MedicalReportAnalysis, addedConditions?: string[]) => void;
   userAccount?: { uid?: string; displayName?: string; email?: string } | null;
 }
 
@@ -99,8 +99,8 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
               standalone
               userAccount={userAccount}
               onDone={handleDone}
-              onReportAnalyzed={(data) => {
-                onUpdateReport(data);
+              onReportAnalyzed={(data, addedConditions) => {
+                onUpdateReport(data, addedConditions);
                 setIsUploadingNew(false);
               }}
             />

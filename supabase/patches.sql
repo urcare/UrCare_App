@@ -153,3 +153,79 @@ create policy "own notifications select" on public.notifications for select usin
 drop policy if exists "own notifications update" on public.notifications;
 create policy "own notifications update" on public.notifications for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 -- Inserts go through the server (service_role) only — no anon/user insert policy.
+
+-- 7. ACTIVITY LOG — "My Timeline" on Home: a GitHub-commit-style history of
+--    real things that actually happened to this user's own data (a report
+--    uploaded/edited/deleted, a plan uploaded, a health-profile or nutrition
+--    target changed, a prescription issued, an order placed/updated, an
+--    assessment completed). Unlike notifications (server-only insert, an
+--    alert), this is the user's OWN audit trail of their OWN actions, so —
+--    same as daily_logs — their own client is allowed to insert it directly.
+--    No update/delete policy: an audit trail a user could edit or erase
+--    wouldn't be trustworthy as one, same as a real commit history.
+create table if not exists public.activity_log (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  action text not null, -- 'created' | 'uploaded' | 'updated' | 'deleted'
+  category text not null, -- 'report' | 'plan' | 'profile' | 'target' | 'prescription' | 'order' | 'assessment' | 'meal'
+  title text not null,
+  detail text,
+  data jsonb default '{}',
+  created_at timestamptz default now()
+);
+create index if not exists activity_log_user_id_created_at_idx on public.activity_log (user_id, created_at desc);
+alter table public.activity_log enable row level security;
+drop policy if exists "own activity select" on public.activity_log;
+create policy "own activity select" on public.activity_log for select using (auth.uid() = user_id);
+drop policy if exists "own activity insert" on public.activity_log;
+create policy "own activity insert" on public.activity_log for insert with check (auth.uid() = user_id);
+-- Admin-driven entries (prescription issued, order updated) are written by
+-- the server with service_role, which bypasses RLS — no separate policy
+-- needed for that.
+
+-- 8. CUSTOM PLAN STEPS — a user's own additions to their Daily Plan timeline
+--    (Plan tab → Edit → Add). Each one is checked once, at creation, against
+--    this user's REAL medical conditions and lab-report findings by the
+--    server (Groq call, using health_profiles.existing_concerns + their most
+--    recent lab_reports biomarkers) and stamped with a verdict — 'yellow'
+--    (fits their profile) or 'red' (conflicts with it) — shown as a colored
+--    indicator in the timeline. Recurs every day (no date column), same as
+--    the built-in reversal_plan_sections. Insert/update only via the server
+--    (needs the service-role client to call Groq) — the user's own client
+--    can read and delete its own rows directly, same as a note they wrote.
+create table if not exists public.custom_plan_steps (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  time_label text not null,
+  title text not null,
+  body text,
+  verdict text not null default 'yellow', -- 'yellow' | 'red'
+  verdict_reason text,
+  created_at timestamptz default now()
+);
+create index if not exists custom_plan_steps_user_id_idx on public.custom_plan_steps (user_id);
+alter table public.custom_plan_steps enable row level security;
+drop policy if exists "own custom plan steps select" on public.custom_plan_steps;
+create policy "own custom plan steps select" on public.custom_plan_steps for select using (auth.uid() = user_id);
+drop policy if exists "own custom plan steps delete" on public.custom_plan_steps;
+create policy "own custom plan steps delete" on public.custom_plan_steps for delete using (auth.uid() = user_id);
+-- No insert/update policy — those go through the server (service_role) only,
+-- since creating a row requires the server's Groq call to set the verdict.
+
+-- 9. REPORT → PLAN IMPACT — a real, honest breakdown of what a report did to
+--    this user's Daily Plan focus, shown point-wise on the report itself
+--    (see ReportPhotoViewer). All three are deterministic, computed once at
+--    upload time from THIS report's own abnormal biomarkers (see
+--    deriveConditionTagsFromReport in server.ts) — never recomputed
+--    differently later, so the report always tells the same true story of
+--    what happened when it was uploaded:
+--    - recommended_conditions: every condition this report's own abnormal
+--      findings imply (regardless of whether it was already on file).
+--    - pre_existing_conditions: a snapshot of health_profiles.existing_concerns
+--      as it stood the moment BEFORE this report was processed.
+--    - added_conditions: the subset of recommended_conditions that was
+--      actually NEW at that moment (recommended_conditions minus
+--      pre_existing_conditions) — what this report really added.
+alter table public.lab_reports add column if not exists recommended_conditions text[] default '{}';
+alter table public.lab_reports add column if not exists pre_existing_conditions text[] default '{}';
+alter table public.lab_reports add column if not exists added_conditions text[] default '{}';

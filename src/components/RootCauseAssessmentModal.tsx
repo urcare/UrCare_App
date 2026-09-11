@@ -738,7 +738,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
                 <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">
                   {tr('UrCare Clinical Assessment', 'UrCare क्लीनिकल मूल्यांकन')}
                 </span>
-                <span className="text-[9px] sm:text-[10px] text-zinc-500 whitespace-nowrap">{tr('22 Root-Cause Modules', '22 रूट-कॉज़ मॉड्यूल')}</span>
+                <span className="text-[9px] sm:text-[10px] text-zinc-500 whitespace-nowrap">{tr('Root-Cause Modules', 'रूट-कॉज़ मॉड्यूल')}</span>
               </div>
               <h2 className="text-sm sm:text-lg font-black leading-tight mt-1">{tr('All-Condition Personalised Root-Cause Reversal Form', 'व्यक्तिगत रूट-कॉज़ रिवर्सल फॉर्म (सभी स्थितियों के लिए)')}</h2>
             </div>

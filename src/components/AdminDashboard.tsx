@@ -1954,11 +1954,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                     onChange={(e) => setProductForm({ ...productForm, category: e.target.value as any })}
                     className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-900 text-xs font-bold focus:border-emerald-500 outline-none capitalize"
                   >
-                    <option value="protein">Protein</option>
-                    <option value="vitamins">Vitamins & Minerals</option>
-                    <option value="superfoods">Superfoods</option>
-                    <option value="snacks">Healthy Snacks</option>
-                    <option value="accessories">Accessories</option>
+                    <option value="protein">Reversal Kits & Polyherbal Medicine</option>
+                    <option value="vitamins">Vitamins & Micronutrient Support</option>
+                    <option value="superfoods">Diet & Gut Support</option>
+                    <option value="snacks">Diabetic-Friendly Snacks</option>
+                    <option value="accessories">Monitoring & Accessories</option>
                   </select>
                 </div>
 

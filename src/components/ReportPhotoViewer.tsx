@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  FileText, RefreshCw, Stethoscope, CheckCircle2, Download,
-  Eye, Calendar, User, Shield, Hash, ZoomIn, ZoomOut, Check, Trash2
+  FileText, RefreshCw, Stethoscope, Calendar, User, Hash,
+  ZoomIn, Check, Trash2, X, Edit3, Loader2, ClipboardCheck,
 } from 'lucide-react';
 import { MedicalReportAnalysis } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -11,8 +12,23 @@ interface ReportPhotoViewerProps {
   onReupload: () => void;
   onRequestDoctorReview?: () => void;
   onDelete?: () => void;
+  /** Persists an edited "extracted report data" text back to this report's
+   *  real record. Omit to render that section read-only. */
+  onSaveReportText?: (newText: string) => Promise<void>;
   userName?: string;
   theme?: 'light' | 'dark';
+}
+
+/** The real extracted content, as text — biomarkers first (structured data
+ *  from the AI's analysis), falling back to the summary. Never invented:
+ *  if neither exists, there's simply nothing to show. */
+function extractedTextFor(report: MedicalReportAnalysis): string {
+  if (report.biomarkers && report.biomarkers.length > 0) {
+    return report.biomarkers
+      .map((b) => `${b.name}: ${b.value}${b.referenceRange ? ` (Ref: ${b.referenceRange})` : ''}`)
+      .join('\n');
+  }
+  return report.summary || '';
 }
 
 export const ReportPhotoViewer: React.FC<ReportPhotoViewerProps> = ({
@@ -20,14 +36,29 @@ export const ReportPhotoViewer: React.FC<ReportPhotoViewerProps> = ({
   onReupload,
   onRequestDoctorReview,
   onDelete,
+  onSaveReportText,
   userName,
   theme = 'light',
 }) => {
-  const [isZoomed, setIsZoomed] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [editedText, setEditedText] = useState(() => report.reportText || extractedTextFor(report));
+  const [isSavingText, setIsSavingText] = useState(false);
   const isDark = theme === 'dark';
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const resolvedUserName = userName || tr('Member Patient', 'सदस्य रोगी');
+
+  const handleSaveText = async () => {
+    if (!onSaveReportText) return;
+    setIsSavingText(true);
+    try {
+      await onSaveReportText(editedText);
+      setIsEditingText(false);
+    } finally {
+      setIsSavingText(false);
+    }
+  };
 
   const handleDeleteClick = () => {
     if (!onDelete) return;
@@ -133,10 +164,8 @@ export const ReportPhotoViewer: React.FC<ReportPhotoViewerProps> = ({
               <img
                 src={report.imageUrl}
                 alt="Diagnostic Lab Report Photo"
-                className={`w-full h-full object-contain transition-transform duration-300 ${
-                  isZoomed ? 'scale-125 cursor-zoom-out' : 'cursor-zoom-in'
-                }`}
-                onClick={() => setIsZoomed(!isZoomed)}
+                className="w-full h-full object-contain cursor-zoom-in"
+                onClick={() => setIsLightboxOpen(true)}
               />
 
               {/* Text Written / Overlaid on the Photo */}
@@ -160,11 +189,11 @@ export const ReportPhotoViewer: React.FC<ReportPhotoViewerProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsZoomed(!isZoomed)}
+                  onClick={() => setIsLightboxOpen(true)}
                   className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white flex items-center gap-1 pointer-events-auto cursor-pointer"
                 >
-                  {isZoomed ? <ZoomOut className="w-3 h-3" /> : <ZoomIn className="w-3 h-3" />}
-                  <span>{isZoomed ? tr('Fit to View', 'फिट करें') : tr('Zoom Photo', 'फोटो ज़ूम करें')}</span>
+                  <ZoomIn className="w-3 h-3" />
+                  <span>{tr('Zoom Photo', 'फोटो ज़ूम करें')}</span>
                 </button>
               </div>
             </div>
@@ -205,24 +234,6 @@ export const ReportPhotoViewer: React.FC<ReportPhotoViewerProps> = ({
                 </div>
               </div>
 
-              {/* Lab Values / Report Text written clearly on the document photo sheet */}
-              <div className="space-y-2 py-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-zinc-500 block">
-                  {tr('Diagnostic Values & Report Data:', 'डायग्नोस्टिक मान व रिपोर्ट डेटा:')}
-                </span>
-
-                <div className="p-4 rounded-xl bg-white border border-zinc-200 shadow-2xs font-mono text-xs text-zinc-800 whitespace-pre-line leading-relaxed">
-                  {report.reportText || (
-                    report.biomarkers && report.biomarkers.length > 0
-                      ? report.biomarkers.map(b => `${b.name}: ${b.value} (Ref: ${b.referenceRange || 'Standard'})`).join('\n')
-                      : tr(
-                          'Fasting Blood Sugar: 102 mg/dL (Normal)\nHbA1c: 5.8% (Optimal)\nLipid Spectrum: HDL 48 mg/dL | LDL 110 mg/dL',
-                          'फास्टिंग ब्लड शुगर: 102 mg/dL (सामान्य)\nHbA1c: 5.8% (उत्तम)\nलिपिड स्पेक्ट्रम: HDL 48 mg/dL | LDL 110 mg/dL'
-                        )
-                  )}
-                </div>
-              </div>
-
               {/* Official Stamp on the Document */}
               <div className="mt-6 pt-4 border-t border-zinc-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -245,6 +256,136 @@ export const ReportPhotoViewer: React.FC<ReportPhotoViewerProps> = ({
 
         </div>
 
+        {/* Extracted Report Data — the real values the AI read off this
+            report, shown as text (not just baked into the photo above), and
+            editable: if the OCR/AI got something wrong, the user can fix it
+            here instead of having no way to correct it. Shown for every
+            report, photo-based or text-based, instead of only text-based
+            ones having this section before. */}
+        <div className="rounded-2xl border border-zinc-200 overflow-hidden">
+          <div className="px-4 py-2.5 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-black uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5" />
+              {tr('Extracted Report Data', 'निकाला गया रिपोर्ट डेटा')}
+            </span>
+            {onSaveReportText && !isEditingText && (
+              <button
+                type="button"
+                onClick={() => { setEditedText(report.reportText || extractedTextFor(report)); setIsEditingText(true); }}
+                className="px-2.5 py-1 rounded-lg bg-white border border-zinc-200 hover:border-emerald-300 text-[11px] font-bold text-zinc-600 hover:text-emerald-700 flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <Edit3 className="w-3 h-3" />
+                {tr('Edit', 'संपादित करें')}
+              </button>
+            )}
+          </div>
+
+          <div className="p-4">
+            {isEditingText ? (
+              <div className="space-y-2.5">
+                <textarea
+                  autoFocus
+                  rows={7}
+                  value={editedText}
+                  onChange={(e) => setEditedText(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-zinc-300 bg-white font-mono text-xs text-zinc-800 leading-relaxed focus:border-emerald-500 focus:outline-none resize-none"
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingText(false)}
+                    disabled={isSavingText}
+                    className="px-3.5 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-600 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {tr('Cancel', 'रद्द करें')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveText}
+                    disabled={isSavingText}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-60"
+                  >
+                    {isSavingText ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    {tr('Save', 'सहेजें')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="font-mono text-xs text-zinc-700 whitespace-pre-line leading-relaxed">
+                {editedText || tr('No extracted data available for this report.', 'इस रिपोर्ट के लिए कोई डेटा उपलब्ध नहीं है।')}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Daily Plan Impact — a real, honest, point-wise breakdown of what
+            THIS report did to the user's Daily Plan focus (see
+            /api/analyze-report's deterministic condition-tag derivation).
+            Computed once at upload time and never recomputed differently
+            later, so this always tells the true story of what happened —
+            older reports uploaded before this existed simply have nothing
+            to show here, rather than a guessed answer. */}
+        {report.recommendedConditions && report.recommendedConditions.length > 0 ? (
+          <div className="rounded-2xl border border-zinc-200 overflow-hidden">
+            <div className="px-4 py-2.5 bg-zinc-50 border-b border-zinc-200">
+              <span className="text-[11px] font-black uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                <ClipboardCheck className="w-3.5 h-3.5" />
+                {tr('Daily Plan Impact', 'डेली प्लान पर प्रभाव')}
+              </span>
+            </div>
+            <div className="p-4 space-y-3.5 text-xs">
+              <div>
+                <p className="font-black text-zinc-700 mb-1.5">{tr('1. Recommended by this report:', '1. इस रिपोर्ट के अनुसार अनुशंसित:')}</p>
+                <ul className="space-y-1">
+                  {report.recommendedConditions.map((c) => (
+                    <li key={c} className="flex items-center gap-1.5 text-zinc-700">
+                      <span className="w-1 h-1 rounded-full bg-zinc-400 shrink-0" />{c}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <p className="font-black text-emerald-700 mb-1.5">{tr('2. Added to your Daily Plan:', '2. आपकी डेली प्लान में जोड़ा गया:')}</p>
+                {report.addedConditions && report.addedConditions.length > 0 ? (
+                  <ul className="space-y-1">
+                    {report.addedConditions.map((c) => (
+                      <li key={c} className="flex items-center gap-1.5 text-emerald-700 font-semibold">
+                        <Check className="w-3 h-3 shrink-0" />{c}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-zinc-400">{tr('Nothing new — already covered below.', 'कुछ नया नहीं — पहले से नीचे शामिल है।')}</p>
+                )}
+              </div>
+
+              <div>
+                <p className="font-black text-zinc-500 mb-1.5">{tr('3. Already on your profile:', '3. आपकी प्रोफ़ाइल में पहले से:')}</p>
+                {(() => {
+                  const alreadyOnFile = (report.preExistingConditions || []).filter((c) => report.recommendedConditions!.includes(c));
+                  return alreadyOnFile.length > 0 ? (
+                    <ul className="space-y-1">
+                      {alreadyOnFile.map((c) => (
+                        <li key={c} className="flex items-center gap-1.5 text-zinc-600">
+                          <span className="w-1 h-1 rounded-full bg-zinc-300 shrink-0" />{c}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-zinc-400">{tr('None yet.', 'अभी तक कोई नहीं।')}</p>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        ) : report.recommendedConditions ? (
+          <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-500 flex items-center gap-2">
+            <ClipboardCheck className="w-3.5 h-3.5 shrink-0" />
+            {tr('No specific Daily Plan condition was flagged by this report — everything checked out normal.', 'इस रिपोर्ट से कोई विशेष डेली प्लान स्थिति चिह्नित नहीं हुई — सब कुछ सामान्य पाया गया।')}
+          </div>
+        ) : null}
+
         {/* Doctor Consultation Notes (if doctor in admin has issued remarks) */}
         {report.adminNotes && (
           <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-1 text-xs text-zinc-900">
@@ -257,6 +398,32 @@ export const ReportPhotoViewer: React.FC<ReportPhotoViewerProps> = ({
         )}
 
       </div>
+
+      {/* Full-screen photo lightbox — clicking the photo (or "Zoom Photo")
+          now actually opens it full-screen instead of a small in-place
+          1.25x scale within the card's own constrained height. */}
+      {report.imageUrl && isLightboxOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4"
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setIsLightboxOpen(false)}
+            className="absolute top-4 right-4 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+            title={tr('Close', 'बंद करें')}
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={report.imageUrl}
+            alt="Diagnostic Lab Report Photo"
+            className="max-w-full max-h-full object-contain cursor-zoom-out"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

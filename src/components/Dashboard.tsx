@@ -29,7 +29,7 @@ import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
-import { signOutUser, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, getDailyPlan, getTaskCompletion, sendPlanReminder } from '../utils/supabase';
+import { signOutUser, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity } from '../utils/supabase';
 import { calculateNutritionPlan } from '../utils/calculator';
 import { labelMinutes } from './RecommendationsView';
 import { useLanguage } from '../context/LanguageContext';
@@ -203,6 +203,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setMeals((prev) => [meal, ...prev]);
     if (account?.uid) {
       addMealToLog(account.uid, toDateKey(new Date()), meal).catch(() => {});
+      logActivity(account.uid, 'created', 'meal', `Logged meal: ${meal.name}`, `${meal.calories} kcal`).catch(() => {});
     }
   };
 
@@ -219,7 +220,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setIsProUpgradeOpen(true);
   };
 
-  const handleUpdateReport = (newAnalysis: MedicalReportAnalysis) => {
+  // `addedConditions` — real condition labels the server already merged into
+  // health_profiles.existing_concerns because of THIS report's own abnormal
+  // findings (deterministic, see /api/analyze-report — not AI-decided).
+  // Mirroring them into local profile state here keeps this tab in sync
+  // immediately, and tells any open Daily Plan screen to refetch so it
+  // actually reflects the new condition right away instead of on next visit.
+  const handleUpdateReport = (newAnalysis: MedicalReportAnalysis, addedConditions?: string[]) => {
+    const mergedConditions = addedConditions && addedConditions.length > 0
+      ? Array.from(new Set([...(profile.medicalConditions || []), ...addedConditions]))
+      : profile.medicalConditions;
+
     const recalculatedPlan = calculateNutritionPlan(
       profile.gender || 'male',
       profile.age || 30,
@@ -235,18 +246,30 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const updated: UserHealthProfile = {
       ...profile,
       reportAnalysis: newAnalysis,
+      medicalConditions: mergedConditions,
       calculatedPlan: recalculatedPlan,
       updatedAt: new Date().toISOString(),
     };
     onUpdateProfile(updated);
+
+    if (addedConditions && addedConditions.length > 0) {
+      window.dispatchEvent(new CustomEvent('urcare:daily-plan-changed'));
+      // The server already wrote this user's activity_log row directly —
+      // this just wakes up any already-open My Timeline / recent-activity
+      // preview to refetch and pick it up immediately.
+      window.dispatchEvent(new CustomEvent('urcare:activity-logged'));
+    }
   };
 
   // Permanently remove one uploaded report from this user's submission log.
-  const handleDeleteReport = (reportId?: string) => {
+  const handleDeleteReport = (reportId?: string, reportName?: string) => {
     if (!reportId) return;
     deleteReport(reportId).then(() => {
       setMyReports((prev) => prev.filter((r) => r.id !== reportId));
     }).catch(() => {});
+    if (account?.uid) {
+      logActivity(account.uid, 'deleted', 'report', `Deleted report: ${reportName || 'Diagnostic Lab Report'}`).catch(() => {});
+    }
 
     // If the deleted report was the one currently driving the diet plan, fall back to
     // the plan calculated from onboarding answers alone (no report data).
@@ -267,6 +290,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
         calculatedPlan: recalculatedPlan,
         updatedAt: new Date().toISOString(),
       });
+    }
+  };
+
+  // Lets the user correct the extracted text on their own report (e.g. a
+  // misread OCR value) instead of it being permanently stuck wrong.
+  const handleSaveReportText = async (reportId: string, reportName: string | undefined, newText: string) => {
+    const { error } = await updateReportText(reportId, newText);
+    if (error) return;
+    setMyReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, reportText: newText } : r)));
+    if (account?.uid) {
+      logActivity(account.uid, 'updated', 'report', `Edited extracted data: ${reportName || 'Diagnostic Lab Report'}`).catch(() => {});
     }
   };
 
@@ -712,6 +746,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onOpenOrders={() => setIsMyOrdersOpen(true)}
             onOpenReports={() => setIsHealthReportOpen(true)}
             onOpenDoctorConsult={handleOpenDoctorConsult}
+            onOpenAssessment={() => setIsAssessmentModalOpen(true)}
             onLogOut={() => setShowLogoutConfirm(true)}
           />
         ) : (
@@ -805,58 +840,62 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* REPORTS TAB — free manual report upload + a log of everything you've   */}
           {/* submitted (also visible to admin under the same user).                 */}
           {/* ===================================================================== */}
-          {activeTab === 'reports' && (
-            <div className="space-y-6 text-left">
-              <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
-                <div className="flex items-start gap-3.5">
-                  <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-zinc-950">{tr('My Reports', 'मेरी रिपोर्ट्स')}</h3>
-                    <p className="text-xs text-zinc-500 max-w-md mt-0.5">
-                      {tr("Free for everyone — upload a lab report photo or document. It's saved to your log below, and your doctor/admin can review it too.", 'सभी के लिए मुफ्त — लैब रिपोर्ट फोटो या दस्तावेज़ अपलोड करें। यह नीचे आपके लॉग में सहेजा जाता है, और आपका डॉक्टर/एडमिन भी इसकी समीक्षा कर सकता है।')}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsHealthReportOpen(true)}
-                  className="w-full sm:w-auto shrink-0 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{tr('Upload Report', 'रिपोर्ट अपलोड करें')}</span>
-                </button>
-              </div>
+          {activeTab === 'reports' && (() => {
+            let reportsToShow = myReports;
+            if (profile.reportAnalysis && !reportsToShow.find((r) => r.id === profile.reportAnalysis!.id)) {
+              reportsToShow = [profile.reportAnalysis, ...reportsToShow];
+            }
+            // Newest first
+            reportsToShow = reportsToShow.slice().sort(
+              (a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime()
+            );
+            // A report slot is freed up by deleting one (already-built feature)
+            // — enforced for real server-side too (/api/analyze-report), this
+            // is just the proactive, no-wasted-click version of that same cap.
+            const reportLimitReached = reportsToShow.length >= 2;
 
-              {/* Report Log — every report this user has ever submitted (from Supabase) */}
-              {(() => {
-                let reportsToShow = myReports;
-                if (profile.reportAnalysis && !reportsToShow.find((r) => r.id === profile.reportAnalysis!.id)) {
-                  reportsToShow = [profile.reportAnalysis, ...reportsToShow];
-                }
-                // Newest first
-                reportsToShow = reportsToShow.slice().sort(
-                  (a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime()
-                );
-
-                if (reportsToShow.length === 0) {
-                  return (
-                    <div className={`p-12 rounded-3xl ${cardClass} text-center space-y-3`}>
-                      <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto">
-                        <Stethoscope className="w-7 h-7" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-base font-black text-zinc-900">{tr('No Reports Uploaded Yet', 'अभी तक कोई रिपोर्ट अपलोड नहीं की गई')}</p>
-                        <p className="text-xs max-w-sm mx-auto text-zinc-500">
-                          {tr('Upload a photo or document with fasting sugar, HbA1c, or lipid panel to receive personalized guidance.', 'व्यक्तिगत मार्गदर्शन पाने हेतु फास्टिंग शुगर, HbA1c, या लिपिड पैनल के साथ फोटो या दस्तावेज़ अपलोड करें।')}
-                        </p>
-                      </div>
+            return (
+              <div className="space-y-6 text-left">
+                <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+                      <FileText className="w-5 h-5" />
                     </div>
-                  );
-                }
+                    <div>
+                      <h3 className="text-base font-black text-zinc-950">{tr('My Reports', 'मेरी रिपोर्ट्स')}</h3>
+                      <p className="text-xs text-zinc-500 max-w-md mt-0.5">
+                        {reportLimitReached
+                          ? tr('Maximum 2 reports on file. Delete one below to upload a new one.', 'अधिकतम 2 रिपोर्ट्स दर्ज हैं। नई अपलोड करने के लिए नीचे से एक हटाएं।')
+                          : tr("Free for everyone — upload a lab report photo or document. It's saved to your log below, and your doctor/admin can review it too.", 'सभी के लिए मुफ्त — लैब रिपोर्ट फोटो या दस्तावेज़ अपलोड करें। यह नीचे आपके लॉग में सहेजा जाता है, और आपका डॉक्टर/एडमिन भी इसकी समीक्षा कर सकता है।')}
+                      </p>
+                    </div>
+                  </div>
+                  {!reportLimitReached && (
+                    <button
+                      type="button"
+                      onClick={() => setIsHealthReportOpen(true)}
+                      className="w-full sm:w-auto shrink-0 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{tr('Upload Report', 'रिपोर्ट अपलोड करें')}</span>
+                    </button>
+                  )}
+                </div>
 
-                return (
+                {/* Report Log — every report this user has ever submitted (from Supabase) */}
+                {reportsToShow.length === 0 ? (
+                  <div className={`p-12 rounded-3xl ${cardClass} text-center space-y-3`}>
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto">
+                      <Stethoscope className="w-7 h-7" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-base font-black text-zinc-900">{tr('No Reports Uploaded Yet', 'अभी तक कोई रिपोर्ट अपलोड नहीं की गई')}</p>
+                      <p className="text-xs max-w-sm mx-auto text-zinc-500">
+                        {tr('Upload a photo or document with fasting sugar, HbA1c, or lipid panel to receive personalized guidance.', 'व्यक्तिगत मार्गदर्शन पाने हेतु फास्टिंग शुगर, HbA1c, या लिपिड पैनल के साथ फोटो या दस्तावेज़ अपलोड करें।')}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
                   <div className="space-y-4">
                     <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500 px-1">
                       {tr('Submission Log', 'सबमिशन लॉग')} ({reportsToShow.length})
@@ -867,16 +906,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         report={report}
                         onReupload={() => setIsHealthReportOpen(true)}
                         onRequestDoctorReview={() => handleOpenDoctorConsult('Review my uploaded lab report and calibrate medications')}
-                        onDelete={() => handleDeleteReport(report.id)}
+                        onDelete={() => handleDeleteReport(report.id, report.reportName)}
+                        onSaveReportText={report.id ? (text) => handleSaveReportText(report.id!, report.reportName, text) : undefined}
                         userName={profile.name || account.displayName || 'Member'}
                         theme="light"
                       />
                     ))}
                   </div>
-                );
-              })()}
-            </div>
-          )}
+                )}
+              </div>
+            );
+          })()}
 
           {/* ===================================================================== */}
           {/* ASSESSMENT TAB — free, standalone 22-Module Root-Cause Reversal Form   */}
@@ -925,8 +965,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           isOpen={isHealthReportOpen}
           onClose={() => setIsHealthReportOpen(false)}
           reportAnalysis={profile.reportAnalysis}
-          onUpdateReport={(analysis) => {
-            handleUpdateReport(analysis);
+          onUpdateReport={(analysis, addedConditions) => {
+            handleUpdateReport(analysis, addedConditions);
             refreshAccountData();
           }}
           userAccount={account}
@@ -1005,6 +1045,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
               updatedAt: new Date().toISOString(),
             };
             onUpdateProfile(updated);
+            if (account?.uid) {
+              logActivity(account.uid, 'updated', 'assessment', 'Completed Root Cause Assessment').catch(() => {});
+            }
           }}
         />
       )}

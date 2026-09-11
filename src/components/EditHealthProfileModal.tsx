@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, User, Scale, Target, Activity, Gauge, Apple, Stethoscope, Check, Save } from 'lucide-react';
 import { UserHealthProfile, GenderType, GoalType, ActivityLevel, GoalPace } from '../types';
 import { calculateNutritionPlan } from '../utils/calculator';
+import { logActivity } from '../utils/supabase';
 import { useLanguage } from '../context/LanguageContext';
 
 interface EditHealthProfileModalProps {
@@ -191,6 +192,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
     };
 
     onUpdateProfile(updated);
+    if (profile.id) logActivity(profile.id, 'updated', 'profile', 'Updated health profile').catch(() => {});
     setIsSaving(false);
     setSaved(true);
     setTimeout(() => {

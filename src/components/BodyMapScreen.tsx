@@ -1,24 +1,9 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Html, ContactShadows, useGLTF } from '@react-three/drei';
-import * as THREE from 'three';
-import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
+import React, { useCallback, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, X, RotateCw, Plus, Minus, Sparkles, Loader2, Brain, Heart } from 'lucide-react';
+import { ArrowRight, X, Sparkles, Brain, Heart, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { Logo } from './Logo';
 import { useLanguage, AppLanguage } from '../context/LanguageContext';
-
-// The body meshes are dense (~60k verts / 300k+ tris each). drei's Html
-// `occlude` prop raycasts every marker against the mesh on every frame —
-// with a plain brute-force raycast that's 19 markers × hundreds of
-// thousands of triangles, per frame, which is what made the rotation feel
-// laggy. A bounds tree turns each of those raycasts into an O(log n) tree
-// walk instead, so occlusion stays essentially free no matter how dense
-// the mesh is.
-(THREE.BufferGeometry.prototype as any).computeBoundsTree = computeBoundsTree;
-(THREE.BufferGeometry.prototype as any).disposeBoundsTree = disposeBoundsTree;
-(THREE.Mesh.prototype as any).raycast = acceleratedRaycast;
 
 interface BodyMapScreenProps {
   profile: UserHealthProfile;
@@ -26,11 +11,11 @@ interface BodyMapScreenProps {
 }
 
 type Status = 'good' | 'attention' | 'high';
-type Gender = 'male' | 'female';
-/** "Organs" (new default) shows the 6 internal-organ markers below with the
- *  sidebar quick-select list; "Systems" shows the original full body-surface
- *  region markers exactly as before — same data, same interaction, just one
- *  tab over instead of the only mode. */
+/** "Organs" (default) shows the 6 internal-organ cards; "Systems" shows the
+ *  broader body-surface regions — same underlying data either way, just a
+ *  different grouping. The real 3D body model will replace this card grid
+ *  later; for now this keeps the same interaction (tap a card for details)
+ *  without shipping the placeholder body mesh. */
 type ViewMode = 'organs' | 'systems';
 
 interface RegionStatus {
@@ -40,13 +25,6 @@ interface RegionStatus {
   nextSteps: string[];
   wellnessScore: number;
 }
-
-const MODEL_URL: Record<Gender, string> = {
-  male: '/models/male.glb',
-  female: '/models/female.glb',
-};
-useGLTF.preload(MODEL_URL.male);
-useGLTF.preload(MODEL_URL.female);
 
 const REGION_LABELS: Record<string, string> = {
   head: 'Head',
@@ -80,73 +58,14 @@ const REGION_LABELS_HI: Record<string, string> = {
   feet: 'पैर के तलवे',
 };
 
+const REGION_IDS = Object.keys(REGION_LABELS);
+
 function regionLabel(id: string, language: AppLanguage): string {
   return language === 'hi' ? (REGION_LABELS_HI[id] || REGION_LABELS[id]) : REGION_LABELS[id];
 }
 
-// Exact points on the surface of each real 3D body model (public/models/*.glb),
-// found once by raycasting against the mesh — see scripts/generate-body-hotspots.mjs.
-// Both models are already centered at the origin, so these read the same way
-// regardless of screen size: [x, y, z] in the model's own local units.
-const BODY_HOTSPOTS: Record<Gender, Record<string, [number, number, number][]>> = {
-  male: {
-    head: [[-0.0006, 0.8866, 0.2191]],
-    eyes: [[-0.001, 0.8172, 0.1957]],
-    neck: [[-0.0046, 0.7125, 0.1833]],
-    shoulders: [[0.2851, 0.5721, 0.0381], [-0.2793, 0.5729, 0.0638]],
-    chest: [[0.0039, 0.4612, 0.168]],
-    arms: [[0.3494, 0.2363, 0.0296], [-0.3442, 0.2366, 0.0833]],
-    stomach: [[0.0016, 0.1553, 0.1669]],
-    hips: [[-0.0075, -0.1984, -0.001]],
-    lowerBack: [[-0.0008, 0.1196, -0.1225]],
-    knees: [[0.2075, -0.4109, -0.0103], [-0.2285, -0.4104, 0.0116]],
-    legs: [[0.2286, -0.627, -0.0072], [-0.2654, -0.6267, 0.0142]],
-    ankles: [[0.2023, -0.891, -0.021], [-0.2391, -0.8914, -0.014]],
-    feet: [[0.2635, -0.9343, 0.1691], [-0.2618, -0.9331, 0.1599]],
-  },
-  female: {
-    head: [[-0.0006, 0.8936, 0.1658]],
-    eyes: [[-0.0015, 0.8196, 0.1814]],
-    neck: [[-0.0028, 0.7127, 0.1659]],
-    shoulders: [[0.2472, 0.571, 0.0495], [-0.2427, 0.5716, 0.0807]],
-    chest: [[0.0028, 0.4665, 0.1508]],
-    arms: [[0.2925, 0.2357, 0.0272], [-0.2787, 0.2377, 0.0675]],
-    stomach: [[-0.0004, 0.1588, 0.1278]],
-    hips: [[0.0111, -0.1959, 0.0542]],
-    lowerBack: [[0.0006, 0.1182, -0.0986]],
-    knees: [[0.1903, -0.4127, 0.0455], [-0.1859, -0.4113, 0.0373]],
-    legs: [[0.1857, -0.6275, 0.0088], [-0.2037, -0.6275, 0.0289]],
-    ankles: [[0.1365, -0.8925, -0.0326], [-0.1633, -0.8901, -0.0217]],
-    feet: [[0.1683, -0.933, 0.0665], [-0.1781, -0.9334, 0.0746]],
-  },
-};
-
-// Internal-organ landmarks — same raycasting technique as BODY_HOTSPOTS
-// above (see scripts/generate-body-hotspots.mjs), aimed at the skin surface
-// directly over where each organ sits. Powers the "Organs" view; the
-// original body-surface regions above remain exactly as they were and
-// power the "Systems" view — nothing about that data or interaction changed.
 type OrganId = 'brain' | 'lungs' | 'heart' | 'stomach' | 'liver' | 'intestines';
 const ORGAN_IDS: OrganId[] = ['brain', 'lungs', 'heart', 'stomach', 'liver', 'intestines'];
-
-const ORGAN_HOTSPOTS: Record<Gender, Record<OrganId, [number, number, number][]>> = {
-  male: {
-    brain: [[-0.0012, 0.8626, 0.2055]],
-    lungs: [[0.0538, 0.4615, 0.1744], [-0.0546, 0.4623, 0.1901]],
-    heart: [[-0.0318, 0.3995, 0.1893]],
-    stomach: [[0.0188, 0.1656, 0.1638]],
-    liver: [[0.0572, 0.1962, 0.169]],
-    intestines: [[-0.0017, 0.0008, 0.1823]],
-  },
-  female: {
-    brain: [[-0.0008, 0.8641, 0.1774]],
-    lungs: [[0.0445, 0.4646, 0.1734], [-0.0449, 0.4646, 0.1858]],
-    heart: [[-0.0269, 0.4012, 0.2007]],
-    stomach: [[0.0116, 0.1676, 0.1293]],
-    liver: [[0.0477, 0.1968, 0.1355]],
-    intestines: [[0.0001, -0.0011, 0.1452]],
-  },
-};
 
 const ORGAN_LABELS: Record<OrganId, string> = {
   brain: 'Brain',
@@ -194,6 +113,24 @@ const IntestinesGlyph: React.FC<{ className?: string }> = ({ className }) => (
     <path d="M4.5 6.5c0 -1.8 1.6 -3 3.5 -3s3.5 1.2 3.5 3s-1.6 3 -3.5 3h8c1.9 0 3.5 1.2 3.5 3s-1.6 3 -3.5 3h-8c-1.9 0 -3.5 1.2 -3.5 3s1.6 3 3.5 3" />
   </svg>
 );
+
+const ORGAN_ICONS: Record<OrganId, React.FC<{ className?: string }>> = {
+  brain: Brain,
+  lungs: LungsGlyph,
+  heart: Heart,
+  stomach: StomachGlyph,
+  liver: LiverGlyph,
+  intestines: IntestinesGlyph,
+};
+
+// Systems (body-region) cards don't have a per-region glyph, so they use a
+// status icon instead — it doubles as an at-a-glance "is this fine or not"
+// signal, which a plain colored dot wouldn't give you.
+const STATUS_ICON: Record<Status, React.FC<{ className?: string }>> = {
+  good: CheckCircle2,
+  attention: AlertCircle,
+  high: AlertTriangle,
+};
 
 const STATUS_COLOR: Record<Status, string> = { good: '#008000', attention: '#f97316', high: '#ef4444' };
 const STATUS_LABEL: Record<Status, string> = { good: 'Healthy', attention: 'Needs Attention', high: 'High Attention' };
@@ -308,224 +245,55 @@ interface SelectedRegion extends RegionStatus {
   label: string;
 }
 
-// ---------- 3D camera rig ----------
-// A hand-rolled orbit: azimuth (spin around the body), polar (tilt up/down),
-// radius (zoom) and y (look-at height). `current` is what's actually drawn
-// each frame; `target` is where drag/buttons/marker-focus want it to go.
-// During an active drag both are set together for instant 1:1 tracking —
-// everything else (preset buttons, focusing on a marker) only moves the
-// target and lets the per-frame lerp below ease the camera there.
-interface OrbitState { azimuth: number; polar: number; radius: number; y: number; }
-
-const DEFAULT_ORBIT: OrbitState = { azimuth: 0, polar: 1.5, radius: 2.55, y: 0 };
-const MIN_RADIUS = 1.0;
-const MAX_RADIUS = 3.4;
-const MIN_POLAR = 0.85;
-const MAX_POLAR = 2.25;
-
-function shortestAngleDiff(from: number, to: number) {
-  let diff = (to - from) % (Math.PI * 2);
-  if (diff < -Math.PI) diff += Math.PI * 2;
-  if (diff > Math.PI) diff -= Math.PI * 2;
-  return diff;
-}
-
-function OrbitRig({ current, target }: { current: React.MutableRefObject<OrbitState>; target: React.MutableRefObject<OrbitState> }) {
-  useFrame((state, delta) => {
-    const c = current.current;
-    const t = target.current;
-    const f = 1 - Math.pow(0.0025, Math.min(delta, 0.1));
-    c.azimuth += shortestAngleDiff(c.azimuth, t.azimuth) * f;
-    c.polar += (t.polar - c.polar) * f;
-    c.radius += (t.radius - c.radius) * f;
-    c.y += (t.y - c.y) * f;
-
-    const x = c.radius * Math.sin(c.polar) * Math.sin(c.azimuth);
-    const y = c.radius * Math.cos(c.polar);
-    const z = c.radius * Math.sin(c.polar) * Math.cos(c.azimuth);
-    state.camera.position.set(x, c.y + y, z);
-    state.camera.lookAt(0, c.y, 0);
-  });
-  return null;
-}
-
-const BodyMesh = React.forwardRef<THREE.Mesh, { gender: Gender }>(({ gender }, ref) => {
-  const { nodes } = useGLTF(MODEL_URL[gender]) as any;
-  const geometry: THREE.BufferGeometry = nodes.body.geometry;
-
-  // Build the bounds-tree once per geometry (useGLTF caches the geometry
-  // by URL, so this only runs again if the gender/model actually changes).
-  useMemo(() => {
-    if (!(geometry as any).boundsTree) geometry.computeBoundsTree();
-  }, [geometry]);
-
-  return (
-    <mesh ref={ref} geometry={geometry}>
-      <meshStandardMaterial color="#d8ac8d" roughness={0.55} metalness={0.02} />
-    </mesh>
-  );
-});
-
-function Marker({
-  id,
-  position,
-  status,
+/** One tappable card in the organs/systems grid — icon in a status-tinted
+ *  circle, label, and a small status pill. Shared by both view modes so
+ *  they read as one consistent system. */
+function RegionCard({
   label,
+  status,
   Icon,
-  onSelect,
-  occluder,
-}: {
-  id: string;
-  position: [number, number, number];
-  status: Status;
-  /** Body-region markers (Systems view) resolve their own label from `id`;
-   *  organ markers (Organs view) pass one in since ORGAN_LABELS isn't keyed
-   *  the same way regionLabel() is. */
-  label?: string;
-  /** Organ markers only — draws the organ's own glyph inside the dot
-   *  instead of a plain circle, and enables the larger "pain" styling. */
-  Icon?: React.FC<{ className?: string }>;
-  onSelect: (id: string) => void;
-  occluder: React.MutableRefObject<THREE.Mesh | null>;
-}) {
-  const { language } = useLanguage();
-  const resolvedLabel = label ?? regionLabel(id, language);
-  const color = STATUS_COLOR[status];
-  const isHigh = status === 'high';
-  const size = Icon ? 34 : 26;
-  const haloSize = size + (Icon ? 10 : 0);
-
-  return (
-    <Html position={position} center distanceFactor={2.6} zIndexRange={[10, 0]} occlude={[occluder]} style={{ pointerEvents: 'auto' }}>
-      <button
-        type="button"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); onSelect(id); }}
-        title={resolvedLabel}
-        style={{ width: size, height: size, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', padding: 0 }}
-      >
-        {/* The blinking/fading halo — reserved for "high attention" (pain)
-            markers so it reads as a distinct alert, not decoration on
-            everything; good/attention markers stay calm and static. */}
-        {isHigh && (
-          <span
-            style={{
-              position: 'absolute', width: haloSize + 10, height: haloSize + 10, borderRadius: '9999px', background: color,
-              animation: 'urcare-marker-blink 1.6s ease-in-out infinite',
-            }}
-          />
-        )}
-        {!isHigh && (
-          <span style={{ position: 'absolute', width: haloSize, height: haloSize, borderRadius: '9999px', background: color, opacity: 0.16 }} />
-        )}
-        <span
-          style={{
-            position: 'relative', width: size, height: size, borderRadius: '9999px',
-            background: Icon ? `radial-gradient(circle at 35% 30%, ${color}, ${color}dd)` : color,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
-            boxShadow: `0 0 0 2px rgba(255,255,255,0.95), 0 2px 8px ${color}66`,
-          }}
-        >
-          {Icon && <Icon className="w-4.5 h-4.5" />}
-        </span>
-      </button>
-    </Html>
-  );
-}
-
-const ORGAN_ICONS: Record<OrganId, React.FC<{ className?: string }>> = {
-  brain: Brain,
-  lungs: LungsGlyph,
-  heart: Heart,
-  stomach: StomachGlyph,
-  liver: LiverGlyph,
-  intestines: IntestinesGlyph,
-};
-
-function Scene({
-  gender,
-  viewMode,
-  statuses,
-  current,
-  target,
-  onSelectRegion,
+  onClick,
   language,
 }: {
-  gender: Gender;
-  viewMode: ViewMode;
-  statuses: Record<string, RegionStatus>;
-  current: React.MutableRefObject<OrbitState>;
-  target: React.MutableRefObject<OrbitState>;
-  onSelectRegion: (id: string) => void;
+  label: string;
+  status: Status;
+  Icon: React.FC<{ className?: string }>;
+  onClick: () => void;
   language: AppLanguage;
 }) {
-  const hotspots = BODY_HOTSPOTS[gender];
-  const organHotspots = ORGAN_HOTSPOTS[gender];
-  const bodyRef = useRef<THREE.Mesh | null>(null);
+  const color = STATUS_COLOR[status];
   return (
-    <>
-      <ambientLight intensity={0.62} />
-      <directionalLight position={[2, 3.2, 3]} intensity={1.15} />
-      <directionalLight position={[-2.2, 1.2, -1.8]} intensity={0.35} color="#bcd6ff" />
-      <hemisphereLight args={['#ffffff', '#e7ecf3', 0.45]} />
-
-      <OrbitRig current={current} target={target} />
-
-      <BodyMesh gender={gender} ref={bodyRef} />
-
-      {viewMode === 'systems' &&
-        Object.entries(hotspots).map(([id, points]) =>
-          points.map((p, i) => (
-            <Marker
-              key={`${id}-${i}`}
-              id={id}
-              position={p}
-              status={statuses[id]?.status || 'good'}
-              onSelect={onSelectRegion}
-              occluder={bodyRef}
-            />
-          ))
-        )}
-
-      {viewMode === 'organs' &&
-        ORGAN_IDS.map((id) =>
-          organHotspots[id].map((p, i) => (
-            <Marker
-              key={`organ-${id}-${i}`}
-              id={id}
-              position={p}
-              status={statuses[id]?.status || 'good'}
-              label={organLabel(id, language)}
-              Icon={ORGAN_ICONS[id]}
-              onSelect={onSelectRegion}
-              occluder={bodyRef}
-            />
-          ))
-        )}
-
-      {/* frames=1: the body never deforms and only the camera orbits, so the
-          shadow only needs to be baked once instead of re-rendered every frame. */}
-      <ContactShadows position={[0, -0.98, 0]} opacity={0.38} scale={3.2} blur={2.6} far={1.1} frames={1} />
-    </>
-  );
-}
-
-function LoadingOverlay() {
-  const { language } = useLanguage();
-  return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#F8FAFC]/70 backdrop-blur-sm z-20 pointer-events-none">
-      <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
-      <span className="text-xs font-bold text-zinc-400">{language === 'hi' ? 'आपका 3D बॉडी मॉडल तैयार हो रहा है…' : 'Preparing your 3D body model…'}</span>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative flex flex-col items-center gap-2 p-3.5 rounded-2xl border bg-white shadow-sm hover:shadow-md transition-all cursor-pointer active:scale-97 ${
+        status === 'high' ? 'border-red-200' : status === 'attention' ? 'border-orange-200' : 'border-zinc-200'
+      }`}
+    >
+      {status === 'high' && (
+        <span className="absolute top-2 right-2 w-2 h-2 rounded-full animate-pulse" style={{ background: color }} />
+      )}
+      <span
+        className="w-12 h-12 rounded-2xl flex items-center justify-center"
+        style={{ background: `${color}1a`, color }}
+      >
+        <Icon className="w-6 h-6" />
+      </span>
+      <span className="text-xs font-black text-zinc-800 leading-tight text-center">{label}</span>
+      <span
+        className="text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full"
+        style={{ background: `${color}1a`, color }}
+      >
+        {language === 'hi' ? STATUS_LABEL_HI[status] : STATUS_LABEL[status]}
+      </span>
+    </button>
   );
 }
 
 export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
-  const gender: Gender = profile.gender === 'female' ? 'female' : 'male';
   const [selected, setSelected] = useState<SelectedRegion | null>(null);
-  const [modelReady, setModelReady] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('organs');
 
   const statuses = useMemo(() => computeRegionStatuses(profile, language), [profile, language]);
@@ -534,119 +302,18 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
     return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
   }, [statuses]);
 
-  const current = useRef<OrbitState>({ ...DEFAULT_ORBIT });
-  const target = useRef<OrbitState>({ ...DEFAULT_ORBIT });
+  const handleSelectOrgan = useCallback((id: OrganId) => {
+    setSelected({ id, label: organLabel(id, language), ...statuses[id] });
+  }, [statuses, language]);
 
-  const dragRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
-  const pinchRef = useRef<{ dist: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const handleSelectSystem = useCallback((id: string) => {
+    setSelected({ id, label: regionLabel(id, language), ...statuses[id] });
+  }, [statuses, language]);
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return;
-    dragRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
-  }, []);
-
-  useEffect(() => {
-    const handleMove = (e: PointerEvent) => {
-      if (!dragRef.current) return;
-      const dx = e.clientX - dragRef.current.x;
-      const dy = e.clientY - dragRef.current.y;
-      dragRef.current = { x: e.clientX, y: e.clientY, pointerId: dragRef.current.pointerId };
-      const next: OrbitState = {
-        azimuth: target.current.azimuth - dx * 0.009,
-        polar: Math.min(MAX_POLAR, Math.max(MIN_POLAR, target.current.polar - dy * 0.007)),
-        radius: target.current.radius,
-        y: target.current.y,
-      };
-      target.current = next;
-      current.current = next;
-    };
-    const handleUp = () => { dragRef.current = null; };
-    window.addEventListener('pointermove', handleMove);
-    window.addEventListener('pointerup', handleUp);
-    return () => {
-      window.removeEventListener('pointermove', handleMove);
-      window.removeEventListener('pointerup', handleUp);
-    };
-  }, []);
-
-  // React attaches onWheel as a passive listener, so e.preventDefault() inside
-  // it is a silent no-op (and logs a console warning on every scroll) — a
-  // native listener with { passive: false } is the only way to actually stop
-  // the page from scrolling while the user zooms the model.
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      target.current = {
-        ...target.current,
-        radius: Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, target.current.radius + e.deltaY * 0.0016)),
-      };
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, []);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const [a, b] = [e.touches[0], e.touches[1]];
-      pinchRef.current = { dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) };
-    }
-  }, []);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && pinchRef.current) {
-      const [a, b] = [e.touches[0], e.touches[1]];
-      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      const delta = dist - pinchRef.current.dist;
-      pinchRef.current = { dist };
-      target.current = {
-        ...target.current,
-        radius: Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, target.current.radius - delta * 0.006)),
-      };
-    }
-  }, []);
-
-  const handleTouchEnd = useCallback(() => { pinchRef.current = null; }, []);
-
-  const zoomBy = useCallback((delta: number) => {
-    target.current = { ...target.current, radius: Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, target.current.radius + delta)) };
-  }, []);
-
-  const handleSelectRegion = useCallback((id: string) => {
-    const isOrgan = viewMode === 'organs';
-    const points = isOrgan ? ORGAN_HOTSPOTS[gender][id as OrganId] : BODY_HOTSPOTS[gender][id];
-    const p = points?.[0];
-    if (p) {
-      target.current = {
-        azimuth: Math.atan2(p[0], p[2]),
-        polar: DEFAULT_ORBIT.polar,
-        radius: isOrgan ? 0.95 : 1.2,
-        y: p[1],
-      };
-    }
-    const info = statuses[id];
-    const label = isOrgan ? organLabel(id as OrganId, language) : regionLabel(id, language);
-    window.setTimeout(() => setSelected({ id, label, ...info }), 280);
-  }, [gender, statuses, language, viewMode]);
-
-  const closeSheet = useCallback(() => {
-    setSelected(null);
-    target.current = { ...target.current, radius: DEFAULT_ORBIT.radius, y: 0 };
-  }, []);
+  const closeSheet = useCallback(() => setSelected(null), []);
 
   return (
     <div id="body-map-screen" className="min-h-screen bg-[#F8FAFC] flex flex-col">
-      <style>{`
-        @keyframes urcare-marker-blink {
-          0%   { transform: scale(0.75); opacity: 0.55; }
-          45%  { transform: scale(1.5);  opacity: 0.12; }
-          55%  { transform: scale(1.5);  opacity: 0.12; }
-          100% { transform: scale(0.75); opacity: 0.55; }
-        }
-      `}</style>
-
       <header className="w-full max-w-xl mx-auto flex items-center justify-center pt-6 pb-1 px-4">
         <Logo size="md" />
       </header>
@@ -687,87 +354,40 @@ export const BodyMapScreen: React.FC<BodyMapScreenProps> = ({ profile, onNext })
           ))}
         </div>
 
-        {/* Body viewer row — an organ quick-select sidebar sits to the left
-            in Organs mode (same tap-a-marker interaction as clicking it
-            directly on the body, just faster to reach); the 3D body itself
-            is deliberately borderless/full-bleed (no card or rounded box)
-            so it stays the focus instead of looking boxed-in. */}
-        <div className="w-full max-w-lg mt-3 flex items-stretch gap-2">
-          {viewMode === 'organs' && (
-            <div className="flex flex-col gap-1.5 shrink-0 justify-center">
-              {ORGAN_IDS.map((id) => {
-                const Icon = ORGAN_ICONS[id];
-                const status = statuses[id]?.status || 'good';
-                const color = STATUS_COLOR[status];
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => handleSelectRegion(id)}
-                    title={organLabel(id, language)}
-                    className="w-12 flex flex-col items-center gap-1 p-1.5 rounded-xl hover:bg-white transition-colors cursor-pointer group"
-                  >
-                    <span
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-sm border ${status === 'high' ? 'animate-pulse' : ''}`}
-                      style={{ background: `${color}1a`, borderColor: `${color}55`, color }}
-                    >
-                      <Icon className="w-4.5 h-4.5" />
-                    </span>
-                    <span className="text-[9px] font-bold text-zinc-500 group-hover:text-zinc-800 leading-none truncate w-full text-center">
-                      {organLabel(id, language)}
-                    </span>
-                  </button>
-                );
-              })}
+        {/* Card grid — stands in for the 3D body model for now; tapping a
+            card opens the same detail sheet the real body view will use. */}
+        <div className="w-full max-w-lg mt-4">
+          {viewMode === 'organs' ? (
+            <div className="grid grid-cols-3 gap-3">
+              {ORGAN_IDS.map((id) => (
+                <RegionCard
+                  key={id}
+                  label={organLabel(id, language)}
+                  status={statuses[id]?.status || 'good'}
+                  Icon={ORGAN_ICONS[id]}
+                  onClick={() => handleSelectOrgan(id)}
+                  language={language}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {REGION_IDS.map((id) => (
+                <RegionCard
+                  key={id}
+                  label={regionLabel(id, language)}
+                  status={statuses[id]?.status || 'good'}
+                  Icon={STATUS_ICON[statuses[id]?.status || 'good']}
+                  onClick={() => handleSelectSystem(id)}
+                  language={language}
+                />
+              ))}
             </div>
           )}
-
-          <div
-            ref={containerRef}
-            className="relative flex-1 min-w-0 h-[54vh] min-h-[380px] max-h-[600px] select-none touch-none overflow-visible cursor-grab active:cursor-grabbing"
-            onPointerDown={handlePointerDown}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            <Canvas
-              camera={{ fov: 32, position: [0, 0, DEFAULT_ORBIT.radius] }}
-              gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-              dpr={[1, 1.75]}
-              onCreated={() => setModelReady(true)}
-            >
-              <Suspense fallback={null}>
-                <Scene gender={gender} viewMode={viewMode} statuses={statuses} current={current} target={target} onSelectRegion={handleSelectRegion} language={language} />
-              </Suspense>
-            </Canvas>
-
-            {!modelReady && <LoadingOverlay />}
-
-            {/* Zoom controls */}
-            <div className="absolute bottom-3 right-3 flex flex-col gap-1.5 z-10">
-              <button
-                type="button"
-                onClick={() => zoomBy(-0.3)}
-                className="w-8 h-8 rounded-xl bg-white/90 backdrop-blur border border-zinc-200 shadow-sm flex items-center justify-center text-zinc-600 hover:text-emerald-600 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => zoomBy(0.3)}
-                className="w-8 h-8 rounded-xl bg-white/90 backdrop-blur border border-zinc-200 shadow-sm flex items-center justify-center text-zinc-600 hover:text-emerald-600 cursor-pointer"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
         </div>
 
-        <p className="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-2.5">
-          <RotateCw className="w-3.5 h-3.5 shrink-0" />
-          {viewMode === 'organs'
-            ? tr('Drag to rotate — pinch or scroll to zoom — tap an organ (on the body or the list) for details.', 'घुमाने के लिए खींचें — ज़ूम हेतु पिंच या स्क्रॉल करें — विवरण हेतु किसी अंग पर टैप करें।')
-            : tr('Drag to rotate the body — pinch or scroll to zoom — tap a glowing marker for details.', 'शरीर को घुमाने के लिए खींचें — ज़ूम करने के लिए पिंच या स्क्रॉल करें — विवरण हेतु चमकते मार्कर पर टैप करें।')}
+        <p className="text-[11px] text-zinc-400 mt-3">
+          {tr('Tap a card for details on that area.', 'विवरण हेतु किसी कार्ड पर टैप करें।')}
         </p>
       </div>
 

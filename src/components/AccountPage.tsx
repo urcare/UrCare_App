@@ -6,8 +6,7 @@ import {
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { updateAvatar, getDailyLog, addWaterIntake, resetWaterIntake, addQuickMacroLog, resetQuickMacroLog, addQuickCalorieLog, resetQuickCalorieLog } from '../utils/supabase';
-import { EditHealthProfileModal } from './EditHealthProfileModal';
+import { updateAvatar, getDailyLog, addWaterIntake, resetWaterIntake, addQuickMacroLog, resetQuickMacroLog, addQuickCalorieLog, resetQuickCalorieLog, logActivity } from '../utils/supabase';
 import { StreakWidget } from './StreakWidget';
 import { MacroLogRow, BmiRangeBar, WaterIntakeRing } from './HealthCharts';
 import { toDateKey } from './DailyCalendar';
@@ -58,6 +57,7 @@ interface AccountPageProps {
   onOpenOrders: () => void;
   onOpenReports: () => void;
   onOpenDoctorConsult: () => void;
+  onOpenAssessment: () => void;
   onLogOut: () => void;
 }
 
@@ -97,6 +97,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   onOpenOrders,
   onOpenReports,
   onOpenDoctorConsult,
+  onOpenAssessment,
   onLogOut,
 }) => {
   const { t, language } = useLanguage();
@@ -104,7 +105,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   // Today's real logged water + macros — see WaterIntakeRing / MacroLogRow
   // (both editable) below. Macros are summed from the same real `meals`
@@ -185,6 +185,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
       ...profile,
       preferences: { ...(profile.preferences as any || {}), customWaterTargetMl: newTargetMl },
     });
+    if (userId) logActivity(userId, 'updated', 'target', `Changed water target to ${(newTargetMl / 1000).toFixed(1)}L`).catch(() => {});
   };
 
   // Real macro intake, capped at the real target — same "won't go past,
@@ -237,6 +238,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         customMacroTargets: { ...(profile.preferences?.customMacroTargets || {}), [macro]: newTargetG },
       },
     });
+    if (userId) logActivity(userId, 'updated', 'target', `Changed ${macro} target to ${newTargetG}g`).catch(() => {});
   };
 
   const handleAddCalories = async (kcal: number) => {
@@ -275,6 +277,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
       ...profile,
       preferences: { ...(profile.preferences as any || {}), customCalorieTarget: newTarget },
     });
+    if (userId) logActivity(userId, 'updated', 'target', `Changed calorie target to ${newTarget} kcal`).catch(() => {});
   };
 
   const handleAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -291,6 +294,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
       const { error } = await updateAvatar(account.uid, dataUrl);
       if (error) throw new Error(error);
       onUpdateAccount?.({ ...account, avatarUrl: dataUrl });
+      if (account.uid) logActivity(account.uid, 'updated', 'profile', 'Updated profile photo').catch(() => {});
     } catch (err: any) {
       setAvatarError(err.message || tr('Could not save your photo. Please try again.', 'आपकी फोटो सहेजी नहीं जा सकी। कृपया पुनः प्रयास करें।'));
     } finally {
@@ -558,7 +562,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         <div className="rounded-3xl bg-white border border-zinc-200 shadow-sm overflow-hidden divide-y divide-zinc-100">
           <button
             type="button"
-            onClick={() => setIsEditProfileOpen(true)}
+            onClick={onOpenAssessment}
             className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left"
           >
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
@@ -616,13 +620,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         </button>
 
       </main>
-
-      <EditHealthProfileModal
-        isOpen={isEditProfileOpen}
-        onClose={() => setIsEditProfileOpen(false)}
-        profile={profile}
-        onUpdateProfile={onUpdateProfile}
-      />
     </div>
   );
 };

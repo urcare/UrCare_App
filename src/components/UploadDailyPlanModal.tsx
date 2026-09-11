@@ -12,10 +12,11 @@ interface UploadDailyPlanModalProps {
   onUploaded: () => void;
 }
 
-/** Lets a user upload a photo/PDF of a daily routine they already have
- *  (e.g. from their own doctor, or their own handwritten schedule) — Claude
+/** Lets a user upload a photo of a daily routine they already have
+ *  (e.g. from their own doctor, or their own handwritten schedule) — the AI
  *  extracts it into the app's own time-ordered plan format, and it replaces
- *  the built-in reversal plan for the next 35 days. */
+ *  the built-in reversal plan for the next 35 days. PDF isn't offered here:
+ *  the vision model behind this reads images only. */
 export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOpen, onClose, onUploaded }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
@@ -61,7 +62,7 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
 
   const handleAnalyze = async () => {
     if (!fileBase64 || !selectedFile) {
-      setError(tr('Please choose a photo or PDF of your daily plan first.', 'कृपया पहले अपने डेली प्लान की फोटो या PDF चुनें।'));
+      setError(tr('Please choose a photo of your daily plan first.', 'कृपया पहले अपने डेली प्लान की फोटो चुनें।'));
       return;
     }
     playClickSound(700);
@@ -70,7 +71,7 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
     const data = await uploadCustomDailyPlan(fileBase64, selectedFile.type || 'image/jpeg');
     setIsAnalyzing(false);
     if (!data.isValidPlan) {
-      setError(data.rejectionReason || tr('Could not extract a plan from this. Please try a clearer photo or PDF.', 'इससे कोई प्लान नहीं निकाला जा सका। कृपया साफ़ फोटो या PDF आज़माएं।'));
+      setError(data.rejectionReason || tr('Could not extract a plan from this. Please try a clearer photo.', 'इससे कोई प्लान नहीं निकाला जा सका। कृपया साफ़ फोटो आज़माएं।'));
       return;
     }
     setResult(data);
@@ -143,8 +144,8 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
           <div className="space-y-4">
             <p className="text-xs text-zinc-400 leading-relaxed">
               {tr(
-                'Already have a daily routine from your own doctor or nutritionist, or your own handwritten schedule? Upload a photo or PDF of it here — UrCare will read it and use it as your Daily Plan for the next 35 days.',
-                'क्या आपके पास पहले से अपने डॉक्टर या न्यूट्रिशनिस्ट का दिया हुआ डेली रूटीन है, या अपना हाथ से लिखा शेड्यूल है? यहां उसकी फोटो या PDF अपलोड करें — UrCare इसे पढ़कर अगले 35 दिनों तक आपके डेली प्लान के रूप में उपयोग करेगा।'
+                'Already have a daily routine from your own doctor or nutritionist, or your own handwritten schedule? Upload a photo of it here — UrCare will read it and use it as your Daily Plan for the next 35 days.',
+                'क्या आपके पास पहले से अपने डॉक्टर या न्यूट्रिशनिस्ट का दिया हुआ डेली रूटीन है, या अपना हाथ से लिखा शेड्यूल है? यहां उसकी फोटो अपलोड करें — UrCare इसे पढ़कर अगले 35 दिनों तक आपके डेली प्लान के रूप में उपयोग करेगा।'
               )}
             </p>
 
@@ -152,13 +153,13 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
               onClick={() => document.getElementById('daily-plan-file-input')?.click()}
               className="p-6 border-2 border-dashed border-zinc-700 hover:border-emerald-500 bg-zinc-900/60 hover:bg-zinc-900 rounded-3xl text-center cursor-pointer transition-all space-y-3"
             >
-              <input id="daily-plan-file-input" type="file" accept=".pdf,image/*" className="hidden" onChange={handleFileChange} />
+              <input id="daily-plan-file-input" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center mx-auto">
                 <Upload className="w-6 h-6" />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-black text-white">
-                  {selectedFile ? selectedFile.name : tr('Click to Upload Photo or PDF', 'फोटो या PDF अपलोड करने हेतु क्लिक करें')}
+                  {selectedFile ? selectedFile.name : tr('Click to Upload a Photo', 'फोटो अपलोड करने हेतु क्लिक करें')}
                 </p>
                 <p className="text-xs text-zinc-400">
                   {tr('Your own daily routine, in any format', 'आपका अपना डेली रूटीन, किसी भी फॉर्मेट में')}

@@ -11,7 +11,12 @@ import { useLanguage } from '../context/LanguageContext';
 import { authedFetch } from '../utils/supabase';
 
 interface ReportUploaderProps {
-  onReportAnalyzed: (analysis: MedicalReportAnalysis) => void;
+  /** `addedConditions` — real condition labels the server deterministically
+   *  added to health_profiles.existing_concerns because of an abnormal
+   *  finding on THIS report (see /api/analyze-report); empty/undefined when
+   *  nothing new was found. Lets the caller refresh the Daily Plan/profile
+   *  state so it's immediately in sync, not just on the next reload. */
+  onReportAnalyzed: (analysis: MedicalReportAnalysis, addedConditions?: string[]) => void;
   currentAnalysis?: MedicalReportAnalysis;
   onSkip?: () => void;
   onDone?: () => void;
@@ -55,6 +60,10 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
   const [extractedPreviewItems, setExtractedPreviewItems] = useState<{ label: string; val: string; status: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<MedicalReportAnalysis | null>(currentAnalysis || null);
+  // Conditions the server just added because of this report's own findings
+  // (see /api/analyze-report) — shown as a small banner, and re-sent on
+  // "Done" too so the caller stays in sync either way this screen exits.
+  const [addedConditions, setAddedConditions] = useState<string[]>([]);
 
   const scanStages = [
     { title: 'Optical Scanning & Parsing Document Structure', icon: FileText },
@@ -72,8 +81,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       setFileBase64(null);
       setPreviewUrl(null);
 
-      // Read the file (image OR PDF) into base64 — Claude can read PDF text/tables
-      // directly, so the report no longer needs to be retyped by hand.
+      // Read the image into base64 to send to the scanner.
       setIsReadingFile(true);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -107,7 +115,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
 
   const handleAnalyze = async () => {
     if (inputMode === 'upload' && !selectedFile) {
-      setError(lang2 === 'hi' ? 'कृपया अपनी रिपोर्ट (PDF या फोटो) चुनें।' : 'Please select a lab report PDF or photo.');
+      setError(lang2 === 'hi' ? 'कृपया अपनी रिपोर्ट की फोटो चुनें।' : 'Please select a lab report photo.');
       return;
     }
     if (inputMode === 'text' && !reportText.trim()) {
@@ -118,8 +126,6 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       setError(lang2 === 'hi' ? 'फ़ाइल अभी तैयार हो रही है, एक पल रुकें।' : 'Still preparing your file — please wait a moment and try again.');
       return;
     }
-    // Claude reads PDF pages directly (text, tables, scanned images), so a PDF upload
-    // no longer needs the values retyped by hand — just needs the file to have loaded.
     if (inputMode === 'upload' && selectedFile && !fileBase64) {
       setError(lang2 === 'hi'
         ? 'फ़ाइल पढ़ी नहीं जा सकी। कृपया दोबारा अपलोड करें।'
@@ -130,6 +136,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
     playClickSound(750);
     setIsAnalyzing(true);
     setError(null);
+    setAddedConditions([]);
     setScanProgress(25);
 
     const progressTimer1 = setTimeout(() => setScanProgress(70), 180);
@@ -196,11 +203,16 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
           keyNutrientsToBoost: [],
           foodsToAvoid: [],
         },
+        recommendedConditions: data.recommendedConditions || [],
+        preExistingConditions: data.preExistingConditions || [],
+        addedConditions: data.addedConditions || [],
       };
 
+      const newConditions: string[] = Array.isArray(data.addedConditions) ? data.addedConditions : [];
       setScanProgress(100);
       setAnalysisResult(finalReport);
-      onReportAnalyzed(finalReport);
+      setAddedConditions(newConditions);
+      onReportAnalyzed(finalReport, newConditions);
       playSuccessChime();
       setIsAnalyzing(false);
     } catch (err) {
@@ -216,7 +228,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
   const handleDoneClick = () => {
     playSuccessChime();
     if (analysisResult) {
-      onReportAnalyzed(analysisResult);
+      onReportAnalyzed(analysisResult, addedConditions);
     }
     if (onDone) {
       onDone();
@@ -284,6 +296,17 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       {/* RESULT READY VIEW WITH PHOTO & TEXT (NO AI) */}
       {!isAnalyzing && analysisResult ? (
         <div className="space-y-4 animate-in fade-in">
+          {addedConditions.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-2.5">
+              <Zap className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-emerald-300 font-semibold leading-snug">
+                {tr(
+                  `Your Daily Plan was updated based on this report — added ${addedConditions.join(', ')}.`,
+                  `इस रिपोर्ट के आधार पर आपकी डेली प्लान अपडेट कर दी गई — जोड़ा गया: ${addedConditions.join(', ')}।`
+                )}
+              </p>
+            </div>
+          )}
           <ReportPhotoViewer
             report={analysisResult}
             onReupload={() => setAnalysisResult(null)}
@@ -317,7 +340,9 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       {!isAnalyzing && !analysisResult && (
         <div className="space-y-4">
           
-          {/* OPTION 1: UPLOAD LAB PDF / PHOTO */}
+          {/* OPTION 1: UPLOAD REPORT PHOTO — PDF intentionally not offered here:
+              the vision model behind this scanner reads images only, not PDF
+              bytes, so accepting one would just guarantee a rejection. */}
           {inputMode === 'upload' && (
             <div
               onClick={() => document.getElementById('report-file-input')?.click()}
@@ -326,7 +351,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
               <input
                 id="report-file-input"
                 type="file"
-                accept=".pdf,image/*"
+                accept="image/*"
                 className="hidden"
                 onChange={handleFileChange}
               />
@@ -335,10 +360,10 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-black text-white">
-                  {selectedFile ? selectedFile.name : tr('Click to Upload PDF or Report Photo', 'PDF या रिपोर्ट फोटो अपलोड करने हेतु क्लिक करें')}
+                  {selectedFile ? selectedFile.name : tr('Click to Upload a Report Photo', 'रिपोर्ट फोटो अपलोड करने हेतु क्लिक करें')}
                 </p>
                 <p className="text-xs text-zinc-400">
-                  {tr('Supports PDF lab reports, doctor prescriptions, or blood test photos', 'PDF लैब रिपोर्ट, डॉक्टर पर्चे, या ब्लड टेस्ट फोटो समर्थित हैं')}
+                  {tr('Supports doctor prescription or blood test photos (PDF not supported right now)', 'डॉक्टर पर्चे या ब्लड टेस्ट फोटो समर्थित हैं (PDF अभी समर्थित नहीं है)')}
                 </p>
               </div>
               {selectedFile && (
