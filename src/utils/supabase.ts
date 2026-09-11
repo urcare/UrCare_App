@@ -1,4 +1,6 @@
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 import {
   UserHealthProfile, UserAccount, DailyLog, MealItem,
   FeedbackSubmission, Order, Prescription, DoctorContact,
@@ -16,7 +18,19 @@ let supabaseClient: SupabaseClient | null = null;
 export function getSupabaseClient(): SupabaseClient | null {
   if (!supabaseClient && supabaseUrl && supabaseAnonKey) {
     try {
-      supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+      supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          flowType: 'pkce',
+          // On native, the OAuth redirect never actually lands back in this
+          // WebView (Google forces the flow into a real system browser tab —
+          // see signInWithGoogle below) — it comes back in via a custom URL
+          // scheme deep link instead, handled explicitly by
+          // completeNativeOAuthSignIn (called from App.tsx's appUrlOpen
+          // listener). Auto-detecting a session from window.location would
+          // just be inert there, so it's only enabled on web.
+          detectSessionInUrl: !Capacitor.isNativePlatform(),
+        },
+      });
     } catch (e) {
       console.warn('Supabase initialization failed:', e);
     }
@@ -37,11 +51,52 @@ export function isSupabaseConfigured(): boolean {
 export async function signInWithGoogle(): Promise<{ error?: string }> {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: 'Supabase is not configured.' };
+
+  if (Capacitor.isNativePlatform()) {
+    // Google refuses to complete sign-in from inside an embedded WebView
+    // (it detects the WebView user agent and blocks it outright), so this
+    // has to run in a real browser. skipBrowserRedirect stops the SDK from
+    // trying to navigate the WebView itself — instead it hands back the
+    // OAuth URL, which we open in an actual browser tab; the custom
+    // "org.urcare.app://auth-callback" redirect is what brings the result
+    // back into the app (see AndroidManifest's intent-filter + the
+    // appUrlOpen listener in App.tsx, which calls completeNativeOAuthSignIn
+    // below).
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'org.urcare.app://auth-callback',
+        skipBrowserRedirect: true,
+      },
+    });
+    if (error) return { error: error.message };
+    if (data?.url) await Browser.open({ url: data.url });
+    return {};
+  }
+
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin },
   });
   return { error: error?.message };
+}
+
+/** Finishes the native Google sign-in flow once the OAuth redirect comes
+ *  back as a deep link (org.urcare.app://auth-callback?code=...) — exchanges
+ *  that PKCE code for a real session, which fires the same
+ *  onAuthStateChange the rest of the app already listens to (see App.tsx),
+ *  so nothing else needs to know this happened via a deep link rather than
+ *  a normal page load. */
+export async function completeNativeOAuthSignIn(callbackUrl: string): Promise<{ error?: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: 'Supabase is not configured.' };
+  try {
+    const { error } = await supabase.auth.exchangeCodeForSession(callbackUrl);
+    return { error: error?.message };
+  } finally {
+    // Close the browser tab the OAuth flow ran in, whether it succeeded or not.
+    Browser.close().catch(() => {});
+  }
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<{ error?: string }> {

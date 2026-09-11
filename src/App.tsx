@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { UserHealthProfile, UserAccount } from './types';
 import { AuthScreen } from './components/AuthScreen';
 import { OnboardingFlow } from './components/OnboardingFlow';
@@ -7,7 +9,7 @@ import { Dashboard } from './components/Dashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
-import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser } from './utils/supabase';
+import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn } from './utils/supabase';
 
 // The 3D body map pulls in three.js + react-three-fiber/drei — a sizeable
 // chunk that only the post-onboarding screen needs, so it's loaded lazily
@@ -72,6 +74,22 @@ function MainApp() {
       subscription.unsubscribe();
     };
   }, [loadFromSession]);
+
+  // Native-only: Google sign-in runs in a real browser tab, not this WebView
+  // (see signInWithGoogle in utils/supabase.ts) — this is what catches it
+  // coming back via the app's custom URL scheme and completes the session.
+  // The onAuthStateChange subscription above then picks it up exactly like
+  // any other sign-in, so nothing else needs a native-specific code path.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let listenerHandle: { remove: () => void } | undefined;
+    CapacitorApp.addListener('appUrlOpen', ({ url }) => {
+      if (url.startsWith('org.urcare.app://auth-callback')) {
+        completeNativeOAuthSignIn(url);
+      }
+    }).then((handle) => { listenerHandle = handle; });
+    return () => { listenerHandle?.remove(); };
+  }, []);
 
   const handleOnboardingComplete = async (completedProfile: UserHealthProfile, registeredAccount: UserAccount) => {
     await upsertProfile(registeredAccount.uid, completedProfile);

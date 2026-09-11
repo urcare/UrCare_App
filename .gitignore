@@ -6,3 +6,16 @@ dist/
 *.local
 npm-debug.log*
 .DS_Store
+
+# Android (Capacitor) — the android/ project itself is checked in, but its
+# build output and machine-specific SDK path aren't.
+android/local.properties
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+android/captures/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+*.apk
+*.aab
