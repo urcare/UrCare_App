@@ -54,7 +54,14 @@ export const MacroLogRow: React.FC<{
   };
 
   return (
-    <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/70 space-y-2">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -2, boxShadow: '0 6px 16px -8px rgba(0,0,0,0.16)' }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+      className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/70 border-l-[3px] space-y-2"
+      style={{ borderLeftColor: color }}
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} aria-hidden="true" />
@@ -149,7 +156,7 @@ export const MacroLogRow: React.FC<{
           {tr('Add', 'जोड़ें')}
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

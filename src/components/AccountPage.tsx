@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import confetti from 'canvas-confetti';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Mail, Phone, Flame, Edit3, Stethoscope, LogOut, RefreshCw,
   Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight, Droplets,
@@ -135,6 +136,30 @@ function findBiomarker(reports: MedicalReportAnalysis[], keywords: string[]): { 
     }
   }
   return null;
+}
+
+/** Small three-band good/attention/high meter with an animated marker —
+ *  same visual language as BmiRangeBar, positioned by status rather than
+ *  the metric's exact value (each vital has its own scale/units, so one
+ *  shared meter reads by "which zone" rather than claiming false
+ *  precision). Hidden entirely when there's nothing to show a position for. */
+function VitalStatusMeter({ status }: { status: VitalStatus }) {
+  if (status === 'unknown') return null;
+  const pct = status === 'good' ? 16 : status === 'attention' ? 50 : 84;
+  return (
+    <div className="relative h-1.5 rounded-full overflow-hidden flex">
+      <div className="h-full bg-emerald-400" style={{ width: '33.33%' }} />
+      <div className="h-full bg-amber-300" style={{ width: '33.33%' }} />
+      <div className="h-full bg-rose-400" style={{ width: '33.34%' }} />
+      <motion.div
+        className="absolute top-1/2 w-2.5 h-2.5 rounded-full bg-zinc-950 ring-2 ring-white shadow"
+        style={{ y: '-50%' }}
+        initial={{ left: '0%', opacity: 0 }}
+        animate={{ left: `${pct}%`, opacity: 1 }}
+        transition={{ duration: 0.7, ease: 'easeOut', delay: 0.15 }}
+      />
+    </div>
+  );
 }
 
 const GOAL_LABEL_HI: Record<string, string> = {
@@ -713,13 +738,21 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             Nutrition & Water Targets below, but for the clinical numbers
             (blood sugar, BP, HbA1c, heart rate, thyroid) instead of diet.
             Every row is colour-coded (green/amber/red/grey) against
-            standard reference ranges, and a metric never entered during
-            onboarding shows plainly as "Not Tracked" rather than being
-            hidden or guessed. */}
+            standard reference ranges — now carried through the whole card
+            (tinted wash + accent edge, not just a small badge) — and a
+            metric never entered during onboarding shows plainly as
+            "Not Tracked" rather than being hidden or guessed. */}
         <div className="p-5 sm:p-6 rounded-3xl bg-white border border-zinc-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between gap-2 border-b border-zinc-100 pb-3">
             <div className="flex items-center gap-2">
-              <HeartPulse className="w-5 h-5 text-emerald-600" />
+              <motion.span
+                className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 18 }}
+              >
+                <HeartPulse className="w-4.5 h-4.5" />
+              </motion.span>
               <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight">
                 {tr('Health Vitals & Key Markers', 'स्वास्थ्य वाइटल्स व प्रमुख मार्कर')}
               </h3>
@@ -727,23 +760,41 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <div className="flex items-center gap-2.5 text-[9px] font-bold text-zinc-400 shrink-0">
               <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: VITAL_STATUS_COLOR.good }} />{tr(...VITAL_STATUS_LABEL.good)}</span>
               <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: VITAL_STATUS_COLOR.attention }} />{tr(...VITAL_STATUS_LABEL.attention)}</span>
-              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: VITAL_STATUS_COLOR.high }} />{tr(...VITAL_STATUS_LABEL.high)}</span>
+              <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: VITAL_STATUS_COLOR.high }} />{tr(...VITAL_STATUS_LABEL.high)}</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <motion.div
+            className="grid grid-cols-1 sm:grid-cols-2 gap-2.5"
+            initial="hidden"
+            animate="show"
+            variants={{ show: { transition: { staggerChildren: 0.05 } } }}
+          >
             {vitals.map((v) => {
               const color = VITAL_STATUS_COLOR[v.status];
               const VitalIcon = v.icon;
               const isEditing = editingVital === v.key;
               const isEditable = !!v.ddKey;
+              const isHigh = v.status === 'high';
               return (
-                <div key={v.key} className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-2">
+                <motion.div
+                  key={v.key}
+                  variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }}
+                  whileHover={{ y: -2, boxShadow: '0 6px 16px -8px rgba(0,0,0,0.18)' }}
+                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                  className="p-3 rounded-2xl space-y-2 border-l-[3px]"
+                  style={{ background: `${color}0c`, borderColor: `${color}55`, borderLeftColor: color }}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}1a`, color }}>
+                      <motion.span
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: `${color}1a`, color }}
+                        animate={isHigh ? { scale: [1, 1.1, 1] } : {}}
+                        transition={isHigh ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : {}}
+                      >
                         <VitalIcon className="w-4 h-4" />
-                      </span>
+                      </motion.span>
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-zinc-800 truncate">{v.label}</div>
                         <div className="text-[9px] text-zinc-400 font-medium truncate">{v.hint}</div>
@@ -751,19 +802,30 @@ export const AccountPage: React.FC<AccountPageProps> = ({
                     </div>
 
                     {!isEditing && (
-                      <div className="text-right shrink-0">
-                        <div className={`text-xs sm:text-sm font-black ${v.value ? 'text-zinc-900' : 'text-zinc-400'}`}>
-                          {v.value || tr('Not tracked', 'ट्रैक नहीं')}
-                        </div>
-                        <span
-                          className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide"
-                          style={{ background: `${color}1a`, color }}
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={`${v.status}-${v.value}`}
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 4 }}
+                          transition={{ duration: 0.25 }}
+                          className="text-right shrink-0"
                         >
-                          {tr(...VITAL_STATUS_LABEL[v.status])}
-                        </span>
-                      </div>
+                          <div className={`text-xs sm:text-sm font-black ${v.value ? 'text-zinc-900' : 'text-zinc-400'}`}>
+                            {v.value || tr('Not tracked', 'ट्रैक नहीं')}
+                          </div>
+                          <span
+                            className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide"
+                            style={{ background: `${color}1a`, color }}
+                          >
+                            {tr(...VITAL_STATUS_LABEL[v.status])}
+                          </span>
+                        </motion.div>
+                      </AnimatePresence>
                     )}
                   </div>
+
+                  {!isEditing && <VitalStatusMeter status={v.status} />}
 
                   {/* Source tag — tells the user where this number came from,
                       and lets them tell a report-sourced value apart from
@@ -775,51 +837,64 @@ export const AccountPage: React.FC<AccountPageProps> = ({
                     </div>
                   )}
 
-                  {isEditable && !isEditing && (
-                    <button
-                      type="button"
-                      onClick={() => startEditVital(v.key, v.rawValue)}
-                      className="flex items-center gap-1 text-[9px] font-bold text-emerald-700 hover:text-emerald-800 cursor-pointer"
-                    >
-                      <Pencil className="w-2.5 h-2.5" />
-                      <span>{v.source === 'report' ? tr('Confirm or edit', 'पुष्टि करें या संपादित करें') : v.value ? tr('Edit', 'संपादित करें') : tr('Add manually', 'खुद जोड़ें')}</span>
-                    </button>
-                  )}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {isEditable && !isEditing && (
+                      <motion.button
+                        key="view"
+                        type="button"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => startEditVital(v.key, v.rawValue)}
+                        className="flex items-center gap-1 text-[9px] font-bold text-emerald-700 hover:text-emerald-800 cursor-pointer"
+                      >
+                        <Pencil className="w-2.5 h-2.5" />
+                        <span>{v.source === 'report' ? tr('Confirm or edit', 'पुष्टि करें या संपादित करें') : v.value ? tr('Edit', 'संपादित करें') : tr('Add manually', 'खुद जोड़ें')}</span>
+                      </motion.button>
+                    )}
 
-                  {isEditable && isEditing && (
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        autoFocus
-                        type="text"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveVital(v.ddKey, v.label); if (e.key === 'Escape') setEditingVital(null); }}
-                        placeholder={v.placeholder}
-                        className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-zinc-300 bg-white text-xs font-bold text-zinc-800 focus:outline-none focus:border-emerald-500"
-                      />
-                      <button
-                        type="button"
-                        disabled={isSavingVital}
-                        onClick={() => handleSaveVital(v.ddKey, v.label)}
-                        className="p-1.5 rounded-lg bg-emerald-600 text-white cursor-pointer disabled:opacity-50"
-                        title={tr('Save', 'सहेजें')}
+                    {isEditable && isEditing && (
+                      <motion.div
+                        key="edit"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex items-center gap-1.5 overflow-hidden"
                       >
-                        <Check className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingVital(null)}
-                        className="p-1.5 rounded-lg bg-zinc-200 text-zinc-500 cursor-pointer"
-                        title={tr('Cancel', 'रद्द करें')}
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
-                </div>
+                        <input
+                          autoFocus
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleSaveVital(v.ddKey, v.label); if (e.key === 'Escape') setEditingVital(null); }}
+                          placeholder={v.placeholder}
+                          className="flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-zinc-300 bg-white text-xs font-bold text-zinc-800 focus:outline-none focus:border-emerald-500"
+                        />
+                        <button
+                          type="button"
+                          disabled={isSavingVital}
+                          onClick={() => handleSaveVital(v.ddKey, v.label)}
+                          className="p-1.5 rounded-lg bg-emerald-600 text-white cursor-pointer disabled:opacity-50"
+                          title={tr('Save', 'सहेजें')}
+                        >
+                          <Check className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingVital(null)}
+                          className="p-1.5 rounded-lg bg-zinc-200 text-zinc-500 cursor-pointer"
+                          title={tr('Cancel', 'रद्द करें')}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
 
           <p className="text-[10px] text-zinc-400 leading-relaxed">
             {tr('Auto-filled from your Root Cause Assessment or latest lab report where available — tap any card to confirm or edit it yourself. Saved changes update everywhere this number is used.', 'जहां उपलब्ध हो वहां आपके रूट कॉज़ असेसमेंट या नवीनतम लैब रिपोर्ट से भरा गया — किसी भी कार्ड को पुष्टि या संपादित करने के लिए टैप करें। सहेजे गए बदलाव हर जगह अपडेट होंगे जहां यह नंबर उपयोग होता है।')}
@@ -829,16 +904,24 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         {/* DAILY NUTRITION & WATER TARGETS */}
         <div className="p-5 sm:p-6 rounded-3xl bg-white border border-zinc-200 shadow-xs space-y-4">
           <div className="flex items-center gap-2 border-b border-zinc-100 pb-3">
-            <Flame className="w-5 h-5 text-emerald-600" />
+            <motion.span
+              className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 18 }}
+            >
+              <Flame className="w-4.5 h-4.5" />
+            </motion.span>
             <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight">
               {tr('Daily Nutrition & Water Targets', 'दैनिक पोषण व पानी के लक्ष्य')}
             </h3>
           </div>
 
-          {/* Calories — real, editable, logged-so-far vs target, same as
-              the macros below; full-width since it's the headline number
-              (replaces the old static "kcal / day" text, which couldn't
-              reflect a custom target once one is set here). */}
+          {/* Calories — real logged-so-far vs the plan's calculated target,
+              same as the macros below; full-width since it's the headline
+              number. No edit-target control here (unlike the macros) — the
+              calorie target is derived straight from the plan, not meant to
+              be hand-tuned independently of it. */}
           <MacroLogRow
             label={tr('Calories', 'कैलोरी')}
             color="#f59e0b"
@@ -847,7 +930,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             targetG={calorieTarget}
             quickAdds={[100, 250]}
             onAdd={handleAddCalories}
-            onEditTarget={handleEditCalorieTarget}
             onReset={handleResetCalories}
             isSaving={isSavingCalories}
             tr={tr}
@@ -899,7 +981,13 @@ export const AccountPage: React.FC<AccountPageProps> = ({
               just a static number. Its own teal-tinted gradient card (vs.
               the macros' plain zinc-50) so hydration reads as its own
               premium moment rather than a fourth identical macro row. */}
-          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-teal-50 via-sky-50/60 to-white border border-teal-100">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ y: -2, boxShadow: '0 8px 20px -10px rgba(13,148,136,0.35)' }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="p-3.5 rounded-2xl bg-gradient-to-br from-teal-50 via-sky-50/60 to-white border border-teal-100"
+          >
             <div className="flex items-center justify-between mb-2.5">
               <span className="flex items-center gap-1.5 text-[10px] font-bold text-teal-700 uppercase tracking-wide">
                 <Droplets className="w-3 h-3" />
@@ -916,7 +1004,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
               isSaving={isSavingWater}
               tr={tr}
             />
-          </div>
+          </motion.div>
         </div>
 
         {/* ACCOUNT — a single tappable list, one row per action, instead of
