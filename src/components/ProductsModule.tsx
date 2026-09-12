@@ -185,6 +185,17 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
   const cardClass = isDark ? 'bg-zinc-950 border border-zinc-800' : 'bg-white border border-zinc-200 shadow-sm';
   const subCardClass = isDark ? 'bg-zinc-900 border border-zinc-800' : 'bg-zinc-50 border border-zinc-200';
+  // Driven off the app's own theme toggle (isDark), never Tailwind's dark:
+  // variant (which tracks the OS/WebView's own color scheme instead) — the
+  // product-details modal used to mix both, so a phone set to system dark
+  // mode while the app itself was in light mode rendered white text (or no
+  // color at all) on a dark: background, i.e. invisible. Every color in
+  // that modal now comes from one of these, so there's only one signal to
+  // ever get out of sync with.
+  const textPrimary = isDark ? 'text-white' : 'text-zinc-950';
+  const textSecondary = isDark ? 'text-zinc-300' : 'text-zinc-700';
+  const textMuted = isDark ? 'text-zinc-400' : 'text-zinc-500';
+  const chipClass = isDark ? 'bg-zinc-900/60 border border-zinc-800/80' : 'bg-zinc-100 border border-zinc-200';
 
   return (
     <div id="urcare-products-store" className="space-y-6">
@@ -366,45 +377,45 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
       {/* PRODUCT DETAILS MODAL (CLICK TO READ & EXPLORE FULL DETAILS) */}
       {selectedProductDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className={`relative w-full max-w-xl ${cardClass} rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 text-left max-h-[90vh] overflow-y-auto`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className={`relative w-full max-w-xl ${cardClass} rounded-3xl p-5 sm:p-7 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 text-left max-h-[92vh] overflow-y-auto`}>
             <button
               type="button"
               onClick={() => setSelectedProductDetails(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-zinc-100 dark:bg-zinc-800 opacity-70 hover:opacity-100 cursor-pointer"
+              className={`absolute top-4 right-4 p-2 rounded-full ${subCardClass} opacity-70 hover:opacity-100 cursor-pointer`}
             >
-              <X className="w-5 h-5" />
+              <X className={`w-5 h-5 ${textPrimary}`} />
             </button>
 
-            <div className="flex flex-col sm:flex-row gap-5">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-5">
               <img
                 src={selectedProductDetails.image}
                 alt={selectedProductDetails.name}
-                className="w-full sm:w-44 h-48 rounded-2xl object-cover bg-black/10 shrink-0"
+                className="w-full sm:w-44 h-40 sm:h-48 rounded-2xl object-cover bg-black/10 shrink-0"
               />
 
-              <div className="space-y-2 flex-1">
-                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <div className="space-y-1.5 flex-1 min-w-0">
+                <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   {selectedProductDetails.category.toUpperCase()}
                 </span>
-                
-                <h3 className="text-lg sm:text-xl font-black text-zinc-950 dark:text-white">
+
+                <h3 className={`text-lg sm:text-xl font-black leading-tight ${textPrimary}`}>
                   {selectedProductDetails.name}
                 </h3>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-1 text-xs font-bold text-amber-500">
                     <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                     <span>{selectedProductDetails.rating}</span>
                   </div>
-                  <span className="text-xs opacity-50">({selectedProductDetails.reviewsCount} {tr('verified reviews', 'सत्यापित समीक्षाएं')})</span>
+                  <span className={`text-xs ${textMuted}`}>({selectedProductDetails.reviewsCount} {tr('verified reviews', 'सत्यापित समीक्षाएं')})</span>
                 </div>
 
-                <div className="flex items-baseline gap-2 pt-1">
+                <div className="flex items-baseline gap-2 pt-1 flex-wrap">
                   <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
                     ₹{selectedProductDetails.discountPrice}
                   </span>
-                  <span className="text-xs opacity-50 line-through">
+                  <span className={`text-xs line-through ${textMuted}`}>
                     ₹{selectedProductDetails.price}
                   </span>
                   <span className="text-xs font-bold text-rose-500">
@@ -415,9 +426,9 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             </div>
 
             {/* Full Description */}
-            <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">{tr('About this product', 'इस उत्पाद के बारे में')}</span>
-              <p className="text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
+            <div className={`p-4 rounded-2xl ${subCardClass} space-y-1.5`}>
+              <span className={`text-xs font-bold uppercase tracking-wider ${textMuted}`}>{tr('About this product', 'इस उत्पाद के बारे में')}</span>
+              <p className={`text-xs sm:text-[13px] leading-relaxed ${textSecondary}`}>
                 {selectedProductDetails.description}
               </p>
             </div>
@@ -430,7 +441,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {selectedProductDetails.benefits.map((benefit, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80">
+                    <div key={idx} className={`flex items-center gap-2 text-xs sm:text-[13px] font-medium p-2.5 rounded-xl ${chipClass} ${textSecondary}`}>
                       <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                       <span>{benefit}</span>
                     </div>
@@ -441,37 +452,32 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
             {/* Nutritional Details if present */}
             {selectedProductDetails.nutritionInfo && (
-              <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
+              <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 space-y-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  {tr('Nutritional Breakdown', 'पोषण विवरण')} ({selectedProductDetails.nutritionInfo.servingSize})
+                  {tr('Nutritional Breakdown', 'पोषण विवरण')} <span className={`normal-case font-semibold ${textMuted}`}>({selectedProductDetails.nutritionInfo.servingSize})</span>
                 </span>
-                <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                  <div className="p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] opacity-60 block">{tr('Calories', 'कैलोरी')}</span>
-                    <span className="font-black text-sm">{selectedProductDetails.nutritionInfo.calories}</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] opacity-60 block">{tr('Protein', 'प्रोटीन')}</span>
-                    <span className="font-black text-sm text-emerald-500">{selectedProductDetails.nutritionInfo.protein}g</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] opacity-60 block">{tr('Carbs', 'कार्ब्स')}</span>
-                    <span className="font-black text-sm">{selectedProductDetails.nutritionInfo.carbs}g</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[10px] opacity-60 block">{tr('Fats', 'फैट्स')}</span>
-                    <span className="font-black text-sm">{selectedProductDetails.nutritionInfo.fats}g</span>
-                  </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+                  {[
+                    { label: tr('Calories', 'कैलोरी'), value: selectedProductDetails.nutritionInfo.calories, unit: '', color: textPrimary },
+                    { label: tr('Protein', 'प्रोटीन'), value: selectedProductDetails.nutritionInfo.protein, unit: 'g', color: 'text-emerald-500' },
+                    { label: tr('Carbs', 'कार्ब्स'), value: selectedProductDetails.nutritionInfo.carbs, unit: 'g', color: textPrimary },
+                    { label: tr('Fats', 'फैट्स'), value: selectedProductDetails.nutritionInfo.fats, unit: 'g', color: textPrimary },
+                  ].map((stat) => (
+                    <div key={stat.label} className={`p-2.5 sm:p-3 rounded-xl ${subCardClass}`}>
+                      <span className={`text-[10px] font-bold uppercase tracking-wide block mb-0.5 ${textMuted}`}>{stat.label}</span>
+                      <span className={`font-black text-base sm:text-lg ${stat.color}`}>{stat.value}{stat.unit}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
             {/* Add to Cart Footer inside Modal */}
-            <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-3">
+            <div className={`pt-4 border-t ${isDark ? 'border-zinc-800' : 'border-zinc-200'} flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3`}>
               <button
                 type="button"
                 onClick={() => setSelectedProductDetails(null)}
-                className="px-5 py-3 rounded-xl border border-zinc-300 dark:border-zinc-700 text-xs font-bold hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                className={`px-5 py-3 rounded-xl border font-bold text-xs cursor-pointer transition-colors ${textSecondary} ${isDark ? 'border-zinc-700 hover:bg-zinc-800' : 'border-zinc-300 hover:bg-zinc-100'}`}
               >
                 {tr('Close', 'बंद करें')}
               </button>
@@ -485,8 +491,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 }}
                 className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
               >
-                <ShoppingBag className="w-4 h-4" />
-                <span>{tr('Add to Cart & Checkout', 'कार्ट में जोड़ें व चेकआउट करें')} (₹{selectedProductDetails.discountPrice})</span>
+                <ShoppingBag className="w-4 h-4 shrink-0" />
+                <span className="truncate">{tr('Add to Cart & Checkout', 'कार्ट में जोड़ें व चेकआउट करें')} (₹{selectedProductDetails.discountPrice})</span>
               </button>
             </div>
           </div>
