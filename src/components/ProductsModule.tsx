@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  ShoppingBag, Star, Plus, Minus, Check, ArrowRight, ShieldCheck, 
-  Truck, QrCode, CreditCard, Sparkles, MapPin, X, Copy, Zap, 
-  Package, ChevronRight, CheckCircle2, Lock
+  ShoppingBag, Star, Plus, Minus, Check, ArrowRight, ShieldCheck,
+  Truck, QrCode, CreditCard, Sparkles, MapPin, X, Copy, Zap,
+  Package, ChevronRight, CheckCircle2, Lock, RefreshCw
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Product, CartItem, ShippingAddress, Order, UserAccount } from '../types';
@@ -44,6 +44,9 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [addedAnimationId, setAddedAnimationId] = useState<string | null>(null);
   const [selectedProductDetails, setSelectedProductDetails] = useState<Product | null>(null);
+  // Tapping the product photo in the details modal opens it full-screen —
+  // just the same image, zoomed, nothing invented.
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
 
   // Checkout flow states: 'none' | 'address' | 'payment' | 'order_confirmed'
   const [checkoutStep, setCheckoutStep] = useState<'none' | 'address' | 'payment' | 'order_confirmed'>('none');
@@ -55,6 +58,55 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     state: '',
     pincode: '',
   });
+
+  // Pincode → City/State autofill via India Post's free public lookup — no
+  // API key, no data invented: a pincode can map to several post
+  // offices/localities (same district & state, different area name), so
+  // those real options are shown as a pickable dropdown instead of
+  // silently guessing one. City/State only ever get filled from an actual
+  // selected result, never a fabricated guess.
+  const [pincodeSuggestions, setPincodeSuggestions] = useState<{ name: string; district: string; state: string }[]>([]);
+  const [showPincodeDropdown, setShowPincodeDropdown] = useState(false);
+  const [isLookingUpPincode, setIsLookingUpPincode] = useState(false);
+
+  const handlePincodeChange = async (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 6);
+    setShippingAddress((prev) => ({ ...prev, pincode: digitsOnly }));
+    if (digitsOnly.length !== 6) {
+      setPincodeSuggestions([]);
+      setShowPincodeDropdown(false);
+      return;
+    }
+    setIsLookingUpPincode(true);
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${digitsOnly}`);
+      const data = await res.json();
+      const postOffices = data?.[0]?.Status === 'Success' ? data[0].PostOffice || [] : [];
+      const suggestions = postOffices.map((po: any) => ({ name: po.Name, district: po.District, state: po.State }));
+      setPincodeSuggestions(suggestions);
+      if (suggestions.length === 1) {
+        // Only one real match — just fill it in directly, no need to make
+        // the user pick from a dropdown of one.
+        setShippingAddress((prev) => ({ ...prev, city: suggestions[0].district, state: suggestions[0].state }));
+        setShowPincodeDropdown(false);
+      } else if (suggestions.length > 1) {
+        setShowPincodeDropdown(true);
+      } else {
+        setShowPincodeDropdown(false);
+      }
+    } catch {
+      // No internet / API hiccup — fields just stay manually editable, exactly as before.
+      setPincodeSuggestions([]);
+      setShowPincodeDropdown(false);
+    } finally {
+      setIsLookingUpPincode(false);
+    }
+  };
+
+  const selectPincodeSuggestion = (suggestion: { name: string; district: string; state: string }) => {
+    setShippingAddress((prev) => ({ ...prev, city: suggestion.district, state: suggestion.state }));
+    setShowPincodeDropdown(false);
+  };
 
   const [paymentMethod, setPaymentMethod] = useState<'qr_upi' | 'razorpay' | 'autopay'>('qr_upi');
   const [transactionId, setTransactionId] = useState('');
@@ -388,11 +440,18 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             </button>
 
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-5">
-              <img
-                src={selectedProductDetails.image}
-                alt={selectedProductDetails.name}
-                className="w-full sm:w-44 h-40 sm:h-48 rounded-2xl object-cover bg-black/10 shrink-0"
-              />
+              <button
+                type="button"
+                onClick={() => setIsImageZoomed(true)}
+                className="w-full sm:w-44 h-40 sm:h-48 rounded-2xl overflow-hidden bg-black/10 shrink-0 cursor-zoom-in relative group"
+                aria-label={tr('View full-size photo', 'पूरी फोटो देखें')}
+              >
+                <img
+                  src={selectedProductDetails.image}
+                  alt={selectedProductDetails.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              </button>
 
               <div className="space-y-1.5 flex-1 min-w-0">
                 <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -496,6 +555,29 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* FULL-SCREEN PHOTO VIEWER — same image, just zoomed; tap anywhere to close */}
+      {isImageZoomed && selectedProductDetails && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/95 animate-in fade-in cursor-zoom-out"
+          onClick={() => setIsImageZoomed(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setIsImageZoomed(false)}
+            className="absolute top-4 right-4 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+            aria-label={tr('Close', 'बंद करें')}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={selectedProductDetails.image}
+            alt={selectedProductDetails.name}
+            className="max-w-full max-h-full object-contain rounded-2xl animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
 
@@ -656,37 +738,68 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-xs font-bold opacity-75 mb-1">{tr('City', 'शहर')} *</label>
-                  <input
-                    type="text"
-                    required
-                    value={shippingAddress.city}
-                    onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                    className={`w-full p-2.5 rounded-xl border text-sm font-medium ${isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-300 text-zinc-900'}`}
-                  />
+              <div className="relative">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold opacity-75 mb-1">{tr('City', 'शहर')} *</label>
+                    <input
+                      type="text"
+                      required
+                      value={shippingAddress.city}
+                      onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
+                      className={`w-full p-2.5 rounded-xl border text-sm font-medium ${isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-300 text-zinc-900'}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold opacity-75 mb-1">{tr('State', 'राज्य')} *</label>
+                    <input
+                      type="text"
+                      required
+                      value={shippingAddress.state}
+                      onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
+                      className={`w-full p-2.5 rounded-xl border text-sm font-medium ${isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-300 text-zinc-900'}`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold opacity-75 mb-1 flex items-center gap-1">
+                      <span>{tr('Pincode', 'पिनकोड')} *</span>
+                      {isLookingUpPincode && <RefreshCw className="w-3 h-3 animate-spin opacity-60" />}
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      required
+                      value={shippingAddress.pincode}
+                      onChange={(e) => handlePincodeChange(e.target.value)}
+                      onFocus={() => { if (pincodeSuggestions.length > 1) setShowPincodeDropdown(true); }}
+                      placeholder="6-digit"
+                      className={`w-full p-2.5 rounded-xl border text-sm font-medium ${isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-300 text-zinc-900'}`}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold opacity-75 mb-1">{tr('State', 'राज्य')} *</label>
-                  <input
-                    type="text"
-                    required
-                    value={shippingAddress.state}
-                    onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
-                    className={`w-full p-2.5 rounded-xl border text-sm font-medium ${isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-300 text-zinc-900'}`}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold opacity-75 mb-1">{tr('Pincode', 'पिनकोड')} *</label>
-                  <input
-                    type="text"
-                    required
-                    value={shippingAddress.pincode}
-                    onChange={(e) => setShippingAddress({ ...shippingAddress, pincode: e.target.value })}
-                    className={`w-full p-2.5 rounded-xl border text-sm font-medium ${isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-300 text-zinc-900'}`}
-                  />
-                </div>
+
+                {/* Pincode → area dropdown — a real pincode can map to
+                    several localities (same city/state, different post
+                    office name); picking one fills City & State, never
+                    invented, always from this actual lookup. */}
+                {showPincodeDropdown && pincodeSuggestions.length > 1 && (
+                  <div className={`absolute z-10 right-0 top-full mt-1 w-full max-w-55 rounded-xl border shadow-lg max-h-48 overflow-y-auto ${isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-zinc-200'}`}>
+                    <div className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                      {tr('Select your area', 'अपना क्षेत्र चुनें')}
+                    </div>
+                    {pincodeSuggestions.map((s, i) => (
+                      <button
+                        key={`${s.name}-${i}`}
+                        type="button"
+                        onClick={() => selectPincodeSuggestion(s)}
+                        className={`w-full text-left px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-200' : 'hover:bg-zinc-50 text-zinc-800'}`}
+                      >
+                        <div className="font-bold">{s.name}</div>
+                        <div className={`text-[10px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>{s.district}, {s.state}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <button
