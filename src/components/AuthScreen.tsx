@@ -4,7 +4,6 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { playClickSound, playSuccessChime } from '../utils/soundEffects';
-import { Logo } from './Logo';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, isSupabaseConfigured } from '../utils/supabase';
 
 interface AuthScreenProps {
@@ -143,14 +142,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
       <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-emerald-950/50 to-black/85" aria-hidden="true" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40" aria-hidden="true" />
 
-      {/* Top Header: Clean Branding & Language Switcher — the logo sits in
-          its own frosted-white chip so its dark wordmark stays legible
-          against the dark cinematic background regardless of it. */}
-      <header className="relative w-full max-w-md mx-auto flex items-center justify-between shrink-0">
-        <div className="px-2.5 py-1.5 rounded-2xl bg-white/95 backdrop-blur-sm shadow-lg shadow-black/30">
-          <Logo size="sm" />
-        </div>
-
+      {/* Top Header: Language Switcher only */}
+      <header className="relative w-full max-w-md mx-auto flex items-center justify-end shrink-0">
         <button
           type="button"
           onClick={toggleLanguage}
