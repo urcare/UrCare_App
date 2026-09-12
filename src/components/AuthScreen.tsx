@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  X, ShieldCheck, RefreshCw, Lock, User, Mail, AlertCircle
+  X, ShieldCheck, RefreshCw, Lock, User, Mail, AlertCircle, ArrowRight
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { playClickSound, playSuccessChime } from '../utils/soundEffects';
-import { AppSimulationVideo } from './AppSimulationVideo';
 import { Logo } from './Logo';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, isSupabaseConfigured } from '../utils/supabase';
 
@@ -129,96 +128,80 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
   };
 
   return (
-    <div className="w-full h-dvh overflow-hidden bg-white text-zinc-900 flex flex-col justify-between items-center px-4 sm:px-6 py-3 sm:py-4 selection:bg-zinc-200">
+    <div className="relative w-full h-dvh overflow-hidden bg-zinc-950 text-white flex flex-col justify-between items-center px-4 sm:px-6 py-3 sm:py-4 selection:bg-emerald-500/30">
 
-      {/* Top Header: Clean Branding & Language Switcher */}
-      <header className="w-full max-w-md mx-auto flex items-center justify-between shrink-0">
-        <Logo size="sm" />
+      {/* Full-screen cinematic background — the real BEFORE→AFTER
+          transformation poster, kept sharp (not blurred away) and darkened
+          under an emerald/black scrim so it reads as premium depth behind
+          the UI, exactly like the reference: photo clearly visible, just
+          tinted dark enough for white text and glass cards to sit on top. */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/background.png')" }}
+        aria-hidden="true"
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-emerald-950/50 to-black/85" aria-hidden="true" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40" aria-hidden="true" />
+
+      {/* Top Header: Clean Branding & Language Switcher — the logo sits in
+          its own frosted-white chip so its dark wordmark stays legible
+          against the dark cinematic background regardless of it. */}
+      <header className="relative w-full max-w-md mx-auto flex items-center justify-between shrink-0">
+        <div className="px-2.5 py-1.5 rounded-2xl bg-white/95 backdrop-blur-sm shadow-lg shadow-black/30">
+          <Logo size="sm" />
+        </div>
 
         <button
           type="button"
           onClick={toggleLanguage}
-          className="px-3.5 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 border border-zinc-200/80 text-xs font-bold text-zinc-800 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+          className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-bold text-white flex items-center gap-1.5 backdrop-blur-md transition-all shadow-lg shadow-black/20 cursor-pointer"
         >
           <span>{language === 'en' ? '🇺🇸 EN' : '🇮🇳 HI'}</span>
         </button>
       </header>
 
-      {/* Main Content Area: Phone Mockup Frame — sized to whatever vertical
-          space is actually left between the header and footer, so the "Get
-          Started" button below never gets pushed off-screen on short viewports. */}
-      <main className="w-full max-w-sm sm:max-w-md mx-auto flex-1 min-h-0 flex flex-col items-center justify-center">
+      {/* Main Content Area: left empty on purpose — the full-screen
+          background above already carries the before/after story, so
+          nothing sits here but open space between the header and footer. */}
+      <main className="relative w-full max-w-sm sm:max-w-md mx-auto flex-1 min-h-0" />
 
-        {/* Smartphone Realistic Mockup Frame */}
-        <div className="w-auto aspect-305/530 h-full max-h-140 min-h-65 bg-zinc-950 rounded-[44px] sm:rounded-[48px] p-2.5 sm:p-3 shadow-2xl shadow-zinc-950/25 border-4 border-zinc-900 ring-1 ring-zinc-300 relative overflow-hidden flex flex-col">
+      {/* Bottom Hero Headline & Action Controls */}
+      <footer className="relative w-full max-w-sm sm:max-w-md mx-auto space-y-2.5 sm:space-y-3.5 pt-1 sm:pt-2 pb-1 text-center shrink-0">
 
-          {/* Hardware Buttons on sides */}
-          <div className="absolute -left-1.5 top-24 w-1 h-8 bg-zinc-800 rounded-l" />
-          <div className="absolute -left-1.5 top-36 w-1 h-11 bg-zinc-800 rounded-l" />
-          <div className="absolute -left-1.5 top-49 w-1 h-11 bg-zinc-800 rounded-l" />
-          <div className="absolute -right-1.5 top-32 w-1 h-14 bg-zinc-800 rounded-r" />
-
-          {/* Phone Inner Display Screen */}
-          <div className="w-full h-full bg-[#FAFAFA] rounded-[36px] sm:rounded-[40px] flex flex-col overflow-hidden relative text-zinc-900 select-none">
-
-            {/* Status Bar: Time & Dynamic Island */}
-            <div className="pt-2 px-5 pb-1 flex items-center justify-between z-20 bg-white/80 backdrop-blur-xs">
-              <span className="text-[11px] font-black text-zinc-900 tracking-tight">2:10 </span>
-
-              {/* Dynamic Island Pill */}
-              <div className="w-22 h-4.5 bg-black rounded-full flex items-center justify-end px-2 gap-1.5 shadow-xs">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <div className="w-2 h-2 rounded-full bg-zinc-900 border border-zinc-700" />
-              </div>
-
-              {/* Status icons: signal, wifi, battery */}
-              <div className="flex items-center gap-1 text-[10px] text-zinc-900 font-bold">
-                <span>5G</span>
-                <div className="w-3.5 h-2 border border-zinc-800 rounded-xs flex items-center p-0.5">
-                  <div className="w-2 h-full bg-zinc-900 rounded-2xs" />
-                </div>
-              </div>
-            </div>
-
-            {/* SCREEN CONTENT: GENUINE APP SIMULATION VIDEO */}
-            <div className="flex-1 w-full h-full overflow-hidden flex flex-col">
-              <AppSimulationVideo onGetStarted={() => openModal('signup')} />
-            </div>
-
-            {/* Bottom Home Indicator Bar */}
-            <div className="w-full flex justify-center pb-1.5 bg-white">
-              <div className="w-24 h-1 bg-zinc-300 rounded-full" />
-            </div>
-
-          </div>
-        </div>
-
-      </main>
-
-      {/* Bottom Hero Headline & Action Controls (Matching screenshot perfectly) */}
-      <footer className="w-full max-w-sm sm:max-w-md mx-auto space-y-2.5 sm:space-y-3.5 pt-1 sm:pt-2 pb-1 text-center shrink-0">
-
-        {/* Main Headline */}
-        <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-zinc-950 leading-tight">
-          {language === 'hi' ? 'रिवर्सल हुआ बिल्कुल आसान' : 'Reversal made easy'}
+        {/* Main Headline — two-tone treatment matching the reference: plain
+            white for most of the line, a soft emerald-teal gradient for the
+            emphasized word, same exact copy as before. */}
+        <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight [text-wrap:balance]">
+          {language === 'hi' ? (
+            <>
+              <span className="text-white">रिवर्सल हुआ </span>
+              <span className="bg-gradient-to-r from-emerald-300 to-teal-300 bg-clip-text text-transparent">बिल्कुल आसान</span>
+            </>
+          ) : (
+            <>
+              <span className="text-white">Reversal made </span>
+              <span className="bg-gradient-to-r from-emerald-300 to-teal-300 bg-clip-text text-transparent">easy</span>
+            </>
+          )}
         </h1>
 
         {/* Primary CTA Button: Get Started */}
         <button
           type="button"
           onClick={() => openModal('signup')}
-          className="w-full py-3.5 sm:py-4.5 rounded-full bg-zinc-950 hover:bg-zinc-800 active:scale-[0.99] text-white font-black text-base sm:text-lg tracking-tight shadow-xl shadow-zinc-950/20 transition-all cursor-pointer"
+          className="w-full py-3.5 sm:py-4.5 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 active:scale-[0.99] text-zinc-950 font-black text-base sm:text-lg tracking-tight shadow-xl shadow-emerald-500/30 transition-all cursor-pointer flex items-center justify-center gap-2"
         >
-          {language === 'hi' ? 'शुरू करें (Get Started)' : 'Get Started'}
+          <span>{language === 'hi' ? 'शुरू करें (Get Started)' : 'Get Started'}</span>
+          <ArrowRight className="w-5 h-5" />
         </button>
 
         {/* Subtext: Already have an account? Sign in */}
-        <div className="text-xs sm:text-sm font-semibold text-zinc-600">
+        <div className="text-xs sm:text-sm font-semibold text-zinc-300">
           <span>{language === 'hi' ? 'क्या आपके पास पहले से खाता है? ' : 'Already have an account? '}</span>
           <button
             type="button"
             onClick={() => openModal('signin')}
-            className="font-black text-zinc-950 underline hover:text-emerald-700 cursor-pointer ml-1"
+            className="font-black text-emerald-300 underline hover:text-emerald-200 cursor-pointer ml-1"
           >
             {language === 'hi' ? 'साइन इन करें (Sign in)' : 'Sign in'}
           </button>
@@ -230,7 +213,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
             <button
               type="button"
               onClick={onOpenAdmin}
-              className="text-[10px] text-zinc-400 hover:text-zinc-700 font-bold transition-colors cursor-pointer"
+              className="text-[10px] text-white/40 hover:text-white/70 font-bold transition-colors cursor-pointer"
             >
               {tr('Admin Console Portal', 'एडमिन कंसोल पोर्टल')}
             </button>
@@ -242,26 +225,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
       {/* SIGN IN / SIGN UP MODAL — real Supabase Auth (Google + email/password)     */}
       {/* ========================================================================= */}
       {authModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 text-left relative space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-sm bg-zinc-900/90 backdrop-blur-xl rounded-3xl p-6 sm:p-7 shadow-2xl shadow-emerald-950/40 border border-white/10 text-left relative space-y-4">
 
             {/* Close */}
             <button
               type="button"
               onClick={() => setAuthModal(null)}
-              className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer"
+              className="absolute top-5 right-5 p-2 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-400/30">
                 {authModal === 'signup' ? tr('Get Started', 'शुरू करें') : tr('Welcome Back', 'वापसी पर स्वागत है')}
               </span>
-              <h2 className="text-xl font-black text-zinc-950 mt-1">
+              <h2 className="text-xl font-black text-white mt-1">
                 {authModal === 'signup' ? tr('Create Your Account', 'अपना खाता बनाएं') : tr('Sign In to Your Account', 'अपने खाते में साइन इन करें')}
               </h2>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-zinc-400">
                 {authModal === 'signup'
                   ? tr('Your health data is saved securely to your account.', 'आपका स्वास्थ्य डेटा आपके खाते में सुरक्षित रूप से सहेजा जाता है।')
                   : tr('Your saved health profile and data will load automatically.', 'आपकी सहेजी गई स्वास्थ्य प्रोफ़ाइल व डेटा अपने आप लोड हो जाएगा।')}
@@ -269,23 +252,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
             </div>
 
             {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-start gap-2">
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-400/30 text-rose-300 text-xs font-bold flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
             {info && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 text-xs font-bold">
                 {info}
               </div>
             )}
 
-            {/* One-Click Google Sign In Button */}
+            {/* One-Click Google Sign In Button — kept a light/white pill even
+                on the dark card, matching Google's own branding guidelines
+                for its logo button. */}
             <button
               type="button"
               disabled={googleLoading}
               onClick={handleGoogleSignIn}
-              className="w-full py-3.5 px-4 rounded-2xl border border-zinc-300 hover:border-zinc-400 bg-white hover:bg-zinc-50 active:scale-98 font-bold text-xs sm:text-sm text-zinc-800 flex items-center justify-center gap-3 shadow-xs transition-all cursor-pointer disabled:opacity-60"
+              className="w-full py-3.5 px-4 rounded-2xl border border-white/20 hover:border-white/30 bg-white hover:bg-zinc-50 active:scale-98 font-bold text-xs sm:text-sm text-zinc-800 flex items-center justify-center gap-3 shadow-lg shadow-black/20 transition-all cursor-pointer disabled:opacity-60"
             >
               {googleLoading ? (
                 <RefreshCw className="w-4 h-4 animate-spin text-zinc-600" />
@@ -314,48 +299,48 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
 
             {/* Divider */}
             <div className="relative flex items-center justify-center my-1">
-              <div className="border-t border-zinc-200 w-full" />
-              <span className="bg-white px-2.5 text-[10px] font-bold text-zinc-400 uppercase">{tr('or use email', 'या ईमेल का उपयोग करें')}</span>
+              <div className="border-t border-white/10 w-full" />
+              <span className="bg-zinc-900 px-2.5 text-[10px] font-bold text-zinc-500 uppercase">{tr('or use email', 'या ईमेल का उपयोग करें')}</span>
             </div>
 
             {/* Email / Password Form */}
             <form onSubmit={handleEmailSubmit} className="space-y-3">
               {authModal === 'signup' && (
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 mb-1">{tr('Full Name', 'पूरा नाम')}</label>
+                  <label className="block text-xs font-bold text-zinc-300 mb-1">{tr('Full Name', 'पूरा नाम')}</label>
                   <div className="relative">
-                    <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
                     <input
                       type="text"
                       required
                       placeholder={tr('Your name', 'आपका नाम')}
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-zinc-300 bg-zinc-50 focus:bg-white text-zinc-900 text-xs font-semibold focus:border-zinc-900 outline-none"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-white/15 bg-white/5 focus:bg-white/10 text-white placeholder:text-zinc-500 text-xs font-semibold focus:border-emerald-400 outline-none"
                     />
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold text-zinc-700 mb-1">{tr('Email', 'ईमेल')}</label>
+                <label className="block text-xs font-bold text-zinc-300 mb-1">{tr('Email', 'ईमेल')}</label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
                   <input
                     type="email"
                     required
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-zinc-300 bg-zinc-50 focus:bg-white text-zinc-900 text-xs font-semibold focus:border-zinc-900 outline-none"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-white/15 bg-white/5 focus:bg-white/10 text-white placeholder:text-zinc-500 text-xs font-semibold focus:border-emerald-400 outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-zinc-700 mb-1">{tr('Password', 'पासवर्ड')}</label>
+                <label className="block text-xs font-bold text-zinc-300 mb-1">{tr('Password', 'पासवर्ड')}</label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
                   <input
                     type="password"
                     required
@@ -363,7 +348,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-zinc-300 bg-zinc-50 focus:bg-white text-zinc-900 text-xs font-semibold focus:border-zinc-900 outline-none"
+                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-white/15 bg-white/5 focus:bg-white/10 text-white placeholder:text-zinc-500 text-xs font-semibold focus:border-emerald-400 outline-none"
                   />
                 </div>
               </div>
@@ -372,7 +357,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-[11px] font-bold text-zinc-500 hover:text-zinc-800 cursor-pointer"
+                  className="text-[11px] font-bold text-zinc-400 hover:text-white cursor-pointer"
                 >
                   {tr('Forgot password?', 'पासवर्ड भूल गए?')}
                 </button>
@@ -381,22 +366,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white font-black text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-60"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 text-zinc-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/25 transition-all cursor-pointer disabled:opacity-60"
               >
                 {loading ? tr('Please wait...', 'कृपया प्रतीक्षा करें...') : authModal === 'signup' ? tr('Create Account', 'खाता बनाएं') : tr('Sign In', 'साइन इन करें')}
               </button>
             </form>
 
-            <div className="text-center text-[11px] text-zinc-500">
+            <div className="text-center text-[11px] text-zinc-400">
               {authModal === 'signup' ? (
-                <span>{tr('Already have an account?', 'क्या आपके पास पहले से खाता है?')} <button type="button" onClick={() => openModal('signin')} className="font-black text-zinc-900 underline cursor-pointer">{tr('Sign in', 'साइन इन करें')}</button></span>
+                <span>{tr('Already have an account?', 'क्या आपके पास पहले से खाता है?')} <button type="button" onClick={() => openModal('signin')} className="font-black text-emerald-300 underline cursor-pointer">{tr('Sign in', 'साइन इन करें')}</button></span>
               ) : (
-                <span>{tr('New here?', 'नए हैं?')} <button type="button" onClick={() => openModal('signup')} className="font-black text-zinc-900 underline cursor-pointer">{tr('Create an account', 'खाता बनाएं')}</button></span>
+                <span>{tr('New here?', 'नए हैं?')} <button type="button" onClick={() => openModal('signup')} className="font-black text-emerald-300 underline cursor-pointer">{tr('Create an account', 'खाता बनाएं')}</button></span>
               )}
             </div>
 
-            <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-400 pt-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="flex items-center justify-center gap-1 text-[10px] text-zinc-500 pt-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               <span>{tr('Secure encrypted healthcare login', 'सुरक्षित एन्क्रिप्टेड हेल्थकेयर लॉगिन')}</span>
             </div>
 
