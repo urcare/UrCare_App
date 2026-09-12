@@ -144,17 +144,28 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
       <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-emerald-950/50 to-black/85" aria-hidden="true" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40" aria-hidden="true" />
 
-      {/* Top Header: Headline + Language Switcher share one row — headline
-          left-aligned in a distinct display serif (Playfair Display) for a
-          more premium, editorial feel than the app's usual Plus Jakarta
-          Sans, kept scoped to just this headline. Same exact copy, two-tone
-          treatment (white + emerald-teal gradient for the emphasized word)
-          as before. */}
-      <header className="relative w-full max-w-md mx-auto flex items-center justify-between gap-3 shrink-0">
-        <h1
-          className="text-xl sm:text-2xl font-black tracking-tight leading-tight min-w-0"
-          style={{ fontFamily: "'Playfair Display', serif" }}
+      {/* Top Header: Language Switcher only */}
+      <header className="relative w-full max-w-md mx-auto flex items-center justify-end shrink-0">
+        <button
+          type="button"
+          onClick={toggleLanguage}
+          className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-bold text-white flex items-center gap-1.5 backdrop-blur-md transition-all shadow-lg shadow-black/20 cursor-pointer"
         >
+          <span>{language === 'en' ? '🇺🇸 EN' : '🇮🇳 HI'}</span>
+        </button>
+      </header>
+
+      {/* Main Content Area: left empty on purpose — the full-screen
+          background above already carries the before/after story, so
+          nothing sits here but open space between the header and footer. */}
+      <main className="relative w-full max-w-sm sm:max-w-md mx-auto flex-1 min-h-0" />
+
+      {/* Bottom Hero Headline & Action Controls */}
+      <footer className="relative w-full max-w-sm sm:max-w-md mx-auto space-y-2.5 sm:space-y-3.5 pt-1 sm:pt-2 pb-1 text-center shrink-0">
+
+        {/* Main Headline — back to its original spot and style: centered,
+            right above the CTA button, in the app's normal font. */}
+        <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight [text-wrap:balance]">
           {language === 'hi' ? (
             <>
               <span className="text-white">रिवर्सल हुआ </span>
@@ -167,23 +178,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
             </>
           )}
         </h1>
-
-        <button
-          type="button"
-          onClick={toggleLanguage}
-          className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-bold text-white flex items-center gap-1.5 backdrop-blur-md transition-all shadow-lg shadow-black/20 cursor-pointer shrink-0"
-        >
-          <span>{language === 'en' ? '🇺🇸 EN' : '🇮🇳 HI'}</span>
-        </button>
-      </header>
-
-      {/* Main Content Area: left empty on purpose — the full-screen
-          background above already carries the before/after story, so
-          nothing sits here but open space between the header and footer. */}
-      <main className="relative w-full max-w-sm sm:max-w-md mx-auto flex-1 min-h-0" />
-
-      {/* Bottom Action Controls */}
-      <footer className="relative w-full max-w-sm sm:max-w-md mx-auto space-y-2.5 sm:space-y-3.5 pt-1 sm:pt-2 pb-1 text-center shrink-0">
 
         {/* Primary CTA Button: Get Started */}
         <button
