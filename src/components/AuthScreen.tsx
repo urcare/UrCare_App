@@ -133,9 +133,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
           transformation poster, kept sharp (not blurred away) and darkened
           under an emerald/black scrim so it reads as premium depth behind
           the UI, exactly like the reference: photo clearly visible, just
-          tinted dark enough for white text and glass cards to sit on top. */}
+          tinted dark enough for white text and glass cards to sit on top.
+          `contain` (not `cover`) so the full poster — including its side
+          edges — always stays in view instead of being cropped off on
+          narrower phone screens; any letterboxing just blends into the
+          dark background color around it. */}
       <div
-        className="absolute inset-0 bg-cover bg-center"
+        className="absolute inset-0 bg-contain bg-center bg-no-repeat"
         style={{ backgroundImage: "url('/background.png')" }}
         aria-hidden="true"
       />
