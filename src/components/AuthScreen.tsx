@@ -130,43 +130,31 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
     <div className="relative w-full h-dvh overflow-hidden bg-zinc-950 text-white flex flex-col justify-between items-center px-4 sm:px-6 py-3 sm:py-4 selection:bg-emerald-500/30">
 
       {/* Full-screen cinematic background — the real BEFORE→AFTER
-          transformation poster. Two layers, the way Spotify/Apple Music
-          fill the space around a "now playing" cover: a heavily blurred,
-          full-bleed copy fills every edge with soft color from the same
-          image (no flat black letterbox bars), and the crisp, uncropped
-          poster sits on top of it via `bg-contain` so its side content
-          never gets cut off on narrower phones either. A dark emerald/black
-          scrim over both keeps the UI legible. */}
+          transformation poster, stretched to exactly fill the viewport
+          (both axes independently) so every part of it stays visible —
+          nothing cropped off the sides, no empty letterbox bars top or
+          bottom either. The poster's own proportions are already close to
+          a phone screen's, so the stretch is mild. A dark emerald/black
+          scrim on top keeps the UI legible. */}
       <div
-        className="absolute inset-0 scale-125 bg-cover bg-center blur-2xl opacity-70"
-        style={{ backgroundImage: "url('/background.png')" }}
-        aria-hidden="true"
-      />
-      <div
-        className="absolute inset-0 bg-contain bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/background.png')" }}
+        className="absolute inset-0 bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/background.png')", backgroundSize: '100% 100%' }}
         aria-hidden="true"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-emerald-950/50 to-black/85" aria-hidden="true" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40" aria-hidden="true" />
 
-      {/* Top Header: Language Switcher only */}
-      <header className="relative w-full max-w-md mx-auto flex items-center justify-end shrink-0">
-        <button
-          type="button"
-          onClick={toggleLanguage}
-          className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-bold text-white flex items-center gap-1.5 backdrop-blur-md transition-all shadow-lg shadow-black/20 cursor-pointer"
+      {/* Top Header: Headline + Language Switcher share one row — headline
+          left-aligned in a distinct display serif (Playfair Display) for a
+          more premium, editorial feel than the app's usual Plus Jakarta
+          Sans, kept scoped to just this headline. Same exact copy, two-tone
+          treatment (white + emerald-teal gradient for the emphasized word)
+          as before. */}
+      <header className="relative w-full max-w-md mx-auto flex items-center justify-between gap-3 shrink-0">
+        <h1
+          className="text-xl sm:text-2xl font-black tracking-tight leading-tight min-w-0"
+          style={{ fontFamily: "'Playfair Display', serif" }}
         >
-          <span>{language === 'en' ? '🇺🇸 EN' : '🇮🇳 HI'}</span>
-        </button>
-      </header>
-
-      {/* Main Headline — moved up, left-aligned, right under the header.
-          Two-tone treatment matching the reference: plain white for most
-          of the line, a soft emerald-teal gradient for the emphasized
-          word, same exact copy as before. */}
-      <div className="relative w-full max-w-sm sm:max-w-md mx-auto pt-2 sm:pt-3 shrink-0 text-left">
-        <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight [text-wrap:balance]">
           {language === 'hi' ? (
             <>
               <span className="text-white">रिवर्सल हुआ </span>
@@ -179,7 +167,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
             </>
           )}
         </h1>
-      </div>
+
+        <button
+          type="button"
+          onClick={toggleLanguage}
+          className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/25 text-xs font-bold text-white flex items-center gap-1.5 backdrop-blur-md transition-all shadow-lg shadow-black/20 cursor-pointer shrink-0"
+        >
+          <span>{language === 'en' ? '🇺🇸 EN' : '🇮🇳 HI'}</span>
+        </button>
+      </header>
 
       {/* Main Content Area: left empty on purpose — the full-screen
           background above already carries the before/after story, so
