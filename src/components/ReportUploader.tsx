@@ -179,7 +179,13 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       }
 
       if (data.analysisFailed || data.isValidReport == null) {
-        setError(data.rejectionReason || (lang2 === 'hi' ? 'अभी जांच नहीं हो सकी, दोबारा कोशिश करें।' : 'Could not analyze this right now. Please try again.'));
+        const base = data.rejectionReason || (lang2 === 'hi' ? 'अभी जांच नहीं हो सकी, दोबारा कोशिश करें।' : 'Could not analyze this right now. Please try again.');
+        // debugReason (the real underlying error, e.g. from Groq) is appended
+        // in parentheses when present — this generic message alone gave no
+        // way to tell a rate limit apart from a real outage from a bad
+        // upload without server log access, so surfacing it here is what
+        // actually lets a repeat failure be diagnosed from the phone itself.
+        setError(data.debugReason ? `${base} (${data.debugReason})` : base);
         setScanProgress(0);
         setIsAnalyzing(false);
         return;

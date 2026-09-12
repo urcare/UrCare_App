@@ -620,6 +620,10 @@ export interface CustomDailyPlanResult {
   isValidPlan: boolean;
   rejectionReason?: string;
   analysisFailed?: boolean;
+  /** The real underlying error (e.g. from Groq) when analysisFailed is true
+   *  — rejectionReason alone is a generic "check your connection" message
+   *  that gives no way to tell a rate limit apart from a real outage. */
+  debugReason?: string;
   sections?: { id: string; timeLabel: string | null; title: string; body: string }[];
   uploadedAt?: string;
   expiresAt?: string;

@@ -55,6 +55,21 @@ function fileMediaType(fileBase64: string): string {
  *  return a real, honest rejection instead of silently misreading it. */
 class PdfNotSupportedError extends Error {}
 
+/** Pulls a short, safe-to-show diagnostic string out of whatever an AI call
+ *  actually threw (a structured Groq API error, a plain Error, or something
+ *  else entirely) — the catch blocks around each analyze-* endpoint used to
+ *  collapse every failure into the same generic "check your connection"
+ *  message, which reads as a network problem even when the real cause was
+ *  a rate limit, a malformed model response, or an outage — completely
+ *  undiagnosable from the client, and this app has no server-log access to
+ *  fall back on. Attached to the response as `debugReason` so a repeat
+ *  failure is actually readable on the device that hit it. */
+function extractDebugReason(error: any): string | undefined {
+  const msg = error?.error?.error?.message || error?.error?.message || error?.message;
+  if (!msg || typeof msg !== 'string') return undefined;
+  return msg.length > 160 ? `${msg.slice(0, 160)}…` : msg;
+}
+
 /** Fills in any top-level required key missing from a salvaged partial
  *  result (see callGroqForJson's json_validate_failed handling) with a
  *  type-appropriate empty default — [] for an array-typed field, null for
@@ -649,6 +664,7 @@ MANDATORY OUTPUT SHAPE — your JSON MUST always contain ALL EIGHT top-level key
       isValidReport: null,
       analysisFailed: true,
       rejectionReason: 'Could not analyze this report right now. Please check your connection and try again.',
+      debugReason: extractDebugReason(error),
     });
   }
 }));
@@ -740,6 +756,7 @@ Call the record_food_analysis tool exactly once with the complete result.`;
       isFood: null,
       analysisFailed: true,
       rejectionReason: 'Could not reach the scanner right now. Please check your connection and try scanning again.',
+      debugReason: extractDebugReason(error),
     });
   }
 }));
@@ -930,6 +947,7 @@ Call the record_daily_plan tool exactly once with the complete result.`;
       isValidPlan: null,
       analysisFailed: true,
       rejectionReason: 'Could not read this plan right now. Please check your connection and try again.',
+      debugReason: extractDebugReason(error),
     });
   }
 }));

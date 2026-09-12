@@ -163,7 +163,8 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
         }
         const data = await uploadCustomDailyPlan(fileBase64, selectedFile.type || 'image/jpeg');
         if (!data.isValidPlan) {
-          setError(data.rejectionReason || tr('Could not extract a plan from this. Please try a clearer photo.', 'इससे कोई प्लान नहीं निकाला जा सका। कृपया साफ़ फोटो आज़माएं।'));
+          const base = data.rejectionReason || tr('Could not extract a plan from this. Please try a clearer photo.', 'इससे कोई प्लान नहीं निकाला जा सका। कृपया साफ़ फोटो आज़माएं।');
+          setError(data.debugReason ? `${base} (${data.debugReason})` : base);
           return;
         }
         setResult(data);

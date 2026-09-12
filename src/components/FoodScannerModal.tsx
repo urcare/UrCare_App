@@ -186,7 +186,11 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
       }
 
       if (data.analysisFailed || data.isFood == null) {
-        setError(data.rejectionReason || tr('Could not analyze this right now. Please check your connection and try again.', 'अभी इसका विश्लेषण नहीं हो सका। कृपया अपना कनेक्शन जांचें व पुनः प्रयास करें।'));
+        const base = data.rejectionReason || tr('Could not analyze this right now. Please check your connection and try again.', 'अभी इसका विश्लेषण नहीं हो सका। कृपया अपना कनेक्शन जांचें व पुनः प्रयास करें।');
+        // debugReason is the real underlying error (e.g. from Groq) — this
+        // generic message alone gave no way to tell a rate limit apart from
+        // a real outage without server log access, so it's appended here.
+        setError(data.debugReason ? `${base} (${data.debugReason})` : base);
         setScannedResult(null);
         return;
       }
