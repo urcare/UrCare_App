@@ -45,4 +45,12 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Required for the in-app food-scanner/report-photo camera capture
+         (navigator.mediaDevices.getUserMedia in FoodScannerModal.tsx etc.) —
+         Capacitor's WebChromeClient explicitly checks for this declaration
+         (PermissionHelper.hasDefinedPermission) before it will even attempt
+         the runtime camera permission prompt; without it, every camera
+         request from the WebView is rejected outright. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 </manifest>
