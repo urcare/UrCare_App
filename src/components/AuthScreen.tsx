@@ -130,14 +130,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
     <div className="relative w-full h-dvh overflow-hidden bg-zinc-950 text-white flex flex-col justify-between items-center px-4 sm:px-6 py-3 sm:py-4 selection:bg-emerald-500/30">
 
       {/* Full-screen cinematic background — the real BEFORE→AFTER
-          transformation poster, kept sharp (not blurred away) and darkened
-          under an emerald/black scrim so it reads as premium depth behind
-          the UI, exactly like the reference: photo clearly visible, just
-          tinted dark enough for white text and glass cards to sit on top.
-          `contain` (not `cover`) so the full poster — including its side
-          edges — always stays in view instead of being cropped off on
-          narrower phone screens; any letterboxing just blends into the
-          dark background color around it. */}
+          transformation poster. Two layers, the way Spotify/Apple Music
+          fill the space around a "now playing" cover: a heavily blurred,
+          full-bleed copy fills every edge with soft color from the same
+          image (no flat black letterbox bars), and the crisp, uncropped
+          poster sits on top of it via `bg-contain` so its side content
+          never gets cut off on narrower phones either. A dark emerald/black
+          scrim over both keeps the UI legible. */}
+      <div
+        className="absolute inset-0 scale-125 bg-cover bg-center blur-2xl opacity-70"
+        style={{ backgroundImage: "url('/background.png')" }}
+        aria-hidden="true"
+      />
       <div
         className="absolute inset-0 bg-contain bg-center bg-no-repeat"
         style={{ backgroundImage: "url('/background.png')" }}
