@@ -161,17 +161,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
         </button>
       </header>
 
-      {/* Main Content Area: left empty on purpose — the full-screen
-          background above already carries the before/after story, so
-          nothing sits here but open space between the header and footer. */}
-      <main className="relative w-full max-w-sm sm:max-w-md mx-auto flex-1 min-h-0" />
-
-      {/* Bottom Hero Headline & Action Controls */}
-      <footer className="relative w-full max-w-sm sm:max-w-md mx-auto space-y-2.5 sm:space-y-3.5 pt-1 sm:pt-2 pb-1 text-center shrink-0">
-
-        {/* Main Headline — two-tone treatment matching the reference: plain
-            white for most of the line, a soft emerald-teal gradient for the
-            emphasized word, same exact copy as before. */}
+      {/* Main Headline — moved up, left-aligned, right under the header.
+          Two-tone treatment matching the reference: plain white for most
+          of the line, a soft emerald-teal gradient for the emphasized
+          word, same exact copy as before. */}
+      <div className="relative w-full max-w-sm sm:max-w-md mx-auto pt-2 sm:pt-3 shrink-0 text-left">
         <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight [text-wrap:balance]">
           {language === 'hi' ? (
             <>
@@ -185,6 +179,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
             </>
           )}
         </h1>
+      </div>
+
+      {/* Main Content Area: left empty on purpose — the full-screen
+          background above already carries the before/after story, so
+          nothing sits here but open space between the header and footer. */}
+      <main className="relative w-full max-w-sm sm:max-w-md mx-auto flex-1 min-h-0" />
+
+      {/* Bottom Action Controls */}
+      <footer className="relative w-full max-w-sm sm:max-w-md mx-auto space-y-2.5 sm:space-y-3.5 pt-1 sm:pt-2 pb-1 text-center shrink-0">
 
         {/* Primary CTA Button: Get Started */}
         <button
