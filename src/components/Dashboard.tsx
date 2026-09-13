@@ -25,6 +25,8 @@ import { RootCauseAssessmentModal } from './RootCauseAssessmentModal';
 import { ProfilePage } from './ProfilePage';
 import { RecommendationsView } from './RecommendationsView';
 import { AccountPage } from './AccountPage';
+import { TrackerModule } from './TrackerModule';
+import { ReportTimeline } from './ReportTimeline';
 import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { Logo } from './Logo';
@@ -60,7 +62,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // (identity, stats, quick actions). 'reports', 'assessment' + 'store' are
   // always free — 'store' isn't in the primary nav (see navItems below) but
   // is still reachable from Home's quick-actions grid.
-  const [activeTab, setActiveTab] = useState<'profile' | 'plan' | 'premium' | 'account' | 'reports' | 'assessment' | 'store'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'plan' | 'premium' | 'account' | 'reports' | 'assessment' | 'store' | 'tracker'>('profile');
 
   // '⋮' module switcher — a single drawer, opened from one fixed spot in the
   // persistent header/sidebar (never inline in a tab's scrolling content), so
@@ -73,6 +75,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // below), so they're not duplicated here too — only what's genuinely
   // drawer-only stays.
   const moduleMenuItems = [
+    { id: 'tracker' as const, label: tr('Tracker', 'ट्रैकर'), icon: Activity },
     { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
     { id: 'assessment' as const, label: tr('Assessment', 'मूल्यांकन'), icon: ClipboardCheck },
     { id: 'store' as const, label: tr('Store', 'स्टोर'), icon: ShoppingBag },
@@ -264,11 +267,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Permanently remove one uploaded report from this user's submission log.
   const handleDeleteReport = (reportId?: string, reportName?: string) => {
     if (!reportId) return;
+    // Snapshot the full report (photo, extracted data, biomarkers — everything)
+    // into this deletion's own timeline entry BEFORE it's gone from
+    // lab_reports for good, so the Report Timeline can still open it exactly
+    // as it looked, even long after the row itself no longer exists.
+    const reportSnapshot = myReports.find((r) => r.id === reportId)
+      || (profile.reportAnalysis?.id === reportId ? profile.reportAnalysis : undefined);
     deleteReport(reportId).then(() => {
       setMyReports((prev) => prev.filter((r) => r.id !== reportId));
     }).catch(() => {});
     if (account?.uid) {
-      logActivity(account.uid, 'deleted', 'report', `Deleted report: ${reportName || 'Diagnostic Lab Report'}`).catch(() => {});
+      logActivity(
+        account.uid, 'deleted', 'report',
+        `Deleted report: ${reportName || 'Diagnostic Lab Report'}`,
+        undefined,
+        reportSnapshot ? { reportId, reportSnapshot } : { reportId },
+      ).catch(() => {});
     }
 
     // If the deleted report was the one currently driving the diet plan, fall back to
@@ -300,7 +314,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     if (error) return;
     setMyReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, reportText: newText } : r)));
     if (account?.uid) {
-      logActivity(account.uid, 'updated', 'report', `Edited extracted data: ${reportName || 'Diagnostic Lab Report'}`).catch(() => {});
+      logActivity(account.uid, 'updated', 'report', `Edited extracted data: ${reportName || 'Diagnostic Lab Report'}`, undefined, { reportId }).catch(() => {});
     }
   };
 
@@ -749,6 +763,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onOpenAssessment={() => setIsAssessmentModalOpen(true)}
             onLogOut={() => setShowLogoutConfirm(true)}
           />
+        ) : activeTab === 'tracker' ? (
+          <TrackerModule
+            profile={profile}
+            account={account}
+            reports={myReports}
+            onUpdateProfile={onUpdateProfile}
+          />
         ) : (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
 
@@ -914,6 +935,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     ))}
                   </div>
                 )}
+
+                {/* REPORT TIMELINE — a separate, date/month/year-ordered
+                    history of every report ever uploaded or deleted, only
+                    here in Reports (not the general My Timeline, not the
+                    Tracker module). Every entry is clickable and opens the
+                    exact report it refers to — live if it still exists, or
+                    the full snapshot captured the moment it was deleted. */}
+                <ReportTimeline
+                  userId={account.uid}
+                  reports={reportsToShow}
+                  userName={profile.name || account.displayName || 'Member'}
+                  onReupload={() => setIsHealthReportOpen(true)}
+                  onRequestDoctorReview={() => handleOpenDoctorConsult('Review my uploaded lab report and calibrate medications')}
+                  onDelete={handleDeleteReport}
+                  onSaveReportText={handleSaveReportText}
+                />
               </div>
             );
           })()}

@@ -44,8 +44,10 @@ export function relativeTime(iso: string, tr: (en: string, hi: string) => string
 }
 
 /** Groups entries (already newest-first) into "Today" / "Yesterday" /
- *  "Mon, 8 Sep" day buckets — the same shape GitHub's commit history uses. */
-function dayLabel(iso: string, tr: (en: string, hi: string) => string): string {
+ *  "Mon, 8 Sep" day buckets — the same shape GitHub's commit history uses.
+ *  Exported so other per-category timelines (e.g. ReportTimeline) can group
+ *  by the exact same date/month/year headers instead of re-deriving them. */
+export function dayLabel(iso: string, tr: (en: string, hi: string) => string): string {
   const d = new Date(iso);
   const now = new Date();
   const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
@@ -58,7 +60,7 @@ function dayLabel(iso: string, tr: (en: string, hi: string) => string): string {
   return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function clockTime(iso: string): string {
+export function clockTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
