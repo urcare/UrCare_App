@@ -831,6 +831,32 @@ function parseClockTimeToMinutes(label: string): number {
   return h * 60 + parseInt(m[2], 10);
 }
 
+function minutesToClockLabel(totalMin: number): string {
+  const h24 = Math.floor(totalMin / 60) % 24;
+  const min = totalMin % 60;
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${String(min).padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`;
+}
+
+// Guarantees every step in an already time-sorted list has a strictly later
+// clock time than the one before it. Without this, several steps sharing an
+// identical (or AI-misordered) time — common when a multi-page upload has
+// the same header time (e.g. "9:00 AM") repeated across pages — all render
+// as the same meaningless zero-width "9:00 – 9:00 AM" range in the timeline
+// UI, which builds each step's displayed range from its own time to the
+// very next step's time (see computeDurationLabel in RecommendationsView.tsx).
+// Nudging any colliding step forward by 5 minutes, in stable input order,
+// turns a same-time pile-up into a real short sequence instead.
+function staggerDuplicateTimes<T extends { timeLabel: string }>(items: T[]): T[] {
+  let lastMinutes = -1;
+  return items.map((item) => {
+    let mins = parseClockTimeToMinutes(item.timeLabel);
+    if (mins <= lastMinutes) mins = lastMinutes + 5;
+    lastMinutes = mins;
+    return { ...item, timeLabel: minutesToClockLabel(mins % (24 * 60)) };
+  });
+}
+
 /** Upserts the user's custom daily plan (replacing whatever was there
  *  before) and fires the same notification + activity-log entries either
  *  code path (single-image upload, or a multi-page PDF merged client-side)
@@ -932,11 +958,18 @@ Call the record_daily_plan tool exactly once with the complete result.`;
       return res.json({ isValidPlan: true, sections });
     }
 
+    // Single-photo path saves immediately (no client-side merge step), so
+    // sort + de-duplicate times here — /api/save-daily-plan does the same
+    // for the multi-page-merge path below.
+    const finalSections = staggerDuplicateTimes(
+      [...sections].sort((a, b) => parseClockTimeToMinutes(a.timeLabel) - parseClockTimeToMinutes(b.timeLabel))
+    );
+
     const supabase = getSupabaseAdmin();
     if (!supabase) {
-      return res.json({ isValidPlan: true, uploadedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString(), sections });
+      return res.json({ isValidPlan: true, uploadedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString(), sections: finalSections });
     }
-    const saved = await persistCustomDailyPlan(supabase, user, sections, fileMediaType(imageBase64).startsWith('image/') ? imageBase64 : null);
+    const saved = await persistCustomDailyPlan(supabase, user, finalSections, fileMediaType(imageBase64).startsWith('image/') ? imageBase64 : null);
     return res.json({ isValidPlan: true, ...saved });
   } catch (error: any) {
     if (error instanceof PdfNotSupportedError) {
@@ -981,9 +1014,14 @@ app.post('/api/save-daily-plan', requireUser(async (req, res, user) => {
     if (cleaned.length === 0) {
       return res.status(400).json({ error: 'No valid steps to save.' });
     }
+    // Different pages can easily share the same header time (e.g. every
+    // week's page starting with "9:00 AM") — de-duplicate across the whole
+    // merged, sorted list so no two steps ever land on the exact same clock
+    // time (see staggerDuplicateTimes for why that matters for the UI).
+    const staggered = staggerDuplicateTimes(cleaned);
     const supabase = getSupabaseAdmin();
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
-    const saved = await persistCustomDailyPlan(supabase, user, cleaned, typeof sourceImageUrl === 'string' ? sourceImageUrl : null);
+    const saved = await persistCustomDailyPlan(supabase, user, staggered, typeof sourceImageUrl === 'string' ? sourceImageUrl : null);
     return res.json({ isValidPlan: true, ...saved });
   } catch (error) {
     console.error('Error saving merged daily plan:', error);
