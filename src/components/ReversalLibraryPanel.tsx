@@ -116,7 +116,7 @@ export const ReversalLibraryPanel: React.FC<ReversalLibraryPanelProps> = ({ sect
 
   return (
     <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4 min-w-0`}>
-      <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40 flex-wrap gap-2">
+      <div className={`flex items-center justify-between pb-3 border-b flex-wrap gap-2 ${isDark ? 'border-zinc-800/40' : 'border-zinc-100'}`}>
         <div className="flex items-center gap-2 text-emerald-500 min-w-0">
           <FileText className="w-5 h-5 shrink-0" />
           <h3 className="text-sm font-black tracking-tight truncate">{tr('Your Reversal Library', 'आपकी रिवर्सल लाइब्रेरी')}</h3>

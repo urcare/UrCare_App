@@ -680,7 +680,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         </>
       ) : (
         <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4 min-w-0`}>
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40 flex-wrap gap-2">
+          <div className={`flex items-center justify-between pb-3 border-b flex-wrap gap-2 ${isDark ? 'border-zinc-800/40' : 'border-zinc-100'}`}>
             <div className="flex items-center gap-2 text-emerald-500 min-w-0">
               <Award className="w-5 h-5 shrink-0" />
               <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider truncate">
@@ -738,7 +738,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       ) : (
         <>
           <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4 min-w-0`}>
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40 flex-wrap gap-2">
+            <div className={`flex items-center justify-between pb-3 border-b flex-wrap gap-2 ${isDark ? 'border-zinc-800/40' : 'border-zinc-100'}`}>
               <div className="flex items-center gap-2 text-emerald-500 min-w-0">
                 <Clock className="w-5 h-5 shrink-0" />
                 <h3 className="text-sm sm:text-base font-black tracking-tight truncate">
@@ -964,7 +964,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       {/* Doctor-issued prescriptions — real records from Admin, if any */}
       {prescriptions.length > 0 && (
         <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4 min-w-0`}>
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-800/40 flex-wrap gap-2">
+          <div className={`flex items-center justify-between pb-3 border-b flex-wrap gap-2 ${isDark ? 'border-zinc-800/40' : 'border-zinc-100'}`}>
             <div className="flex items-center gap-2 text-emerald-500 min-w-0"><FileText className="w-5 h-5 shrink-0" /><h3 className="text-sm sm:text-base font-black tracking-tight truncate">{t('myPrescriptions')}</h3></div>
             <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 shrink-0">{prescriptions.length} Issued</span>
           </div>

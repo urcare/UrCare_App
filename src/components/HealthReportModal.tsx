@@ -78,24 +78,24 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
 
   return (
     <div id="health-report-modal-backdrop" className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div id="health-report-modal" className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-3xl p-5 sm:p-6 text-white shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
+      <div id="health-report-modal" className="w-full max-w-2xl bg-white border border-zinc-200 rounded-3xl p-5 sm:p-6 text-zinc-900 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
 
         {/* Header with Title and Close Action */}
-        <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center">
               <HeartPulse className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-white">{tr('Diagnostic Health Reports', 'डायग्नोस्टिक स्वास्थ्य रिपोर्ट्स')}</h3>
-              <p className="text-xs text-zinc-400">{tr('Uploaded medical reports & clinical lab documents', 'अपलोड की गई मेडिकल रिपोर्ट्स व क्लिनिकल लैब दस्तावेज़')}</p>
+              <h3 className="text-base sm:text-lg font-bold text-zinc-900">{tr('Diagnostic Health Reports', 'डायग्नोस्टिक स्वास्थ्य रिपोर्ट्स')}</h3>
+              <p className="text-xs text-zinc-500">{tr('Uploaded medical reports & clinical lab documents', 'अपलोड की गई मेडिकल रिपोर्ट्स व क्लिनिकल लैब दस्तावेज़')}</p>
             </div>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            className="p-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -110,7 +110,7 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
                   playClickSound(600);
                   setIsUploadingNew(false);
                 }}
-                className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 mb-2 cursor-pointer"
+                className="text-xs text-zinc-500 hover:text-zinc-900 flex items-center gap-1 mb-2 cursor-pointer"
               >
                 ← {tr('Back to report history', 'रिपोर्ट इतिहास पर वापस जाएं')}
               </button>
@@ -132,7 +132,7 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
               <button
                 type="button"
                 onClick={() => { playClickSound(600); setIsUploadingNew(true); }}
-                className="w-full py-3 rounded-2xl border-2 border-dashed border-emerald-500/40 hover:border-emerald-400 text-emerald-400 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="w-full py-3 rounded-2xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 text-emerald-700 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>{tr('Upload a New Report', 'नई रिपोर्ट अपलोड करें')}</span>
@@ -150,9 +150,9 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
                 (connecting line, one dot per entry) so report history reads
                 the same way everywhere in the app. */}
             {allReports.length === 0 ? (
-              <div className="p-8 rounded-2xl bg-zinc-900/60 border border-zinc-800 text-center space-y-2">
-                <FileText className="w-7 h-7 text-zinc-600 mx-auto" />
-                <p className="text-sm font-bold text-zinc-300">{tr('No Reports Uploaded Yet', 'अभी तक कोई रिपोर्ट अपलोड नहीं की गई')}</p>
+              <div className="p-8 rounded-2xl bg-zinc-50 border border-zinc-200 text-center space-y-2">
+                <FileText className="w-7 h-7 text-zinc-400 mx-auto" />
+                <p className="text-sm font-bold text-zinc-700">{tr('No Reports Uploaded Yet', 'अभी तक कोई रिपोर्ट अपलोड नहीं की गई')}</p>
                 <p className="text-xs text-zinc-500 max-w-sm mx-auto">
                   {tr('Upload a photo or document with fasting sugar, HbA1c, or lipid panel to receive personalized guidance.', 'व्यक्तिगत मार्गदर्शन पाने हेतु फास्टिंग शुगर, HbA1c, या लिपिड पैनल के साथ फोटो या दस्तावेज़ अपलोड करें।')}
                 </p>
@@ -163,20 +163,20 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
                   {tr('Report History', 'रिपोर्ट इतिहास')} ({allReports.length})
                 </h4>
                 <div className="relative">
-                  <div className="absolute left-[5px] top-2 bottom-2 w-px bg-zinc-800" aria-hidden="true" />
+                  <div className="absolute left-[5px] top-2 bottom-2 w-px bg-zinc-200" aria-hidden="true" />
                   <div className="space-y-2">
                     {allReports.map((report) => {
                       const open = expandedId === report.id;
                       return (
                         <div key={report.id} className="relative pl-6">
-                          <span className="absolute left-0 top-3 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-zinc-950" aria-hidden="true" />
+                          <span className="absolute left-0 top-3 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white" aria-hidden="true" />
                           <button
                             type="button"
                             onClick={() => toggleExpanded(report.id)}
-                            className="w-full text-left p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 hover:border-emerald-500/40 transition-colors cursor-pointer flex items-center justify-between gap-2"
+                            className="w-full text-left p-3 rounded-xl bg-zinc-50 border border-zinc-200 hover:border-emerald-400 transition-colors cursor-pointer flex items-center justify-between gap-2"
                           >
                             <div className="min-w-0">
-                              <p className="text-xs font-bold text-white truncate">{report.reportName}</p>
+                              <p className="text-xs font-bold text-zinc-900 truncate">{report.reportName}</p>
                               {report.uploadedAt && (
                                 <p className="text-[10px] text-zinc-500 font-semibold mt-0.5">{formatFullDateTime(report.uploadedAt, language)}</p>
                               )}
@@ -193,7 +193,7 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
                                 onDelete={onDeleteReport ? () => onDeleteReport(report.id, report.reportName) : undefined}
                                 onSaveReportText={onSaveReportText && report.id ? (text) => onSaveReportText(report.id!, report.reportName, text) : undefined}
                                 userName={userAccount?.displayName || tr('Member Patient', 'सदस्य रोगी')}
-                                theme="dark"
+                                theme="light"
                               />
                             </div>
                           )}
@@ -210,7 +210,7 @@ export const HealthReportModal: React.FC<HealthReportModalProps> = ({
               <button
                 type="button"
                 onClick={handleDone}
-                className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
               >
                 <Check className="w-4 h-4 stroke-[3]" />
                 <span>{tr('Done • Return to Dashboard', 'पूर्ण • डैशबोर्ड पर वापस जाएं')}</span>

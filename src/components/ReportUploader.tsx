@@ -245,14 +245,14 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
     <div id="report-uploader-card" className="w-full space-y-4 text-left">
       
       {/* 2 Tabs: Upload File | Edit */}
-      <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-900 border border-zinc-800 rounded-2xl">
+      <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-100 border border-zinc-200 rounded-2xl">
         <button
           type="button"
           onClick={() => { setInputMode('upload'); setError(null); }}
           className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer ${
             inputMode === 'upload'
               ? 'bg-emerald-600 text-white shadow-md'
-              : 'text-zinc-400 hover:text-white'
+              : 'text-zinc-500 hover:text-zinc-900'
           }`}
         >
           <Upload className="w-4 h-4" />
@@ -265,7 +265,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
           className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer ${
             inputMode === 'text'
               ? 'bg-emerald-600 text-white shadow-md'
-              : 'text-zinc-400 hover:text-white'
+              : 'text-zinc-500 hover:text-zinc-900'
           }`}
         >
           <FileText className="w-4 h-4" />
@@ -275,22 +275,22 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
 
       {/* NON-AI CLEAN UPLOAD ANIMATION */}
       {isAnalyzing && (
-        <div className="p-8 rounded-3xl bg-zinc-950 border border-zinc-800 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto">
-            <Upload className="w-7 h-7 animate-pulse text-emerald-400" />
+        <div className="p-8 rounded-3xl bg-white border border-zinc-200 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 mx-auto">
+            <Upload className="w-7 h-7 animate-pulse text-emerald-600" />
           </div>
           <div className="space-y-1">
-            <h4 className="text-base font-bold text-white">{tr('Uploading Medical Report...', 'मेडिकल रिपोर्ट अपलोड हो रही है...')}</h4>
-            <p className="text-xs text-zinc-400">{tr('Attaching document securely to your health records', 'दस्तावेज़ को सुरक्षित रूप से आपके स्वास्थ्य रिकॉर्ड से जोड़ा जा रहा है')}</p>
+            <h4 className="text-base font-bold text-zinc-900">{tr('Uploading Medical Report...', 'मेडिकल रिपोर्ट अपलोड हो रही है...')}</h4>
+            <p className="text-xs text-zinc-500">{tr('Attaching document securely to your health records', 'दस्तावेज़ को सुरक्षित रूप से आपके स्वास्थ्य रिकॉर्ड से जोड़ा जा रहा है')}</p>
           </div>
 
           <div className="space-y-1.5 max-w-xs mx-auto pt-2">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-zinc-400 font-medium">{tr('Uploading', 'अपलोड हो रहा है')}</span>
-              <span className="font-mono font-bold text-emerald-400">{scanProgress}%</span>
+              <span className="text-zinc-500 font-medium">{tr('Uploading', 'अपलोड हो रहा है')}</span>
+              <span className="font-mono font-bold text-emerald-600">{scanProgress}%</span>
             </div>
-            <div className="w-full h-2 rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden">
-              <div 
+            <div className="w-full h-2 rounded-full bg-zinc-100 border border-zinc-200 overflow-hidden">
+              <div
                 className="h-full bg-emerald-500 rounded-full transition-all duration-150"
                 style={{ width: `${scanProgress}%` }}
               />
@@ -303,9 +303,9 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       {!isAnalyzing && analysisResult ? (
         <div className="space-y-4 animate-in fade-in">
           {addedConditions.length > 0 && (
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-2.5">
-              <Zap className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-emerald-300 font-semibold leading-snug">
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5">
+              <Zap className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-emerald-700 font-semibold leading-snug">
                 {tr(
                   `Your Daily Plan was updated based on this report — added ${addedConditions.join(', ')}.`,
                   `इस रिपोर्ट के आधार पर आपकी डेली प्लान अपडेट कर दी गई — जोड़ा गया: ${addedConditions.join(', ')}।`
@@ -317,7 +317,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
             report={analysisResult}
             onReupload={() => setAnalysisResult(null)}
             userName={userAccount?.displayName || tr('Member Patient', 'सदस्य रोगी')}
-            theme="dark"
+            theme="light"
           />
 
           <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
@@ -325,7 +325,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
               type="button"
               id="report-done-apply-btn"
               onClick={handleDoneClick}
-              className="flex-1 w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2"
+              className="flex-1 w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               <span>{tr('Done • Apply & View Dashboard', 'पूर्ण • लागू करें व डैशबोर्ड देखें')}</span>
@@ -334,7 +334,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
             <button
               type="button"
               onClick={() => setAnalysisResult(null)}
-              className="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs transition-colors cursor-pointer"
+              className="w-full sm:w-auto px-5 py-3.5 rounded-2xl bg-zinc-100 hover:bg-zinc-200 text-zinc-900 font-bold text-xs transition-colors cursor-pointer"
             >
               {tr('Upload Another', 'एक और अपलोड करें')}
             </button>
@@ -352,7 +352,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
           {inputMode === 'upload' && (
             <div
               onClick={() => document.getElementById('report-file-input')?.click()}
-              className="p-6 sm:p-8 border-2 border-dashed border-zinc-700 hover:border-emerald-500 bg-zinc-900/60 hover:bg-zinc-900 rounded-3xl text-center cursor-pointer transition-all space-y-3"
+              className="p-6 sm:p-8 border-2 border-dashed border-zinc-300 hover:border-emerald-500 bg-zinc-50 hover:bg-zinc-100 rounded-3xl text-center cursor-pointer transition-all space-y-3"
             >
               <input
                 id="report-file-input"
@@ -361,22 +361,22 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
                 className="hidden"
                 onChange={handleFileChange}
               />
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto">
                 <Upload className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-black text-white">
+                <p className="text-sm font-black text-zinc-900">
                   {selectedFile ? selectedFile.name : tr('Click to Upload a Report Photo', 'रिपोर्ट फोटो अपलोड करने हेतु क्लिक करें')}
                 </p>
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-zinc-500">
                   {tr('Supports doctor prescription or blood test photos (PDF not supported right now)', 'डॉक्टर पर्चे या ब्लड टेस्ट फोटो समर्थित हैं (PDF अभी समर्थित नहीं है)')}
                 </p>
               </div>
               {selectedFile && (
                 <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-full border ${
                   isReadingFile
-                    ? 'text-amber-400 bg-amber-950/40 border-amber-500/40'
-                    : 'text-emerald-400 bg-emerald-950/60 border-emerald-500/40'
+                    ? 'text-amber-700 bg-amber-50 border-amber-200'
+                    : 'text-emerald-700 bg-emerald-50 border-emerald-200'
                 }`}>
                   {isReadingFile && <RefreshCw className="w-3 h-3 animate-spin" />}
                   <span>
@@ -391,10 +391,10 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
 
           {/* OPTION 2: EDIT / WRITE / PASTE TEXT */}
           {inputMode === 'text' && (
-            <div className="space-y-3 p-4 rounded-3xl bg-zinc-900/90 border border-zinc-800">
+            <div className="space-y-3 p-4 rounded-3xl bg-zinc-50 border border-zinc-200">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-emerald-400" />
+                <label className="text-xs font-bold text-zinc-700 flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-emerald-600" />
                   <span>{tr('Edit or Enter Lab Report Data', 'लैब रिपोर्ट डेटा संपादित करें या दर्ज करें')}</span>
                 </label>
               </div>
@@ -406,31 +406,31 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
                 )}
                 value={reportText}
                 onChange={(e) => setReportText(e.target.value)}
-                className="w-full p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 focus:border-emerald-500 text-white text-xs outline-none transition-colors"
+                className="w-full p-3.5 rounded-2xl bg-white border border-zinc-200 focus:border-emerald-600 text-zinc-900 text-xs outline-none transition-colors"
               />
 
               {/* Presets */}
               <div className="space-y-1.5 pt-1">
-                <div className="text-[10px] font-bold text-zinc-400 uppercase">{tr('Quick sample presets:', 'त्वरित नमूना प्रीसेट:')}</div>
+                <div className="text-[10px] font-bold text-zinc-500 uppercase">{tr('Quick sample presets:', 'त्वरित नमूना प्रीसेट:')}</div>
                 <div className="flex flex-wrap gap-1.5">
                   <button
                     type="button"
                     onClick={() => handleLoadSample('diabetic')}
-                    className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center gap-1 border border-zinc-700 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[10px] font-bold flex items-center gap-1 border border-zinc-200 cursor-pointer"
                   >
                     <span>🩸 {tr('Diabetic HbA1c (7.2%)', 'डायबिटिक HbA1c (7.2%)')}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleLoadSample('lipid')}
-                    className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center gap-1 border border-zinc-700 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[10px] font-bold flex items-center gap-1 border border-zinc-200 cursor-pointer"
                   >
                     <span>🫀 {tr('High Cholesterol (242 mg/dL)', 'उच्च कोलेस्ट्रॉल (242 mg/dL)')}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleLoadSample('thyroid')}
-                    className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold flex items-center gap-1 border border-zinc-700 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-[10px] font-bold flex items-center gap-1 border border-zinc-200 cursor-pointer"
                   >
                     <span>⚡ {tr('Thyroid & Vit D3 Test', 'थायरॉइड व विटामिन D3 टेस्ट')}</span>
                   </button>
@@ -440,7 +440,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
           )}
 
           {error && (
-            <p className="text-xs text-rose-400 bg-rose-950/50 p-3 rounded-2xl border border-rose-500/40 flex items-center gap-2">
+            <p className="text-xs text-rose-700 bg-rose-50 p-3 rounded-2xl border border-rose-200 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </p>
@@ -452,7 +452,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
             id="upload-report-btn"
             onClick={handleAnalyze}
             disabled={inputMode === 'upload' && isReadingFile}
-            className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-500/25"
+            className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-500/25"
           >
             <Upload className="w-4 h-4 stroke-[2.5]" />
             <span>{tr('Upload', 'अपलोड करें')}</span>
@@ -464,7 +464,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
               <button
                 type="button"
                 onClick={onSkip}
-                className="w-full py-2.5 rounded-xl text-zinc-400 hover:text-white text-xs font-bold transition-all cursor-pointer"
+                className="w-full py-2.5 rounded-xl text-zinc-500 hover:text-zinc-900 text-xs font-bold transition-all cursor-pointer"
               >
                 {tr('Skip for now', 'अभी के लिए छोड़ें')}
               </button>

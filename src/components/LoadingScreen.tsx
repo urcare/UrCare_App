@@ -146,7 +146,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.95 }}
-          className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 pt-2 border-t border-zinc-800/40 w-full justify-center"
+          className={`flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 pt-2 border-t w-full justify-center ${isDark ? 'border-zinc-800/40' : 'border-zinc-200'}`}
         >
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
           <span>{tr('Evidence-Based Endocrinology & Dietetics', 'साक्ष्य-आधारित एंडोक्राइनोलॉजी व आहार विज्ञान')}</span>

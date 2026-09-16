@@ -233,45 +233,45 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
   if (!isPro) {
     return (
       <div id="food-scanner-pro-lock-backdrop" className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-zinc-950 border border-emerald-500/40 rounded-3xl p-6 sm:p-8 text-white shadow-2xl text-center space-y-5 animate-in fade-in zoom-in-95">
+        <div className="w-full max-w-md bg-white border border-emerald-200 rounded-3xl p-6 sm:p-8 text-zinc-900 shadow-2xl text-center space-y-5 animate-in fade-in zoom-in-95">
           <div className="flex justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white"
+              className="p-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500/20 via-emerald-500/20 to-green-400/20 border border-emerald-500/30 flex items-center justify-center mx-auto">
-            <Lock className="w-8 h-8 text-emerald-400" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-50 via-emerald-50 to-green-50 border border-emerald-200 flex items-center justify-center mx-auto">
+            <Lock className="w-8 h-8 text-emerald-600" />
           </div>
 
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold mb-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold mb-2">
               <Crown className="w-3.5 h-3.5" />
               <span>{tr('UrCare Pro Feature', 'UrCare प्रो फीचर')}</span>
             </div>
-            <h3 className="text-xl sm:text-2xl font-black text-white">
+            <h3 className="text-xl sm:text-2xl font-black text-zinc-900">
               {tr('Smart Food Camera is a Pro Feature', 'स्मार्ट फूड कैमरा एक प्रो फीचर है')}
             </h3>
-            <p className="text-xs sm:text-sm text-zinc-400 mt-2 leading-relaxed">
+            <p className="text-xs sm:text-sm text-zinc-500 mt-2 leading-relaxed">
               {tr('Unlock instant meal photo scanning, precision nutritional calculation, doctor prescriptions, and clinical protocols.', 'तुरंत भोजन फोटो स्कैनिंग, सटीक पोषण गणना, डॉक्टर पर्चे व क्लिनिकल प्रोटोकॉल अनलॉक करें।')}
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-zinc-900/70 border border-zinc-800 text-left space-y-2 text-xs">
-            <div className="flex items-center gap-2 text-zinc-300">
-              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 text-left space-y-2 text-xs">
+            <div className="flex items-center gap-2 text-zinc-700">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{tr('Real-time photo nutrient breakdown', 'रीयल-टाइम फोटो पोषक विश्लेषण')}</span>
             </div>
-            <div className="flex items-center gap-2 text-zinc-300">
-              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="flex items-center gap-2 text-zinc-700">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{tr('Automatic portion size & macro detection', 'स्वचालित पोर्शन साइज़ व मैक्रो पहचान')}</span>
             </div>
-            <div className="flex items-center gap-2 text-zinc-300">
-              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="flex items-center gap-2 text-zinc-700">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{tr('Clinical doctor guidance on lab reports', 'लैब रिपोर्ट्स पर क्लिनिकल डॉक्टर मार्गदर्शन')}</span>
             </div>
           </div>
@@ -283,7 +283,7 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
               onClose();
               if (onOpenProUpgrade) onOpenProUpgrade();
             }}
-            className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition-all active:scale-95"
+            className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition-all active:scale-95"
           >
             <span>{tr('Upgrade to Pro to Unlock Food Scanner', 'फूड स्कैनर अनलॉक करने हेतु प्रो में अपग्रेड करें')}</span>
             <ArrowRight className="w-4 h-4" />
@@ -362,26 +362,26 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
   // PRO USERS: Full AI Vision & Camera Interface
   return (
     <div id="food-scanner-modal-backdrop" className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div id="food-scanner-modal" className="w-full max-w-lg bg-zinc-950 border border-emerald-500/40 rounded-3xl p-6 text-white shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-        
+      <div id="food-scanner-modal" className="w-full max-w-lg bg-white border border-emerald-200 rounded-3xl p-6 text-zinc-900 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <Camera className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h3 className="text-base font-bold text-white">{tr('Scan Food & Macros', 'भोजन व मैक्रो स्कैन करें')}</h3>
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500 text-black">PRO</span>
+                <h3 className="text-base font-bold text-zinc-900">{tr('Scan Food & Macros', 'भोजन व मैक्रो स्कैन करें')}</h3>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500 text-white">PRO</span>
               </div>
-              <p className="text-[11px] text-zinc-400">{tr('Photo scan or describe meal', 'फोटो स्कैन करें या भोजन बताएं')}</p>
+              <p className="text-[11px] text-zinc-500">{tr('Photo scan or describe meal', 'फोटो स्कैन करें या भोजन बताएं')}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white"
+            className="p-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900"
           >
             <X className="w-4 h-4" />
           </button>
@@ -389,15 +389,15 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
 
         {/* Category selector */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-zinc-400">{tr('Select Meal Slot:', 'भोजन का समय चुनें:')}</label>
-          <div className="grid grid-cols-4 gap-1.5 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800 text-xs">
+          <label className="text-xs font-semibold text-zinc-500">{tr('Select Meal Slot:', 'भोजन का समय चुनें:')}</label>
+          <div className="grid grid-cols-4 gap-1.5 bg-zinc-50 p-1 rounded-xl border border-zinc-200 text-xs">
             {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setCategory(cat)}
                 className={`py-1.5 capitalize rounded-lg font-semibold transition-all ${
-                  category === cat ? 'bg-emerald-500 text-black' : 'text-zinc-400 hover:text-white'
+                  category === cat ? 'bg-emerald-500 text-white' : 'text-zinc-500 hover:text-zinc-900'
                 }`}
               >
                 {tr(cat, MEAL_CATEGORY_LABEL_HI[cat])}
@@ -410,10 +410,10 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
           <div className="space-y-4">
             {/* Upload or live snap photo */}
             <div>
-              <label className="text-xs font-semibold text-zinc-300 block mb-2">{tr('Snap or Upload Food Photo:', 'भोजन की फोटो लें या अपलोड करें:')}</label>
+              <label className="text-xs font-semibold text-zinc-700 block mb-2">{tr('Snap or Upload Food Photo:', 'भोजन की फोटो लें या अपलोड करें:')}</label>
 
               {selectedImage ? (
-                <div className="relative rounded-2xl overflow-hidden border border-emerald-500/40 bg-zinc-900">
+                <div className="relative rounded-2xl overflow-hidden border border-emerald-200 bg-zinc-50">
                   <img src={selectedImage} alt="Food to scan" className="w-full h-44 object-cover" />
                   <button
                     type="button"
@@ -426,7 +426,7 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
               ) : (
                 <div className="space-y-2">
                   {cameraError && (
-                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs">
+                    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
                       <AlertCircle className="w-4 h-4 shrink-0" />
                       <span>{cameraError}</span>
                     </div>
@@ -435,16 +435,16 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
                     <button
                       type="button"
                       onClick={startCamera}
-                      className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-800 hover:border-emerald-500/50 rounded-2xl p-6 cursor-pointer bg-zinc-900/40 transition-colors"
+                      className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-300 hover:border-emerald-500 rounded-2xl p-6 cursor-pointer bg-zinc-50 transition-colors"
                     >
-                      <Camera className="w-8 h-8 text-emerald-400 mb-2" />
-                      <span className="text-xs font-bold text-white">{tr('Take Photo', 'फोटो लें')}</span>
+                      <Camera className="w-8 h-8 text-emerald-600 mb-2" />
+                      <span className="text-xs font-bold text-zinc-900">{tr('Take Photo', 'फोटो लें')}</span>
                       <span className="text-[10px] text-zinc-500 mt-1 text-center">{tr('Live camera, real-time', 'लाइव कैमरा, रीयल-टाइम')}</span>
                     </button>
 
-                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-800 hover:border-emerald-500/50 rounded-2xl p-6 cursor-pointer bg-zinc-900/40 transition-colors">
-                      <Upload className="w-8 h-8 text-emerald-400 mb-2" />
-                      <span className="text-xs font-bold text-white">{tr('Upload Photo', 'फोटो अपलोड करें')}</span>
+                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-300 hover:border-emerald-500 rounded-2xl p-6 cursor-pointer bg-zinc-50 transition-colors">
+                      <Upload className="w-8 h-8 text-emerald-600 mb-2" />
+                      <span className="text-xs font-bold text-zinc-900">{tr('Upload Photo', 'फोटो अपलोड करें')}</span>
                       <span className="text-[10px] text-zinc-500 mt-1 text-center">{tr('From gallery / files', 'गैलरी / फाइलों से')}</span>
                       <input
                         type="file"
@@ -461,26 +461,26 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
 
             {/* Or Text Description */}
             <div>
-              <label className="text-xs font-semibold text-zinc-300 block mb-1">{tr('Or Describe Your Meal:', 'या अपना भोजन बताएं:')}</label>
+              <label className="text-xs font-semibold text-zinc-700 block mb-1">{tr('Or Describe Your Meal:', 'या अपना भोजन बताएं:')}</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={tr('e.g. 2 rotis with paneer bhurji and 1 cup dal...', 'जैसे 2 रोटी पनीर भुर्जी के साथ और 1 कटोरी दाल...')}
                 rows={2}
-                className="w-full bg-zinc-900 border border-zinc-800 focus:border-emerald-500 rounded-xl p-3 text-xs text-white placeholder-zinc-500 focus:outline-none"
+                className="w-full bg-zinc-50 border border-zinc-200 focus:border-emerald-600 rounded-xl p-3 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none"
               />
             </div>
 
             {/* Quick Sample Prompts */}
             <div className="space-y-1.5">
-              <span className="text-[11px] text-zinc-400">{tr('Quick Test Meals:', 'त्वरित परीक्षण भोजन:')}</span>
+              <span className="text-[11px] text-zinc-500">{tr('Quick Test Meals:', 'त्वरित परीक्षण भोजन:')}</span>
               <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
                 {SAMPLE_MEALS.map((sample, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setDescription(sample)}
-                    className="text-[10px] bg-zinc-900 hover:bg-zinc-800 text-zinc-300 px-2.5 py-1 rounded-lg border border-zinc-800 text-left transition-colors"
+                    className="text-[10px] bg-zinc-100 hover:bg-zinc-200 text-zinc-700 px-2.5 py-1 rounded-lg border border-zinc-200 text-left transition-colors"
                   >
                     {sample}
                   </button>
@@ -489,7 +489,7 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-xs">
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -501,7 +501,7 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
               type="button"
               onClick={handleAnalyzeFood}
               disabled={isScanning}
-              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-black font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all cursor-pointer"
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all cursor-pointer"
             >
               {isScanning ? (
                 <>
@@ -522,9 +522,9 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
             {/* AI Suitability Verdict — personalized to this user's health profile */}
             {scannedResult.suitability && (() => {
               const verdictStyles: Record<string, { label: string; classes: string; icon: string }> = {
-                good: { label: tr('Good For You', 'आपके लिए अच्छा'), classes: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300', icon: '✅' },
-                moderate: { label: tr('Okay In Moderation', 'सीमित मात्रा में ठीक है'), classes: 'bg-amber-500/15 border-amber-500/40 text-amber-300', icon: '⚠️' },
-                avoid: { label: tr('Better To Avoid', 'बचना बेहतर है'), classes: 'bg-rose-500/15 border-rose-500/40 text-rose-300', icon: '⛔' },
+                good: { label: tr('Good For You', 'आपके लिए अच्छा'), classes: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: '✅' },
+                moderate: { label: tr('Okay In Moderation', 'सीमित मात्रा में ठीक है'), classes: 'bg-amber-50 border-amber-200 text-amber-700', icon: '⚠️' },
+                avoid: { label: tr('Better To Avoid', 'बचना बेहतर है'), classes: 'bg-rose-50 border-rose-200 text-rose-700', icon: '⛔' },
               };
               const style = verdictStyles[scannedResult.suitability] || verdictStyles.moderate;
               return (
@@ -540,40 +540,40 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
               );
             })()}
 
-            <div className="p-4 rounded-2xl bg-zinc-900 border border-emerald-500/40 space-y-3">
+            <div className="p-4 rounded-2xl bg-zinc-50 border border-emerald-200 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-bold text-white">{scannedResult.name}</h4>
-                  <p className="text-[11px] text-zinc-400">{scannedResult.servingSize || tr('1 standard portion', '1 मानक हिस्सा')}</p>
+                  <h4 className="text-sm font-bold text-zinc-900">{scannedResult.name}</h4>
+                  <p className="text-[11px] text-zinc-500">{scannedResult.servingSize || tr('1 standard portion', '1 मानक हिस्सा')}</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-xl font-black text-emerald-400">{scannedResult.calories} kcal</div>
-                  <div className="text-[10px] text-zinc-400">{tr('Calculated', 'गणना की गई')}</div>
+                  <div className="text-xl font-black text-emerald-600">{scannedResult.calories} kcal</div>
+                  <div className="text-[10px] text-zinc-500">{tr('Calculated', 'गणना की गई')}</div>
                 </div>
               </div>
 
               {/* Macro Bar Grid */}
-              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-zinc-800 text-center">
-                <div className="p-2 rounded-xl bg-zinc-950">
-                  <div className="text-[10px] text-zinc-400">{tr('Protein', 'प्रोटीन')}</div>
-                  <div className="text-sm font-bold text-white">{scannedResult.protein}g</div>
+              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-zinc-200 text-center">
+                <div className="p-2 rounded-xl bg-white border border-zinc-200">
+                  <div className="text-[10px] text-zinc-500">{tr('Protein', 'प्रोटीन')}</div>
+                  <div className="text-sm font-bold text-zinc-900">{scannedResult.protein}g</div>
                 </div>
-                <div className="p-2 rounded-xl bg-zinc-950">
-                  <div className="text-[10px] text-zinc-400">{tr('Carbs', 'कार्ब्स')}</div>
-                  <div className="text-sm font-bold text-white">{scannedResult.carbs}g</div>
+                <div className="p-2 rounded-xl bg-white border border-zinc-200">
+                  <div className="text-[10px] text-zinc-500">{tr('Carbs', 'कार्ब्स')}</div>
+                  <div className="text-sm font-bold text-zinc-900">{scannedResult.carbs}g</div>
                 </div>
-                <div className="p-2 rounded-xl bg-zinc-950">
-                  <div className="text-[10px] text-zinc-400">{tr('Fats', 'फैट्स')}</div>
-                  <div className="text-sm font-bold text-white">{scannedResult.fats}g</div>
+                <div className="p-2 rounded-xl bg-white border border-zinc-200">
+                  <div className="text-[10px] text-zinc-500">{tr('Fats', 'फैट्स')}</div>
+                  <div className="text-sm font-bold text-zinc-900">{scannedResult.fats}g</div>
                 </div>
-                <div className="p-2 rounded-xl bg-zinc-950">
-                  <div className="text-[10px] text-zinc-400">{tr('Fiber', 'फाइबर')}</div>
-                  <div className="text-sm font-bold text-white">{scannedResult.fiber || 3}g</div>
+                <div className="p-2 rounded-xl bg-white border border-zinc-200">
+                  <div className="text-[10px] text-zinc-500">{tr('Fiber', 'फाइबर')}</div>
+                  <div className="text-sm font-bold text-zinc-900">{scannedResult.fiber || 3}g</div>
                 </div>
               </div>
 
               {scannedResult.healthNote && (
-                <p className="text-[11px] text-emerald-300/90 italic bg-emerald-950/20 p-2 rounded-lg">
+                <p className="text-[11px] text-emerald-700 italic bg-emerald-50 p-2 rounded-lg">
                   {tr('Clinical Note:', 'क्लिनिकल टिप्पणी:')} {scannedResult.healthNote}
                 </p>
               )}
@@ -583,7 +583,7 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
               <button
                 type="button"
                 onClick={() => setScannedResult(null)}
-                className="w-1/3 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-semibold"
+                className="w-1/3 py-2.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold"
               >
                 {tr('Scan Another', 'दूसरा स्कैन करें')}
               </button>
@@ -591,7 +591,7 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
                 id="log-meal-confirm-btn"
                 type="button"
                 onClick={handleConfirmAndAdd}
-                className="w-2/3 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20"
+                className="w-2/3 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20"
               >
                 <Check className="w-4 h-4" />
                 <span>{tr('Log to', 'दर्ज करें')} {tr(category.toUpperCase(), (MEAL_CATEGORY_LABEL_HI[category] || category).toUpperCase())}</span>

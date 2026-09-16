@@ -197,7 +197,7 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
       <div className={`w-full max-w-xl p-6 sm:p-8 rounded-3xl ${cardBg} space-y-6 text-left relative max-h-[90vh] overflow-y-auto`}>
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-zinc-800/40">
+        <div className={`flex items-center justify-between pb-4 border-b ${isDark ? 'border-zinc-800/40' : 'border-zinc-200'}`}>
           <div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-emerald-500" />
@@ -209,7 +209,7 @@ export const PaymentGatewayModal: React.FC<PaymentGatewayModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              className={`p-1.5 rounded-xl text-zinc-400 transition-colors ${isDark ? 'hover:text-white hover:bg-zinc-800' : 'hover:text-zinc-900 hover:bg-zinc-100'}`}
             >
               <X className="w-5 h-5" />
             </button>

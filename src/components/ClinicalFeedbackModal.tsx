@@ -73,7 +73,7 @@ export const ClinicalFeedbackModal: React.FC<ClinicalFeedbackModalProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/50 transition-colors"
+          className={`absolute top-5 right-5 p-2 rounded-xl text-zinc-400 transition-colors ${isDark ? 'hover:text-white hover:bg-zinc-800/50' : 'hover:text-zinc-900 hover:bg-zinc-100'}`}
         >
           <X className="w-5 h-5" />
         </button>
