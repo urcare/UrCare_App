@@ -11,6 +11,9 @@ interface UploadDailyPlanModalProps {
   /** Called once a plan has been successfully extracted & saved, so the
    *  parent can re-fetch today's plan and show the new one immediately. */
   onUploaded: () => void;
+  /** When set, saves this plan for a family member (see FamilyViewSwitcher)
+   *  instead of the signed-in account. */
+  dependentId?: string | null;
 }
 
 /** What step of a multi-page PDF upload is currently running — shown as
@@ -37,7 +40,7 @@ interface PdfProgress {
  *  multi-page PDF (a real doctor's printout can easily run 40-60+ pages
  *  once cover pages, disclaimers and diet guides are counted) work here,
  *  instead of being rejected outright the way a photo-only flow would. */
-export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOpen, onClose, onUploaded }) => {
+export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOpen, onClose, onUploaded, dependentId }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
@@ -134,7 +137,7 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
     }
 
     setPdfProgress({ phase: 'saving' });
-    const saved = await saveMergedDailyPlan(allSections);
+    const saved = await saveMergedDailyPlan(allSections, dependentId);
     if (!saved.isValidPlan) {
       setError(saved.rejectionReason || tr('Could not save this plan right now.', 'यह प्लान अभी सहेजा नहीं जा सका।'));
       return;
@@ -161,7 +164,7 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
           setError(tr('Please wait for the file to finish loading.', 'कृपया फ़ाइल लोड होने तक प्रतीक्षा करें।'));
           return;
         }
-        const data = await uploadCustomDailyPlan(fileBase64, selectedFile.type || 'image/jpeg');
+        const data = await uploadCustomDailyPlan(fileBase64, selectedFile.type || 'image/jpeg', true, dependentId);
         if (!data.isValidPlan) {
           const base = data.rejectionReason || tr('Could not extract a plan from this. Please try a clearer photo.', 'इससे कोई प्लान नहीं निकाला जा सका। कृपया साफ़ फोटो आज़माएं।');
           setError(data.debugReason ? `${base} (${data.debugReason})` : base);

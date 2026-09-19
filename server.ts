@@ -884,7 +884,7 @@ async function persistCustomDailyPlan(
 
 app.post('/api/analyze-daily-plan', requireUser(async (req, res, user) => {
   try {
-    const { imageBase64, mimeType = 'image/jpeg', persist = true } = req.body as { imageBase64?: string; mimeType?: string; persist?: boolean };
+    const { imageBase64, mimeType = 'image/jpeg', persist = true, dependentId } = req.body as { imageBase64?: string; mimeType?: string; persist?: boolean; dependentId?: string };
     if (!imageBase64) {
       return res.json({ isValidPlan: false, rejectionReason: 'Please upload a photo or PDF of your daily plan.' });
     }
@@ -969,7 +969,8 @@ Call the record_daily_plan tool exactly once with the complete result.`;
     if (!supabase) {
       return res.json({ isValidPlan: true, uploadedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString(), sections: finalSections });
     }
-    const saved = await persistCustomDailyPlan(supabase, user, finalSections, fileMediaType(imageBase64).startsWith('image/') ? imageBase64 : null);
+    const actingUserId = await resolveActingUserId(supabase, user.id, dependentId);
+    const saved = await persistCustomDailyPlan(supabase, { id: actingUserId }, finalSections, fileMediaType(imageBase64).startsWith('image/') ? imageBase64 : null);
     return res.json({ isValidPlan: true, ...saved });
   } catch (error: any) {
     if (error instanceof PdfNotSupportedError) {
@@ -994,7 +995,7 @@ Call the record_daily_plan tool exactly once with the complete result.`;
 // exactly like the single-image path's save step.
 app.post('/api/save-daily-plan', requireUser(async (req, res, user) => {
   try {
-    const { sections, sourceImageUrl } = req.body as { sections?: any[]; sourceImageUrl?: string | null };
+    const { sections, sourceImageUrl, dependentId } = req.body as { sections?: any[]; sourceImageUrl?: string | null; dependentId?: string };
     if (!Array.isArray(sections) || sections.length === 0) {
       return res.status(400).json({ error: 'No steps to save.' });
     }
@@ -1021,7 +1022,8 @@ app.post('/api/save-daily-plan', requireUser(async (req, res, user) => {
     const staggered = staggerDuplicateTimes(cleaned);
     const supabase = getSupabaseAdmin();
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
-    const saved = await persistCustomDailyPlan(supabase, user, staggered, typeof sourceImageUrl === 'string' ? sourceImageUrl : null);
+    const actingUserId = await resolveActingUserId(supabase, user.id, dependentId);
+    const saved = await persistCustomDailyPlan(supabase, { id: actingUserId }, staggered, typeof sourceImageUrl === 'string' ? sourceImageUrl : null);
     return res.json({ isValidPlan: true, ...saved });
   } catch (error) {
     console.error('Error saving merged daily plan:', error);
@@ -1031,17 +1033,18 @@ app.post('/api/save-daily-plan', requireUser(async (req, res, user) => {
 
 app.post('/api/daily-plan', requireUser(async (req, res, user) => {
   try {
-    const { date } = req.body as { date?: string };
+    const { date, dependentId } = req.body as { date?: string; dependentId?: string };
     const supabase = getSupabaseAdmin();
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+    const actingUserId = await resolveActingUserId(supabase, user.id, dependentId);
 
     // These three reads are all independent of each other — running them in
     // parallel instead of one-after-another roughly a-thirds the round-trip
     // time, which matters most for a brand-new user opening their plan for
     // the very first time right after onboarding.
     const [{ data: customPlan }, { data: hp }, { data: sections, error: sectionsError }] = await Promise.all([
-      supabase.from('custom_daily_plans').select('sections, uploaded_at, expires_at').eq('user_id', user.id).maybeSingle(),
-      supabase.from('health_profiles').select('existing_concerns, program_started_at').eq('user_id', user.id).maybeSingle(),
+      supabase.from('custom_daily_plans').select('sections, uploaded_at, expires_at').eq('user_id', actingUserId).maybeSingle(),
+      supabase.from('health_profiles').select('existing_concerns, program_started_at').eq('user_id', actingUserId).maybeSingle(),
       supabase.from('reversal_plan_sections').select('*').order('order_index', { ascending: true }),
     ]);
     if (sectionsError) throw sectionsError;
@@ -1072,7 +1075,11 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
     let startedAt = hp?.program_started_at as string | undefined;
     if (!startedAt) {
       startedAt = date || new Date().toISOString().slice(0, 10);
-      supabase.from('health_profiles').update({ program_started_at: startedAt }).eq('user_id', user.id).is('program_started_at', null)
+      // Upsert (not a plain update) so this also bootstraps a brand-new
+      // family member's health_profiles row on their very first plan view —
+      // they otherwise have no row here at all yet. Only program_started_at
+      // is written, so an existing row's other columns are left untouched.
+      supabase.from('health_profiles').upsert({ user_id: actingUserId, program_started_at: startedAt }, { onConflict: 'user_id' })
         .then(({ error }) => { if (error) console.error('Could not pin program_started_at:', error); });
     }
 
@@ -1115,7 +1122,7 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
 // filtering everywhere else in this file.
 app.post('/api/custom-plan-steps', requireUser(async (req, res, user) => {
   try {
-    const { timeLabel, title, body } = req.body as { timeLabel?: string; title?: string; body?: string };
+    const { timeLabel, title, body, dependentId } = req.body as { timeLabel?: string; title?: string; body?: string; dependentId?: string };
     if (!timeLabel?.trim() || !title?.trim()) {
       return res.status(400).json({ error: 'A time and title are required.' });
     }
@@ -1123,10 +1130,11 @@ app.post('/api/custom-plan-steps', requireUser(async (req, res, user) => {
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
     const ai = getGroqClient();
     if (!ai) return res.status(503).json({ error: 'The safety check is not configured right now. Please try again later.' });
+    const actingUserId = await resolveActingUserId(supabase, user.id, dependentId);
 
     const [{ data: hp }, { data: reports }] = await Promise.all([
-      supabase.from('health_profiles').select('existing_concerns').eq('user_id', user.id).maybeSingle(),
-      supabase.from('lab_reports').select('biomarkers').eq('user_id', user.id).order('uploaded_at', { ascending: false }).limit(2),
+      supabase.from('health_profiles').select('existing_concerns').eq('user_id', actingUserId).maybeSingle(),
+      supabase.from('lab_reports').select('biomarkers').eq('user_id', actingUserId).order('uploaded_at', { ascending: false }).limit(2),
     ]);
 
     const conditions: string[] = (hp?.existing_concerns || []).filter((c: string) => c !== 'None');
@@ -1166,7 +1174,7 @@ Set verdict to "yellow" whenever the step is safe, neutral, or beneficial given 
       : 'No conflict found with your current health profile.');
 
     const { data: inserted, error: insertError } = await supabase.from('custom_plan_steps').insert({
-      user_id: user.id,
+      user_id: actingUserId,
       time_label: timeLabel.trim(),
       title: title.trim(),
       body: body?.trim() || null,
@@ -1175,7 +1183,7 @@ Set verdict to "yellow" whenever the step is safe, neutral, or beneficial given 
     }).select().single();
     if (insertError) throw insertError;
 
-    await createActivityLog(supabase, user.id, 'created', 'plan', `Added to Daily Plan: ${title.trim()}`, verdict === 'red' ? `⚠ ${reason}` : reason);
+    await createActivityLog(supabase, actingUserId, 'created', 'plan', `Added to Daily Plan: ${title.trim()}`, verdict === 'red' ? `⚠ ${reason}` : reason);
 
     return res.json({
       step: {
@@ -1192,6 +1200,122 @@ Set verdict to "yellow" whenever the step is safe, neutral, or beneficial given 
     console.error('Error reviewing custom plan step:', error);
     return res.status(500).json({ error: 'Could not add this step right now. Please try again.' });
   }
+}));
+
+// ----------------------------------------------------------------------------
+// FAMILY MEMBERS — dependent profiles the primary account manages, with no
+// login of their own (see family_members in supabase/patches.sql). Each one
+// is really a login-disabled auth.users row under the hood, so every
+// existing per-user table/endpoint keeps working for them unchanged.
+// ----------------------------------------------------------------------------
+
+/** Resolves which user id a plan/tracker request should actually act on:
+ *  the caller themself by default, or — only once verified against
+ *  family_members — one of their dependents. Never trusts a raw target user
+ *  id straight from the client. */
+async function resolveActingUserId(supabase: SupabaseClient, callerId: string, dependentId?: string | null): Promise<string> {
+  if (!dependentId) return callerId;
+  const { data } = await supabase
+    .from('family_members')
+    .select('dependent_user_id')
+    .eq('id', dependentId)
+    .eq('primary_user_id', callerId)
+    .maybeSingle();
+  return data?.dependent_user_id || callerId;
+}
+
+app.get('/api/family-members', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase.from('family_members').select('*').eq('primary_user_id', user.id).order('created_at', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ members: data || [] });
+}));
+
+app.post('/api/family-members', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { name, relation, age, gender, conditions } = req.body as {
+    name?: string; relation?: string; age?: number; gender?: string; conditions?: string[];
+  };
+  if (!name?.trim()) return res.status(400).json({ error: 'A name is required.' });
+
+  try {
+    // A real but login-disabled auth user, purely to hold this dependent's
+    // own data under the existing per-user schema — synthetic unreachable
+    // email, random password that's never surfaced or given out anywhere.
+    const syntheticEmail = `family-${crypto.randomUUID()}@members.urcare.internal`;
+    const { data: created, error: createError } = await supabase.auth.admin.createUser({
+      email: syntheticEmail,
+      email_confirm: true,
+      password: crypto.randomBytes(32).toString('hex'),
+      user_metadata: { full_name: name.trim(), is_family_dependent: true },
+    });
+    if (createError || !created?.user) {
+      return res.status(500).json({ error: createError?.message || 'Could not create this family member.' });
+    }
+    const dependentUserId = created.user.id;
+
+    await supabase.from('profiles').update({ full_name: name.trim() }).eq('user_id', dependentUserId);
+    await supabase.from('health_profiles').upsert(
+      { user_id: dependentUserId, existing_concerns: conditions || [], age: age || null, gender: gender || null },
+      { onConflict: 'user_id' }
+    );
+
+    const { data: member, error: memberError } = await supabase.from('family_members').insert({
+      primary_user_id: user.id,
+      dependent_user_id: dependentUserId,
+      name: name.trim(),
+      relation: relation || 'other',
+      age: age || null,
+      gender: gender || null,
+      conditions: conditions || [],
+    }).select().single();
+    if (memberError) {
+      await supabase.auth.admin.deleteUser(dependentUserId).catch(() => {});
+      return res.status(500).json({ error: memberError.message });
+    }
+    res.json({ success: true, member });
+  } catch (error: any) {
+    console.error('Error creating family member:', error);
+    res.status(500).json({ error: 'Could not add this family member right now.' });
+  }
+}));
+
+app.patch('/api/family-members/:id', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { name, relation, age, gender, conditions } = req.body as {
+    name?: string; relation?: string; age?: number; gender?: string; conditions?: string[];
+  };
+  const { data: existing } = await supabase.from('family_members').select('*').eq('id', req.params.id).eq('primary_user_id', user.id).maybeSingle();
+  if (!existing) return res.status(404).json({ error: 'Family member not found.' });
+
+  const { data, error } = await supabase.from('family_members').update({
+    name: name?.trim() || existing.name,
+    relation: relation ?? existing.relation,
+    age: age ?? existing.age,
+    gender: gender ?? existing.gender,
+    conditions: conditions ?? existing.conditions,
+  }).eq('id', req.params.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+
+  await supabase.from('profiles').update({ full_name: data.name }).eq('user_id', existing.dependent_user_id);
+  await supabase.from('health_profiles').update({ existing_concerns: data.conditions, age: data.age, gender: data.gender }).eq('user_id', existing.dependent_user_id);
+  res.json({ success: true, member: data });
+}));
+
+app.delete('/api/family-members/:id', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data: existing } = await supabase.from('family_members').select('dependent_user_id').eq('id', req.params.id).eq('primary_user_id', user.id).maybeSingle();
+  if (!existing) return res.status(404).json({ error: 'Family member not found.' });
+  // Deleting the shadow auth user cascades to profiles/health_profiles/
+  // custom_daily_plans/admin_user_files/user_personalized_plans/
+  // family_members — everything for this dependent, in one go.
+  const { error } = await supabase.auth.admin.deleteUser(existing.dependent_user_id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
 }));
 
 // ----------------------------------------------------------------------------
@@ -1526,9 +1650,20 @@ app.get('/api/admin/stats', requireAdmin(async (req, res) => {
 app.get('/api/admin/users', requireAdmin(async (req, res) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
-  const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+  const [{ data, error }, { data: dependents }] = await Promise.all([
+    supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+    supabase.from('family_members').select('dependent_user_id, relation, primary_user_id'),
+  ]);
   if (error) return res.status(500).json({ error: error.message });
-  res.json({ users: data || [] });
+  // Annotate dependents (a family member's own shadow account) so the admin
+  // picker can tell them apart from a real signed-up user, instead of just
+  // silently listing them the same way.
+  const dependentByUserId = new Map((dependents || []).map((d: any) => [d.dependent_user_id, d]));
+  const users = (data || []).map((u: any) => {
+    const dep = dependentByUserId.get(u.user_id);
+    return dep ? { ...u, is_family_dependent: true, family_relation: dep.relation, family_primary_user_id: dep.primary_user_id } : u;
+  });
+  res.json({ users });
 }));
 
 // Full detail for one patient (profile + health profile + activity counts) —

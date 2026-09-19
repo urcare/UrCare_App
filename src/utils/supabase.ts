@@ -7,7 +7,7 @@ import {
   FeedbackSubmission, Order, Prescription, DoctorContact,
   MedicalReportAnalysis, Product, UserReview, CalculatedPlan,
   GoalType, GenderType, ActivityLevel, GoalPace, AppNotification, ActivityLogEntry, CustomPlanStep,
-  AdminUserFile, UserPersonalizedPlan,
+  AdminUserFile, UserPersonalizedPlan, FamilyMember,
 } from '../types';
 import { calculateNutritionPlan } from './calculator';
 
@@ -590,10 +590,10 @@ export async function getActiveDates(userId: string): Promise<Set<string>> {
 // content itself is always the same for a given user + program day.
 // ============================================================================
 
-export async function getDailyPlan(date: string): Promise<{ plan?: any; error?: string }> {
+export async function getDailyPlan(date: string, dependentId?: string | null): Promise<{ plan?: any; error?: string }> {
   const res = await authedFetch('/api/daily-plan', {
     method: 'POST',
-    body: JSON.stringify({ date }),
+    body: JSON.stringify({ date, dependentId: dependentId || undefined }),
   });
   const data = await res.json();
   if (!res.ok) return { error: data.error || 'Could not load the plan for this day.' };
@@ -636,11 +636,11 @@ export interface CustomDailyPlanResult {
  *  user's plan until every page has been read and merged. Defaults to
  *  true, which is the original save-immediately behavior for a single
  *  photo upload. */
-export async function uploadCustomDailyPlan(fileBase64: string, mimeType: string, persist: boolean = true): Promise<CustomDailyPlanResult> {
+export async function uploadCustomDailyPlan(fileBase64: string, mimeType: string, persist: boolean = true, dependentId?: string | null): Promise<CustomDailyPlanResult> {
   try {
     const res = await authedFetch('/api/analyze-daily-plan', {
       method: 'POST',
-      body: JSON.stringify({ imageBase64: fileBase64, mimeType, persist }),
+      body: JSON.stringify({ imageBase64: fileBase64, mimeType, persist, dependentId: dependentId || undefined }),
     });
     const data = await res.json();
     if (res.status === 401) return { isValidPlan: false, rejectionReason: 'Please sign in again.' };
@@ -661,11 +661,11 @@ export interface DailyPlanSectionInput {
  *  from every page's own (unsaved) extraction as the one active custom
  *  plan. See /api/save-daily-plan in server.ts, which re-sorts them into
  *  real chronological order before saving. */
-export async function saveMergedDailyPlan(sections: DailyPlanSectionInput[]): Promise<CustomDailyPlanResult> {
+export async function saveMergedDailyPlan(sections: DailyPlanSectionInput[], dependentId?: string | null): Promise<CustomDailyPlanResult> {
   try {
     const res = await authedFetch('/api/save-daily-plan', {
       method: 'POST',
-      body: JSON.stringify({ sections, sourceImageUrl: null }),
+      body: JSON.stringify({ sections, sourceImageUrl: null, dependentId: dependentId || undefined }),
     });
     const data = await res.json();
     if (res.status === 401) return { isValidPlan: false, rejectionReason: 'Please sign in again.' };
@@ -679,11 +679,71 @@ export async function saveMergedDailyPlan(sections: DailyPlanSectionInput[]): Pr
 // A user's own addition to their Daily Plan timeline (Plan tab → Edit →
 // Add) — see /api/custom-plan-steps in server.ts for the real safety review
 // that stamps the 'yellow'/'red' verdict before this ever gets saved.
-export async function addCustomPlanStep(timeLabel: string, title: string, body: string): Promise<{ step?: CustomPlanStep; error?: string }> {
+// ============================================================================
+// FAMILY MEMBERS — dependent profiles the primary account manages (see
+// family_members in supabase/patches.sql). All writes go through the server
+// since creating one also provisions a shadow auth user.
+// ============================================================================
+
+export async function getFamilyMembers(): Promise<FamilyMember[]> {
+  try {
+    const res = await authedFetch('/api/family-members');
+    const data = await res.json();
+    if (!res.ok || !Array.isArray(data?.members)) return [];
+    return data.members.map((m: any) => ({
+      id: m.id,
+      dependentUserId: m.dependent_user_id,
+      name: m.name,
+      relation: m.relation || 'other',
+      age: m.age,
+      gender: m.gender,
+      conditions: m.conditions || [],
+      createdAt: m.created_at,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function addFamilyMember(input: { name: string; relation: string; age?: number | null; gender?: string | null; conditions?: string[] }): Promise<{ member?: FamilyMember; error?: string }> {
+  try {
+    const res = await authedFetch('/api/family-members', { method: 'POST', body: JSON.stringify(input) });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Could not add this family member right now.' };
+    const m = data.member;
+    return { member: { id: m.id, dependentUserId: m.dependent_user_id, name: m.name, relation: m.relation || 'other', age: m.age, gender: m.gender, conditions: m.conditions || [], createdAt: m.created_at } };
+  } catch {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
+export async function updateFamilyMember(id: string, input: { name?: string; relation?: string; age?: number | null; gender?: string | null; conditions?: string[] }): Promise<{ error?: string }> {
+  try {
+    const res = await authedFetch(`/api/family-members/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Could not update this family member right now.' };
+    return {};
+  } catch {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
+export async function deleteFamilyMember(id: string): Promise<{ error?: string }> {
+  try {
+    const res = await authedFetch(`/api/family-members/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Could not remove this family member right now.' };
+    return {};
+  } catch {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
+export async function addCustomPlanStep(timeLabel: string, title: string, body: string, dependentId?: string | null): Promise<{ step?: CustomPlanStep; error?: string }> {
   try {
     const res = await authedFetch('/api/custom-plan-steps', {
       method: 'POST',
-      body: JSON.stringify({ timeLabel, title, body }),
+      body: JSON.stringify({ timeLabel, title, body, dependentId: dependentId || undefined }),
     });
     const data = await res.json();
     if (res.status === 401) return { error: 'Please sign in again.' };

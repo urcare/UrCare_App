@@ -604,6 +604,22 @@ export interface UserPersonalizedPlan {
   updatedAt: string;
 }
 
+/** A dependent profile the primary account manages — no login of its own.
+ *  Under the hood it's really a login-disabled shadow account (see
+ *  family_members in supabase/patches.sql), so it can have its own Daily
+ *  Plan, Tracker data, and admin-assigned files/plan exactly like a real
+ *  account, without the family member ever needing to sign in themselves. */
+export interface FamilyMember {
+  id: string;
+  dependentUserId: string;
+  name: string;
+  relation: 'spouse' | 'child' | 'parent' | 'sibling' | 'other';
+  age: number | null;
+  gender: string | null;
+  conditions: string[];
+  createdAt: string;
+}
+
 export interface FeedbackSubmission {
   id: string;
   userId: string;

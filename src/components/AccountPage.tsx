@@ -12,6 +12,7 @@ import { MacroLogRow, BmiRangeBar, WaterIntakeRing } from './HealthCharts';
 import { BiomarkerTracker } from './BiomarkerTracker';
 import { useDailyNutrition } from '../hooks/useDailyNutrition';
 import { REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL } from './RecommendationsView';
+import { FamilyMembersPanel } from './FamilyMembersPanel';
 
 function formatGoalLabel(goal?: string): string {
   if (!goal) return 'Reversal Plan';
@@ -454,6 +455,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
           </button>
         </div>
+
+        <FamilyMembersPanel tr={tr} />
 
         {/* LOG OUT */}
         <button

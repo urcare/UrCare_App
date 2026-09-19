@@ -272,3 +272,71 @@ alter table public.user_personalized_plans enable row level security;
 drop policy if exists "own personalized plan select" on public.user_personalized_plans;
 create policy "own personalized plan select" on public.user_personalized_plans for select using (auth.uid() = user_id);
 -- Writes go through the server (service_role) only — admin-authored.
+
+-- 12. FAMILY MEMBERS — a dependent profile the primary account manages, with
+--     no login of its own. Implemented as a REAL (but login-disabled) auth
+--     user under the hood — created server-side via the Supabase admin API
+--     with a synthetic, unreachable email and a random password that's
+--     never given out — purely so every existing per-user table (
+--     health_profiles, custom_daily_plans, program_started_at,
+--     admin_user_files, user_personalized_plans) and the Tracker's own
+--     localStorage keying can be reused completely unchanged for a
+--     dependent, keyed by dependent_user_id exactly like a real account.
+--     The primary user can only ever act "as" a dependent they actually own
+--     — checked server-side against this table on every request, never
+--     trusted from the client alone.
+create table if not exists public.family_members (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  primary_user_id uuid not null references auth.users(id) on delete cascade,
+  dependent_user_id uuid not null unique references auth.users(id) on delete cascade,
+  name text not null,
+  relation text, -- 'spouse' | 'child' | 'parent' | 'sibling' | 'other'
+  age int,
+  gender text,
+  conditions text[] default '{}',
+  created_at timestamptz default now()
+);
+create index if not exists family_members_primary_user_id_idx on public.family_members (primary_user_id);
+alter table public.family_members enable row level security;
+drop policy if exists "own family members select" on public.family_members;
+create policy "own family members select" on public.family_members for select using (auth.uid() = primary_user_id);
+-- Insert/update/delete go through the server (service_role) only, since
+-- creating one also creates a shadow auth.users row via the admin API.
+
+-- 13. FAMILY ACCESS TO A DEPENDENT'S OWN TABLES — ADDITIVE policies only
+--     (never a drop/replace of whatever pre-existing policy already governs
+--     these tables, since several of them — daily_logs especially — were
+--     never defined in this repo's tracked SQL to begin with). Postgres
+--     combines multiple permissive policies for the same command with OR,
+--     so these simply grant an EXTRA path in: "you may also act on this row
+--     if you are the verified primary account for the dependent who owns
+--     it" — on top of whatever "it's my own row" policy already exists.
+--     This is what lets a family member's Daily Plan (task completion,
+--     meals/water/macros — all in daily_logs) and their own custom_plan_steps
+--     / admin-assigned files / personalized plan work from the primary
+--     account's own session, with no login of the dependent's own.
+drop policy if exists "family select daily_logs" on public.daily_logs;
+create policy "family select daily_logs" on public.daily_logs for select
+  using (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = daily_logs.user_id));
+drop policy if exists "family insert daily_logs" on public.daily_logs;
+create policy "family insert daily_logs" on public.daily_logs for insert
+  with check (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = daily_logs.user_id));
+drop policy if exists "family update daily_logs" on public.daily_logs;
+create policy "family update daily_logs" on public.daily_logs for update
+  using (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = daily_logs.user_id))
+  with check (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = daily_logs.user_id));
+
+drop policy if exists "family select custom plan steps" on public.custom_plan_steps;
+create policy "family select custom plan steps" on public.custom_plan_steps for select
+  using (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = custom_plan_steps.user_id));
+drop policy if exists "family delete custom plan steps" on public.custom_plan_steps;
+create policy "family delete custom plan steps" on public.custom_plan_steps for delete
+  using (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = custom_plan_steps.user_id));
+
+drop policy if exists "family select admin files" on public.admin_user_files;
+create policy "family select admin files" on public.admin_user_files for select
+  using (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = admin_user_files.user_id));
+
+drop policy if exists "family select personalized plan" on public.user_personalized_plans;
+create policy "family select personalized plan" on public.user_personalized_plans for select
+  using (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = user_personalized_plans.user_id));

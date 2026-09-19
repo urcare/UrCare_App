@@ -3,8 +3,10 @@ import {
   HeartPulse, Printer, Download, Copy, Check, ClipboardList, LayoutGrid,
   ListChecks, StickyNote, FileDown,
 } from 'lucide-react';
-import { UserHealthProfile, UserAccount, MedicalReportAnalysis } from '../types';
+import { UserHealthProfile, UserAccount, MedicalReportAnalysis, FamilyMember } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { getFamilyMembers } from '../utils/supabase';
+import { FamilyViewSwitcher } from './FamilyViewSwitcher';
 
 interface TrackerModuleProps {
   profile: UserHealthProfile;
@@ -316,14 +318,31 @@ export const TrackerModule: React.FC<TrackerModuleProps> = ({ profile, account }
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   const userId = profile.id || account.uid || 'guest';
-  const storageKey = `urcare_tracker_v1_${userId}`;
-  const defaultPatientName = profile.name || account.displayName || '';
+
+  // "Viewing as" a family member — a separate localStorage bucket per
+  // person, exactly like the primary account's own, so each family
+  // member's tracker is kept completely independent (see FamilyViewSwitcher).
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [activeDependentId, setActiveDependentId] = useState<string | null>(null);
+  useEffect(() => { getFamilyMembers().then(setFamilyMembers); }, []);
+  const activeMember = activeDependentId ? familyMembers.find((m) => m.id === activeDependentId) : null;
+  const effectiveTrackerId = activeMember?.dependentUserId || userId;
+
+  const storageKey = `urcare_tracker_v1_${effectiveTrackerId}`;
+  const defaultPatientName = activeMember?.name || profile.name || account.displayName || '';
 
   const [state, setState] = useState<TrackerState>(() => loadState(storageKey, defaultPatientName));
   const [activeTab, setActiveTab] = useState<'overview' | 'tracker' | 'notes' | 'export'>('overview');
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<CheckpointKey>('baseline');
   const [selectedCategory, setSelectedCategory] = useState<'all' | MarkerCategoryKey>('all');
   const [copied, setCopied] = useState(false);
+
+  // Re-load from this person's own bucket whenever the "viewing as" switcher
+  // changes who effectiveTrackerId points at.
+  useEffect(() => {
+    setState(loadState(storageKey, defaultPatientName));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
 
   useEffect(() => {
     try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch {}
@@ -461,6 +480,10 @@ export const TrackerModule: React.FC<TrackerModuleProps> = ({ profile, account }
           <Printer className="w-4 h-4" />
           {tr('Print/PDF', 'प्रिंट/पीडीएफ')}
         </button>
+
+        {/* "Viewing as" — only shows up once a family member has actually
+            been added (see AccountPage → Family Members). */}
+        <FamilyViewSwitcher members={familyMembers} activeDependentId={activeDependentId} onChange={setActiveDependentId} tr={tr} />
 
         {/* PATIENT DETAILS */}
         <Card className="space-y-4">

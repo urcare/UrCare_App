@@ -8,17 +8,19 @@ import {
   Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles, Utensils,
   Pill, Dumbbell, Bath, BedDouble,
 } from 'lucide-react';
-import { UserHealthProfile, Prescription, CustomPlanStep } from '../types';
+import { UserHealthProfile, Prescription, CustomPlanStep, FamilyMember } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { DailyCalendar, toDateKey } from './DailyCalendar';
 import { PlanSection } from './ReversalLibraryPanel';
 import { WeeklyUpdatesPanel } from './WeeklyUpdatesPanel';
+import { FamilyViewSwitcher } from './FamilyViewSwitcher';
 import { unifiedProgramDay } from '../utils/programWeek';
 import {
   getDailyPlan, getDailyLog, getTaskCompletion,
   toggleDailyTask, getActiveDates,
   addCustomPlanStep, getCustomPlanSteps, deleteCustomPlanStep,
+  getFamilyMembers,
 } from '../utils/supabase';
 
 // Lazy — pulls in pdfjs-dist (for the "upload a long PDF" flow), which has
@@ -174,6 +176,17 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const userId = profile.id || '';
 
+  // "Viewing as" a family member — see FamilyViewSwitcher. activeDependentId
+  // is a family_members.id (what the server's resolveActingUserId expects);
+  // effectiveUserId is the dependent's own shadow account id (what every
+  // direct-client Supabase call below needs instead) — null/self falls back
+  // to the real signed-in user for both.
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [activeDependentId, setActiveDependentId] = useState<string | null>(null);
+  useEffect(() => { getFamilyMembers().then(setFamilyMembers); }, []);
+  const activeMember = activeDependentId ? familyMembers.find((m) => m.id === activeDependentId) : null;
+  const effectiveUserId = activeMember?.dependentUserId || userId;
+
   const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   const [selectedDate, setSelectedDate] = useState<Date>(startOfToday);
   const todayDate = startOfToday();
@@ -222,18 +235,18 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   const [addStepError, setAddStepError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!effectiveUserId) return;
     let cancelled = false;
-    getCustomPlanSteps(userId).then((steps) => { if (!cancelled) setCustomSteps(steps); });
+    getCustomPlanSteps(effectiveUserId).then((steps) => { if (!cancelled) setCustomSteps(steps); });
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [effectiveUserId]);
 
   const handleAddStep = async () => {
     if (!newStepTime || !newStepTitle.trim()) return;
     setIsSubmittingStep(true);
     setAddStepError(null);
     const timeLabel = to12HourLabel(newStepTime);
-    const { step, error } = await addCustomPlanStep(timeLabel, newStepTitle.trim(), newStepBody.trim());
+    const { step, error } = await addCustomPlanStep(timeLabel, newStepTitle.trim(), newStepBody.trim(), activeDependentId);
     setIsSubmittingStep(false);
     if (error || !step) {
       setAddStepError(error || 'Could not add this step right now.');
@@ -291,7 +304,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     setSections([]);
 
     (async () => {
-      const result = await getDailyPlan(dateKey);
+      const result = await getDailyPlan(dateKey, activeDependentId);
       if (cancelled) return;
       if (result.error) {
         setPlanError(result.error);
@@ -305,15 +318,15 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     })();
 
     return () => { cancelled = true; };
-  }, [userId, dateKey, planRefreshKey]);
+  }, [userId, activeDependentId, dateKey, planRefreshKey]);
 
   // Load this day's actual logged activity (meals + task checkboxes).
   useEffect(() => {
-    if (!userId) return;
+    if (!effectiveUserId) return;
     let cancelled = false;
 
-    getTaskCompletion(userId, dateKey).then((c) => { if (!cancelled) setCompletedToday(c); });
-    getDailyLog(userId, dateKey).then((log) => {
+    getTaskCompletion(effectiveUserId, dateKey).then((c) => { if (!cancelled) setCompletedToday(c); });
+    getDailyLog(effectiveUserId, dateKey).then((log) => {
       if (cancelled) return;
       const meals = log?.meals || [];
       setHasLoggedMeals(meals.length > 0);
@@ -327,12 +340,12 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     });
 
     return () => { cancelled = true; };
-  }, [userId, dateKey]);
+  }, [effectiveUserId, dateKey]);
 
   useEffect(() => {
-    if (!userId) return;
-    getActiveDates(userId).then(setMarkedDates);
-  }, [userId, dateKey]);
+    if (!effectiveUserId) return;
+    getActiveDates(effectiveUserId).then(setMarkedDates);
+  }, [effectiveUserId, dateKey]);
 
   // A little celebratory pop-up whenever a step is checked off — never shown
   // when un-checking, only on the way to "done".
@@ -343,10 +356,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   ];
 
   const toggleTask = (taskId: string) => {
-    if (!userId) return;
+    if (!effectiveUserId) return;
     const willBeDone = !completedToday[taskId];
     setCompletedToday((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
-    toggleDailyTask(userId, dateKey, taskId);
+    toggleDailyTask(effectiveUserId, dateKey, taskId);
     if (willBeDone) {
       setCelebration(celebrationMessages[Math.floor(Math.random() * celebrationMessages.length)]);
       window.setTimeout(() => setCelebration(null), 1600);
@@ -509,6 +522,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           </button>
         </div>
 
+        {/* "Viewing as" — only shows up once a family member has actually
+            been added (see AccountPage → Family Members). */}
+        <FamilyViewSwitcher members={familyMembers} activeDependentId={activeDependentId} onChange={setActiveDependentId} isDark={isDark} tr={tr} />
+
         {/* Week strip — always visible (not tucked behind "Change Date"),
             matching the reference's persistent Mon–Sun row. Tapping a day
             jumps straight to it; "Change Date" below still opens the full
@@ -608,7 +625,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           Completed and a one-time congratulations banner shows here. */}
       {weekProgress && (
         <WeeklyUpdatesPanel
-          userId={userId}
+          userId={effectiveUserId}
           dayNum={weekProgress.dayNum}
           totalDays={weekProgress.totalDays}
           isDark={isDark}
@@ -1031,6 +1048,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               setSelectedDate(startOfToday());
               setPlanRefreshKey((k) => k + 1);
             }}
+            dependentId={activeDependentId}
           />
         </React.Suspense>
       )}
