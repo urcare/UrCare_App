@@ -12,6 +12,7 @@ import { StreakWidget } from './StreakWidget';
 import { CompletionTicker, TickerItem } from './CompletionTicker';
 import { NotificationsPanel } from './NotificationsPanel';
 import { MyTimelinePanel, ACTION_META, CATEGORY_META, relativeTime } from './MyTimelinePanel';
+import { ThreeBackground } from './ThreeBackground';
 import { getDailyPlan, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog } from '../utils/supabase';
 import { toDateKey } from './DailyCalendar';
 
@@ -346,11 +347,19 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   return (
     <div id="urcare-profile-page" className="min-h-screen bg-gradient-to-b from-emerald-50/60 via-transparent to-transparent text-zinc-900 pb-16 relative overflow-hidden">
 
+      {/* Real 3D backdrop — slow-orbiting emerald rings/orbs + a drifting
+          particle field, with gentle mouse-parallax. Already built (see
+          ThreeBackground.tsx) but never wired into any screen before now.
+          Fixed + z-0 + pointer-events-none, so it never blocks a tap and
+          every real card still paints on top of it. */}
+      <ThreeBackground />
+
       {/* Soft decorative color blobs behind everything — a calmer, more
           layered backdrop than a flat white page, without ever competing
           with the real content sitting on top of it. */}
-      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none" aria-hidden="true" />
-      <div className="absolute top-64 -left-28 w-72 h-72 rounded-full bg-sky-200/25 blur-3xl pointer-events-none" aria-hidden="true" />
+      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '6s' }} aria-hidden="true" />
+      <div className="absolute top-64 -left-28 w-72 h-72 rounded-full bg-sky-200/25 blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '8s' }} aria-hidden="true" />
+      <div className="absolute top-[420px] right-4 w-56 h-56 rounded-full bg-amber-200/20 blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '7s' }} aria-hidden="true" />
       <Leaf className="absolute -top-6 -right-10 w-56 h-56 text-emerald-100 rotate-12 pointer-events-none" strokeWidth={1} aria-hidden="true" />
 
       {/* Header — the '⋮' module menu now sits on the left (the URCARE
@@ -407,12 +416,30 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }}
           className="relative overflow-hidden rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-emerald-600 via-teal-600 to-sky-700 text-white shadow-lg shadow-emerald-900/15"
         >
-          <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 blur-2xl pointer-events-none" aria-hidden="true" />
-          <div className="absolute -bottom-14 -left-10 w-40 h-40 rounded-full bg-amber-300/20 blur-2xl pointer-events-none" aria-hidden="true" />
+          <motion.div
+            className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 blur-2xl pointer-events-none"
+            aria-hidden="true"
+            animate={{ x: [0, 12, 0], y: [0, -10, 0] }}
+            transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          <motion.div
+            className="absolute -bottom-14 -left-10 w-40 h-40 rounded-full bg-amber-300/20 blur-2xl pointer-events-none"
+            aria-hidden="true"
+            animate={{ x: [0, -10, 0], y: [0, 8, 0] }}
+            transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+          />
           <div className="relative">
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight">
-              {greeting}{firstName ? `, ${firstName}` : ''} <span className="inline-block">👋</span>
-            </h1>
+            <motion.h1
+              className="text-xl sm:text-2xl font-black tracking-tight"
+              animate={{ scale: [1, 1.015, 1] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              {greeting}{firstName ? `, ${firstName}` : ''} <motion.span
+                className="inline-block"
+                animate={{ rotate: [0, 14, -8, 14, 0] }}
+                transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 2, ease: 'easeInOut' }}
+              >👋</motion.span>
+            </motion.h1>
             <p className="flex items-center gap-1.5 text-xs sm:text-sm text-white/85 font-semibold mt-1.5">
               <Sparkles className="w-3.5 h-3.5 shrink-0" />
               <span className="italic truncate">"{language === 'hi' ? dailyQuote.hi : dailyQuote.en}"</span>
@@ -427,10 +454,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1, ease: 'easeOut' }}
           className="space-y-2"
         >
-          <button
+          <motion.button
             type="button"
             onClick={onOpenPlan}
-            className="relative w-full p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm overflow-hidden text-left cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all"
+            whileHover={{ y: -3, scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            className="relative w-full p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm overflow-hidden text-left cursor-pointer hover:border-emerald-300 hover:shadow-lg transition-[border-color,box-shadow]"
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -451,7 +480,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
               </motion.div>
             </AnimatePresence>
-          </button>
+          </motion.button>
 
           {reversalGoals.length > 1 && (
             <div className="flex items-center justify-center gap-1.5">
@@ -488,7 +517,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
 
           {current ? (
-            <div className="w-full rounded-2xl bg-white border-2 border-emerald-200/70 shadow-md shadow-emerald-900/5 overflow-hidden">
+            <motion.div
+              whileHover={{ y: -2 }}
+              className="w-full rounded-2xl bg-white border-2 border-emerald-200/70 shadow-md shadow-emerald-900/5 overflow-hidden transition-shadow hover:shadow-xl hover:shadow-emerald-900/10"
+            >
               <button
                 type="button"
                 onClick={onOpenPlan}
@@ -525,7 +557,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   <span className="text-[11px] font-bold text-emerald-800">{tr("That's everything for today — see you tomorrow!", 'आज के लिए सब कुछ पूरा — कल मिलते हैं!')}</span>
                 </div>
               )}
-            </div>
+            </motion.div>
           ) : (
             <div className="p-3.5 rounded-2xl bg-white border border-zinc-200 shadow-sm text-xs font-semibold text-zinc-400 text-center">
               {tr('No plan available for today.', 'आज के लिए कोई योजना उपलब्ध नहीं है।')}
@@ -570,16 +602,22 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         <motion.div
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2, ease: 'easeOut' }}
         >
-          <button type="button" onClick={() => setIsLibraryOpen(true)} className="w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/70 shadow-sm flex items-center gap-3 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
+          <motion.button
+            type="button"
+            onClick={() => setIsLibraryOpen(true)}
+            whileHover={{ y: -3, scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/70 shadow-sm flex items-center gap-3 cursor-pointer hover:border-emerald-300 hover:shadow-lg transition-[border-color,box-shadow]"
+          >
+            <motion.div whileHover={{ rotate: 8 }} className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
               <BookOpen className="w-5 h-5 text-white" />
-            </div>
+            </motion.div>
             <div className="min-w-0 flex-1 text-left">
               <span className="text-sm font-black text-zinc-900 block">{tr('Reversal Library', 'रिवर्सल लाइब्रेरी')}</span>
               <span className="text-[11px] text-zinc-500 font-semibold">{tr('Browse every reference step', 'हर संदर्भ चरण ब्राउज़ करें')}</span>
             </div>
             <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
-          </button>
+          </motion.button>
         </motion.div>
 
         {/* My Timeline — a compact preview of the real GitHub-commit-style
@@ -602,10 +640,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </button>
           </div>
 
-          <button
+          <motion.button
             type="button"
             onClick={() => setIsTimelineOpen(true)}
-            className="w-full rounded-2xl bg-white border border-zinc-200 shadow-sm overflow-hidden text-left cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all"
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.99 }}
+            className="w-full rounded-2xl bg-white border border-zinc-200 shadow-sm overflow-hidden text-left cursor-pointer hover:border-emerald-300 hover:shadow-lg transition-[border-color,box-shadow]"
           >
             {recentActivity.length === 0 ? (
               <div className="p-4 text-center">
@@ -618,7 +658,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   const category = CATEGORY_META[item.category];
                   const CategoryIcon = category?.icon || GitCommit;
                   return (
-                    <div key={item.id} className="p-3 flex items-center gap-2.5">
+                    <div key={item.id} className="p-3 flex items-center gap-2.5 hover:bg-emerald-50/50 transition-colors">
                       <span className={`w-2 h-2 rounded-full shrink-0 ${action?.dot || 'bg-zinc-300'}`} />
                       <div className="w-7 h-7 rounded-lg bg-zinc-50 text-zinc-400 flex items-center justify-center shrink-0">
                         <CategoryIcon className="w-3.5 h-3.5" />
@@ -632,7 +672,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 })}
               </div>
             )}
-          </button>
+          </motion.button>
         </motion.div>
 
       </main>
