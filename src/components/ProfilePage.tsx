@@ -12,7 +12,6 @@ import { StreakWidget } from './StreakWidget';
 import { CompletionTicker, TickerItem } from './CompletionTicker';
 import { NotificationsPanel } from './NotificationsPanel';
 import { MyTimelinePanel, ACTION_META, CATEGORY_META, relativeTime } from './MyTimelinePanel';
-import { ThreeBackground } from './ThreeBackground';
 import { getDailyPlan, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog } from '../utils/supabase';
 import { toDateKey } from './DailyCalendar';
 
@@ -347,19 +346,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   return (
     <div id="urcare-profile-page" className="min-h-screen bg-gradient-to-b from-emerald-50/60 via-transparent to-transparent text-zinc-900 pb-16 relative overflow-hidden">
 
-      {/* Real 3D backdrop — slow-orbiting emerald rings/orbs + a drifting
-          particle field, with gentle mouse-parallax. Already built (see
-          ThreeBackground.tsx) but never wired into any screen before now.
-          Fixed + z-0 + pointer-events-none, so it never blocks a tap and
-          every real card still paints on top of it. */}
-      <ThreeBackground />
-
-      {/* Soft decorative color blobs behind everything — a calmer, more
-          layered backdrop than a flat white page, without ever competing
-          with the real content sitting on top of it. */}
-      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '6s' }} aria-hidden="true" />
-      <div className="absolute top-64 -left-28 w-72 h-72 rounded-full bg-sky-200/25 blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '8s' }} aria-hidden="true" />
-      <div className="absolute top-[420px] right-4 w-56 h-56 rounded-full bg-amber-200/20 blur-3xl pointer-events-none animate-pulse" style={{ animationDuration: '7s' }} aria-hidden="true" />
+      {/* Soft decorative color blobs behind everything — static (no motion),
+          just a calmer, more layered backdrop than a flat white page. */}
+      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none" aria-hidden="true" />
+      <div className="absolute top-64 -left-28 w-72 h-72 rounded-full bg-sky-200/25 blur-3xl pointer-events-none" aria-hidden="true" />
+      <div className="absolute top-[420px] right-4 w-56 h-56 rounded-full bg-amber-200/20 blur-3xl pointer-events-none" aria-hidden="true" />
       <Leaf className="absolute -top-6 -right-10 w-56 h-56 text-emerald-100 rotate-12 pointer-events-none" strokeWidth={1} aria-hidden="true" />
 
       {/* Header — the '⋮' module menu now sits on the left (the URCARE
