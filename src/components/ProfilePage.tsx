@@ -344,17 +344,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const PlanIcon = primaryGoal.icon;
 
   return (
-    <div id="urcare-profile-page" className="min-h-screen bg-transparent text-zinc-900 pb-16 relative overflow-hidden">
+    <div id="urcare-profile-page" className="min-h-screen bg-gradient-to-b from-emerald-50/60 via-transparent to-transparent text-zinc-900 pb-16 relative overflow-hidden">
 
-      {/* Faint decorative leaf watermark, matching the mockup's soft branded
-          backdrop — purely decorative, sits behind everything. */}
+      {/* Soft decorative color blobs behind everything — a calmer, more
+          layered backdrop than a flat white page, without ever competing
+          with the real content sitting on top of it. */}
+      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none" aria-hidden="true" />
+      <div className="absolute top-64 -left-28 w-72 h-72 rounded-full bg-sky-200/25 blur-3xl pointer-events-none" aria-hidden="true" />
       <Leaf className="absolute -top-6 -right-10 w-56 h-56 text-emerald-100 rotate-12 pointer-events-none" strokeWidth={1} aria-hidden="true" />
 
       {/* Header — the '⋮' module menu now sits on the left (the URCARE
           logo/wordmark was dropped per the brief); the streak, a
           (decorative, for now) notification bell, and the account avatar
           on the right. */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-4 sm:px-8 py-3 sm:py-3.5">
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-zinc-200/70 px-4 sm:px-8 py-3 sm:py-3.5 shadow-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           <button
             type="button"
@@ -397,16 +400,24 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
       <main className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-4 space-y-4 text-left">
 
-        {/* Greeting — the daily quote now lives right here as the subtitle
-            instead of in its own separate bordered card below it. */}
-        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }}>
-          <h1 className="text-xl sm:text-2xl font-black text-zinc-950">
-            {greeting}{firstName ? `, ${firstName}` : ''} <span className="inline-block">👋</span>
-          </h1>
-          <p className="flex items-center gap-1.5 text-xs sm:text-sm text-emerald-700 font-semibold mt-1">
-            <Sparkles className="w-3.5 h-3.5 shrink-0" />
-            <span className="italic truncate">"{language === 'hi' ? dailyQuote.hi : dailyQuote.en}"</span>
-          </p>
+        {/* Greeting — a vivid gradient hero card instead of plain page text,
+            so Home opens with a real "front door" moment. The daily quote
+            still lives right here as the subtitle. */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="relative overflow-hidden rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-emerald-600 via-teal-600 to-sky-700 text-white shadow-lg shadow-emerald-900/15"
+        >
+          <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 blur-2xl pointer-events-none" aria-hidden="true" />
+          <div className="absolute -bottom-14 -left-10 w-40 h-40 rounded-full bg-amber-300/20 blur-2xl pointer-events-none" aria-hidden="true" />
+          <div className="relative">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight">
+              {greeting}{firstName ? `, ${firstName}` : ''} <span className="inline-block">👋</span>
+            </h1>
+            <p className="flex items-center gap-1.5 text-xs sm:text-sm text-white/85 font-semibold mt-1.5">
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span className="italic truncate">"{language === 'hi' ? dailyQuote.hi : dailyQuote.en}"</span>
+            </p>
+          </div>
         </motion.div>
 
         {/* Plan-continue card — cycles through every real condition-derived
@@ -460,11 +471,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         {/* Today's Plan */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15, ease: 'easeOut' }} className="space-y-2.5">
           <div className="flex items-center justify-between px-0.5">
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-sm font-black text-zinc-950">{tr("Today's Plan", 'आज की योजना')}</h2>
-              {programDay != null && (
-                <span className="text-[10px] font-bold text-zinc-400">{tr(`Day ${programDay} of 14`, `दिन ${programDay} / 14`)}</span>
-              )}
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <Utensils className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-sm font-black text-zinc-950">{tr("Today's Plan", 'आज की योजना')}</h2>
+                {programDay != null && (
+                  <span className="text-[10px] font-bold text-zinc-400">{tr(`Day ${programDay} of 14`, `दिन ${programDay} / 14`)}</span>
+                )}
+              </div>
             </div>
             <button type="button" onClick={onOpenPlan} className="text-xs font-bold text-emerald-600 hover:underline cursor-pointer">
               {tr('View All', 'सभी देखें')}
@@ -472,11 +488,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
 
           {current ? (
-            <div className="w-full rounded-2xl bg-white border border-zinc-200 shadow-sm overflow-hidden">
+            <div className="w-full rounded-2xl bg-white border-2 border-emerald-200/70 shadow-md shadow-emerald-900/5 overflow-hidden">
               <button
                 type="button"
                 onClick={onOpenPlan}
-                className="w-full p-3.5 flex items-center gap-3 text-left cursor-pointer hover:bg-zinc-50 transition-colors"
+                className="w-full p-3.5 flex items-center gap-3 text-left cursor-pointer hover:bg-emerald-50/40 transition-colors"
               >
                 <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center shrink-0 ${completedToday[current.id] ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-emerald-400 text-emerald-500'}`}>
                   <Utensils className="w-4 h-4" />
@@ -527,7 +543,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.18, ease: 'easeOut' }}
           className="space-y-2.5"
         >
-          <h2 className="text-sm font-black text-zinc-950 px-0.5">{tr("Today's Health", 'आज का स्वास्थ्य')}</h2>
+          <div className="flex items-center gap-2 px-0.5">
+            <div className="w-6 h-6 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+              <Activity className="w-3.5 h-3.5" />
+            </div>
+            <h2 className="text-sm font-black text-zinc-950">{tr("Today's Health", 'आज का स्वास्थ्य')}</h2>
+          </div>
           {isDailyLogLoading ? (
             <div className="rounded-3xl bg-white border border-zinc-200 shadow-sm divide-y divide-zinc-100" aria-live="polite" aria-busy="true">
               {[0, 1, 2].map((i) => (
@@ -549,9 +570,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         <motion.div
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2, ease: 'easeOut' }}
         >
-          <button type="button" onClick={() => setIsLibraryOpen(true)} className="w-full p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm flex flex-col items-center gap-1.5 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all">
-            <BookOpen className="w-5 h-5 text-emerald-600" />
-            <span className="text-xs font-bold text-zinc-800">{tr('Reversal Library', 'रिवर्सल लाइब्रेरी')}</span>
+          <button type="button" onClick={() => setIsLibraryOpen(true)} className="w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/70 shadow-sm flex items-center gap-3 cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
+              <BookOpen className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0 flex-1 text-left">
+              <span className="text-sm font-black text-zinc-900 block">{tr('Reversal Library', 'रिवर्सल लाइब्रेरी')}</span>
+              <span className="text-[11px] text-zinc-500 font-semibold">{tr('Browse every reference step', 'हर संदर्भ चरण ब्राउज़ करें')}</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
           </button>
         </motion.div>
 
@@ -564,8 +591,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           className="space-y-2.5"
         >
           <div className="flex items-center justify-between px-0.5">
-            <div className="flex items-center gap-1.5">
-              <GitCommit className="w-3.5 h-3.5 text-zinc-400" />
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                <GitCommit className="w-3.5 h-3.5" />
+              </div>
               <h2 className="text-sm font-black text-zinc-950">{tr('My Timeline', 'मेरी टाइमलाइन')}</h2>
             </div>
             <button type="button" onClick={() => setIsTimelineOpen(true)} className="text-xs font-bold text-emerald-600 hover:underline cursor-pointer">
