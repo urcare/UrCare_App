@@ -1,18 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'motion/react';
 import {
-  Activity, Flame, Droplets, Scale, ListChecks, CheckCircle2, Circle, Sparkles,
-  Ruler,
+  HeartPulse, Printer, Download, Copy, Check, ClipboardList, LayoutGrid,
+  ListChecks, StickyNote, FileDown,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, MedicalReportAnalysis } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { getDailyPlan, getTaskCompletion } from '../utils/supabase';
-import { toDateKey } from './DailyCalendar';
-import { StreakWidget } from './StreakWidget';
-import { MacroLogRow, BmiRangeBar, WaterIntakeRing } from './HealthCharts';
-import { BiomarkerTrackerVisual } from './BiomarkerTrackerVisual';
-import { RadialGauge } from './RadialGauge';
-import { useDailyNutrition } from '../hooks/useDailyNutrition';
 
 interface TrackerModuleProps {
   profile: UserHealthProfile;
@@ -21,371 +13,752 @@ interface TrackerModuleProps {
   onUpdateProfile: (updated: UserHealthProfile) => void;
 }
 
-/** Dynamic two-tone gradient for a 0-100 progress ring — red→amber→emerald
- *  as it climbs, instead of one fixed color, so the gauge itself tells the
- *  story of "how good is this number" at a glance. */
-function progressGradient(pct: number): [string, string] {
-  if (pct >= 70) return ['#34d399', '#059669'];
-  if (pct >= 40) return ['#fbbf24', '#d97706'];
-  return ['#fb7185', '#e11d48'];
+// ---- Static shape of the tracker: checkpoints + the 29 measured markers ----
+
+type CheckpointKey = 'baseline' | 'day7' | 'day14' | 'day30' | 'day60' | 'day90';
+
+const CHECKPOINTS: { key: CheckpointKey; label: string }[] = [
+  { key: 'baseline', label: 'Baseline' },
+  { key: 'day7', label: 'Day 7' },
+  { key: 'day14', label: 'Day 14' },
+  { key: 'day30', label: 'Day 30' },
+  { key: 'day60', label: 'Day 60' },
+  { key: 'day90', label: 'Day 90' },
+];
+
+type MarkerGoal = 'higher' | 'lower';
+type MarkerCategoryKey = 'vitals' | 'biomarkers' | 'dailyFunction' | 'symptoms' | 'lifestyle';
+
+interface MarkerDef {
+  id: string;
+  label: string;
+  unit: string;
+  goal: MarkerGoal;
 }
 
-function bmiCategory(bmi: number, tr: (en: string, hi: string) => string): { label: string; gradient: [string, string] } {
-  if (bmi < 18.5) return { label: tr('Underweight', 'कम वज़न'), gradient: ['#38bdf8', '#0284c7'] };
-  if (bmi < 25) return { label: tr('Normal', 'सामान्य'), gradient: ['#34d399', '#059669'] };
-  if (bmi < 30) return { label: tr('Overweight', 'अधिक वज़न'), gradient: ['#fbbf24', '#d97706'] };
-  return { label: tr('Obese', 'मोटापा'), gradient: ['#fb7185', '#e11d48'] };
+const MARKER_CATEGORIES: { key: MarkerCategoryKey; label: string; markers: MarkerDef[] }[] = [
+  {
+    key: 'vitals',
+    label: 'Vitals',
+    markers: [
+      { id: 'weight', label: 'Weight', unit: 'lb', goal: 'lower' },
+      { id: 'waist', label: 'Waist circumference', unit: 'in', goal: 'lower' },
+      { id: 'bpSystolic', label: 'Blood pressure systolic', unit: 'mmHg', goal: 'lower' },
+      { id: 'bpDiastolic', label: 'Blood pressure diastolic', unit: 'mmHg', goal: 'lower' },
+      { id: 'restingHr', label: 'Resting heart rate', unit: 'bpm', goal: 'lower' },
+    ],
+  },
+  {
+    key: 'biomarkers',
+    label: 'Biomarkers',
+    markers: [
+      { id: 'hba1c', label: 'HbA1c', unit: '%', goal: 'lower' },
+      { id: 'fastingGlucose', label: 'Fasting glucose', unit: 'mg/dL', goal: 'lower' },
+      { id: 'postMealGlucose', label: 'Post-meal glucose', unit: 'mg/dL', goal: 'lower' },
+      { id: 'ldl', label: 'LDL cholesterol', unit: 'mg/dL', goal: 'lower' },
+      { id: 'hdl', label: 'HDL cholesterol', unit: 'mg/dL', goal: 'higher' },
+      { id: 'triglycerides', label: 'Triglycerides', unit: 'mg/dL', goal: 'lower' },
+      { id: 'vitaminD', label: 'Vitamin D', unit: 'ng/mL', goal: 'higher' },
+    ],
+  },
+  {
+    key: 'dailyFunction',
+    label: 'Daily Function',
+    markers: [
+      { id: 'energy', label: 'Energy', unit: '1-10', goal: 'higher' },
+      { id: 'sleepQuality', label: 'Sleep quality', unit: '1-10', goal: 'higher' },
+      { id: 'sleepDuration', label: 'Sleep duration', unit: 'hours', goal: 'higher' },
+      { id: 'mobility', label: 'Mobility / exercise tolerance', unit: '1-10', goal: 'higher' },
+      { id: 'mentalClarity', label: 'Mental clarity / focus', unit: '1-10', goal: 'higher' },
+      { id: 'digestionComfort', label: 'Digestion comfort', unit: '1-10', goal: 'higher' },
+    ],
+  },
+  {
+    key: 'symptoms',
+    label: 'Symptoms',
+    markers: [
+      { id: 'painLevel', label: 'Pain level', unit: '1-10', goal: 'lower' },
+      { id: 'bloating', label: 'Bloating', unit: '1-10', goal: 'lower' },
+      { id: 'fatigue', label: 'Fatigue', unit: '1-10', goal: 'lower' },
+      { id: 'cravings', label: 'Cravings', unit: '1-10', goal: 'lower' },
+      { id: 'headacheFrequency', label: 'Headache frequency', unit: 'days/week', goal: 'lower' },
+      { id: 'jointStiffness', label: 'Joint stiffness', unit: '1-10', goal: 'lower' },
+    ],
+  },
+  {
+    key: 'lifestyle',
+    label: 'Lifestyle',
+    markers: [
+      { id: 'dailySteps', label: 'Daily steps', unit: 'count', goal: 'higher' },
+      { id: 'waterIntake', label: 'Water intake', unit: 'L', goal: 'higher' },
+      { id: 'mealsOnPlan', label: 'Meals on plan', unit: '%', goal: 'higher' },
+      { id: 'medicationAdherence', label: 'Medication adherence', unit: '%', goal: 'higher' },
+      { id: 'stressLevel', label: 'Stress level', unit: '1-10', goal: 'lower' },
+    ],
+  },
+];
+
+const ALL_MARKERS: MarkerDef[] = MARKER_CATEGORIES.flatMap((c) => c.markers);
+const TOTAL_MARKERS = ALL_MARKERS.length;
+
+// ---- Persisted shape ----
+
+interface PatientInfo {
+  patientName: string;
+  startDate: string;
+  careLead: string;
+  rootCauses: string;
+  treatmentFocus: string;
 }
 
-/** One dedicated home for every automatic tracker already scattered across
- *  the app — body metrics, biomarkers/vitals, daily nutrition & hydration
- *  and today's plan progress — instead of a user having to visit Home,
- *  Profile and the Daily Plan separately to see the day's full picture.
- *  Deliberately its own vivid, chart-first visual identity throughout
- *  (gradient banners, radial gauges) rather than reusing the Profile
- *  page's flatter card look — while every section still reuses the exact
- *  same live component/hook the rest of the app already uses
- *  (useBiomarkerVitals, useDailyNutrition, MacroLogRow/WaterIntakeRing/
- *  BmiRangeBar, StreakWidget) — nothing here is a second, parallel copy of
- *  data tracked elsewhere. */
-export const TrackerModule: React.FC<TrackerModuleProps> = ({ profile, account, reports, onUpdateProfile }) => {
-  const { t, language } = useLanguage();
+interface CheckpointEntry {
+  date: string;
+  values: Record<string, string>;
+}
+
+interface NotesEntry {
+  wins: string;
+  barriers: string;
+  actionsCompleted: string;
+  careTeamFollowUp: string;
+}
+
+interface TrackerState {
+  patient: PatientInfo;
+  checkpoints: Record<CheckpointKey, CheckpointEntry>;
+  notes: Record<CheckpointKey, NotesEntry>;
+}
+
+function emptyCheckpointEntry(): CheckpointEntry {
+  return { date: '', values: {} };
+}
+
+function emptyNotesEntry(): NotesEntry {
+  return { wins: '', barriers: '', actionsCompleted: '', careTeamFollowUp: '' };
+}
+
+function defaultState(patientName: string): TrackerState {
+  const checkpoints = {} as Record<CheckpointKey, CheckpointEntry>;
+  const notes = {} as Record<CheckpointKey, NotesEntry>;
+  CHECKPOINTS.forEach((c) => {
+    checkpoints[c.key] = emptyCheckpointEntry();
+    notes[c.key] = emptyNotesEntry();
+  });
+  return {
+    patient: { patientName, startDate: '', careLead: '', rootCauses: '', treatmentFocus: '' },
+    checkpoints,
+    notes,
+  };
+}
+
+function loadState(storageKey: string, patientName: string): TrackerState {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return defaultState(patientName);
+    const parsed = JSON.parse(raw);
+    const base = defaultState(patientName);
+    return {
+      patient: { ...base.patient, ...(parsed.patient || {}) },
+      checkpoints: { ...base.checkpoints, ...(parsed.checkpoints || {}) },
+      notes: { ...base.notes, ...(parsed.notes || {}) },
+    };
+  } catch {
+    return defaultState(patientName);
+  }
+}
+
+// ---- Marker status vs baseline ----
+
+type StatusTone = 'neutral' | 'good' | 'bad';
+interface MarkerStatus { pillLabel: string; tone: StatusTone; note: string }
+
+function markerStatus(marker: MarkerDef, isBaselineCheckpoint: boolean, baselineVal: string, currentVal: string): MarkerStatus {
+  if (isBaselineCheckpoint) {
+    return { pillLabel: 'Baseline', tone: 'neutral', note: 'Starting value for comparison.' };
+  }
+  if (currentVal === '' || currentVal == null) {
+    return { pillLabel: 'Pending', tone: 'neutral', note: 'Add baseline and current values.' };
+  }
+  if (baselineVal === '' || baselineVal == null) {
+    return { pillLabel: 'Pending', tone: 'neutral', note: 'Add a baseline value to compare against.' };
+  }
+  const b = Number(baselineVal);
+  const c = Number(currentVal);
+  if (Number.isNaN(b) || Number.isNaN(c)) {
+    return { pillLabel: 'Pending', tone: 'neutral', note: 'Add baseline and current values.' };
+  }
+  if (c === b) return { pillLabel: 'Stable', tone: 'neutral', note: `Unchanged from baseline (${b}).` };
+  const improved = marker.goal === 'higher' ? c > b : c < b;
+  if (improved) return { pillLabel: 'Improved', tone: 'good', note: `Improved from baseline (${b} → ${c}).` };
+  return { pillLabel: 'Declined', tone: 'bad', note: `Moved away from baseline (${b} → ${c}).` };
+}
+
+const TONE_CLASSES: Record<StatusTone, string> = {
+  neutral: 'bg-zinc-100 text-zinc-600',
+  good: 'bg-emerald-100 text-emerald-700',
+  bad: 'bg-rose-100 text-rose-700',
+};
+
+function checkpointHasAnyData(cp: CheckpointEntry): boolean {
+  return !!cp.date || Object.values(cp.values).some((v) => v !== '' && v != null);
+}
+
+function getLatestCheckpointWithData(checkpoints: Record<CheckpointKey, CheckpointEntry>): CheckpointKey | null {
+  for (let i = CHECKPOINTS.length - 1; i >= 1; i--) {
+    const key = CHECKPOINTS[i].key;
+    if (checkpointHasAnyData(checkpoints[key])) return key;
+  }
+  return null;
+}
+
+function computeScore(checkpoints: Record<CheckpointKey, CheckpointEntry>, latestKey: CheckpointKey | null) {
+  if (!latestKey) return { score: 0, comparable: 0, good: 0 };
+  const baseline = checkpoints.baseline.values;
+  const current = checkpoints[latestKey].values;
+  let comparable = 0;
+  let good = 0;
+  ALL_MARKERS.forEach((m) => {
+    const b = baseline[m.id];
+    const c = current[m.id];
+    if (b === '' || b == null || c === '' || c == null) return;
+    const bn = Number(b);
+    const cn = Number(c);
+    if (Number.isNaN(bn) || Number.isNaN(cn)) return;
+    comparable++;
+    const isGood = m.goal === 'higher' ? cn >= bn : cn <= bn;
+    if (isGood) good++;
+  });
+  return { score: comparable > 0 ? Math.round((good / comparable) * 100) : 0, comparable, good };
+}
+
+function countMeasuredMarkers(checkpoints: Record<CheckpointKey, CheckpointEntry>): number {
+  let count = 0;
+  ALL_MARKERS.forEach((m) => {
+    const hasAny = CHECKPOINTS.some((c) => {
+      const v = checkpoints[c.key].values[m.id];
+      return v !== '' && v != null;
+    });
+    if (hasAny) count++;
+  });
+  return count;
+}
+
+// ---- Small presentational pieces ----
+
+const SectionEyebrow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <p className="text-[11px] font-black uppercase tracking-wider text-emerald-700">{children}</p>
+);
+
+const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <h2 className="text-xl font-black text-zinc-950 leading-tight">{children}</h2>
+);
+
+const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+  <div className={`bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm ${className}`}>{children}</div>
+);
+
+const PillButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`shrink-0 px-4 py-2 rounded-xl text-sm font-black transition-colors cursor-pointer whitespace-nowrap ${
+      active ? 'bg-emerald-700 text-white shadow-sm' : 'text-emerald-700 hover:bg-emerald-50'
+    }`}
+  >
+    {children}
+  </button>
+);
+
+function ScoreRing({ pct }: { pct: number }) {
+  const size = 128;
+  const stroke = 12;
+  const r = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - Math.min(100, Math.max(0, pct)) / 100);
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0 -rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e4e4e7" strokeWidth={stroke} />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="#059669"
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+      />
+      <text
+        x="50%"
+        y="50%"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        transform={`rotate(90 ${size / 2} ${size / 2})`}
+        className="fill-zinc-950 font-black"
+        style={{ fontSize: 22 }}
+      >
+        {pct}%
+      </text>
+    </svg>
+  );
+}
+
+/** Full manual "7-90 Day Improvement Tracker" — patient details, checkpoint
+ *  biomarker/vitals/symptom entry at Baseline/Day 7/14/30/60/90, an
+ *  improvement score comparing each checkpoint back to Baseline, care notes
+ *  per checkpoint, and Print/PDF + JSON export. Everything is entered by
+ *  hand and saved to this device only (see "Saved locally"), independent of
+ *  the app's own automatic tracking elsewhere. */
+export const TrackerModule: React.FC<TrackerModuleProps> = ({ profile, account }) => {
+  const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
-  const userId = profile.id || '';
-  const todayKey = toDateKey(new Date());
+  const userId = profile.id || account.uid || 'guest';
+  const storageKey = `urcare_tracker_v1_${userId}`;
+  const defaultPatientName = profile.name || account.displayName || '';
 
-  const { calculatedPlan, heightCm = 170 } = profile;
-  const bmi = calculatedPlan?.bmi || Number((profile.currentWeightKg / Math.pow(heightCm / 100, 2)).toFixed(1));
-  const bmiPct = Math.min(100, Math.max(0, ((bmi - 15) / (40 - 15)) * 100));
-  const bmiInfo = bmiCategory(bmi, tr);
-
-  const {
-    waterMl, consumedMacros, consumedCalories,
-    isSavingWater, isSavingMacro, isSavingCalories,
-    waterTargetMl, calorieTarget, macroTargets,
-    handleAddWater, handleResetWater, handleEditWaterTarget,
-    handleAddMacro, handleResetMacro, handleEditMacroTarget,
-    handleAddCalories, handleResetCalories, handleEditCalorieTarget,
-  } = useDailyNutrition(profile, onUpdateProfile);
-
-  const caloriePct = calorieTarget > 0 ? Math.min(100, Math.round((consumedCalories / calorieTarget) * 100)) : 0;
-  const proteinPct = macroTargets.protein > 0 ? Math.min(100, Math.round((consumedMacros.protein / macroTargets.protein) * 100)) : 0;
-  const carbsPct = macroTargets.carbs > 0 ? Math.min(100, Math.round((consumedMacros.carbs / macroTargets.carbs) * 100)) : 0;
-  const fatsPct = macroTargets.fats > 0 ? Math.min(100, Math.round((consumedMacros.fats / macroTargets.fats) * 100)) : 0;
-
-  // Today's real plan timeline + real completion state — the same two
-  // calls Home/Profile already make — reduced here to a single done/total
-  // count so the whole day's progress reads at a glance.
-  const [planSections, setPlanSections] = useState<{ id: string; timeLabel: string | null }[]>([]);
-  const [completedToday, setCompletedToday] = useState<Record<string, boolean>>({});
-  const [isPlanLoading, setIsPlanLoading] = useState(true);
+  const [state, setState] = useState<TrackerState>(() => loadState(storageKey, defaultPatientName));
+  const [activeTab, setActiveTab] = useState<'overview' | 'tracker' | 'notes' | 'export'>('overview');
+  const [selectedCheckpoint, setSelectedCheckpoint] = useState<CheckpointKey>('baseline');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | MarkerCategoryKey>('all');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    setIsPlanLoading(true);
-    Promise.all([getDailyPlan(todayKey), getTaskCompletion(userId, todayKey)])
-      .then(([{ plan }, completion]) => {
-        if (cancelled) return;
-        setPlanSections((plan?.sections || []).filter((s: any) => !!s.timeLabel));
-        setCompletedToday(completion);
-      })
-      .finally(() => { if (!cancelled) setIsPlanLoading(false); });
-    return () => { cancelled = true; };
-  }, [userId, todayKey]);
+    try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch {}
+  }, [state, storageKey]);
 
-  const planDoneCount = useMemo(
-    () => planSections.filter((s) => completedToday[s.id]).length,
-    [planSections, completedToday],
-  );
-  const planTotalCount = planSections.length;
-  const planPct = planTotalCount > 0 ? Math.round((planDoneCount / planTotalCount) * 100) : 0;
-  const planGradient = progressGradient(planPct);
+  const updatePatient = (field: keyof PatientInfo, value: string) => {
+    setState((prev) => ({ ...prev, patient: { ...prev.patient, [field]: value } }));
+  };
+
+  const updateCheckpointDate = (key: CheckpointKey, date: string) => {
+    setState((prev) => ({
+      ...prev,
+      checkpoints: { ...prev.checkpoints, [key]: { ...prev.checkpoints[key], date } },
+    }));
+  };
+
+  const updateMarkerValue = (key: CheckpointKey, markerId: string, value: string) => {
+    setState((prev) => ({
+      ...prev,
+      checkpoints: {
+        ...prev.checkpoints,
+        [key]: { ...prev.checkpoints[key], values: { ...prev.checkpoints[key].values, [markerId]: value } },
+      },
+    }));
+  };
+
+  const updateNotes = (key: CheckpointKey, field: keyof NotesEntry, value: string) => {
+    setState((prev) => ({
+      ...prev,
+      notes: { ...prev.notes, [key]: { ...prev.notes[key], [field]: value } },
+    }));
+  };
+
+  const latestCheckpointKey = useMemo(() => getLatestCheckpointWithData(state.checkpoints), [state.checkpoints]);
+  const latestCheckpointLabel = latestCheckpointKey ? CHECKPOINTS.find((c) => c.key === latestCheckpointKey)!.label : null;
+  const latestCheckpointDate = latestCheckpointKey ? state.checkpoints[latestCheckpointKey].date : '';
+
+  const { score, comparable, good } = useMemo(() => computeScore(state.checkpoints, latestCheckpointKey), [state.checkpoints, latestCheckpointKey]);
+  const measuredCount = useMemo(() => countMeasuredMarkers(state.checkpoints), [state.checkpoints]);
+
+  const categoriesToShow = selectedCategory === 'all'
+    ? MARKER_CATEGORIES
+    : MARKER_CATEGORIES.filter((c) => c.key === selectedCategory);
+
+  const isBaselineSelected = selectedCheckpoint === 'baseline';
+  const baselineValues = state.checkpoints.baseline.values;
+  const currentValues = state.checkpoints[selectedCheckpoint].values;
+
+  const handlePrint = () => window.print();
+
+  const buildExportSummary = () => {
+    const lines: string[] = [];
+    lines.push('URCARE ROOT CAUSE REVERSAL TREATMENT');
+    lines.push('7-90 Day Improvement Tracker');
+    lines.push('');
+    lines.push(`Patient: ${state.patient.patientName || '—'}`);
+    lines.push(`Start date: ${state.patient.startDate || '—'}`);
+    lines.push(`Care lead: ${state.patient.careLead || '—'}`);
+    lines.push(`Primary root causes: ${state.patient.rootCauses || '—'}`);
+    lines.push(`Treatment focus: ${state.patient.treatmentFocus || '—'}`);
+    lines.push('');
+    lines.push(`Improvement score: ${score}/100 (${good} of ${comparable} comparable markers improved or stable)`);
+    lines.push(`Measured markers: ${measuredCount}/${TOTAL_MARKERS}`);
+    lines.push('');
+    CHECKPOINTS.forEach((c) => {
+      const cp = state.checkpoints[c.key];
+      if (!checkpointHasAnyData(cp)) return;
+      lines.push(`--- ${c.label}${cp.date ? ` (${cp.date})` : ''} ---`);
+      MARKER_CATEGORIES.forEach((cat) => {
+        cat.markers.forEach((m) => {
+          const v = cp.values[m.id];
+          if (v === '' || v == null) return;
+          lines.push(`${m.label}: ${v} ${m.unit}`);
+        });
+      });
+      const n = state.notes[c.key];
+      if (n.wins) lines.push(`Wins: ${n.wins}`);
+      if (n.barriers) lines.push(`Symptoms/barriers: ${n.barriers}`);
+      if (n.actionsCompleted) lines.push(`Root cause actions completed: ${n.actionsCompleted}`);
+      if (n.careTeamFollowUp) lines.push(`Care team follow-up: ${n.careTeamFollowUp}`);
+      lines.push('');
+    });
+    return lines.join('\n');
+  };
+
+  const handleDownloadJson = () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(state.patient.patientName || 'urcare-tracker').replace(/\s+/g, '_')}_tracker.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopySummary = async () => {
+    try {
+      await navigator.clipboard.writeText(buildExportSummary());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
+  const TABS: { key: typeof activeTab; label: string; Icon: typeof LayoutGrid }[] = [
+    { key: 'overview', label: tr('Overview', 'अवलोकन'), Icon: LayoutGrid },
+    { key: 'tracker', label: tr('Tracker', 'ट्रैकर'), Icon: ListChecks },
+    { key: 'notes', label: tr('Notes', 'नोट्स'), Icon: StickyNote },
+    { key: 'export', label: tr('Export', 'एक्सपोर्ट'), Icon: FileDown },
+  ];
 
   return (
-    <div id="urcare-tracker-module" className="min-h-screen bg-transparent text-zinc-900 pb-16">
-
-      {/* HEADER — a bold gradient banner (not the Profile page's plain
-          white bar), so this module reads as its own vivid space the
-          moment it opens. */}
-      <header className="sticky top-0 z-30 bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 px-3 sm:px-8 py-3 sm:py-3.5 shadow-md shadow-teal-900/10">
-        <div className="max-w-3xl mx-auto flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 min-w-0">
-            <Activity className="w-3.5 h-3.5 text-white shrink-0" />
-            <span className="text-xs font-black text-white tracking-wide whitespace-nowrap">
-              {tr('Tracker', 'ट्रैकर')}
-            </span>
-          </div>
-        </div>
-      </header>
-
+    <div id="urcare-tracker-module" className="min-h-screen bg-[#F8FAFC] text-zinc-900 pb-16">
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 space-y-5 text-left">
 
-        {/* HERO — colorful gradient banner with the streak baked in,
-            instead of plain text + a bare widget. */}
-        <div className="relative overflow-hidden rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-emerald-600 via-teal-600 to-sky-700 text-white shadow-lg shadow-teal-900/15">
-          <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 blur-2xl pointer-events-none" aria-hidden="true" />
-          <div className="absolute -bottom-14 -left-10 w-40 h-40 rounded-full bg-amber-300/20 blur-2xl pointer-events-none" aria-hidden="true" />
-          <div className="relative space-y-3">
-            <div className="space-y-1">
-              <h1 className="text-xl font-black tracking-tight">{tr('Your Health Tracker', 'आपका हेल्थ ट्रैकर')}</h1>
-              <p className="text-xs text-white/80 font-medium max-w-sm">
-                {tr('Everything the app tracks about you, automatically, in one place.', 'ऐप जो कुछ भी आपके बारे में ऑटोमैटिक ट्रैक करता है, वह सब एक ही जगह।')}
-              </p>
+        {/* HEADER */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+              <HeartPulse className="w-7 h-7 text-emerald-600" />
             </div>
-            <StreakWidget profile={profile} />
-          </div>
-        </div>
-
-        {/* TODAY'S PLAN PROGRESS — a colorful radial gauge (red→amber→green
-            as it climbs) instead of a plain linear bar. */}
-        <div className="relative overflow-hidden p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-violet-50 via-indigo-50/50 to-white border border-violet-200/70 shadow-sm space-y-4">
-          <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-gradient-to-br from-violet-300/25 to-transparent blur-2xl pointer-events-none" aria-hidden="true" />
-          <div className="relative flex items-center gap-2 border-b border-violet-100 pb-3">
-            <motion.span
-              className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-violet-500/30"
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 18 }}
-            >
-              <ListChecks className="w-4.5 h-4.5" />
-            </motion.span>
-            <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight">
-              {tr("Today's Plan Progress", 'आज की योजना प्रगति')}
-            </h3>
-          </div>
-
-          {isPlanLoading ? (
-            <div className="h-20 rounded-2xl bg-violet-100/50 animate-pulse" />
-          ) : planTotalCount === 0 ? (
-            <p className="relative text-xs text-zinc-400 font-medium">
-              {tr('No timed steps in today’s plan yet.', 'आज की योजना में अभी कोई समयबद्ध चरण नहीं।')}
-            </p>
-          ) : (
-            <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-4">
-              <div className="relative flex items-center justify-center shrink-0">
-                <RadialGauge pct={planPct} colorFrom={planGradient[0]} colorTo={planGradient[1]} size={100} strokeWidth={10} gradId="plan-progress-gauge" />
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xl font-black text-zinc-950 leading-none">{planPct}%</span>
-                  <span className="text-[9px] font-bold text-zinc-400 mt-0.5">{planDoneCount}/{planTotalCount}</span>
-                </div>
-              </div>
-              <div className="flex-1 w-full space-y-1.5">
-                {planSections.map((s) => {
-                  const done = !!completedToday[s.id];
-                  return (
-                    <div key={s.id} className={`flex items-center gap-2 text-xs font-semibold px-2.5 py-1.5 rounded-xl ${done ? 'bg-emerald-50' : 'bg-white/70'}`}>
-                      {done ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <Circle className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
-                      )}
-                      <span className={done ? 'text-emerald-700 line-through' : 'text-zinc-700'}>{s.timeLabel}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* BODY METRICS — vivid gradient tiles + a BMI radial gauge, instead
-            of the Profile page's flat zinc-50 stat boxes. */}
-        <div className="relative overflow-hidden p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-sky-50 via-cyan-50/40 to-white border border-sky-200/70 shadow-sm space-y-4">
-          <div className="absolute -bottom-14 -right-10 w-36 h-36 rounded-full bg-gradient-to-tr from-sky-300/25 to-transparent blur-2xl pointer-events-none" aria-hidden="true" />
-          <div className="relative flex items-center gap-2 border-b border-sky-100 pb-3">
-            <motion.span
-              className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-cyan-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-sky-500/30"
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 18 }}
-            >
-              <Scale className="w-4.5 h-4.5" />
-            </motion.span>
-            <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight">
-              {tr('Body Metrics', 'शारीरिक मापदंड')}
-            </h3>
-          </div>
-
-          <div className="relative grid grid-cols-2 gap-3">
-            <motion.div
-              whileHover={{ y: -2 }}
-              className="p-3.5 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white space-y-0.5 shadow-sm shadow-sky-500/20"
-            >
-              <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-sky-100"><Scale className="w-3 h-3" />{tr('Weight', 'वज़न')}</span>
-              <div className="text-lg font-black">{profile.currentWeightKg} <span className="text-xs font-semibold text-sky-100">kg</span></div>
-            </motion.div>
-            <motion.div
-              whileHover={{ y: -2 }}
-              className="p-3.5 rounded-2xl bg-gradient-to-br from-fuchsia-500 to-violet-600 text-white space-y-0.5 shadow-sm shadow-fuchsia-500/20"
-            >
-              <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-fuchsia-100"><Ruler className="w-3 h-3" />{tr('Height', 'कद')}</span>
-              <div className="text-lg font-black">{heightCm} <span className="text-xs font-semibold text-fuchsia-100">cm</span></div>
-            </motion.div>
-          </div>
-
-          <div className="relative flex items-center gap-4 p-3.5 rounded-2xl bg-white/70 border border-sky-100">
-            <div className="relative flex items-center justify-center shrink-0">
-              <RadialGauge pct={bmiPct} colorFrom={bmiInfo.gradient[0]} colorTo={bmiInfo.gradient[1]} size={76} strokeWidth={8} gradId="bmi-gauge" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-sm font-black text-zinc-950 leading-none">{bmi}</span>
-              </div>
-            </div>
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">{tr('BMI Status', 'बीएमआई स्थिति')}</span>
-                <span
-                  className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wide text-white shadow-sm"
-                  style={{ background: `linear-gradient(135deg, ${bmiInfo.gradient[0]}, ${bmiInfo.gradient[1]})` }}
-                >
-                  {bmiInfo.label}
-                </span>
-              </div>
-              <BmiRangeBar bmi={bmi} tr={tr} />
+            <div>
+              <SectionEyebrow>{tr('UrCare Root Cause Reversal Treatment', 'यूआरकेयर रूट कॉज़ रिवर्सल ट्रीटमेंट')}</SectionEyebrow>
+              <h1 className="text-2xl font-black text-zinc-950 leading-tight">{tr('7-90 Day Improvement Tracker', '7-90 दिन सुधार ट्रैकर')}</h1>
             </div>
           </div>
         </div>
 
-        {/* BIOMARKER TRACKER — auto-built from the profile (onboarding /
-            Root Cause Assessment values, falling back to the latest lab
-            report). Deliberately a different, more colorful, chart-based
-            presentation than the Profile page's card list (see
-            BiomarkerTrackerVisual.tsx) — both share the exact same
-            useBiomarkerVitals data/edit logic underneath. */}
-        <BiomarkerTrackerVisual
-          profile={profile}
-          reports={reports}
-          onUpdateProfile={onUpdateProfile}
-        />
+        <button
+          type="button"
+          onClick={handlePrint}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-emerald-600 text-emerald-700 text-sm font-black cursor-pointer hover:bg-emerald-50 transition-colors"
+        >
+          <Printer className="w-4 h-4" />
+          {tr('Print/PDF', 'प्रिंट/पीडीएफ')}
+        </button>
 
-        {/* DAILY NUTRITION & WATER TARGETS — real edit controls
-            (MacroLogRow/WaterIntakeRing) stay exactly the shared components
-            the Profile page also uses, so editing here or there always
-            agrees. The colorful radial gauges above them are purely this
-            module's own additional "at a glance" chart layer. */}
-        <div className="relative overflow-hidden p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-50 via-orange-50/40 to-white border border-amber-200/70 shadow-sm space-y-4">
-          <div className="absolute -top-14 -left-10 w-36 h-36 rounded-full bg-gradient-to-br from-amber-300/25 to-transparent blur-2xl pointer-events-none" aria-hidden="true" />
-          <div className="relative flex items-center gap-2 border-b border-amber-100 pb-3">
-            <motion.span
-              className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/30"
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 18 }}
-            >
-              <Flame className="w-4.5 h-4.5" />
-            </motion.span>
-            <h3 className="text-sm font-black text-zinc-950 uppercase tracking-tight">
-              {tr('Daily Nutrition & Water Targets', 'दैनिक पोषण व पानी के लक्ष्य')}
-            </h3>
+        {/* PATIENT DETAILS */}
+        <Card className="space-y-4">
+          <div>
+            <SectionEyebrow>{tr('Patient Progress Record', 'रोगी प्रगति रिकॉर्ड')}</SectionEyebrow>
+            <SectionTitle>{tr('Patient and treatment details', 'रोगी व उपचार विवरण')}</SectionTitle>
           </div>
 
-          {/* At-a-glance gauge row — calories + each macro as its own tiny
-              radial ring, colorful and immediate, before the detailed
-              editable rows below. */}
-          <div className="relative grid grid-cols-4 gap-2">
-            {[
-              { label: tr('Cal', 'कैल'), pct: caloriePct, from: '#f59e0b', to: '#ea580c' },
-              { label: tr('Protein', 'प्रोटीन'), pct: proteinPct, from: '#34d399', to: '#059669' },
-              { label: tr('Carbs', 'कार्ब्स'), pct: carbsPct, from: '#38bdf8', to: '#2563eb' },
-              { label: tr('Fats', 'फैट्स'), pct: fatsPct, from: '#c084fc', to: '#9333ea' },
-            ].map((g) => (
-              <div key={g.label} className="flex flex-col items-center gap-1">
-                <div className="relative flex items-center justify-center">
-                  <RadialGauge pct={g.pct} colorFrom={g.from} colorTo={g.to} size={56} strokeWidth={6} gradId={`nutri-${g.label}`} />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[10px] font-black text-zinc-800">{g.pct}%</span>
-                  </div>
-                </div>
-                <span className="text-[8.5px] font-black uppercase tracking-wide text-zinc-500">{g.label}</span>
-              </div>
-            ))}
+          <div className="text-center py-2.5 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-black">
+            {tr('Saved locally', 'स्थानीय रूप से सहेजा गया')}
           </div>
 
-          <MacroLogRow
-            label={tr('Calories', 'कैलोरी')}
-            color="#f59e0b"
-            unit=" kcal"
-            currentG={Math.min(calorieTarget, Math.round(consumedCalories))}
-            targetG={calorieTarget}
-            quickAdds={[100, 250]}
-            onAdd={handleAddCalories}
-            onReset={handleResetCalories}
-            isSaving={isSavingCalories}
-            tr={tr}
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <MacroLogRow
-              label={tr('Protein', 'प्रोटीन')}
-              color="#1baf7a"
-              currentG={Math.min(macroTargets.protein, Math.round(consumedMacros.protein))}
-              targetG={macroTargets.protein}
-              quickAdds={[10, 20]}
-              onAdd={(g) => handleAddMacro('protein', g)}
-              onEditTarget={(g) => handleEditMacroTarget('protein', g)}
-              onReset={() => handleResetMacro('protein')}
-              isSaving={isSavingMacro}
-              tr={tr}
-            />
-            <MacroLogRow
-              label={tr('Carbs', 'कार्ब्स')}
-              color="#2a78d6"
-              currentG={Math.min(macroTargets.carbs, Math.round(consumedMacros.carbs))}
-              targetG={macroTargets.carbs}
-              quickAdds={[15, 30]}
-              onAdd={(g) => handleAddMacro('carbs', g)}
-              onEditTarget={(g) => handleEditMacroTarget('carbs', g)}
-              onReset={() => handleResetMacro('carbs')}
-              isSaving={isSavingMacro}
-              tr={tr}
-            />
-            <MacroLogRow
-              label={tr('Fats', 'फैट्स')}
-              color="#78716c"
-              currentG={Math.min(macroTargets.fats, Math.round(consumedMacros.fats))}
-              targetG={macroTargets.fats}
-              quickAdds={[5, 10]}
-              onAdd={(g) => handleAddMacro('fats', g)}
-              onEditTarget={(g) => handleEditMacroTarget('fats', g)}
-              onReset={() => handleResetMacro('fats')}
-              isSaving={isSavingMacro}
-              tr={tr}
-            />
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -2, boxShadow: '0 8px 20px -10px rgba(13,148,136,0.35)' }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
-            className="relative p-3.5 rounded-2xl bg-gradient-to-br from-teal-500 via-sky-500 to-blue-600 text-white shadow-sm"
-          >
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold text-white/90 uppercase tracking-wide">
-                <Droplets className="w-3 h-3" />
-                {tr('Water Intake Today', 'आज पानी की मात्रा')}
-              </span>
-              <span className="text-[10px] text-white/70 font-medium">{tr('Daily hydration', 'दैनिक जल सेवन')}</span>
-            </div>
-            <div className="bg-white/95 rounded-xl p-2.5">
-              <WaterIntakeRing
-                currentMl={waterMl}
-                targetMl={waterTargetMl}
-                onAdd={handleAddWater}
-                onEditTarget={handleEditWaterTarget}
-                onReset={handleResetWater}
-                isSaving={isSavingWater}
-                tr={tr}
+          <div className="space-y-3.5">
+            <div>
+              <label className="block text-sm font-bold text-zinc-500 mb-1.5">{tr('Patient name', 'रोगी का नाम')}</label>
+              <input
+                type="text"
+                value={state.patient.patientName}
+                onChange={(e) => updatePatient('patientName', e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-zinc-950 font-bold focus:outline-none focus:border-emerald-600"
               />
             </div>
-          </motion.div>
+            <div>
+              <label className="block text-sm font-bold text-zinc-500 mb-1.5">{tr('Start date', 'शुरुआत तिथि')}</label>
+              <input
+                type="date"
+                value={state.patient.startDate}
+                onChange={(e) => updatePatient('startDate', e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-zinc-950 font-bold focus:outline-none focus:border-emerald-600"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-zinc-500 mb-1.5">{tr('Care lead', 'देखभाल प्रमुख')}</label>
+              <input
+                type="text"
+                value={state.patient.careLead}
+                onChange={(e) => updatePatient('careLead', e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-zinc-950 font-bold focus:outline-none focus:border-emerald-600"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-zinc-500 mb-1.5">{tr('Primary root causes', 'मुख्य मूल कारण')}</label>
+              <input
+                type="text"
+                value={state.patient.rootCauses}
+                onChange={(e) => updatePatient('rootCauses', e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-zinc-950 font-bold focus:outline-none focus:border-emerald-600"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-zinc-500 mb-1.5">{tr('Treatment focus', 'उपचार केंद्र')}</label>
+              <input
+                type="text"
+                placeholder={tr('Nutrition reset, movement plan, gut repair, medication...', 'पोषण रीसेट, मूवमेंट प्लान, गट रिपेयर, दवा...')}
+                value={state.patient.treatmentFocus}
+                onChange={(e) => updatePatient('treatmentFocus', e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-zinc-950 font-bold placeholder:text-zinc-400 placeholder:font-medium focus:outline-none focus:border-emerald-600"
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* TAB BAR */}
+        <div className="grid grid-cols-4 gap-1.5 bg-emerald-50/70 p-1.5 rounded-2xl">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setActiveTab(t.key)}
+              className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-black cursor-pointer transition-colors ${
+                activeTab === t.key ? 'bg-emerald-700 text-white shadow-sm' : 'text-emerald-700 hover:bg-white/60'
+              }`}
+            >
+              <t.Icon className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">{t.label}</span>
+            </button>
+          ))}
         </div>
 
-        <p className="text-[10px] text-zinc-400 leading-relaxed text-center flex items-center justify-center gap-1 pt-1">
-          <Sparkles className="w-3 h-3 shrink-0 text-fuchsia-400" />
-          {tr('Every number on this screen updates automatically as you use the app — nothing here needs to be tracked manually.', 'इस स्क्रीन का हर आंकड़ा ऐप उपयोग करते ही अपने आप अपडेट होता है — यहां कुछ भी मैन्युअली ट्रैक करने की ज़रूरत नहीं।')}
-        </p>
+        {/* OVERVIEW TAB */}
+        {activeTab === 'overview' && (
+          <div className="space-y-4">
+            <Card className="space-y-3">
+              <SectionEyebrow>{tr('Improvement Score', 'सुधार स्कोर')}</SectionEyebrow>
+              <div className="text-4xl font-black text-zinc-950">
+                {score}<span className="text-lg text-zinc-400">/100</span>
+              </div>
+              <p className="text-sm text-zinc-500 font-medium">
+                {tr(
+                  `${good} of ${comparable} comparable markers are improved or stable.`,
+                  `${comparable} में से ${good} तुलनीय मार्कर बेहतर या स्थिर हैं।`
+                )}
+              </p>
+              <div className="pt-1">
+                <ScoreRing pct={score} />
+              </div>
+            </Card>
+
+            <Card className="space-y-1.5">
+              <SectionEyebrow>{tr('Latest Checkpoint', 'नवीनतम चेकपॉइंट')}</SectionEyebrow>
+              <div className="text-2xl font-black text-zinc-950">{latestCheckpointLabel || tr('No checkpoints yet', 'अभी कोई चेकपॉइंट नहीं')}</div>
+              <p className="text-sm text-zinc-500 font-medium">
+                {latestCheckpointDate || tr('No checkpoint date yet', 'अभी कोई चेकपॉइंट तिथि नहीं')}
+              </p>
+            </Card>
+
+            <Card className="space-y-1.5">
+              <SectionEyebrow>{tr('Measured Markers', 'मापे गए मार्कर')}</SectionEyebrow>
+              <div className="text-2xl font-black text-zinc-950">{measuredCount}/{TOTAL_MARKERS}</div>
+              <p className="text-sm text-zinc-500 font-medium">
+                {tr('Clinical, energy, symptom, and lifestyle signals.', 'क्लिनिकल, ऊर्जा, लक्षण, और जीवनशैली संकेत।')}
+              </p>
+            </Card>
+          </div>
+        )}
+
+        {/* TRACKER TAB */}
+        {activeTab === 'tracker' && (
+          <div className="space-y-4">
+            <div>
+              <SectionEyebrow>{tr('Checkpoint Entry', 'चेकपॉइंट एंट्री')}</SectionEyebrow>
+              <SectionTitle>{tr('Record biomarkers and daily function', 'बायोमार्कर व दैनिक कार्य दर्ज करें')}</SectionTitle>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-zinc-500 mb-1.5">{tr('Checkpoint date', 'चेकपॉइंट तिथि')}</label>
+              <input
+                type="date"
+                value={state.checkpoints[selectedCheckpoint].date}
+                onChange={(e) => updateCheckpointDate(selectedCheckpoint, e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-zinc-950 font-bold focus:outline-none focus:border-emerald-600 bg-white"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              {CHECKPOINTS.map((c) => (
+                <PillButton key={c.key} active={selectedCheckpoint === c.key} onClick={() => setSelectedCheckpoint(c.key)}>
+                  {c.label}
+                </PillButton>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              <PillButton active={selectedCategory === 'all'} onClick={() => setSelectedCategory('all')}>
+                {tr('All', 'सभी')}
+              </PillButton>
+              {MARKER_CATEGORIES.map((c) => (
+                <PillButton key={c.key} active={selectedCategory === c.key} onClick={() => setSelectedCategory(c.key)}>
+                  {tr(c.label, c.label)}
+                </PillButton>
+              ))}
+            </div>
+
+            {categoriesToShow.map((cat) => (
+              <Card key={cat.key} className="space-y-4">
+                <h3 className="text-lg font-black text-zinc-950">{cat.label}</h3>
+                <div className="divide-y divide-zinc-100">
+                  {cat.markers.map((m) => {
+                    const status = markerStatus(m, isBaselineSelected, baselineValues[m.id] ?? '', currentValues[m.id] ?? '');
+                    return (
+                      <div key={m.id} className="py-4 first:pt-0 last:pb-0 space-y-2">
+                        <div>
+                          <div className="text-base font-black text-zinc-950">{m.label}</div>
+                          <div className="text-xs text-zinc-400 font-medium">{m.unit} - {tr('goal', 'लक्ष्य')}: {m.goal === 'higher' ? tr('higher', 'अधिक') : tr('lower', 'कम')}</div>
+                        </div>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={currentValues[m.id] ?? ''}
+                          onChange={(e) => updateMarkerValue(selectedCheckpoint, m.id, e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-zinc-950 font-bold focus:outline-none focus:border-emerald-600"
+                        />
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-black ${TONE_CLASSES[status.tone]}`}>{status.pillLabel}</span>
+                          <span className="text-xs text-zinc-500 font-medium">{status.note}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* NOTES TAB */}
+        {activeTab === 'notes' && (
+          <div className="space-y-4">
+            <div>
+              <SectionEyebrow>{tr('Care Notes', 'देखभाल नोट्स')}</SectionEyebrow>
+              <SectionTitle>{tr('Root cause actions and patient-reported changes', 'मूल कारण कार्य व रोगी-रिपोर्टेड बदलाव')}</SectionTitle>
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              {CHECKPOINTS.map((c) => (
+                <PillButton key={c.key} active={selectedCheckpoint === c.key} onClick={() => setSelectedCheckpoint(c.key)}>
+                  {c.label}
+                </PillButton>
+              ))}
+            </div>
+
+            <Card className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-zinc-500 mb-1.5">{tr('Wins and visible improvements', 'जीत व दिखाई देने वाले सुधार')}</label>
+                <textarea
+                  rows={3}
+                  placeholder={tr('More stamina, fewer cravings, improved glucose, better sleep', 'अधिक सहनशक्ति, कम क्रेविंग, बेहतर ग्लूकोज़, बेहतर नींद')}
+                  value={state.notes[selectedCheckpoint].wins}
+                  onChange={(e) => updateNotes(selectedCheckpoint, 'wins', e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-zinc-950 font-medium placeholder:text-zinc-400 focus:outline-none focus:border-emerald-600 resize-y"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-zinc-500 mb-1.5">{tr('Symptoms or barriers', 'लक्षण या बाधाएं')}</label>
+                <textarea
+                  rows={3}
+                  placeholder={tr('Fatigue, pain flare, digestion issues, missed meals, travel', 'थकान, दर्द भड़कना, पाचन समस्याएं, छूटे भोजन, यात्रा')}
+                  value={state.notes[selectedCheckpoint].barriers}
+                  onChange={(e) => updateNotes(selectedCheckpoint, 'barriers', e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-zinc-950 font-medium placeholder:text-zinc-400 focus:outline-none focus:border-emerald-600 resize-y"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-zinc-500 mb-1.5">{tr('Root cause actions completed', 'पूर्ण किए गए मूल कारण कार्य')}</label>
+                <textarea
+                  rows={3}
+                  placeholder={tr('Meal plan followed, labs reviewed, sleep routine, movement target', 'भोजन योजना पालन की, लैब्स की समीक्षा, नींद रूटीन, मूवमेंट लक्ष्य')}
+                  value={state.notes[selectedCheckpoint].actionsCompleted}
+                  onChange={(e) => updateNotes(selectedCheckpoint, 'actionsCompleted', e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-zinc-950 font-medium placeholder:text-zinc-400 focus:outline-none focus:border-emerald-600 resize-y"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-zinc-500 mb-1.5">{tr('Care team follow-up', 'देखभाल टीम फॉलो-अप')}</label>
+                <textarea
+                  rows={3}
+                  placeholder={tr('Next appointment, referrals, questions for the doctor', 'अगली अपॉइंटमेंट, रेफरल, डॉक्टर के लिए प्रश्न')}
+                  value={state.notes[selectedCheckpoint].careTeamFollowUp}
+                  onChange={(e) => updateNotes(selectedCheckpoint, 'careTeamFollowUp', e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-300 text-zinc-950 font-medium placeholder:text-zinc-400 focus:outline-none focus:border-emerald-600 resize-y"
+                />
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* EXPORT TAB */}
+        {activeTab === 'export' && (
+          <div className="space-y-4">
+            <div>
+              <SectionEyebrow>{tr('Export', 'एक्सपोर्ट')}</SectionEyebrow>
+              <SectionTitle>{tr('Share or save this progress record', 'यह प्रगति रिकॉर्ड साझा करें या सहेजें')}</SectionTitle>
+            </div>
+
+            <Card className="space-y-3">
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-black cursor-pointer transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                {tr('Print / Save as PDF', 'प्रिंट / पीडीएफ के रूप में सहेजें')}
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadJson}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white border border-emerald-600 text-emerald-700 text-sm font-black cursor-pointer hover:bg-emerald-50 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                {tr('Download as JSON', 'JSON के रूप में डाउनलोड करें')}
+              </button>
+              <button
+                type="button"
+                onClick={handleCopySummary}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white border border-zinc-300 text-zinc-700 text-sm font-black cursor-pointer hover:bg-zinc-50 transition-colors"
+              >
+                {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                {copied ? tr('Copied!', 'कॉपी हो गया!') : tr('Copy Summary', 'सारांश कॉपी करें')}
+              </button>
+            </Card>
+
+            <Card className="space-y-2">
+              <SectionEyebrow>{tr('Recorded Checkpoints', 'दर्ज चेकपॉइंट')}</SectionEyebrow>
+              {CHECKPOINTS.filter((c) => checkpointHasAnyData(state.checkpoints[c.key])).length === 0 ? (
+                <p className="text-sm text-zinc-400 font-medium">{tr('No checkpoints recorded yet.', 'अभी कोई चेकपॉइंट दर्ज नहीं।')}</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {CHECKPOINTS.filter((c) => checkpointHasAnyData(state.checkpoints[c.key])).map((c) => (
+                    <li key={c.key} className="flex items-center gap-2 text-sm font-bold text-zinc-700">
+                      <ClipboardList className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      {c.label}{state.checkpoints[c.key].date ? ` — ${state.checkpoints[c.key].date}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </div>
+        )}
 
       </main>
     </div>

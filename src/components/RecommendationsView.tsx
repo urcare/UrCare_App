@@ -13,6 +13,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { DailyCalendar, toDateKey } from './DailyCalendar';
 import { PlanSection } from './ReversalLibraryPanel';
+import { WeeklyUpdatesPanel } from './WeeklyUpdatesPanel';
+import { unifiedProgramDay } from '../utils/programWeek';
 import {
   getDailyPlan, getDailyLog, getTaskCompletion,
   toggleDailyTask, getActiveDates,
@@ -196,6 +198,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   const [programDay, setProgramDay] = useState<number | null>(null);
   const [sections, setSections] = useState<PlanSection[]>([]);
   const [customPlanExpiresAt, setCustomPlanExpiresAt] = useState<string | null>(null);
+  const [customPlanUploadedAt, setCustomPlanUploadedAt] = useState<string | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
   const [planError, setPlanError] = useState<string | null>(null);
   const [completedToday, setCompletedToday] = useState<Record<string, boolean>>({});
@@ -296,6 +299,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         setProgramDay(result.plan?.programDay ?? null);
         setSections(result.plan?.sections || []);
         setCustomPlanExpiresAt(result.plan?.isCustom ? result.plan?.expiresAt ?? null : null);
+        setCustomPlanUploadedAt(result.plan?.isCustom ? result.plan?.uploadedAt ?? null : null);
       }
       setPlanLoading(false);
     })();
@@ -429,6 +433,14 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     return map;
   }, [sortedToday]);
 
+  // Feeds the Weekly Updates panel — same programDay the "Day X of 14" badge
+  // already uses for the built-in plan, or a calendar-based day count for a
+  // custom uploaded plan (which has no day-range concept of its own).
+  const weekProgress = useMemo(
+    () => unifiedProgramDay({ isCustom: !!customPlanExpiresAt, programDay, uploadedAt: customPlanUploadedAt }),
+    [customPlanExpiresAt, programDay, customPlanUploadedAt]
+  );
+
   const heroInfo = useMemo(() => {
     if (!isToday || sortedToday.length === 0) return null;
     const now = new Date();
@@ -535,8 +547,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         <div className={`pt-3 border-t ${isDark ? 'border-zinc-800' : 'border-zinc-100'} flex items-center justify-between gap-3 flex-wrap`}>
           <div className="text-xs opacity-70 font-semibold flex items-center gap-2 flex-wrap min-w-0">
             <span className="break-words">{t('showingLabel')}: <span className="text-emerald-600 font-black">{isToday ? `${t('showingToday')} (${formatDate(selectedDate)})` : formatDate(selectedDate)}</span></span>
-            {programDay != null && !customPlanExpiresAt && (
-              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">Day {programDay} of 14</span>
+            {weekProgress && (
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                Day {weekProgress.dayNum} of {weekProgress.totalDays} · Week {Math.ceil(weekProgress.dayNum / 7)}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -586,6 +600,21 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           )}
         </AnimatePresence>
       </div>
+
+      {/* 1.5 WEEKLY UPDATES — fully automatic week-by-week progress, derived
+          from the same program-day number the header's "Day X of Y" badge
+          uses. No manual "mark week done" action anywhere: the moment the
+          program crosses into a new week, the previous one flips to
+          Completed and a one-time congratulations banner shows here. */}
+      {weekProgress && (
+        <WeeklyUpdatesPanel
+          userId={userId}
+          dayNum={weekProgress.dayNum}
+          totalDays={weekProgress.totalDays}
+          isDark={isDark}
+          tr={tr}
+        />
+      )}
 
       {/* 2. RIGHT NOW — the single step whose time has arrived, enlarged and
           pinned to the top so there's nothing to scroll for. Swaps to the
