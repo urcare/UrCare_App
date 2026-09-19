@@ -575,6 +575,35 @@ export interface CustomPlanStep {
   createdAt: string;
 }
 
+/** A file/document an admin uploaded for ONE specific user (their diagnosis,
+ *  a lab report, a treatment plan, a diet plan, or anything else) — visible
+ *  only to that user. See admin_user_files in supabase/patches.sql. */
+export interface AdminUserFile {
+  id: string;
+  userId: string;
+  fileType: 'diagnosis' | 'reports' | 'treatment_plan' | 'diet_plan' | 'other';
+  title: string;
+  fileUrl: string;
+  mimeType: string | null;
+  uploadedBy: string | null;
+  createdAt: string;
+}
+
+/** A full hand-written care plan an admin authored for ONE specific user —
+ *  visible only to that user. See user_personalized_plans in
+ *  supabase/patches.sql. */
+export interface UserPersonalizedPlan {
+  userId: string;
+  diagnosis: string;
+  treatmentPlan: string;
+  foodPlan: string;
+  dailyRoutine: string;
+  shoppingList: string;
+  otherInstructions: string;
+  updatedBy: string | null;
+  updatedAt: string;
+}
+
 export interface FeedbackSubmission {
   id: string;
   userId: string;

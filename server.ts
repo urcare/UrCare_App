@@ -1733,6 +1733,90 @@ app.delete('/api/admin/products/:id', requireAdmin(async (req, res) => {
   res.json({ success: true });
 }));
 
+// ---- Admin-assigned per-user files & personalized plan ----
+// Files/documents (diagnosis, lab reports, treatment plan, diet plan, other)
+// an admin uploads FOR one specific patient, plus a full hand-written care
+// plan for them — both visible ONLY to that one user (see admin_user_files /
+// user_personalized_plans RLS in supabase/patches.sql), never to anyone else.
+
+app.get('/api/admin/user-files/:userId', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase
+    .from('admin_user_files')
+    .select('*')
+    .eq('user_id', req.params.userId)
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ files: data || [] });
+}));
+
+app.post('/api/admin/user-files', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { userId, fileType, title, fileUrl, mimeType, uploadedBy } = req.body as {
+    userId?: string; fileType?: string; title?: string; fileUrl?: string; mimeType?: string; uploadedBy?: string;
+  };
+  if (!userId || !title?.trim() || !fileUrl) {
+    return res.status(400).json({ error: 'A user, title, and file are required.' });
+  }
+  const { data, error } = await supabase.from('admin_user_files').insert({
+    user_id: userId,
+    file_type: fileType || 'other',
+    title: title.trim(),
+    file_url: fileUrl,
+    mime_type: mimeType || null,
+    uploaded_by: uploadedBy || 'admin',
+  }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  await createNotification(supabase, userId, 'system', 'A new document was added for you', title.trim(), { fileType: fileType || 'other' });
+  res.json({ success: true, file: data });
+}));
+
+app.delete('/api/admin/user-files/:id', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { error } = await supabase.from('admin_user_files').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+}));
+
+app.get('/api/admin/personalized-plan/:userId', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase
+    .from('user_personalized_plans')
+    .select('*')
+    .eq('user_id', req.params.userId)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ plan: data || null });
+}));
+
+app.post('/api/admin/personalized-plan', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { userId, diagnosis, treatmentPlan, foodPlan, dailyRoutine, shoppingList, otherInstructions, updatedBy } = req.body as {
+    userId?: string; diagnosis?: string; treatmentPlan?: string; foodPlan?: string;
+    dailyRoutine?: string; shoppingList?: string; otherInstructions?: string; updatedBy?: string;
+  };
+  if (!userId) return res.status(400).json({ error: 'A user is required.' });
+  const { data, error } = await supabase.from('user_personalized_plans').upsert({
+    user_id: userId,
+    diagnosis: diagnosis || null,
+    treatment_plan: treatmentPlan || null,
+    food_plan: foodPlan || null,
+    daily_routine: dailyRoutine || null,
+    shopping_list: shoppingList || null,
+    other_instructions: otherInstructions || null,
+    updated_by: updatedBy || 'admin',
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id' }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  await createNotification(supabase, userId, 'system', 'Your personalized plan was updated', 'Your care team updated your diagnosis, treatment or daily plan.', {});
+  res.json({ success: true, plan: data });
+}));
+
 // Start Vite / Express server
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {

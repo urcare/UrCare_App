@@ -7,6 +7,7 @@ import {
   FeedbackSubmission, Order, Prescription, DoctorContact,
   MedicalReportAnalysis, Product, UserReview, CalculatedPlan,
   GoalType, GenderType, ActivityLevel, GoalPace, AppNotification, ActivityLogEntry, CustomPlanStep,
+  AdminUserFile, UserPersonalizedPlan,
 } from '../types';
 import { calculateNutritionPlan } from './calculator';
 
@@ -715,6 +716,46 @@ export async function deleteCustomPlanStep(id: string): Promise<{ error?: string
   if (!supabase) return { error: 'Supabase is not configured.' };
   const { error } = await supabase.from('custom_plan_steps').delete().eq('id', id);
   return { error: error?.message };
+}
+
+// ============================================================================
+// ADMIN-ASSIGNED FILES & PERSONALIZED PLAN — read-only from this user's own
+// client, straight via RLS (auth.uid() = user_id), same as custom_plan_steps
+// above. Writes only ever happen admin-side, through the server.
+// ============================================================================
+
+export async function getMyAdminFiles(userId: string): Promise<AdminUserFile[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+  const { data } = await supabase.from('admin_user_files').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+  return (data || []).map((r: any) => ({
+    id: r.id,
+    userId: r.user_id,
+    fileType: r.file_type,
+    title: r.title,
+    fileUrl: r.file_url,
+    mimeType: r.mime_type,
+    uploadedBy: r.uploaded_by,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function getMyPersonalizedPlan(userId: string): Promise<UserPersonalizedPlan | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  const { data } = await supabase.from('user_personalized_plans').select('*').eq('user_id', userId).maybeSingle();
+  if (!data) return null;
+  return {
+    userId: data.user_id,
+    diagnosis: data.diagnosis || '',
+    treatmentPlan: data.treatment_plan || '',
+    foodPlan: data.food_plan || '',
+    dailyRoutine: data.daily_routine || '',
+    shoppingList: data.shopping_list || '',
+    otherInstructions: data.other_instructions || '',
+    updatedBy: data.updated_by,
+    updatedAt: data.updated_at,
+  };
 }
 
 // ============================================================================

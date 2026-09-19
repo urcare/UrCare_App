@@ -229,3 +229,46 @@ create policy "own custom plan steps delete" on public.custom_plan_steps for del
 alter table public.lab_reports add column if not exists recommended_conditions text[] default '{}';
 alter table public.lab_reports add column if not exists pre_existing_conditions text[] default '{}';
 alter table public.lab_reports add column if not exists added_conditions text[] default '{}';
+
+-- 10. ADMIN-ASSIGNED FILES — a file an admin uploads FOR one specific user
+--     (their diagnosis, a lab report, a treatment plan, a diet plan, or any
+--     other document). Stored as a data URL, same pattern already used for
+--     product photos / avatars / lab report images elsewhere in this schema
+--     — no separate Storage bucket needed. Visible ONLY to that one user;
+--     every other user's client is blocked by RLS from ever seeing it.
+create table if not exists public.admin_user_files (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  file_type text not null default 'other', -- 'diagnosis' | 'reports' | 'treatment_plan' | 'diet_plan' | 'other'
+  title text not null,
+  file_url text not null,
+  mime_type text,
+  uploaded_by text,
+  created_at timestamptz default now()
+);
+create index if not exists admin_user_files_user_id_idx on public.admin_user_files (user_id);
+alter table public.admin_user_files enable row level security;
+drop policy if exists "own admin files select" on public.admin_user_files;
+create policy "own admin files select" on public.admin_user_files for select using (auth.uid() = user_id);
+-- Insert/update/delete go through the server (service_role) only — admin-authored.
+
+-- 11. ADMIN-AUTHORED PERSONALIZED PLAN — one full care plan per user
+--     (diagnosis, treatment/recovery plan, food plan, daily routine,
+--     shopping list, other instructions), written by an admin and shown to
+--     that one user only. One row per user — a new save overwrites the
+--     previous plan, same as custom_daily_plans above.
+create table if not exists public.user_personalized_plans (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  diagnosis text,
+  treatment_plan text,
+  food_plan text,
+  daily_routine text,
+  shopping_list text,
+  other_instructions text,
+  updated_by text,
+  updated_at timestamptz default now()
+);
+alter table public.user_personalized_plans enable row level security;
+drop policy if exists "own personalized plan select" on public.user_personalized_plans;
+create policy "own personalized plan select" on public.user_personalized_plans for select using (auth.uid() = user_id);
+-- Writes go through the server (service_role) only — admin-authored.

@@ -29,6 +29,7 @@ import { TrackerModule } from './TrackerModule';
 import { ReportTimeline } from './ReportTimeline';
 import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
+import { MyCareFilesPanel } from './MyCareFilesPanel';
 import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
 import { signOutUser, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity } from '../utils/supabase';
@@ -951,6 +952,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   onDelete={handleDeleteReport}
                   onSaveReportText={handleSaveReportText}
                 />
+
+                {/* Admin-assigned files + personalized plan — only ever
+                    rendered if the care team has actually put something
+                    here for this user (see MyCareFilesPanel). */}
+                <MyCareFilesPanel userId={account.uid} tr={tr} />
               </div>
             );
           })()}

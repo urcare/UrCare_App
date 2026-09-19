@@ -250,6 +250,90 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [patientTasksDone, setPatientTasksDone] = useState(0);
   const [isLoadingPatient, setIsLoadingPatient] = useState(false);
 
+  // Files + personalized plan an admin assigns to ONE specific patient —
+  // visible only to that patient in their own app (see admin_user_files /
+  // user_personalized_plans RLS in supabase/patches.sql).
+  const [patientFiles, setPatientFiles] = useState<any[]>([]);
+  const [patientPlan, setPatientPlan] = useState<any | null>(null);
+  const [isLoadingPatientCare, setIsLoadingPatientCare] = useState(false);
+  const EMPTY_FILE_UPLOAD_FORM = { fileType: 'diagnosis' as const, title: '', fileUrl: '', mimeType: '' };
+  const [fileUploadForm, setFileUploadForm] = useState<{ fileType: 'diagnosis' | 'reports' | 'treatment_plan' | 'diet_plan' | 'other'; title: string; fileUrl: string; mimeType: string }>(EMPTY_FILE_UPLOAD_FORM);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const EMPTY_PLAN_FORM = { diagnosis: '', treatmentPlan: '', foodPlan: '', dailyRoutine: '', shoppingList: '', otherInstructions: '' };
+  const [planForm, setPlanForm] = useState(EMPTY_PLAN_FORM);
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [planSaveSuccess, setPlanSaveSuccess] = useState(false);
+
+  const loadPatientCare = (userId?: string | null) => {
+    const targetId = userId ?? selectedPatientUserId;
+    if (!adminToken || !targetId) { setPatientFiles([]); setPatientPlan(null); setPlanForm(EMPTY_PLAN_FORM); return; }
+    setIsLoadingPatientCare(true);
+    Promise.all([
+      adminFetch(adminToken, `/api/admin/user-files/${targetId}`).then((res) => res.json()),
+      adminFetch(adminToken, `/api/admin/personalized-plan/${targetId}`).then((res) => res.json()),
+    ]).then(([filesData, planData]) => {
+      setPatientFiles(Array.isArray(filesData?.files) ? filesData.files : []);
+      const p = planData?.plan || null;
+      setPatientPlan(p);
+      setPlanForm({
+        diagnosis: p?.diagnosis || '',
+        treatmentPlan: p?.treatment_plan || '',
+        foodPlan: p?.food_plan || '',
+        dailyRoutine: p?.daily_routine || '',
+        shoppingList: p?.shopping_list || '',
+        otherInstructions: p?.other_instructions || '',
+      });
+    }).catch(() => {}).finally(() => setIsLoadingPatientCare(false));
+  };
+
+  const handleFileUploadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { window.alert('This file is too large (max 10MB).'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result) {
+        setFileUploadForm((prev) => ({ ...prev, fileUrl: reader.result as string, mimeType: file.type, title: prev.title || file.name }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadPatientFile = () => {
+    if (!adminToken || !selectedPatientUserId || !fileUploadForm.fileUrl || !fileUploadForm.title.trim()) return;
+    setIsUploadingFile(true);
+    adminFetch(adminToken, '/api/admin/user-files', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: selectedPatientUserId,
+        fileType: fileUploadForm.fileType,
+        title: fileUploadForm.title.trim(),
+        fileUrl: fileUploadForm.fileUrl,
+        mimeType: fileUploadForm.mimeType,
+        uploadedBy: adminEmail,
+      }),
+    }).then(() => { setFileUploadForm(EMPTY_FILE_UPLOAD_FORM); loadPatientCare(); }).catch(() => {}).finally(() => setIsUploadingFile(false));
+  };
+
+  const handleDeletePatientFile = (fileId: string) => {
+    if (!adminToken) return;
+    if (!window.confirm('Remove this file from the patient\'s app?')) return;
+    adminFetch(adminToken, `/api/admin/user-files/${fileId}`, { method: 'DELETE' }).then(() => loadPatientCare()).catch(() => {});
+  };
+
+  const handleSavePersonalizedPlan = () => {
+    if (!adminToken || !selectedPatientUserId) return;
+    setIsSavingPlan(true);
+    adminFetch(adminToken, '/api/admin/personalized-plan', {
+      method: 'POST',
+      body: JSON.stringify({ userId: selectedPatientUserId, ...planForm, updatedBy: adminEmail }),
+    }).then(() => {
+      setPlanSaveSuccess(true);
+      setTimeout(() => setPlanSaveSuccess(false), 2500);
+      loadPatientCare();
+    }).catch(() => {}).finally(() => setIsSavingPlan(false));
+  };
+
   const loadPatientsList = () => {
     if (!adminToken) return;
     adminFetch(adminToken, '/api/admin/users').then((res) => res.json()).then((data) => {
@@ -314,7 +398,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   };
 
   useEffect(() => {
-    if (selectedPatientUserId) loadRealPatient(selectedPatientUserId);
+    if (selectedPatientUserId) {
+      loadRealPatient(selectedPatientUserId);
+      loadPatientCare(selectedPatientUserId);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPatientUserId]);
 
@@ -1055,6 +1142,129 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                         )}
                       </div>
                     )}
+                  </div>
+
+                  {/* Files an admin uploads FOR this one patient — visible
+                      only to them, in the app's own Reports tab. */}
+                  <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} space-y-4`}>
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                      <div className="flex items-center gap-2 text-emerald-600">
+                        <FileText className="w-5 h-5" />
+                        <h3 className="text-sm font-black uppercase tracking-wider">Assigned Files & Documents</h3>
+                      </div>
+                      <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-zinc-100 text-zinc-500 border border-zinc-200">
+                        {patientFiles.length} file{patientFiles.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+
+                    {isLoadingPatientCare ? (
+                      <p className="text-xs text-zinc-400">Loading...</p>
+                    ) : patientFiles.length === 0 ? (
+                      <p className="text-xs text-zinc-500">No files assigned to this patient yet.</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {patientFiles.map((f) => (
+                          <div key={f.id} className={`flex items-center gap-2.5 p-3 rounded-xl ${subCardClass}`}>
+                            <a href={f.file_url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 flex items-center gap-2.5 hover:text-emerald-700 cursor-pointer">
+                              <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-zinc-900 truncate">{f.title}</div>
+                                <div className="text-[10px] text-zinc-400 capitalize">{(f.file_type || 'other').replace('_', ' ')} • {new Date(f.created_at).toLocaleDateString()}</div>
+                              </div>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePatientFile(f.id)}
+                              className="shrink-0 p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className={`p-4 rounded-2xl ${subCardClass} space-y-3`}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <select
+                          value={fileUploadForm.fileType}
+                          onChange={(e) => setFileUploadForm((prev) => ({ ...prev, fileType: e.target.value as typeof prev.fileType }))}
+                          className="px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs font-bold text-zinc-900 focus:outline-none focus:border-emerald-600"
+                        >
+                          <option value="diagnosis">Diagnosis</option>
+                          <option value="reports">Reports</option>
+                          <option value="treatment_plan">Treatment Plan</option>
+                          <option value="diet_plan">Diet Plan</option>
+                          <option value="other">Other Documents</option>
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="File title"
+                          value={fileUploadForm.title}
+                          onChange={(e) => setFileUploadForm((prev) => ({ ...prev, title: e.target.value }))}
+                          className="px-3 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs font-bold text-zinc-900 placeholder:text-zinc-400 placeholder:font-medium focus:outline-none focus:border-emerald-600"
+                        />
+                      </div>
+                      <label className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-zinc-300 bg-white text-xs font-bold text-zinc-600 hover:border-emerald-400 hover:text-emerald-700 cursor-pointer transition-colors">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{fileUploadForm.fileUrl ? 'File selected — ready to upload' : 'Choose a file (image or PDF, max 10MB)'}</span>
+                        <input type="file" accept="image/*,application/pdf" onChange={handleFileUploadChange} className="hidden" />
+                      </label>
+                      <button
+                        type="button"
+                        disabled={!selectedPatientUserId || !fileUploadForm.fileUrl || !fileUploadForm.title.trim() || isUploadingFile}
+                        onClick={handleUploadPatientFile}
+                        className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        {isUploadingFile ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                        <span>{isUploadingFile ? 'Uploading...' : 'Upload for This Patient'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Full personalized plan an admin writes for this one
+                      patient — shown in their own app once saved. */}
+                  <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} space-y-4`}>
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+                      <div className="flex items-center gap-2 text-emerald-600">
+                        <Stethoscope className="w-5 h-5" />
+                        <h3 className="text-sm font-black uppercase tracking-wider">Personalized Plan</h3>
+                      </div>
+                      {patientPlan?.updated_at && (
+                        <span className="text-[10px] text-zinc-400 font-semibold">Updated {new Date(patientPlan.updated_at).toLocaleDateString()}</span>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      {([
+                        ['diagnosis', 'Diagnosis'],
+                        ['treatmentPlan', 'Treatment / Recovery Plan'],
+                        ['foodPlan', 'Food Plan'],
+                        ['dailyRoutine', 'Daily Routine'],
+                        ['shoppingList', 'Shopping List'],
+                        ['otherInstructions', 'Other Instructions'],
+                      ] as const).map(([key, label]) => (
+                        <div key={key}>
+                          <label className="block text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-1">{label}</label>
+                          <textarea
+                            rows={2}
+                            value={planForm[key]}
+                            onChange={(e) => setPlanForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                            className="w-full px-3 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-medium text-zinc-900 focus:outline-none focus:border-emerald-600 resize-y"
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={!selectedPatientUserId || isSavingPlan}
+                      onClick={handleSavePersonalizedPlan}
+                      className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {isSavingPlan ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : planSaveSuccess ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
+                      <span>{isSavingPlan ? 'Saving...' : planSaveSuccess ? 'Saved!' : 'Save Personalized Plan'}</span>
+                    </button>
                   </div>
                 </div>
               );
