@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+/* The app is permanently locked to light mode (see ThemeContext.tsx — theme
+ * is always 'light', toggling is a no-op). But Tailwind v4's `dark:` variant
+ * defaults to a `prefers-color-scheme: dark` MEDIA QUERY, completely
+ * independent of that app-level lock — so every `dark:` class scattered
+ * throughout the codebase (many components still have them, written back
+ * when dark mode was a real option) silently activates for any visitor
+ * whose OS/browser prefers dark mode, regardless of what the app's own
+ * React state says. That's a real, reproducible bug (not just dead code):
+ * e.g. `dark:text-white` on a light card renders invisible white-on-white/
+ * near-invisible text for such a user. Rebinding `dark:` to a selector that
+ * never actually exists in the DOM makes every `dark:` class permanently
+ * inert app-wide, matching the real, intended behavior — one fix here
+ * instead of hunting down every stray `dark:` class file by file. */
+@custom-variant dark (&:where(.force-dark-never-applied, .force-dark-never-applied *));
+
 /* Overrides Tailwind's built-in "emerald" palette app-wide with a pure-green
  * ramp anchored on #008000 (emerald-600, the single most-used shade across
  * buttons/CTAs) — every bg-emerald-*, text-emerald-*, border-emerald-*, etc.
