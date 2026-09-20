@@ -4,7 +4,7 @@ import {
   Plus, Settings, Clock,
   ChevronRight, Sparkles, Trash2, Calendar, ShieldCheck, Activity,
   ShoppingBag, Stethoscope, Crown, Camera, Lock, ClipboardCheck,
-  Package, User, Check, PhoneCall, FileText, CheckCircle2, HeartPulse,
+  Package, User, Check, FileText, CheckCircle2, HeartPulse,
   LogOut, MessageSquare, AlertCircle, MoreVertical, X,
   Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3
 } from 'lucide-react';
@@ -80,6 +80,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
     { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
     { id: 'assessment' as const, label: tr('Assessment', 'मूल्यांकन'), icon: ClipboardCheck },
     { id: 'store' as const, label: tr('Store', 'स्टोर'), icon: ShoppingBag },
+    // Not a tab — opens the Doctor Consult modal directly (see the drawer's
+    // onClick). Used to be its own persistent sidebar card; moved in here to
+    // declutter the sidebar.
+    { id: 'doctor_hotline' as const, label: tr('Doctor Hotline', 'डॉक्टर हॉटलाइन'), icon: Stethoscope },
     // Not a tab — opens the Settings modal directly (see the drawer's onClick).
     { id: 'settings' as const, label: tr('Settings', 'सेटिंग्स'), icon: Settings },
     // Not a tab either — opens the sign-out confirmation (see the drawer's onClick).
@@ -453,23 +457,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             })}
           </nav>
 
-          {/* Direct Doctor Hotline Banner in Sidebar */}
-          <div className="p-3.5 rounded-2xl bg-teal-50 border border-teal-200/80 text-teal-950 space-y-2">
-            <div className="flex items-center gap-2">
-              <Stethoscope className="w-4 h-4 text-teal-600" />
-              <span className="text-[11px] font-black uppercase tracking-wider text-teal-900">{tr('Doctor Hotline', 'डॉक्टर हॉटलाइन')}</span>
-            </div>
-            <p className="text-[10px] text-teal-700 leading-tight font-medium">{tr('Board-certified clinical supervision available.', 'बोर्ड-प्रमाणित क्लिनिकल निगरानी उपलब्ध है।')}</p>
-            <button
-              type="button"
-              onClick={() => handleOpenDoctorConsult()}
-              className="w-full py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm transition-all cursor-pointer"
-            >
-              <PhoneCall className="w-3 h-3" />
-              <span>{tr('Call Specialist', 'विशेषज्ञ को कॉल करें')}</span>
-            </button>
-          </div>
-
         </div>
 
         {/* Sidebar Footer Controls */}
@@ -689,7 +676,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <nav className="flex-1 p-3 space-y-1">
                 {moduleMenuItems.map((item) => {
                   const ItemIcon = item.icon;
-                  const isActive = item.id !== 'settings' && item.id !== 'logout' && activeTab === item.id;
+                  const isActive = item.id !== 'settings' && item.id !== 'logout' && item.id !== 'doctor_hotline' && activeTab === (item.id as typeof activeTab);
                   return (
                     <button
                       key={item.id}
@@ -699,6 +686,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           setIsSettingsOpen(true);
                         } else if (item.id === 'logout') {
                           setShowLogoutConfirm(true);
+                        } else if (item.id === 'doctor_hotline') {
+                          handleOpenDoctorConsult();
                         } else {
                           setActiveTab(item.id);
                         }
