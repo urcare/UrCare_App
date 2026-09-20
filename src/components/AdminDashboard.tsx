@@ -356,6 +356,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [isFollowUpFormOpen, setIsFollowUpFormOpen] = useState(false);
   const [followUpForm, setFollowUpForm] = useState({ date: '', time: '', message: '' });
   const [isSavingFollowUp, setIsSavingFollowUp] = useState(false);
+  const [patientTyping, setPatientTyping] = useState(false);
+  const lastAdminTypingPingRef = React.useRef(0);
 
   const loadChatThreads = () => {
     if (!adminToken) return;
@@ -373,9 +375,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
       adminFetch(adminToken, `/api/admin/chat/follow-ups/${userId}`).then((res) => res.json()),
     ]).then(([msgData, followUpData]) => {
       setChatMessages(Array.isArray(msgData?.messages) ? msgData.messages : []);
+      setPatientTyping(!!msgData?.otherTyping);
       setFollowUps(Array.isArray(followUpData?.followUps) ? followUpData.followUps : []);
       loadChatThreads();
     }).catch(() => {}).finally(() => setIsLoadingChat(false));
+  };
+
+  // Lightweight poll (messages + typing only, no follow-ups/thread-list
+  // refetch) while a conversation is open — 2.5s, fast enough for the
+  // typing indicator to feel live without a real Realtime subscription.
+  useEffect(() => {
+    if (!adminToken || !selectedChatUserId) return;
+    const interval = setInterval(() => {
+      adminFetch(adminToken, `/api/admin/chat/threads/${selectedChatUserId}/messages`).then((res) => res.json()).then((data) => {
+        if (Array.isArray(data?.messages)) setChatMessages(data.messages);
+        setPatientTyping(!!data?.otherTyping);
+      }).catch(() => {});
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [adminToken, selectedChatUserId]);
+
+  const handleChatDraftChange = (value: string) => {
+    setChatDraft(value);
+    if (!adminToken || !selectedChatUserId) return;
+    const now = Date.now();
+    if (value.trim() && now - lastAdminTypingPingRef.current > 1500) {
+      lastAdminTypingPingRef.current = now;
+      adminFetch(adminToken, '/api/admin/chat/typing', { method: 'POST', body: JSON.stringify({ userId: selectedChatUserId }) }).catch(() => {});
+    }
   };
 
   const handleChatFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -400,7 +427,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
         fileUrl: chatAttachedFile?.url,
         fileName: chatAttachedFile?.name,
         fileType: chatAttachedFile?.type,
-        senderName: adminEmail || 'UrCare Care Team',
       }),
     }).then((res) => res.json()).then((data) => {
       if (data?.message) setChatMessages((prev) => [...prev, data.message]);
@@ -2085,6 +2111,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                           );
                         })
                       )}
+                      {patientTyping && (
+                        <div className="flex justify-start">
+                          <div className="bg-white border border-zinc-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm flex items-center gap-1">
+                            {[0, 1, 2].map((i) => (
+                              <span key={i} className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-3 border-t border-zinc-100 space-y-2">
@@ -2103,7 +2138,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                         <input
                           type="text"
                           value={chatDraft}
-                          onChange={(e) => setChatDraft(e.target.value)}
+                          onChange={(e) => handleChatDraftChange(e.target.value)}
                           onKeyDown={(e) => { if (e.key === 'Enter' && !isSendingChat) handleSendChatMessage(); }}
                           placeholder="Type a reply..."
                           className="flex-1 min-w-0 px-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm focus:outline-none focus:border-emerald-600"

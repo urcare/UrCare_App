@@ -1556,6 +1556,26 @@ async function getOrCreateChatThread(supabase: SupabaseClient, userId: string) {
   return created;
 }
 
+// Ephemeral "is someone typing" state, in-memory (never persisted — there's
+// nothing to keep once it's stale). Keyed by thread id, one timestamp per
+// side. A side counts as "typing" only within TYPING_TTL_MS of its last
+// ping, so a client that stops typing (or just closes the tab) clears
+// itself out automatically instead of needing an explicit "stopped typing"
+// call.
+const chatTypingState = new Map<string, { user?: number; admin?: number }>();
+const TYPING_TTL_MS = 4000;
+
+function pingTyping(threadId: string, side: 'user' | 'admin') {
+  const entry = chatTypingState.get(threadId) || {};
+  entry[side] = Date.now();
+  chatTypingState.set(threadId, entry);
+}
+
+function isTyping(threadId: string, side: 'user' | 'admin'): boolean {
+  const at = chatTypingState.get(threadId)?.[side];
+  return !!at && Date.now() - at < TYPING_TTL_MS;
+}
+
 app.get('/api/chat/thread', requireUser(async (req, res, user) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
@@ -1567,9 +1587,21 @@ app.get('/api/chat/thread', requireUser(async (req, res, user) => {
     if (thread.unread_by_user) {
       await supabase.from('chat_threads').update({ unread_by_user: false }).eq('id', thread.id);
     }
-    res.json({ thread, messages: messages || [] });
+    res.json({ thread, messages: messages || [], otherTyping: isTyping(thread.id, 'admin') });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Could not load your chat.' });
+  }
+}));
+
+app.post('/api/chat/typing', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  try {
+    const thread = await getOrCreateChatThread(supabase, user.id);
+    pingTyping(thread.id, 'user');
+    res.json({ success: true });
+  } catch {
+    res.json({ success: true }); // best-effort — never worth surfacing an error for this
   }
 }));
 
@@ -1638,17 +1670,31 @@ app.get('/api/admin/chat/threads/:userId/messages', requireAdmin(async (req, res
     if (thread.unread_by_admin) {
       await supabase.from('chat_threads').update({ unread_by_admin: false }).eq('id', thread.id);
     }
-    res.json({ thread, messages: messages || [] });
+    res.json({ thread, messages: messages || [], otherTyping: isTyping(thread.id, 'user') });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Could not load this chat.' });
+  }
+}));
+
+app.post('/api/admin/chat/typing', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { userId } = req.body as { userId?: string };
+  if (!userId) return res.status(400).json({ error: 'A user is required.' });
+  try {
+    const thread = await getOrCreateChatThread(supabase, userId);
+    pingTyping(thread.id, 'admin');
+    res.json({ success: true });
+  } catch {
+    res.json({ success: true });
   }
 }));
 
 app.post('/api/admin/chat/messages', requireAdmin(async (req, res) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
-  const { userId, body, fileUrl, fileName, fileType, senderName } = req.body as {
-    userId?: string; body?: string; fileUrl?: string; fileName?: string; fileType?: string; senderName?: string;
+  const { userId, body, fileUrl, fileName, fileType } = req.body as {
+    userId?: string; body?: string; fileUrl?: string; fileName?: string; fileType?: string;
   };
   if (!userId) return res.status(400).json({ error: 'A user is required.' });
   if (!body?.trim() && !fileUrl) return res.status(400).json({ error: 'A message or a file is required.' });
@@ -1658,7 +1704,9 @@ app.post('/api/admin/chat/messages', requireAdmin(async (req, res) => {
       thread_id: thread.id,
       user_id: userId,
       sender_type: 'admin',
-      sender_name: senderName || 'UrCare Care Team',
+      // Always the same brand — never the individual admin's own email/name,
+      // regardless of who on the team actually typed the reply.
+      sender_name: 'UrCare Care Team',
       body: body?.trim() || null,
       file_url: fileUrl || null,
       file_name: fileName || null,

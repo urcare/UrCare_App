@@ -1,8 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Send, Paperclip, MessageCircle, RefreshCw, FileText } from 'lucide-react';
 import { ChatMessage } from '../types';
-import { getMyChatThread, sendMyChatMessage, markMyChatRead } from '../utils/supabase';
+import { getMyChatThread, sendMyChatMessage, markMyChatRead, pingMyChatTyping } from '../utils/supabase';
 import { useLanguage } from '../context/LanguageContext';
+
+/** Three bouncing dots — the universal "someone is typing" glyph. */
+const TypingDots: React.FC = () => (
+  <span className="inline-flex items-center gap-1">
+    {[0, 1, 2].map((i) => (
+      <span
+        key={i}
+        className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce"
+        style={{ animationDelay: `${i * 0.15}s` }}
+      />
+    ))}
+  </span>
+);
 
 interface ChatPanelProps {
   isOpen: boolean;
@@ -41,13 +54,15 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
   const [draft, setDraft] = useState('');
   const [attachedFile, setAttachedFile] = useState<{ url: string; name: string; type: string } | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [careTeamTyping, setCareTeamTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastTypingPingRef = useRef(0);
 
   const load = (showSpinner: boolean) => {
     if (showSpinner) setIsLoading(true);
     getMyChatThread().then((result) => {
-      if (result) setMessages(result.messages);
+      if (result) { setMessages(result.messages); setCareTeamTyping(result.otherTyping); }
       if (showSpinner) setIsLoading(false);
     });
   };
@@ -56,13 +71,26 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
     if (!isOpen) return;
     load(true);
     markMyChatRead();
-    const interval = setInterval(() => load(false), 4000);
+    // 2.5s — fast enough for the typing indicator to feel live without a
+    // real Supabase Realtime subscription.
+    const interval = setInterval(() => load(false), 2500);
     return () => clearInterval(interval);
   }, [isOpen]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages.length]);
+  }, [messages.length, careTeamTyping]);
+
+  const handleDraftChange = (value: string) => {
+    setDraft(value);
+    const now = Date.now();
+    // Throttled — no point pinging on every keystroke; once every 1.5s
+    // while actively typing is plenty for a 4s server-side TTL.
+    if (value.trim() && now - lastTypingPingRef.current > 1500) {
+      lastTypingPingRef.current = now;
+      pingMyChatTyping();
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -169,6 +197,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
               );
             })
           )}
+          {careTeamTyping && (
+            <div className="flex justify-start">
+              <div className="bg-white border border-zinc-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+                <TypingDots />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-3 border-t border-zinc-100 bg-white shrink-0 space-y-2">
@@ -193,7 +228,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
             <input
               type="text"
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => handleDraftChange(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !isSending) handleSend(); }}
               placeholder={tr('Type a message...', 'संदेश लिखें...')}
               className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500"

@@ -877,15 +877,22 @@ function mapChatMessage(m: any): ChatMessage {
   };
 }
 
-export async function getMyChatThread(): Promise<{ thread: ChatThread; messages: ChatMessage[] } | null> {
+export async function getMyChatThread(): Promise<{ thread: ChatThread; messages: ChatMessage[]; otherTyping: boolean } | null> {
   try {
     const res = await authedFetch('/api/chat/thread');
     const data = await res.json();
     if (!res.ok || !data.thread) return null;
-    return { thread: mapChatThread(data.thread), messages: (data.messages || []).map(mapChatMessage) };
+    return { thread: mapChatThread(data.thread), messages: (data.messages || []).map(mapChatMessage), otherTyping: !!data.otherTyping };
   } catch {
     return null;
   }
+}
+
+/** Best-effort "I'm typing" ping — fire-and-forget, never worth surfacing
+ *  an error for. Throttle calls on the caller's side (no point pinging on
+ *  every keystroke). */
+export async function pingMyChatTyping(): Promise<void> {
+  try { await authedFetch('/api/chat/typing', { method: 'POST', body: JSON.stringify({}) }); } catch {}
 }
 
 export async function sendMyChatMessage(input: { body?: string; fileUrl?: string; fileName?: string; fileType?: string }): Promise<{ message?: ChatMessage; error?: string }> {
