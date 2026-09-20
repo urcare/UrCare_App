@@ -836,10 +836,6 @@ Call the record_food_analysis tool exactly once with the complete result.`;
 //    conditionLabelsToTags now live above, next to /api/analyze-report,
 //    which also needs them to fold a report's findings into these same tags.)
 
-/** Program day is 1-14, counted from the day the plan was first opened — capped
- *  at 14 (Day 14's protocol repeats as maintenance guidance after that).
- *  `referenceDateIso` lets the calendar look back at what a past date's step
- *  would have been, instead of always answering for today. */
 /** Reduces any timestamp/date string to a UTC calendar-day number. Never
  *  Date.setHours(0,0,0,0) to "zero out" a time-of-day — that mutates in
  *  the server PROCESS's own local timezone, which can silently land on a
@@ -850,11 +846,25 @@ function toUtcDayNumber(dateOrIso: string): number {
   return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 86400000);
 }
 
+/** How many real calendar days are in the month `dateIso` falls in — 28-31,
+ *  never a fixed guess (a day-0-of-next-month trick, computed in UTC to
+ *  match toUtcDayNumber above). */
+function daysInMonth(dateIso: string): number {
+  const d = new Date(dateIso);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+}
+
+/** Program day is 1-through-however-many-days-are-in-the-user's-own-start-
+ *  month (28-31, whichever real month they began in — never a flat 14),
+ *  counted from the day the plan was first opened. Capped at that month's
+ *  own length (the last day's protocol repeats as maintenance guidance
+ *  after that). `referenceDateIso` lets the calendar look back at what a
+ *  past date's step would have been, instead of always answering for today. */
 function computeProgramDay(startedAtIso: string, referenceDateIso?: string): number {
   const startDay = toUtcDayNumber(startedAtIso);
   const referenceDay = toUtcDayNumber(referenceDateIso || new Date().toISOString());
   const diffDays = referenceDay - startDay;
-  return Math.min(14, Math.max(1, diffDays + 1));
+  return Math.min(daysInMonth(startedAtIso), Math.max(1, diffDays + 1));
 }
 
 // Upload-your-own daily plan — a photo or PDF of a schedule the user already
@@ -1151,6 +1161,7 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
     }
 
     const programDay = computeProgramDay(startedAt, date);
+    const totalDays = daysInMonth(startedAt);
     const userTags = conditionLabelsToTags(hp?.existing_concerns);
 
     const matched = (sections || []).filter((s: any) => {
@@ -1164,6 +1175,7 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
     return res.json({
       plan: {
         programDay,
+        totalDays,
         startedAt,
         sections: matched.map((s: any) => ({
           id: s.id,

@@ -111,6 +111,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const todayKey = toDateKey(new Date());
 
   const [programDay, setProgramDay] = useState<number | null>(null);
+  const [programTotalDays, setProgramTotalDays] = useState<number | null>(null);
   const [sections, setSections] = useState<PlanSection[]>([]);
   // Bumped whenever a report upload adds a new condition to this user's
   // Daily Plan (see Dashboard's handleUpdateReport) — forces the plan fetch
@@ -142,6 +143,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     getDailyPlan(todayKey).then((result) => {
       if (cancelled) return;
       setProgramDay(result.plan?.programDay ?? null);
+      setProgramTotalDays(result.plan?.totalDays ?? null);
       setSections(result.plan?.sections || []);
     });
     getTaskCompletion(userId, todayKey).then((c) => { if (!cancelled) setCompletedToday(c); });
@@ -498,7 +500,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               <div className="flex items-baseline gap-2">
                 <h2 className="text-sm font-black text-zinc-950">{tr("Today's Plan", 'आज की योजना')}</h2>
                 {programDay != null && (
-                  <span className="text-[10px] font-bold text-zinc-400">{tr(`Day ${programDay} of 14`, `दिन ${programDay} / 14`)}</span>
+                  <span className="text-[10px] font-bold text-zinc-400">{tr(`Day ${programDay} of ${programTotalDays || 30}`, `दिन ${programDay} / ${programTotalDays || 30}`)}</span>
                 )}
               </div>
             </div>

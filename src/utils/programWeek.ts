@@ -57,10 +57,13 @@ export function computeMonths(weeks: WeekInfo[]): MonthInfo[] {
   return months;
 }
 
-/** Unifies the built-in plan's `programDay` (1-14) and a custom uploaded
- *  plan's calendar-based progress (1-35, from its upload date) into one
- *  {dayNum, totalDays} shape the week math above can work with either way. */
-export function unifiedProgramDay(args: { isCustom: boolean; programDay: number | null; uploadedAt: string | null }): { dayNum: number; totalDays: number } | null {
+/** Unifies the built-in plan's `programDay` (1-through-its-own-real-month-
+ *  length, e.g. 30 or 31 — see `totalDays` from /api/daily-plan, computed
+ *  server-side via daysInMonth) and a custom uploaded plan's calendar-based
+ *  progress (1-35, from its upload date — a real 35-day active-plan expiry,
+ *  not a display cap, so left as-is) into one {dayNum, totalDays} shape the
+ *  week math above can work with either way. */
+export function unifiedProgramDay(args: { isCustom: boolean; programDay: number | null; totalDays: number | null; uploadedAt: string | null }): { dayNum: number; totalDays: number } | null {
   if (args.isCustom && args.uploadedAt) {
     const uploaded = new Date(args.uploadedAt);
     const now = new Date();
@@ -69,7 +72,7 @@ export function unifiedProgramDay(args: { isCustom: boolean; programDay: number 
     return { dayNum: Math.min(35, Math.max(1, elapsed)), totalDays: 35 };
   }
   if (args.programDay != null) {
-    return { dayNum: args.programDay, totalDays: 14 };
+    return { dayNum: args.programDay, totalDays: args.totalDays || 30 };
   }
   return null;
 }

@@ -209,6 +209,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   }, [selectedDate]);
 
   const [programDay, setProgramDay] = useState<number | null>(null);
+  const [programTotalDays, setProgramTotalDays] = useState<number | null>(null);
   const [sections, setSections] = useState<PlanSection[]>([]);
   const [customPlanExpiresAt, setCustomPlanExpiresAt] = useState<string | null>(null);
   const [customPlanUploadedAt, setCustomPlanUploadedAt] = useState<string | null>(null);
@@ -310,6 +311,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         setPlanError(result.error);
       } else {
         setProgramDay(result.plan?.programDay ?? null);
+        setProgramTotalDays(result.plan?.totalDays ?? null);
         setSections(result.plan?.sections || []);
         setCustomPlanExpiresAt(result.plan?.isCustom ? result.plan?.expiresAt ?? null : null);
         setCustomPlanUploadedAt(result.plan?.isCustom ? result.plan?.uploadedAt ?? null : null);
@@ -446,12 +448,13 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     return map;
   }, [sortedToday]);
 
-  // Feeds the Weekly Updates panel — same programDay the "Day X of 14" badge
-  // already uses for the built-in plan, or a calendar-based day count for a
-  // custom uploaded plan (which has no day-range concept of its own).
+  // Feeds the Weekly Updates panel — same programDay/totalDays the header's
+  // "Day X of Y" badge already uses for the built-in plan (Y is that real
+  // calendar month's own length — 28-31 — never a flat 14), or a
+  // calendar-based day count for a custom uploaded plan.
   const weekProgress = useMemo(
-    () => unifiedProgramDay({ isCustom: !!customPlanExpiresAt, programDay, uploadedAt: customPlanUploadedAt }),
-    [customPlanExpiresAt, programDay, customPlanUploadedAt]
+    () => unifiedProgramDay({ isCustom: !!customPlanExpiresAt, programDay, totalDays: programTotalDays, uploadedAt: customPlanUploadedAt }),
+    [customPlanExpiresAt, programDay, programTotalDays, customPlanUploadedAt]
   );
 
   const heroInfo = useMemo(() => {
