@@ -5,7 +5,7 @@ import {
   QrCode, Edit, ArrowRight, Lock, LogOut, Sparkles, Filter,
   Truck, Check, Stethoscope, Search, ExternalLink, RefreshCw, Upload, X,
   Zap, ChevronRight, HelpCircle, Save, Activity, HeartPulse, Trash2, Image as ImageIcon, Tag, Package,
-  User, Target, Flame, Droplets, Scale, Calendar, MessageCircle, Paperclip, Clock,
+  User, Target, Flame, Droplets, Scale, Calendar, MessageCircle, Paperclip, Clock, Hash, PhoneCall,
 } from 'lucide-react';
 import {
   AdminStats, MedicalReportAnalysis, Order, Prescription,
@@ -47,7 +47,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'patients' | 'reports' | 'orders' | 'products_qr' | 'reviews' | 'messages'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'patients' | 'reports' | 'orders' | 'products_qr' | 'reviews' | 'messages' | 'queue'>('overview');
 
   // Stats & Data — all real, fetched from Supabase via the server once logged in.
   const [stats, setStats] = useState<AdminStats>(EMPTY_STATS);
@@ -431,6 +431,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     }).catch(() => {});
   };
 
+  // ---- Consultation Queue ----
+  const [queueEntries, setQueueEntries] = useState<any[]>([]);
+  const [isLoadingQueue, setIsLoadingQueue] = useState(false);
+  const [queueUpdatingId, setQueueUpdatingId] = useState<string | null>(null);
+
+  const loadQueue = () => {
+    if (!adminToken) return;
+    setIsLoadingQueue(true);
+    adminFetch(adminToken, '/api/admin/queue').then((res) => res.json()).then((data) => {
+      if (Array.isArray(data?.entries)) setQueueEntries(data.entries);
+    }).catch(() => {}).finally(() => setIsLoadingQueue(false));
+  };
+
+  const handleUpdateQueueStatus = (id: string, status: 'in_progress' | 'completed' | 'cancelled') => {
+    if (!adminToken) return;
+    setQueueUpdatingId(id);
+    adminFetch(adminToken, `/api/admin/queue/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.entry) setQueueEntries((prev) => prev.map((e) => (e.id === id ? data.entry : e)));
+      }).catch(() => {}).finally(() => setQueueUpdatingId(null));
+  };
+
   const loadRealPatient = (userId?: string | null) => {
     const targetId = userId ?? selectedPatientUserId;
     if (!adminToken || !targetId) {
@@ -501,6 +524,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     loadAllReports();
     loadPatientsList();
     loadChatThreads();
+    loadQueue();
 
     adminFetch(adminToken, '/api/admin/stats').then((res) => res.json()).then((data) => {
       if (data && !data.error) setStats(data);
@@ -887,6 +911,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           >
             <MessageCircle className="w-4 h-4" />
             <span>Messages{chatThreads.filter((t) => t.unread_by_admin).length > 0 ? ` (${chatThreads.filter((t) => t.unread_by_admin).length})` : ''}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('queue'); loadQueue(); }}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+              activeTab === 'queue' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+            }`}
+          >
+            <Hash className="w-4 h-4" />
+            <span>Queue{queueEntries.filter((e) => e.status === 'waiting').length > 0 ? ` (${queueEntries.filter((e) => e.status === 'waiting').length})` : ''}</span>
           </button>
         </div>
 
@@ -2089,6 +2124,101 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
             </div>
           );
         })()}
+
+        {/* TAB 7: CONSULTATION QUEUE */}
+        {activeTab === 'queue' && (
+          <div className="space-y-6 text-left">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-black text-zinc-950">Today's Consultation Queue</h3>
+                <p className="text-xs text-zinc-500">Real token numbers, reset fresh every day — call patients in as you're ready.</p>
+              </div>
+              <button
+                type="button"
+                onClick={loadQueue}
+                className="px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingQueue ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+            </div>
+
+            {isLoadingQueue ? (
+              <div className={`p-12 rounded-3xl ${cardClass} text-center text-sm font-bold text-zinc-500`}>Loading queue...</div>
+            ) : queueEntries.length === 0 ? (
+              <div className={`p-12 rounded-3xl ${cardClass} text-center space-y-3`}>
+                <div className="w-14 h-14 rounded-2xl bg-zinc-100 text-zinc-400 flex items-center justify-center mx-auto">
+                  <Hash className="w-7 h-7" />
+                </div>
+                <p className="text-base font-black text-zinc-900">No one has joined the queue today</p>
+                <p className="text-xs max-w-sm mx-auto text-zinc-500">Tokens will appear here the moment a patient taps "Get My Queue Token".</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {queueEntries.map((e) => {
+                  const statusMeta: Record<string, { label: string; class: string }> = {
+                    waiting: { label: 'Waiting', class: 'bg-amber-50 text-amber-700 border border-amber-200' },
+                    in_progress: { label: 'In Progress', class: 'bg-emerald-600 text-white' },
+                    completed: { label: 'Completed', class: 'bg-zinc-100 text-zinc-500' },
+                    cancelled: { label: 'Cancelled', class: 'bg-rose-50 text-rose-500' },
+                  };
+                  const meta = statusMeta[e.status] || statusMeta.waiting;
+                  const isDone = e.status === 'completed' || e.status === 'cancelled';
+                  return (
+                    <div key={e.id} className={`p-4 rounded-2xl ${cardClass} flex flex-col sm:flex-row sm:items-center gap-3 ${isDone ? 'opacity-60' : ''}`}>
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-black text-lg shrink-0">
+                          {e.token_number}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-zinc-900 truncate">{e.user_name || e.user_email || 'Patient'}</div>
+                          <div className="text-[11px] text-zinc-500 truncate">
+                            {e.reason || 'No reason given'} • Requested {new Date(e.requested_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${meta.class}`}>{meta.label}</span>
+                        {e.status === 'waiting' && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={queueUpdatingId === e.id}
+                              onClick={() => handleUpdateQueueStatus(e.id, 'in_progress')}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-[11px] font-black uppercase tracking-wide flex items-center gap-1 cursor-pointer"
+                            >
+                              <PhoneCall className="w-3.5 h-3.5" />
+                              <span>Call In</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={queueUpdatingId === e.id}
+                              onClick={() => handleUpdateQueueStatus(e.id, 'cancelled')}
+                              className="p-1.5 rounded-xl text-zinc-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                        {e.status === 'in_progress' && (
+                          <button
+                            type="button"
+                            disabled={queueUpdatingId === e.id}
+                            onClick={() => handleUpdateQueueStatus(e.id, 'completed')}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-[11px] font-black uppercase tracking-wide flex items-center gap-1 cursor-pointer"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Mark Completed</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* DOCTOR PRESCRIPTION MODAL */}

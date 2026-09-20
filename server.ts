@@ -1756,6 +1756,118 @@ async function sendDueChatFollowUps() {
 setInterval(sendDueChatFollowUps, 60_000);
 
 // ----------------------------------------------------------------------------
+// CONSULTATION QUEUE — a real clinic-style token queue, one counter per
+// calendar day (see consultation_queue in supabase/patches.sql).
+// ----------------------------------------------------------------------------
+
+/** Today's date as the server sees it, UTC — same convention as
+ *  toUtcDayNumber above, so "today" never silently depends on the server
+ *  process's own local timezone. */
+function todayDateKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Assigns the next token for today and inserts the row — retried a few
+ *  times on a unique-index collision (two people joining in the same
+ *  instant), since the next-number read and the insert aren't one atomic
+ *  step. Each retry re-reads the current max, so it always converges. */
+async function joinQueueWithRetry(supabase: SupabaseClient, userId: string, queueDate: string, reason: string | null) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data: existingMax } = await supabase
+      .from('consultation_queue').select('token_number').eq('queue_date', queueDate).order('token_number', { ascending: false }).limit(1).maybeSingle();
+    const nextToken = (existingMax?.token_number || 0) + 1;
+    const { data, error } = await supabase.from('consultation_queue').insert({
+      user_id: userId, queue_date: queueDate, token_number: nextToken, status: 'waiting', reason,
+    }).select().single();
+    if (!error) return data;
+    // 23505 = unique_violation — someone else took that token number first; retry.
+    if (error.code !== '23505') throw error;
+  }
+  throw new Error('Could not assign a queue token right now — please try again.');
+}
+
+async function queuePosition(supabase: SupabaseClient, queueDate: string, tokenNumber: number): Promise<number> {
+  const { count } = await supabase
+    .from('consultation_queue').select('*', { count: 'exact', head: true })
+    .eq('queue_date', queueDate).eq('status', 'waiting').lt('token_number', tokenNumber);
+  return count || 0;
+}
+
+app.post('/api/queue/join', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { reason } = req.body as { reason?: string };
+  const queueDate = todayDateKey();
+  try {
+    const { data: existing } = await supabase
+      .from('consultation_queue').select('*').eq('user_id', user.id).eq('queue_date', queueDate)
+      .in('status', ['waiting', 'in_progress']).maybeSingle();
+    const entry = existing || await joinQueueWithRetry(supabase, user.id, queueDate, reason?.trim() || null);
+    const position = entry.status === 'waiting' ? await queuePosition(supabase, queueDate, entry.token_number) : 0;
+    res.json({ entry, position });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Could not join the queue right now.' });
+  }
+}));
+
+app.get('/api/queue/mine', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const queueDate = todayDateKey();
+  const { data: entry } = await supabase
+    .from('consultation_queue').select('*').eq('user_id', user.id).eq('queue_date', queueDate)
+    .in('status', ['waiting', 'in_progress']).maybeSingle();
+  if (!entry) return res.json({ entry: null, position: 0 });
+  const position = entry.status === 'waiting' ? await queuePosition(supabase, queueDate, entry.token_number) : 0;
+  res.json({ entry, position });
+}));
+
+app.post('/api/queue/cancel', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { error } = await supabase.from('consultation_queue').update({ status: 'cancelled' })
+    .eq('user_id', user.id).eq('queue_date', todayDateKey()).eq('status', 'waiting');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+}));
+
+app.get('/api/admin/queue', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const queueDate = (req.query.date as string) || todayDateKey();
+  const { data: entries, error } = await supabase
+    .from('consultation_queue').select('*').eq('queue_date', queueDate).order('token_number', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  const userIds = (entries || []).map((e: any) => e.user_id);
+  const { data: profiles } = userIds.length
+    ? await supabase.from('profiles').select('user_id, full_name, email').in('user_id', userIds)
+    : { data: [] as any[] };
+  const profileById = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+  res.json({
+    queueDate,
+    entries: (entries || []).map((e: any) => ({ ...e, user_name: profileById.get(e.user_id)?.full_name, user_email: profileById.get(e.user_id)?.email })),
+  });
+}));
+
+app.post('/api/admin/queue/:id/status', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { status } = req.body as { status?: string };
+  if (!status || !['waiting', 'in_progress', 'completed', 'cancelled'].includes(status)) {
+    return res.status(400).json({ error: 'A valid status is required.' });
+  }
+  const patch: Record<string, any> = { status };
+  if (status === 'in_progress') patch.called_at = new Date().toISOString();
+  if (status === 'completed') patch.completed_at = new Date().toISOString();
+  const { data, error } = await supabase.from('consultation_queue').update(patch).eq('id', req.params.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  if (status === 'in_progress') {
+    await createNotification(supabase, data.user_id, 'system', "It's your turn!", `Token #${data.token_number} is being called now.`, { tokenNumber: data.token_number });
+  }
+  res.json({ success: true, entry: data });
+}));
+
+// ----------------------------------------------------------------------------
 // RAZORPAY — real REST API when configured, clearly-labelled simulation otherwise.
 // ----------------------------------------------------------------------------
 function isRazorpayConfigured() {

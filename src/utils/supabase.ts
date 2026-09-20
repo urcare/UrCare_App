@@ -7,7 +7,7 @@ import {
   FeedbackSubmission, Order, Prescription, DoctorContact,
   MedicalReportAnalysis, Product, UserReview, CalculatedPlan,
   GoalType, GenderType, ActivityLevel, GoalPace, AppNotification, ActivityLogEntry, CustomPlanStep,
-  AdminUserFile, UserPersonalizedPlan, FamilyMember, ChatThread, ChatMessage,
+  AdminUserFile, UserPersonalizedPlan, FamilyMember, ChatThread, ChatMessage, QueueEntry,
 } from '../types';
 import { calculateNutritionPlan } from './calculator';
 
@@ -901,6 +901,61 @@ export async function sendMyChatMessage(input: { body?: string; fileUrl?: string
 
 export async function markMyChatRead(): Promise<void> {
   try { await authedFetch('/api/chat/mark-read', { method: 'POST', body: JSON.stringify({}) }); } catch {}
+}
+
+// ============================================================================
+// CONSULTATION QUEUE — a real clinic-style token queue (see
+// consultation_queue in supabase/patches.sql). Writes go through the server
+// so the next token number is always assigned race-free.
+// ============================================================================
+
+function mapQueueEntry(e: any): QueueEntry {
+  return {
+    id: e.id,
+    userId: e.user_id,
+    queueDate: e.queue_date,
+    tokenNumber: e.token_number,
+    status: e.status,
+    reason: e.reason,
+    requestedAt: e.requested_at,
+    calledAt: e.called_at,
+    completedAt: e.completed_at,
+    userName: e.user_name,
+    userEmail: e.user_email,
+  };
+}
+
+export async function joinQueue(reason?: string): Promise<{ entry?: QueueEntry; position?: number; error?: string }> {
+  try {
+    const res = await authedFetch('/api/queue/join', { method: 'POST', body: JSON.stringify({ reason }) });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Could not join the queue right now.' };
+    return { entry: mapQueueEntry(data.entry), position: data.position };
+  } catch {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
+export async function getMyQueueEntry(): Promise<{ entry: QueueEntry | null; position: number }> {
+  try {
+    const res = await authedFetch('/api/queue/mine');
+    const data = await res.json();
+    if (!res.ok || !data.entry) return { entry: null, position: 0 };
+    return { entry: mapQueueEntry(data.entry), position: data.position };
+  } catch {
+    return { entry: null, position: 0 };
+  }
+}
+
+export async function cancelMyQueueEntry(): Promise<{ error?: string }> {
+  try {
+    const res = await authedFetch('/api/queue/cancel', { method: 'POST', body: JSON.stringify({}) });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Could not cancel your token right now.' };
+    return {};
+  } catch {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
 }
 
 // ============================================================================

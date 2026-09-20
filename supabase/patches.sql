@@ -428,3 +428,33 @@ create table if not exists public.chat_follow_ups (
 create index if not exists chat_follow_ups_due_idx on public.chat_follow_ups (sent, scheduled_for);
 alter table public.chat_follow_ups enable row level security;
 -- Admin-only (scheduling + the sweep that sends them) — no client policy at all.
+
+-- 16. CONSULTATION QUEUE — a real clinic-style token queue, one counter per
+--     calendar day (queue_date + token_number together are unique, so token
+--     #1 exists fresh every day, not a number that climbs forever). A user
+--     joins to get a token; admin calls people in from their own queue
+--     dashboard, updating status — the user's own screen reflects that live
+--     via polling, same as chat. Writes go through the server (service_role)
+--     so the next token number is assigned without a race between two
+--     people joining at the same instant — direct client inserts could
+--     collide on the unique (queue_date, token_number) index.
+create table if not exists public.consultation_queue (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  queue_date date not null,
+  token_number int not null,
+  status text not null default 'waiting', -- 'waiting' | 'in_progress' | 'completed' | 'cancelled'
+  reason text,
+  requested_at timestamptz default now(),
+  called_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz default now()
+);
+create unique index if not exists consultation_queue_date_token_idx on public.consultation_queue (queue_date, token_number);
+create index if not exists consultation_queue_date_status_idx on public.consultation_queue (queue_date, status);
+create index if not exists consultation_queue_user_id_idx on public.consultation_queue (user_id);
+alter table public.consultation_queue enable row level security;
+drop policy if exists "own queue entries select" on public.consultation_queue;
+create policy "own queue entries select" on public.consultation_queue for select using (auth.uid() = user_id);
+-- Insert/update go through the server (service_role) only — token
+-- assignment and status changes must stay authoritative and race-free.

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   X, Phone, PhoneCall, ShieldCheck, Stethoscope,
-  Clock, CheckCircle2, AlertTriangle, Building2, RefreshCw
+  Clock, CheckCircle2, AlertTriangle, Building2, RefreshCw, Hash, Users, XCircle,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { UserHealthProfile, DoctorContact } from '../types';
-import { getDoctors } from '../utils/supabase';
+import { UserHealthProfile, DoctorContact, QueueEntry } from '../types';
+import { getDoctors, joinQueue, getMyQueueEntry, cancelMyQueueEntry } from '../utils/supabase';
 
 interface DoctorConsultModalProps {
   isOpen: boolean;
@@ -28,6 +28,15 @@ export const DoctorConsultModal: React.FC<DoctorConsultModalProps> = ({
   const [doctors, setDoctors] = useState<DoctorContact[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Consultation queue — a real clinic-style token, alongside the direct-
+  // call option below (some patients would rather wait their turn than
+  // call in). Polls every 5s while open so the live position updates
+  // without the patient refreshing.
+  const [queueEntry, setQueueEntry] = useState<QueueEntry | null>(null);
+  const [queuePosition, setQueuePosition] = useState(0);
+  const [isQueueLoading, setIsQueueLoading] = useState(true);
+  const [isJoiningQueue, setIsJoiningQueue] = useState(false);
+
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
@@ -36,6 +45,31 @@ export const DoctorConsultModal: React.FC<DoctorConsultModalProps> = ({
       setLoading(false);
     });
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const refreshQueue = () => getMyQueueEntry().then(({ entry, position }) => {
+      setQueueEntry(entry);
+      setQueuePosition(position);
+      setIsQueueLoading(false);
+    });
+    refreshQueue();
+    const interval = setInterval(refreshQueue, 5000);
+    return () => clearInterval(interval);
+  }, [isOpen]);
+
+  const handleJoinQueue = async () => {
+    setIsJoiningQueue(true);
+    const { entry, position } = await joinQueue(validReasonText);
+    if (entry) { setQueueEntry(entry); setQueuePosition(position || 0); }
+    setIsJoiningQueue(false);
+  };
+
+  const handleCancelQueue = async () => {
+    await cancelMyQueueEntry();
+    setQueueEntry(null);
+    setQueuePosition(0);
+  };
 
   if (!isOpen) return null;
 
@@ -91,6 +125,68 @@ export const DoctorConsultModal: React.FC<DoctorConsultModalProps> = ({
             </p>
           </div>
         )}
+
+        {/* Consultation Queue — a real token, like a clinic waiting room. */}
+        <div className={`p-5 rounded-2xl border ${isDark ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-50 border-emerald-200'} space-y-3`}>
+          <div className="flex items-center gap-2">
+            <Hash className="w-4 h-4 text-emerald-600 shrink-0" />
+            <h4 className="text-sm font-black text-zinc-950 dark:text-white">{tr('Join the Consultation Queue', 'परामर्श कतार में शामिल हों')}</h4>
+          </div>
+
+          {isQueueLoading ? (
+            <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <span>{tr('Checking queue status...', 'कतार स्थिति जांची जा रही है...')}</span>
+            </div>
+          ) : queueEntry ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{tr('Your Token', 'आपका टोकन')}</div>
+                  <div className="text-3xl font-black text-emerald-700 dark:text-emerald-400 leading-none">#{queueEntry.tokenNumber}</div>
+                </div>
+                <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
+                  queueEntry.status === 'in_progress' ? 'bg-emerald-600 text-white animate-pulse' : 'bg-white dark:bg-zinc-900 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/40'
+                }`}>
+                  {queueEntry.status === 'in_progress' ? tr("It's your turn!", 'आपकी बारी है!') : tr('Waiting', 'प्रतीक्षा में')}
+                </span>
+              </div>
+              {queueEntry.status === 'waiting' && (
+                <p className="text-xs text-zinc-600 dark:text-zinc-300">
+                  {tr(
+                    queuePosition > 0 ? `${queuePosition} patient${queuePosition === 1 ? '' : 's'} ahead of you.` : "You're next!",
+                    queuePosition > 0 ? `${queuePosition} मरीज़ आपसे आगे हैं।` : 'अगली बारी आपकी है!'
+                  )}
+                </p>
+              )}
+              {queueEntry.status === 'waiting' && (
+                <button
+                  type="button"
+                  onClick={handleCancelQueue}
+                  className="w-full py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  <span>{tr('Cancel My Token', 'मेरा टोकन रद्द करें')}</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-zinc-600 dark:text-zinc-300">
+                {tr('Get a real queue number and wait your turn — no need to stay on hold.', 'एक असली कतार संख्या पाएं और अपनी बारी की प्रतीक्षा करें — होल्ड पर रहने की ज़रूरत नहीं।')}
+              </p>
+              <button
+                type="button"
+                onClick={handleJoinQueue}
+                disabled={isJoiningQueue}
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer"
+              >
+                {isJoiningQueue ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+                <span>{isJoiningQueue ? tr('Joining...', 'शामिल हो रहे हैं...') : tr('Get My Queue Token', 'मेरा कतार टोकन लें')}</span>
+              </button>
+            </>
+          )}
+        </div>
 
         {/* Doctor Information Card(s) */}
         {loading ? (

@@ -661,6 +661,23 @@ export interface ChatFollowUp {
   createdAt: string;
 }
 
+/** A real clinic-style token in today's consultation queue — see
+ *  consultation_queue in supabase/patches.sql. Token numbers reset every
+ *  calendar day (queue_date + token_number together are unique). */
+export interface QueueEntry {
+  id: string;
+  userId: string;
+  queueDate: string;
+  tokenNumber: number;
+  status: 'waiting' | 'in_progress' | 'completed' | 'cancelled';
+  reason: string | null;
+  requestedAt: string;
+  calledAt: string | null;
+  completedAt: string | null;
+  userName?: string | null;
+  userEmail?: string | null;
+}
+
 export interface FeedbackSubmission {
   id: string;
   userId: string;
