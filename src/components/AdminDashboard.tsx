@@ -5,7 +5,7 @@ import {
   QrCode, Edit, ArrowRight, Lock, LogOut, Sparkles, Filter,
   Truck, Check, Stethoscope, Search, ExternalLink, RefreshCw, Upload, X,
   Zap, ChevronRight, HelpCircle, Save, Activity, HeartPulse, Trash2, Image as ImageIcon, Tag, Package,
-  User, Target, Flame, Droplets, Scale, Calendar
+  User, Target, Flame, Droplets, Scale, Calendar, MessageCircle, Paperclip, Clock,
 } from 'lucide-react';
 import {
   AdminStats, MedicalReportAnalysis, Order, Prescription,
@@ -47,7 +47,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'patients' | 'reports' | 'orders' | 'products_qr' | 'reviews'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'patients' | 'reports' | 'orders' | 'products_qr' | 'reviews' | 'messages'>('overview');
 
   // Stats & Data — all real, fetched from Supabase via the server once logged in.
   const [stats, setStats] = useState<AdminStats>(EMPTY_STATS);
@@ -341,6 +341,96 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     }).catch(() => {});
   };
 
+  // ---- Messages (Care Team Chat) — see chat_threads/chat_messages/
+  // chat_follow_ups in supabase/patches.sql and the /api/admin/chat/* +
+  // /api/chat/* endpoints in server.ts. ----
+  const [chatThreads, setChatThreads] = useState<any[]>([]);
+  const [selectedChatUserId, setSelectedChatUserId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const [chatDraft, setChatDraft] = useState('');
+  const [chatAttachedFile, setChatAttachedFile] = useState<{ url: string; name: string; type: string } | null>(null);
+  const [isSendingChat, setIsSendingChat] = useState(false);
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const [followUps, setFollowUps] = useState<any[]>([]);
+  const [isFollowUpFormOpen, setIsFollowUpFormOpen] = useState(false);
+  const [followUpForm, setFollowUpForm] = useState({ date: '', time: '', message: '' });
+  const [isSavingFollowUp, setIsSavingFollowUp] = useState(false);
+
+  const loadChatThreads = () => {
+    if (!adminToken) return;
+    adminFetch(adminToken, '/api/admin/chat/threads').then((res) => res.json()).then((data) => {
+      if (Array.isArray(data?.threads)) setChatThreads(data.threads);
+    }).catch(() => {});
+  };
+
+  const loadChatThread = (userId: string) => {
+    if (!adminToken) return;
+    setSelectedChatUserId(userId);
+    setIsLoadingChat(true);
+    Promise.all([
+      adminFetch(adminToken, `/api/admin/chat/threads/${userId}/messages`).then((res) => res.json()),
+      adminFetch(adminToken, `/api/admin/chat/follow-ups/${userId}`).then((res) => res.json()),
+    ]).then(([msgData, followUpData]) => {
+      setChatMessages(Array.isArray(msgData?.messages) ? msgData.messages : []);
+      setFollowUps(Array.isArray(followUpData?.followUps) ? followUpData.followUps : []);
+      loadChatThreads();
+    }).catch(() => {}).finally(() => setIsLoadingChat(false));
+  };
+
+  const handleChatFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { window.alert('This file is too large (max 10MB).'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result) setChatAttachedFile({ url: reader.result as string, name: file.name, type: file.type });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSendChatMessage = () => {
+    if (!adminToken || !selectedChatUserId || (!chatDraft.trim() && !chatAttachedFile)) return;
+    setIsSendingChat(true);
+    adminFetch(adminToken, '/api/admin/chat/messages', {
+      method: 'POST',
+      body: JSON.stringify({
+        userId: selectedChatUserId,
+        body: chatDraft.trim() || undefined,
+        fileUrl: chatAttachedFile?.url,
+        fileName: chatAttachedFile?.name,
+        fileType: chatAttachedFile?.type,
+        senderName: adminEmail || 'UrCare Care Team',
+      }),
+    }).then((res) => res.json()).then((data) => {
+      if (data?.message) setChatMessages((prev) => [...prev, data.message]);
+      setChatDraft('');
+      setChatAttachedFile(null);
+      loadChatThreads();
+    }).catch(() => {}).finally(() => setIsSendingChat(false));
+  };
+
+  const handleScheduleFollowUp = () => {
+    if (!adminToken || !selectedChatUserId || !followUpForm.date || !followUpForm.time || !followUpForm.message.trim()) return;
+    setIsSavingFollowUp(true);
+    const scheduledFor = new Date(`${followUpForm.date}T${followUpForm.time}`).toISOString();
+    adminFetch(adminToken, '/api/admin/chat/follow-ups', {
+      method: 'POST',
+      body: JSON.stringify({ userId: selectedChatUserId, scheduledFor, message: followUpForm.message.trim(), createdBy: adminEmail }),
+    }).then((res) => res.json()).then((data) => {
+      if (data?.followUp) setFollowUps((prev) => [...prev, data.followUp].sort((a, b) => a.scheduled_for.localeCompare(b.scheduled_for)));
+      setFollowUpForm({ date: '', time: '', message: '' });
+      setIsFollowUpFormOpen(false);
+    }).catch(() => {}).finally(() => setIsSavingFollowUp(false));
+  };
+
+  const handleCancelFollowUp = (id: string) => {
+    if (!adminToken) return;
+    adminFetch(adminToken, `/api/admin/chat/follow-ups/${id}`, { method: 'DELETE' }).then(() => {
+      setFollowUps((prev) => prev.filter((f) => f.id !== id));
+    }).catch(() => {});
+  };
+
   const loadRealPatient = (userId?: string | null) => {
     const targetId = userId ?? selectedPatientUserId;
     if (!adminToken || !targetId) {
@@ -410,6 +500,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     if (!adminToken) return;
     loadAllReports();
     loadPatientsList();
+    loadChatThreads();
 
     adminFetch(adminToken, '/api/admin/stats').then((res) => res.json()).then((data) => {
       if (data && !data.error) setStats(data);
@@ -785,6 +876,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           >
             <Star className="w-4 h-4" />
             <span>Reviews ({stats.totalReviews})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('messages'); loadChatThreads(); }}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+              activeTab === 'messages' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+            }`}
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>Messages{chatThreads.filter((t) => t.unread_by_admin).length > 0 ? ` (${chatThreads.filter((t) => t.unread_by_admin).length})` : ''}</span>
           </button>
         </div>
 
@@ -1797,6 +1899,196 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
             </div>
           </div>
         )}
+
+        {/* TAB 6: MESSAGES (Care Team Chat) */}
+        {activeTab === 'messages' && (() => {
+          const filteredThreads = chatThreads.filter((t) =>
+            !chatSearchQuery.trim() || `${t.user_name || ''} ${t.user_email || ''}`.toLowerCase().includes(chatSearchQuery.toLowerCase())
+          );
+          const selectedThread = chatThreads.find((t) => t.user_id === selectedChatUserId);
+          return (
+            <div className="flex flex-col lg:flex-row gap-4 text-left" style={{ minHeight: '70vh' }}>
+              {/* Thread list */}
+              <div className={`lg:w-80 shrink-0 rounded-3xl ${cardClass} flex flex-col overflow-hidden`}>
+                <div className="p-4 border-b border-zinc-100 space-y-2">
+                  <h3 className="text-sm font-black text-zinc-950">Patient Messages</h3>
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type="text"
+                      placeholder="Search patients..."
+                      value={chatSearchQuery}
+                      onChange={(e) => setChatSearchQuery(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-semibold focus:outline-none focus:border-emerald-600"
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto max-h-[65vh]">
+                  {filteredThreads.length === 0 ? (
+                    <p className="text-xs text-zinc-400 text-center py-8 px-4">No conversations yet.</p>
+                  ) : (
+                    filteredThreads.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => loadChatThread(t.user_id)}
+                        className={`w-full text-left px-4 py-3 border-b border-zinc-50 flex items-start gap-2.5 transition-colors cursor-pointer ${
+                          selectedChatUserId === t.user_id ? 'bg-emerald-50' : 'hover:bg-zinc-50'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-[10px] shrink-0">
+                          {(t.user_name || t.user_email || 'U').slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs font-bold text-zinc-900 truncate">{t.user_name || t.user_email || 'Unknown'}</span>
+                            {t.unread_by_admin && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+                          </div>
+                          <p className="text-[11px] text-zinc-500 truncate">{t.last_message_preview || 'No messages yet'}</p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Thread detail */}
+              <div className={`flex-1 rounded-3xl ${cardClass} flex flex-col overflow-hidden`}>
+                {!selectedChatUserId ? (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 p-8">
+                    <MessageCircle className="w-8 h-8 text-zinc-300" />
+                    <p className="text-xs text-zinc-400 font-semibold">Select a patient to view the conversation.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="p-4 border-b border-zinc-100 flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-black text-zinc-900">{selectedThread?.user_name || selectedThread?.user_email || 'Patient'}</h4>
+                        <p className="text-[11px] text-zinc-500">{selectedThread?.user_email}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsFollowUpFormOpen((v) => !v)}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black uppercase tracking-wide flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Schedule Follow-up</span>
+                      </button>
+                    </div>
+
+                    {isFollowUpFormOpen && (
+                      <div className={`m-4 p-4 rounded-2xl ${subCardClass} space-y-2.5`}>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <input
+                            type="date"
+                            value={followUpForm.date}
+                            onChange={(e) => setFollowUpForm((p) => ({ ...p, date: e.target.value }))}
+                            className="px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs font-bold focus:outline-none focus:border-emerald-600"
+                          />
+                          <input
+                            type="time"
+                            value={followUpForm.time}
+                            onChange={(e) => setFollowUpForm((p) => ({ ...p, time: e.target.value }))}
+                            className="px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs font-bold focus:outline-none focus:border-emerald-600"
+                          />
+                        </div>
+                        <textarea
+                          rows={2}
+                          placeholder="Follow-up message to send automatically at that time..."
+                          value={followUpForm.message}
+                          onChange={(e) => setFollowUpForm((p) => ({ ...p, message: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs font-medium focus:outline-none focus:border-emerald-600 resize-y"
+                        />
+                        <button
+                          type="button"
+                          disabled={isSavingFollowUp}
+                          onClick={handleScheduleFollowUp}
+                          className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-black uppercase tracking-wide cursor-pointer"
+                        >
+                          {isSavingFollowUp ? 'Scheduling...' : 'Schedule'}
+                        </button>
+                        {followUps.filter((f) => !f.sent).length > 0 && (
+                          <div className="space-y-1.5 pt-1">
+                            {followUps.filter((f) => !f.sent).map((f) => (
+                              <div key={f.id} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-zinc-200 text-[11px]">
+                                <span className="text-zinc-600 truncate flex-1">
+                                  <strong className="text-zinc-900">{new Date(f.scheduled_for).toLocaleString()}</strong> — {f.message}
+                                </span>
+                                <button type="button" onClick={() => handleCancelFollowUp(f.id)} className="shrink-0 text-rose-500 hover:text-rose-700 cursor-pointer">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-zinc-50 max-h-[50vh]">
+                      {isLoadingChat ? (
+                        <div className="flex items-center justify-center h-full"><RefreshCw className="w-5 h-5 text-zinc-300 animate-spin" /></div>
+                      ) : chatMessages.length === 0 ? (
+                        <p className="text-xs text-zinc-400 text-center py-8">No messages yet.</p>
+                      ) : (
+                        chatMessages.map((m) => {
+                          const isAdmin = m.sender_type === 'admin';
+                          return (
+                            <div key={m.id} className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${isAdmin ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-white border border-zinc-200 text-zinc-900 rounded-bl-md shadow-sm'}`}>
+                                {m.file_url && (
+                                  <a href={m.file_url} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 p-2 rounded-xl mb-1.5 ${isAdmin ? 'bg-white/15' : 'bg-zinc-50 border border-zinc-200'}`}>
+                                    <FileText className={`w-4 h-4 shrink-0 ${isAdmin ? 'text-white' : 'text-emerald-600'}`} />
+                                    <span className={`text-[11px] font-bold truncate ${isAdmin ? 'text-white' : 'text-zinc-700'}`}>{m.file_name || 'Attachment'}</span>
+                                  </a>
+                                )}
+                                {m.body && <p className="text-sm leading-snug whitespace-pre-wrap break-words">{m.body}</p>}
+                                <div className={`text-[9px] mt-1 ${isAdmin ? 'text-white/70' : 'text-zinc-400'}`}>
+                                  {new Date(m.created_at).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div className="p-3 border-t border-zinc-100 space-y-2">
+                      {chatAttachedFile && (
+                        <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
+                          <Paperclip className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate flex-1">{chatAttachedFile.name}</span>
+                          <button type="button" onClick={() => setChatAttachedFile(null)} className="shrink-0 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <label className="shrink-0 w-9 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-500 flex items-center justify-center cursor-pointer">
+                          <Paperclip className="w-4 h-4" />
+                          <input type="file" accept="image/*,application/pdf" onChange={handleChatFileChange} className="hidden" />
+                        </label>
+                        <input
+                          type="text"
+                          value={chatDraft}
+                          onChange={(e) => setChatDraft(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && !isSendingChat) handleSendChatMessage(); }}
+                          placeholder="Type a reply..."
+                          className="flex-1 min-w-0 px-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-sm focus:outline-none focus:border-emerald-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSendChatMessage}
+                          disabled={isSendingChat || (!chatDraft.trim() && !chatAttachedFile)}
+                          className="shrink-0 w-9 h-9 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white flex items-center justify-center cursor-pointer"
+                        >
+                          {isSendingChat ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* DOCTOR PRESCRIPTION MODAL */}

@@ -375,3 +375,56 @@ drop policy if exists "family update patient tracker" on public.patient_trackers
 create policy "family update patient tracker" on public.patient_trackers for update
   using (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = patient_trackers.user_id))
   with check (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = patient_trackers.user_id));
+
+-- 15. CARE TEAM CHAT — one support-style thread per user with the
+--     admin/doctor team (not user-to-user), file attachments (stored as a
+--     data URL, same pattern as everywhere else in this schema), read
+--     tracking on both sides, and admin-scheduled follow-ups that get sent
+--     automatically (see the follow-up sweep in server.ts) rather than
+--     needing an admin to remember to come back and send them by hand.
+--     All writes go through the server (service_role) — it's the one place
+--     that also fires a real notification and computes unread counts
+--     consistently for both sides — but each side can still read its own
+--     thread directly.
+create table if not exists public.chat_threads (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  user_id uuid not null unique references auth.users(id) on delete cascade,
+  last_message_at timestamptz default now(),
+  last_message_preview text,
+  unread_by_user boolean not null default false,
+  unread_by_admin boolean not null default false,
+  created_at timestamptz default now()
+);
+alter table public.chat_threads enable row level security;
+drop policy if exists "own chat thread select" on public.chat_threads;
+create policy "own chat thread select" on public.chat_threads for select using (auth.uid() = user_id);
+
+create table if not exists public.chat_messages (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  thread_id uuid not null references public.chat_threads(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  sender_type text not null, -- 'user' | 'admin'
+  sender_name text,
+  body text,
+  file_url text,
+  file_name text,
+  file_type text,
+  created_at timestamptz default now()
+);
+create index if not exists chat_messages_thread_id_created_at_idx on public.chat_messages (thread_id, created_at);
+alter table public.chat_messages enable row level security;
+drop policy if exists "own chat messages select" on public.chat_messages;
+create policy "own chat messages select" on public.chat_messages for select using (auth.uid() = user_id);
+
+create table if not exists public.chat_follow_ups (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  scheduled_for timestamptz not null,
+  message text not null,
+  created_by text,
+  sent boolean not null default false,
+  created_at timestamptz default now()
+);
+create index if not exists chat_follow_ups_due_idx on public.chat_follow_ups (sent, scheduled_for);
+alter table public.chat_follow_ups enable row level security;
+-- Admin-only (scheduling + the sweep that sends them) — no client policy at all.

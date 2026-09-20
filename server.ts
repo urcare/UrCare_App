@@ -341,7 +341,7 @@ function requireAdmin(handler: (req: express.Request, res: express.Response) => 
 async function createNotification(
   supabase: SupabaseClient,
   userId: string,
-  type: 'prescription' | 'report' | 'order' | 'plan' | 'system',
+  type: 'prescription' | 'report' | 'order' | 'plan' | 'system' | 'chat',
   title: string,
   body?: string,
   data?: Record<string, any>,
@@ -1539,6 +1539,221 @@ app.post('/api/notifications/reminder', requireUser(async (req, res, user) => {
   await createNotification(supabase, user.id, 'plan', title, body, { dedupeKey });
   res.json({ success: true });
 }));
+
+// ----------------------------------------------------------------------------
+// CARE TEAM CHAT — one support-style thread per user with the admin/doctor
+// team (see chat_threads/chat_messages/chat_follow_ups in
+// supabase/patches.sql). Every write goes through the server so it's the
+// one place that also keeps each thread's unread flags and a real
+// notification consistent — never something the client computes itself.
+// ----------------------------------------------------------------------------
+
+async function getOrCreateChatThread(supabase: SupabaseClient, userId: string) {
+  const { data: existing } = await supabase.from('chat_threads').select('*').eq('user_id', userId).maybeSingle();
+  if (existing) return existing;
+  const { data: created, error } = await supabase.from('chat_threads').insert({ user_id: userId }).select().single();
+  if (error) throw error;
+  return created;
+}
+
+app.get('/api/chat/thread', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  try {
+    const thread = await getOrCreateChatThread(supabase, user.id);
+    const { data: messages, error } = await supabase
+      .from('chat_messages').select('*').eq('thread_id', thread.id).order('created_at', { ascending: true }).limit(300);
+    if (error) return res.status(500).json({ error: error.message });
+    if (thread.unread_by_user) {
+      await supabase.from('chat_threads').update({ unread_by_user: false }).eq('id', thread.id);
+    }
+    res.json({ thread, messages: messages || [] });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Could not load your chat.' });
+  }
+}));
+
+app.post('/api/chat/messages', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { body, fileUrl, fileName, fileType } = req.body as { body?: string; fileUrl?: string; fileName?: string; fileType?: string };
+  if (!body?.trim() && !fileUrl) return res.status(400).json({ error: 'A message or a file is required.' });
+  try {
+    const thread = await getOrCreateChatThread(supabase, user.id);
+    const { data: message, error } = await supabase.from('chat_messages').insert({
+      thread_id: thread.id,
+      user_id: user.id,
+      sender_type: 'user',
+      sender_name: user.email,
+      body: body?.trim() || null,
+      file_url: fileUrl || null,
+      file_name: fileName || null,
+      file_type: fileType || null,
+    }).select().single();
+    if (error) return res.status(500).json({ error: error.message });
+    await supabase.from('chat_threads').update({
+      last_message_at: new Date().toISOString(),
+      last_message_preview: body?.trim()?.slice(0, 140) || (fileName ? `📎 ${fileName}` : 'Attachment'),
+      unread_by_admin: true,
+      unread_by_user: false,
+    }).eq('id', thread.id);
+    res.json({ success: true, message });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Could not send this message.' });
+  }
+}));
+
+app.post('/api/chat/mark-read', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  await supabase.from('chat_threads').update({ unread_by_user: false }).eq('user_id', user.id);
+  res.json({ success: true });
+}));
+
+// ---- Admin side ----
+
+app.get('/api/admin/chat/threads', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data: threads, error } = await supabase.from('chat_threads').select('*').order('last_message_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  const userIds = (threads || []).map((t: any) => t.user_id);
+  const { data: profiles } = userIds.length
+    ? await supabase.from('profiles').select('user_id, full_name, email').in('user_id', userIds)
+    : { data: [] as any[] };
+  const profileById = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+  res.json({
+    threads: (threads || []).map((t: any) => ({ ...t, user_name: profileById.get(t.user_id)?.full_name, user_email: profileById.get(t.user_id)?.email })),
+  });
+}));
+
+app.get('/api/admin/chat/threads/:userId/messages', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  try {
+    const thread = await getOrCreateChatThread(supabase, req.params.userId);
+    const { data: messages, error } = await supabase
+      .from('chat_messages').select('*').eq('thread_id', thread.id).order('created_at', { ascending: true }).limit(300);
+    if (error) return res.status(500).json({ error: error.message });
+    if (thread.unread_by_admin) {
+      await supabase.from('chat_threads').update({ unread_by_admin: false }).eq('id', thread.id);
+    }
+    res.json({ thread, messages: messages || [] });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Could not load this chat.' });
+  }
+}));
+
+app.post('/api/admin/chat/messages', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { userId, body, fileUrl, fileName, fileType, senderName } = req.body as {
+    userId?: string; body?: string; fileUrl?: string; fileName?: string; fileType?: string; senderName?: string;
+  };
+  if (!userId) return res.status(400).json({ error: 'A user is required.' });
+  if (!body?.trim() && !fileUrl) return res.status(400).json({ error: 'A message or a file is required.' });
+  try {
+    const thread = await getOrCreateChatThread(supabase, userId);
+    const { data: message, error } = await supabase.from('chat_messages').insert({
+      thread_id: thread.id,
+      user_id: userId,
+      sender_type: 'admin',
+      sender_name: senderName || 'UrCare Care Team',
+      body: body?.trim() || null,
+      file_url: fileUrl || null,
+      file_name: fileName || null,
+      file_type: fileType || null,
+    }).select().single();
+    if (error) return res.status(500).json({ error: error.message });
+    await supabase.from('chat_threads').update({
+      last_message_at: new Date().toISOString(),
+      last_message_preview: body?.trim()?.slice(0, 140) || (fileName ? `📎 ${fileName}` : 'Attachment'),
+      unread_by_user: true,
+      unread_by_admin: false,
+    }).eq('id', thread.id);
+    await createNotification(supabase, userId, 'chat', 'New message from your care team', body?.trim()?.slice(0, 140) || 'Sent an attachment', { threadId: thread.id });
+    res.json({ success: true, message });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Could not send this message.' });
+  }
+}));
+
+app.post('/api/admin/chat/mark-read', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { userId } = req.body as { userId?: string };
+  if (!userId) return res.status(400).json({ error: 'A user is required.' });
+  await supabase.from('chat_threads').update({ unread_by_admin: false }).eq('user_id', userId);
+  res.json({ success: true });
+}));
+
+app.get('/api/admin/chat/follow-ups/:userId', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase
+    .from('chat_follow_ups').select('*').eq('user_id', req.params.userId).order('scheduled_for', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ followUps: data || [] });
+}));
+
+app.post('/api/admin/chat/follow-ups', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { userId, scheduledFor, message, createdBy } = req.body as {
+    userId?: string; scheduledFor?: string; message?: string; createdBy?: string;
+  };
+  if (!userId || !scheduledFor || !message?.trim()) return res.status(400).json({ error: 'A user, time, and message are required.' });
+  const { data, error } = await supabase.from('chat_follow_ups').insert({
+    user_id: userId, scheduled_for: scheduledFor, message: message.trim(), created_by: createdBy || 'admin',
+  }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, followUp: data });
+}));
+
+app.delete('/api/admin/chat/follow-ups/:id', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { error } = await supabase.from('chat_follow_ups').delete().eq('id', req.params.id).eq('sent', false);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+}));
+
+// Sweeps due, unsent follow-ups every minute and actually sends them as a
+// real chat message + notification — this is what makes an admin-scheduled
+// follow-up "automatic" instead of something they have to remember to come
+// back and send by hand.
+async function sendDueChatFollowUps() {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return;
+  try {
+    const { data: due } = await supabase
+      .from('chat_follow_ups').select('*').eq('sent', false).lte('scheduled_for', new Date().toISOString()).limit(50);
+    for (const followUp of due || []) {
+      try {
+        const thread = await getOrCreateChatThread(supabase, followUp.user_id);
+        await supabase.from('chat_messages').insert({
+          thread_id: thread.id,
+          user_id: followUp.user_id,
+          sender_type: 'admin',
+          sender_name: 'UrCare Care Team',
+          body: followUp.message,
+        });
+        await supabase.from('chat_threads').update({
+          last_message_at: new Date().toISOString(),
+          last_message_preview: followUp.message.slice(0, 140),
+          unread_by_user: true,
+        }).eq('id', thread.id);
+        await createNotification(supabase, followUp.user_id, 'chat', 'A follow-up from your care team', followUp.message.slice(0, 140), { threadId: thread.id, followUpId: followUp.id });
+        await supabase.from('chat_follow_ups').update({ sent: true }).eq('id', followUp.id);
+      } catch (err) {
+        console.error('Could not send scheduled follow-up', followUp.id, err);
+      }
+    }
+  } catch (err) {
+    console.error('Error sweeping chat follow-ups:', err);
+  }
+}
+setInterval(sendDueChatFollowUps, 60_000);
 
 // ----------------------------------------------------------------------------
 // RAZORPAY — real REST API when configured, clearly-labelled simulation otherwise.

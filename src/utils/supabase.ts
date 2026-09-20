@@ -7,7 +7,7 @@ import {
   FeedbackSubmission, Order, Prescription, DoctorContact,
   MedicalReportAnalysis, Product, UserReview, CalculatedPlan,
   GoalType, GenderType, ActivityLevel, GoalPace, AppNotification, ActivityLogEntry, CustomPlanStep,
-  AdminUserFile, UserPersonalizedPlan, FamilyMember,
+  AdminUserFile, UserPersonalizedPlan, FamilyMember, ChatThread, ChatMessage,
 } from '../types';
 import { calculateNutritionPlan } from './calculator';
 
@@ -840,6 +840,67 @@ export async function savePatientTracker(userId: string, state: any): Promise<{ 
     { onConflict: 'user_id' }
   );
   return { error: error?.message };
+}
+
+// ============================================================================
+// CARE TEAM CHAT — a support-style thread with the admin/doctor team. Every
+// write goes through the server (see server.ts) so unread flags and the
+// real notification it fires stay consistent on both sides.
+// ============================================================================
+
+function mapChatThread(t: any): ChatThread {
+  return {
+    id: t.id,
+    userId: t.user_id,
+    lastMessageAt: t.last_message_at,
+    lastMessagePreview: t.last_message_preview,
+    unreadByUser: !!t.unread_by_user,
+    unreadByAdmin: !!t.unread_by_admin,
+    createdAt: t.created_at,
+    userName: t.user_name,
+    userEmail: t.user_email,
+  };
+}
+
+function mapChatMessage(m: any): ChatMessage {
+  return {
+    id: m.id,
+    threadId: m.thread_id,
+    userId: m.user_id,
+    senderType: m.sender_type,
+    senderName: m.sender_name,
+    body: m.body,
+    fileUrl: m.file_url,
+    fileName: m.file_name,
+    fileType: m.file_type,
+    createdAt: m.created_at,
+  };
+}
+
+export async function getMyChatThread(): Promise<{ thread: ChatThread; messages: ChatMessage[] } | null> {
+  try {
+    const res = await authedFetch('/api/chat/thread');
+    const data = await res.json();
+    if (!res.ok || !data.thread) return null;
+    return { thread: mapChatThread(data.thread), messages: (data.messages || []).map(mapChatMessage) };
+  } catch {
+    return null;
+  }
+}
+
+export async function sendMyChatMessage(input: { body?: string; fileUrl?: string; fileName?: string; fileType?: string }): Promise<{ message?: ChatMessage; error?: string }> {
+  try {
+    const res = await authedFetch('/api/chat/messages', { method: 'POST', body: JSON.stringify(input) });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Could not send this message.' };
+    return { message: mapChatMessage(data.message) };
+  } catch {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
+export async function markMyChatRead(): Promise<void> {
+  try { await authedFetch('/api/chat/mark-read', { method: 'POST', body: JSON.stringify({}) }); } catch {}
 }
 
 // ============================================================================

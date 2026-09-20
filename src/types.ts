@@ -620,6 +620,47 @@ export interface FamilyMember {
   createdAt: string;
 }
 
+/** One support-style chat thread between a user and the admin/doctor team —
+ *  never user-to-user. See chat_threads in supabase/patches.sql. */
+export interface ChatThread {
+  id: string;
+  userId: string;
+  lastMessageAt: string;
+  lastMessagePreview: string | null;
+  unreadByUser: boolean;
+  unreadByAdmin: boolean;
+  createdAt: string;
+  /** Only present on the admin's thread list (joined from profiles there). */
+  userName?: string | null;
+  userEmail?: string | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  threadId: string;
+  userId: string;
+  senderType: 'user' | 'admin';
+  senderName: string | null;
+  body: string | null;
+  fileUrl: string | null;
+  fileName: string | null;
+  fileType: string | null;
+  createdAt: string;
+}
+
+/** An admin-scheduled message that gets sent automatically at
+ *  `scheduledFor`, even if nobody is watching — see the follow-up sweep in
+ *  server.ts. */
+export interface ChatFollowUp {
+  id: string;
+  userId: string;
+  scheduledFor: string;
+  message: string;
+  createdBy: string | null;
+  sent: boolean;
+  createdAt: string;
+}
+
 export interface FeedbackSubmission {
   id: string;
   userId: string;

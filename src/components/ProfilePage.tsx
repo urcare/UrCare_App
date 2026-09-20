@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Bell, ChevronRight, FileText, BookOpen, Utensils, Sparkles, Leaf, MoreVertical,
-  Activity, Stethoscope, Droplets, Pill, GitCommit,
+  Activity, Stethoscope, Droplets, Pill, GitCommit, MessageCircle,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, Prescription, MedicalReportAnalysis, DailyLog, ActivityLogEntry } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -12,7 +12,8 @@ import { StreakWidget } from './StreakWidget';
 import { CompletionTicker, TickerItem } from './CompletionTicker';
 import { NotificationsPanel } from './NotificationsPanel';
 import { MyTimelinePanel, ACTION_META, CATEGORY_META, relativeTime } from './MyTimelinePanel';
-import { getDailyPlan, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog } from '../utils/supabase';
+import { ChatPanel } from './ChatPanel';
+import { getDailyPlan, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog, getMyChatThread } from '../utils/supabase';
 import { toDateKey } from './DailyCalendar';
 
 // Hindi for the primary reversal-goal label used in the greeting subtitle —
@@ -102,6 +103,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   // Real notifications (prescriptions/reports/orders) — see NotificationsPanel.
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  // Care Team Chat — see ChatPanel.
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatUnread, setChatUnread] = useState(false);
   // My Timeline — a real GitHub-commit-style audit trail of this user's own
   // actions (upload/edit/update/delete); see MyTimelinePanel/logActivity.
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
@@ -158,6 +162,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     getNotifications().then((list) => { if (!cancelled) setUnreadCount(list.filter((n) => !n.read).length); });
     return () => { cancelled = true; };
   }, [userId, todayKey, planRefreshKey]);
+
+  // Chat unread badge — polled independently of the plan/notifications
+  // effect above (its own cadence, doesn't need to re-fire on planRefreshKey).
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    const check = () => getMyChatThread().then((result) => { if (!cancelled && result) setChatUnread(result.thread.unreadByUser); });
+    check();
+    const interval = setInterval(check, 20000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [userId]);
 
   // My Timeline preview — the 3 most recent real actions, live-refreshed
   // whenever anything anywhere in the app calls logActivity().
@@ -372,6 +387,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             <StreakWidget profile={profile} />
+            <button
+              type="button"
+              onClick={() => { setChatUnread(false); setIsChatOpen(true); }}
+              className="relative w-9 h-9 rounded-full border border-zinc-200 bg-white flex items-center justify-center text-zinc-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors cursor-pointer"
+              title={tr('Care Team Chat', 'केयर टीम चैट')}
+            >
+              <MessageCircle className="w-4 h-4" />
+              {chatUnread && (
+                <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
+              )}
+            </button>
             <button
               type="button"
               onClick={() => setIsNotificationsOpen(true)}
@@ -696,6 +722,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         onClose={() => setIsTimelineOpen(false)}
         userId={userId}
       />
+
+      <ChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </div>
   );
 };
