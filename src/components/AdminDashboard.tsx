@@ -356,6 +356,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [isFollowUpFormOpen, setIsFollowUpFormOpen] = useState(false);
   const [followUpForm, setFollowUpForm] = useState({ date: '', time: '', message: '' });
   const [isSavingFollowUp, setIsSavingFollowUp] = useState(false);
+  const [followUpError, setFollowUpError] = useState<string | null>(null);
+  const [followUpSuccess, setFollowUpSuccess] = useState<string | null>(null);
   const [patientTyping, setPatientTyping] = useState(false);
   const lastAdminTypingPingRef = React.useRef(0);
 
@@ -370,6 +372,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     if (!adminToken) return;
     setSelectedChatUserId(userId);
     setIsLoadingChat(true);
+    // A follow-up left open/filled-in from a previous patient's thread
+    // must never carry over to this one — that's exactly how a follow-up
+    // meant for one patient could get scheduled against a different one
+    // (selectedChatUserId had already moved on by the time it was
+    // submitted, but the stale form stayed visible under the new header).
+    setIsFollowUpFormOpen(false);
+    setFollowUpForm({ date: '', time: '', message: '' });
+    setFollowUpError(null);
+    setFollowUpSuccess(null);
     Promise.all([
       adminFetch(adminToken, `/api/admin/chat/threads/${userId}/messages`).then((res) => res.json()),
       adminFetch(adminToken, `/api/admin/chat/follow-ups/${userId}`).then((res) => res.json()),
@@ -437,17 +448,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   };
 
   const handleScheduleFollowUp = () => {
-    if (!adminToken || !selectedChatUserId || !followUpForm.date || !followUpForm.time || !followUpForm.message.trim()) return;
+    if (!followUpForm.date || !followUpForm.time || !followUpForm.message.trim()) {
+      setFollowUpError('Date, time, and a message are all required.');
+      return;
+    }
+    if (!adminToken || !selectedChatUserId) return;
+    // Captured now, not read again after the request resolves — the admin
+    // could switch to a different patient's thread while this is in
+    // flight, and this follow-up must stay pinned to whoever it was
+    // actually scheduled for.
+    const targetUserId = selectedChatUserId;
+    setFollowUpError(null);
     setIsSavingFollowUp(true);
     const scheduledFor = new Date(`${followUpForm.date}T${followUpForm.time}`).toISOString();
     adminFetch(adminToken, '/api/admin/chat/follow-ups', {
       method: 'POST',
-      body: JSON.stringify({ userId: selectedChatUserId, scheduledFor, message: followUpForm.message.trim(), createdBy: adminEmail }),
+      body: JSON.stringify({ userId: targetUserId, scheduledFor, message: followUpForm.message.trim(), createdBy: adminEmail }),
     }).then((res) => res.json()).then((data) => {
-      if (data?.followUp) setFollowUps((prev) => [...prev, data.followUp].sort((a, b) => a.scheduled_for.localeCompare(b.scheduled_for)));
-      setFollowUpForm({ date: '', time: '', message: '' });
-      setIsFollowUpFormOpen(false);
-    }).catch(() => {}).finally(() => setIsSavingFollowUp(false));
+      if (!data?.followUp) { setFollowUpError(data?.error || 'Could not schedule this follow-up.'); return; }
+      // Only touch the visible list/form if the admin is still looking at
+      // the same patient this follow-up was for.
+      if (selectedChatUserId === targetUserId) {
+        setFollowUps((prev) => [...prev, data.followUp].sort((a, b) => a.scheduled_for.localeCompare(b.scheduled_for)));
+        setFollowUpForm({ date: '', time: '', message: '' });
+        setIsFollowUpFormOpen(false);
+      }
+      setFollowUpSuccess(`Follow-up scheduled for ${new Date(scheduledFor).toLocaleString()}.`);
+      setTimeout(() => setFollowUpSuccess(null), 4000);
+    }).catch(() => setFollowUpError('Could not reach the server. Please try again.')).finally(() => setIsSavingFollowUp(false));
   };
 
   const handleCancelFollowUp = (id: string) => {
@@ -2029,13 +2057,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                       </div>
                       <button
                         type="button"
-                        onClick={() => setIsFollowUpFormOpen((v) => !v)}
+                        onClick={() => { setIsFollowUpFormOpen((v) => !v); setFollowUpError(null); }}
                         className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black uppercase tracking-wide flex items-center gap-1.5 cursor-pointer"
                       >
                         <Clock className="w-3.5 h-3.5" />
-                        <span>Schedule Follow-up</span>
+                        <span>Schedule Follow-up{followUps.filter((f) => !f.sent).length > 0 ? ` (${followUps.filter((f) => !f.sent).length})` : ''}</span>
                       </button>
                     </div>
+
+                    {followUpSuccess && (
+                      <div className="mx-4 mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span>{followUpSuccess}</span>
+                      </div>
+                    )}
+
+                    {/* Pending follow-ups for THIS patient — always visible,
+                        not just while the compose form happens to be open,
+                        so scheduling one is never followed by "did that
+                        actually work?". */}
+                    {followUps.filter((f) => !f.sent).length > 0 && (
+                      <div className="mx-4 mt-4 space-y-1.5">
+                        {followUps.filter((f) => !f.sent).map((f) => (
+                          <div key={f.id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px]">
+                            <span className="text-zinc-700 truncate flex-1">
+                              <Clock className="w-3 h-3 inline mr-1 -mt-0.5 text-emerald-600" />
+                              <strong className="text-zinc-900">{new Date(f.scheduled_for).toLocaleString()}</strong> — {f.message}
+                            </span>
+                            <button type="button" onClick={() => handleCancelFollowUp(f.id)} className="shrink-0 text-rose-500 hover:text-rose-700 cursor-pointer">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {isFollowUpFormOpen && (
                       <div className={`m-4 p-4 rounded-2xl ${subCardClass} space-y-2.5`}>
@@ -2060,6 +2115,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                           onChange={(e) => setFollowUpForm((p) => ({ ...p, message: e.target.value }))}
                           className="w-full px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs font-medium focus:outline-none focus:border-emerald-600 resize-y"
                         />
+                        {followUpError && (
+                          <p className="text-[11px] text-rose-600 font-bold">{followUpError}</p>
+                        )}
                         <button
                           type="button"
                           disabled={isSavingFollowUp}
@@ -2068,20 +2126,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                         >
                           {isSavingFollowUp ? 'Scheduling...' : 'Schedule'}
                         </button>
-                        {followUps.filter((f) => !f.sent).length > 0 && (
-                          <div className="space-y-1.5 pt-1">
-                            {followUps.filter((f) => !f.sent).map((f) => (
-                              <div key={f.id} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-zinc-200 text-[11px]">
-                                <span className="text-zinc-600 truncate flex-1">
-                                  <strong className="text-zinc-900">{new Date(f.scheduled_for).toLocaleString()}</strong> — {f.message}
-                                </span>
-                                <button type="button" onClick={() => handleCancelFollowUp(f.id)} className="shrink-0 text-rose-500 hover:text-rose-700 cursor-pointer">
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Settings, Clock,
@@ -6,7 +6,7 @@ import {
   ShoppingBag, Stethoscope, Crown, Camera, Lock, ClipboardCheck,
   Package, User, Check, FileText, CheckCircle2, HeartPulse,
   LogOut, MessageSquare, AlertCircle, MoreVertical, X,
-  Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3
+  Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash,
 } from 'lucide-react';
 import { 
   UserHealthProfile, MealItem, UserAccount, MedicalReportAnalysis, 
@@ -32,7 +32,7 @@ import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { MyCareFilesPanel } from './MyCareFilesPanel';
 import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
-import { signOutUser, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity } from '../utils/supabase';
+import { signOutUser, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity, getMyQueueEntry } from '../utils/supabase';
 import { calculateNutritionPlan } from '../utils/calculator';
 import { labelMinutes } from './RecommendationsView';
 import { useLanguage } from '../context/LanguageContext';
@@ -337,6 +337,50 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setIsDoctorConsultOpen(true);
   };
 
+  // Consultation queue popup — a real-time-feeling alert that shows up
+  // no matter which tab is open (not just while the Doctor Consult modal
+  // itself happens to be open), for the moment it becomes this patient's
+  // turn, and for any other live change to their queue position. A real
+  // DB notification (bell) is also fired server-side when the admin calls
+  // someone in — this is the immediate, hard-to-miss version of that same
+  // event, so the patient doesn't have to be staring at the bell to notice.
+  const [queueAlert, setQueueAlert] = useState<{ tone: 'turn' | 'update'; message: string } | null>(null);
+  const prevQueueStateRef = useRef<{ status: string; position: number } | null>(null);
+
+  useEffect(() => {
+    if (!account?.uid) return;
+    let cancelled = false;
+
+    const poll = () => {
+      getMyQueueEntry().then(({ entry, position }) => {
+        if (cancelled) return;
+        if (!entry) { prevQueueStateRef.current = null; return; }
+        const prev = prevQueueStateRef.current;
+
+        if (entry.status === 'in_progress' && prev?.status !== 'in_progress') {
+          setQueueAlert({ tone: 'turn', message: tr(`It's your turn! Token #${entry.tokenNumber} is being called now.`, `आपकी बारी है! टोकन #${entry.tokenNumber} को बुलाया जा रहा है।`) });
+        } else if (entry.status === 'waiting' && prev && prev.status === 'waiting' && prev.position !== position) {
+          setQueueAlert({
+            tone: 'update',
+            message: position > 0
+              ? tr(`Queue updated — ${position} patient${position === 1 ? '' : 's'} ahead of you now.`, `कतार अपडेट हुई — अब ${position} मरीज़ आपसे आगे हैं।`)
+              : tr("Queue updated — you're next!", 'कतार अपडेट हुई — अगली बारी आपकी है!'),
+          });
+        }
+        prevQueueStateRef.current = { status: entry.status, position };
+      });
+    };
+    poll();
+    const interval = setInterval(poll, 10000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [account?.uid]);
+
+  useEffect(() => {
+    if (!queueAlert) return;
+    const timeout = setTimeout(() => setQueueAlert(null), queueAlert.tone === 'turn' ? 10000 : 5000);
+    return () => clearTimeout(timeout);
+  }, [queueAlert]);
+
   // Pure Light Mode Style Constants
   const cardClass = 'bg-white border border-zinc-200/90 shadow-sm';
   const subCardClass = 'bg-zinc-50 border border-zinc-200/80';
@@ -365,6 +409,56 @@ export const Dashboard: React.FC<DashboardProps> = ({
           ProfilePage/AccountPage) scrolls over this one same still backdrop
           instead of each tab carrying its own flat page color. */}
       <AppBackground />
+
+      {/* QUEUE ALERT POPUP — shows on top of whatever tab is open the
+          instant this patient's turn comes up (or their position changes),
+          not just while the Doctor Consult modal happens to be open. */}
+      <AnimatePresence>
+        {queueAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] w-[calc(100%-2rem)] max-w-md"
+          >
+            <div className={`rounded-2xl shadow-2xl p-4 flex items-start gap-3 ${
+              queueAlert.tone === 'turn'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white'
+                : 'bg-white border border-emerald-200 text-zinc-900'
+            }`}>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                queueAlert.tone === 'turn' ? 'bg-white/20' : 'bg-emerald-50 text-emerald-600'
+              }`}>
+                <Hash className="w-4.5 h-4.5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={`text-sm font-black leading-snug ${queueAlert.tone === 'turn' ? 'text-white' : 'text-zinc-900'}`}>
+                  {queueAlert.message}
+                </p>
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setQueueAlert(null); handleOpenDoctorConsult(); }}
+                    className={`text-xs font-black uppercase tracking-wide cursor-pointer ${
+                      queueAlert.tone === 'turn' ? 'text-white underline' : 'text-emerald-700 underline'
+                    }`}
+                  >
+                    {tr('View Queue', 'कतार देखें')}
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQueueAlert(null)}
+                className={`shrink-0 p-1 rounded-lg cursor-pointer ${queueAlert.tone === 'turn' ? 'hover:bg-white/15' : 'hover:bg-zinc-100'}`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 1. STATIC SIDEBAR NAVIGATION (DESKTOP) */}
       <aside className="hidden md:flex flex-col justify-between w-64 fixed left-0 top-0 bottom-0 z-40 bg-white border-r border-zinc-200 p-5 shadow-xs">
