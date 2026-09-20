@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, MedicalReportAnalysis, FamilyMember } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { getFamilyMembers } from '../utils/supabase';
+import { getFamilyMembers, getPatientTracker, savePatientTracker } from '../utils/supabase';
 import { FamilyViewSwitcher } from './FamilyViewSwitcher';
 
 interface TrackerModuleProps {
@@ -153,20 +153,28 @@ function defaultState(patientName: string): TrackerState {
   };
 }
 
-function loadState(storageKey: string, patientName: string): TrackerState {
+/** Merges a partial/legacy blob (from the database, or an old localStorage
+ *  save being migrated in) onto a fresh default shape — never trusts the
+ *  saved shape alone, since it may predate a field this version added. */
+function mergeState(partial: any, patientName: string): TrackerState {
+  const base = defaultState(patientName);
+  if (!partial) return base;
   try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return defaultState(patientName);
-    const parsed = JSON.parse(raw);
-    const base = defaultState(patientName);
     return {
-      patient: { ...base.patient, ...(parsed.patient || {}) },
-      checkpoints: { ...base.checkpoints, ...(parsed.checkpoints || {}) },
-      notes: { ...base.notes, ...(parsed.notes || {}) },
+      patient: { ...base.patient, ...(partial.patient || {}) },
+      checkpoints: { ...base.checkpoints, ...(partial.checkpoints || {}) },
+      notes: { ...base.notes, ...(partial.notes || {}) },
     };
   } catch {
-    return defaultState(patientName);
+    return base;
   }
+}
+
+/** Old key this data lived under before it moved to the database — read
+ *  once (per person) purely to migrate anything already saved there;
+ *  never written to again. */
+function legacyStorageKey(trackerId: string): string {
+  return `urcare_tracker_v1_${trackerId}`;
 }
 
 // ---- Marker status vs baseline ----
@@ -311,42 +319,77 @@ function ScoreRing({ pct }: { pct: number }) {
  *  biomarker/vitals/symptom entry at Baseline/Day 7/14/30/60/90, an
  *  improvement score comparing each checkpoint back to Baseline, care notes
  *  per checkpoint, and Print/PDF + JSON export. Everything is entered by
- *  hand and saved to this device only (see "Saved locally"), independent of
- *  the app's own automatic tracking elsewhere. */
+ *  hand and saved to the database (patient_trackers, one row per person —
+ *  see getPatientTracker/savePatientTracker), independent of the app's own
+ *  automatic tracking elsewhere. */
 export const TrackerModule: React.FC<TrackerModuleProps> = ({ profile, account }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   const userId = profile.id || account.uid || 'guest';
 
-  // "Viewing as" a family member — a separate localStorage bucket per
-  // person, exactly like the primary account's own, so each family
-  // member's tracker is kept completely independent (see FamilyViewSwitcher).
+  // "Viewing as" a family member — a separate DB row per person (RLS-scoped
+  // to their own dependent_user_id), exactly like the primary account's
+  // own, so each family member's tracker is kept completely independent
+  // (see FamilyViewSwitcher).
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [activeDependentId, setActiveDependentId] = useState<string | null>(null);
   useEffect(() => { getFamilyMembers().then(setFamilyMembers); }, []);
   const activeMember = activeDependentId ? familyMembers.find((m) => m.id === activeDependentId) : null;
   const effectiveTrackerId = activeMember?.dependentUserId || userId;
 
-  const storageKey = `urcare_tracker_v1_${effectiveTrackerId}`;
   const defaultPatientName = activeMember?.name || profile.name || account.displayName || '';
 
-  const [state, setState] = useState<TrackerState>(() => loadState(storageKey, defaultPatientName));
+  const [state, setState] = useState<TrackerState>(() => defaultState(defaultPatientName));
   const [activeTab, setActiveTab] = useState<'overview' | 'tracker' | 'notes' | 'export'>('overview');
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<CheckpointKey>('baseline');
   const [selectedCategory, setSelectedCategory] = useState<'all' | MarkerCategoryKey>('all');
   const [copied, setCopied] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
-  // Re-load from this person's own bucket whenever the "viewing as" switcher
-  // changes who effectiveTrackerId points at.
+  // Load this person's tracker from the database whenever the "viewing as"
+  // switcher changes who effectiveTrackerId points at. A row already saved
+  // under the old localStorage key (from before this moved to the database)
+  // is migrated in once and then saved straight back to the database, so
+  // real data already on this device is never silently dropped.
   useEffect(() => {
-    setState(loadState(storageKey, defaultPatientName));
+    let cancelled = false;
+    setIsLoaded(false);
+    getPatientTracker(effectiveTrackerId).then((dbState) => {
+      if (cancelled) return;
+      if (dbState) {
+        setState(mergeState(dbState, defaultPatientName));
+        setIsLoaded(true);
+        return;
+      }
+      let legacy: any = null;
+      try {
+        const raw = localStorage.getItem(legacyStorageKey(effectiveTrackerId));
+        if (raw) legacy = JSON.parse(raw);
+      } catch {}
+      setState(mergeState(legacy, defaultPatientName));
+      setIsLoaded(true);
+    });
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey]);
+  }, [effectiveTrackerId]);
 
+  // Debounced save to the database — waits half a second after the last
+  // edit so a fast typist doesn't fire a write per keystroke. Skipped
+  // entirely until the initial load above has actually resolved, so this
+  // can never race ahead and overwrite real saved data with the blank
+  // default state a render or two before it loads.
   useEffect(() => {
-    try { localStorage.setItem(storageKey, JSON.stringify(state)); } catch {}
-  }, [state, storageKey]);
+    if (!isLoaded) return;
+    setSaveStatus('saving');
+    const timeout = setTimeout(() => {
+      savePatientTracker(effectiveTrackerId, state).then(({ error }) => {
+        setSaveStatus(error ? 'error' : 'saved');
+      });
+    }, 600);
+    return () => clearTimeout(timeout);
+  }, [state, isLoaded, effectiveTrackerId]);
 
   const updatePatient = (field: keyof PatientInfo, value: string) => {
     setState((prev) => ({ ...prev, patient: { ...prev.patient, [field]: value } }));
@@ -492,8 +535,16 @@ export const TrackerModule: React.FC<TrackerModuleProps> = ({ profile, account }
             <SectionTitle>{tr('Patient and treatment details', 'रोगी व उपचार विवरण')}</SectionTitle>
           </div>
 
-          <div className="text-center py-2.5 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-black">
-            {tr('Saved locally', 'स्थानीय रूप से सहेजा गया')}
+          <div className={`text-center py-2.5 rounded-xl text-sm font-black ${
+            saveStatus === 'error' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'
+          }`}>
+            {!isLoaded
+              ? tr('Loading...', 'लोड हो रहा है...')
+              : saveStatus === 'saving'
+              ? tr('Saving...', 'सहेजा जा रहा है...')
+              : saveStatus === 'error'
+              ? tr('Could not save — check your connection', 'सहेजा नहीं जा सका — कनेक्शन जांचें')
+              : tr('Saved', 'सहेजा गया')}
           </div>
 
           <div className="space-y-3.5">

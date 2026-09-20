@@ -819,6 +819,30 @@ export async function getMyPersonalizedPlan(userId: string): Promise<UserPersona
 }
 
 // ============================================================================
+// PATIENT TRACKER — the manual 7-90 Day Improvement Tracker (see
+// TrackerModule.tsx). Direct RLS-scoped client calls, same as
+// custom_plan_steps above — the whole TrackerState blob lives in one jsonb
+// column, so this file never needs to know its internal shape.
+// ============================================================================
+
+export async function getPatientTracker(userId: string): Promise<any | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  const { data } = await supabase.from('patient_trackers').select('state').eq('user_id', userId).maybeSingle();
+  return data?.state ?? null;
+}
+
+export async function savePatientTracker(userId: string, state: any): Promise<{ error?: string }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { error: 'Supabase is not configured.' };
+  const { error } = await supabase.from('patient_trackers').upsert(
+    { user_id: userId, state, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id' }
+  );
+  return { error: error?.message };
+}
+
+// ============================================================================
 // LAB REPORTS / PRESCRIPTIONS
 // ============================================================================
 

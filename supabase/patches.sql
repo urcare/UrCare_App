@@ -340,3 +340,38 @@ create policy "family select admin files" on public.admin_user_files for select
 drop policy if exists "family select personalized plan" on public.user_personalized_plans;
 create policy "family select personalized plan" on public.user_personalized_plans for select
   using (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = user_personalized_plans.user_id));
+
+-- 14. PATIENT TRACKER — the manual "7-90 Day Improvement Tracker" (patient
+--     details, checkpoint biomarkers/vitals/symptoms, care notes) used to
+--     live only in this browser's localStorage ("Saved locally"). Moved to
+--     real per-user storage so it survives a reinstall/new device and is
+--     the same one source of truth everywhere it's read — the whole
+--     TrackerState blob is stored as one JSON document, same pattern as
+--     custom_daily_plans.sections, so the client and DB shape never drift
+--     out of sync with each other.
+create table if not exists public.patient_trackers (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  state jsonb not null default '{}',
+  updated_at timestamptz default now()
+);
+alter table public.patient_trackers enable row level security;
+drop policy if exists "own patient tracker select" on public.patient_trackers;
+create policy "own patient tracker select" on public.patient_trackers for select using (auth.uid() = user_id);
+drop policy if exists "own patient tracker insert" on public.patient_trackers;
+create policy "own patient tracker insert" on public.patient_trackers for insert with check (auth.uid() = user_id);
+drop policy if exists "own patient tracker update" on public.patient_trackers;
+create policy "own patient tracker update" on public.patient_trackers for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Same additive family-access pattern as section 13, so viewing-as-a-family-
+-- member (see FamilyViewSwitcher) saves the Tracker under THEIR own
+-- user_id, readable/writable by the primary account that manages them.
+drop policy if exists "family select patient tracker" on public.patient_trackers;
+create policy "family select patient tracker" on public.patient_trackers for select
+  using (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = patient_trackers.user_id));
+drop policy if exists "family insert patient tracker" on public.patient_trackers;
+create policy "family insert patient tracker" on public.patient_trackers for insert
+  with check (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = patient_trackers.user_id));
+drop policy if exists "family update patient tracker" on public.patient_trackers;
+create policy "family update patient tracker" on public.patient_trackers for update
+  using (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = patient_trackers.user_id))
+  with check (auth.uid() in (select primary_user_id from public.family_members where dependent_user_id = patient_trackers.user_id));
