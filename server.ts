@@ -1799,10 +1799,31 @@ app.post('/api/queue/join', requireUser(async (req, res, user) => {
   const { reason } = req.body as { reason?: string };
   const queueDate = todayDateKey();
   try {
-    const { data: existing } = await supabase
+    const { data: active } = await supabase
       .from('consultation_queue').select('*').eq('user_id', user.id).eq('queue_date', queueDate)
       .in('status', ['waiting', 'in_progress']).maybeSingle();
-    const entry = existing || await joinQueueWithRetry(supabase, user.id, queueDate, reason?.trim() || null);
+
+    let entry = active;
+    if (!entry) {
+      // Rejoining after cancelling earlier today shouldn't hand out a brand
+      // new (higher) token — that made the number climb every time the
+      // SAME person cancelled and rejoined, even with nobody else in the
+      // queue. Revive their own cancelled token instead of burning a new
+      // one. A 'completed' entry is left alone (that was a real finished
+      // visit) — only 'cancelled' is eligible to come back to life.
+      const { data: cancelled } = await supabase
+        .from('consultation_queue').select('*').eq('user_id', user.id).eq('queue_date', queueDate)
+        .eq('status', 'cancelled').order('token_number', { ascending: true }).limit(1).maybeSingle();
+      if (cancelled) {
+        const { data: revived, error } = await supabase
+          .from('consultation_queue').update({ status: 'waiting', reason: reason?.trim() || cancelled.reason, requested_at: new Date().toISOString() })
+          .eq('id', cancelled.id).select().single();
+        if (error) throw error;
+        entry = revived;
+      } else {
+        entry = await joinQueueWithRetry(supabase, user.id, queueDate, reason?.trim() || null);
+      }
+    }
     const position = entry.status === 'waiting' ? await queuePosition(supabase, queueDate, entry.token_number) : 0;
     res.json({ entry, position });
   } catch (error: any) {
