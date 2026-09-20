@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   X, Camera, Sparkles, Utensils, RefreshCw, Check, Plus,
-  AlertCircle, Image as ImageIcon, Lock, Crown, ArrowRight, Upload
+  AlertCircle, Image as ImageIcon, Upload
 } from 'lucide-react';
 import { MealItem, UserHealthProfile } from '../types';
 import { authedFetch } from '../utils/supabase';
@@ -228,70 +228,6 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
     setSelectedImage(null);
     onClose();
   };
-
-  // IF USER IS NOT PRO: Display Pro Paywall Barrier
-  if (!isPro) {
-    return (
-      <div id="food-scanner-pro-lock-backdrop" className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white border border-emerald-200 rounded-3xl p-6 sm:p-8 text-zinc-900 shadow-2xl text-center space-y-5 animate-in fade-in zoom-in-95">
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-50 via-emerald-50 to-green-50 border border-emerald-200 flex items-center justify-center mx-auto">
-            <Lock className="w-8 h-8 text-emerald-600" />
-          </div>
-
-          <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold mb-2">
-              <Crown className="w-3.5 h-3.5" />
-              <span>{tr('UrCare Pro Feature', 'UrCare प्रो फीचर')}</span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-black text-zinc-900">
-              {tr('Smart Food Camera is a Pro Feature', 'स्मार्ट फूड कैमरा एक प्रो फीचर है')}
-            </h3>
-            <p className="text-xs sm:text-sm text-zinc-500 mt-2 leading-relaxed">
-              {tr('Unlock instant meal photo scanning, precision nutritional calculation, doctor prescriptions, and clinical protocols.', 'तुरंत भोजन फोटो स्कैनिंग, सटीक पोषण गणना, डॉक्टर पर्चे व क्लिनिकल प्रोटोकॉल अनलॉक करें।')}
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 text-left space-y-2 text-xs">
-            <div className="flex items-center gap-2 text-zinc-700">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{tr('Real-time photo nutrient breakdown', 'रीयल-टाइम फोटो पोषक विश्लेषण')}</span>
-            </div>
-            <div className="flex items-center gap-2 text-zinc-700">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{tr('Automatic portion size & macro detection', 'स्वचालित पोर्शन साइज़ व मैक्रो पहचान')}</span>
-            </div>
-            <div className="flex items-center gap-2 text-zinc-700">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{tr('Clinical doctor guidance on lab reports', 'लैब रिपोर्ट्स पर क्लिनिकल डॉक्टर मार्गदर्शन')}</span>
-            </div>
-          </div>
-
-          <button
-            id="unlock-food-scanner-btn"
-            type="button"
-            onClick={() => {
-              onClose();
-              if (onOpenProUpgrade) onOpenProUpgrade();
-            }}
-            className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 transition-all active:scale-95"
-          >
-            <span>{tr('Upgrade to Pro to Unlock Food Scanner', 'फूड स्कैनर अनलॉक करने हेतु प्रो में अपग्रेड करें')}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // FULL-SCREEN LIVE CAMERA — Google Lens style viewfinder, takes over the
   // whole screen while active instead of a small boxed-in preview.

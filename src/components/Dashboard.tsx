@@ -783,67 +783,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* ===================================================================== */}
           {activeTab === 'premium' && (
             <div className="space-y-6 text-left">
-              {!account.isPro ? (
-                <div className={`p-6 sm:p-10 rounded-3xl ${cardClass} text-center space-y-5`}>
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-emerald-500 to-green-400 p-0.5 shadow-lg mx-auto">
-                    <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
-                      <Crown className="w-8 h-8 text-amber-500" />
-                    </div>
+              {/* AI Food Scan — free for everyone now, no Pro paywall. */}
+              <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
+                <div className="flex items-start gap-3.5 min-w-0">
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+                    <Camera className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-black text-zinc-950">{tr('Unlock UrCare Premium', 'UrCare प्रीमियम अनलॉक करें')}</h3>
-                    <p className="text-sm text-zinc-500 mt-1 max-w-md mx-auto">
-                      {tr('Premium gives you one powerful thing — nothing complicated.', 'प्रीमियम आपको एक शक्तिशाली चीज़ देता है — कोई जटिलता नहीं।')}
+                  <div className="min-w-0">
+                    <h3 className="text-base font-black text-zinc-950">{tr('UrCare Food Scan', 'UrCare फूड स्कैन')}</h3>
+                    <p className="text-xs text-zinc-500 max-w-md mt-0.5">
+                      {tr("Snap a photo or describe your meal — UrCare tells you if it's good for your health profile, or not, and why.", 'फोटो लें या अपना भोजन बताएं — UrCare आपको बताएगा कि यह आपकी स्वास्थ्य प्रोफ़ाइल के लिए अच्छा है या नहीं, और क्यों।')}
                     </p>
                   </div>
-                  <div className="max-w-sm mx-auto text-left">
-                    <div className={`p-4 rounded-2xl ${subCardClass} space-y-1.5`}>
-                      <Camera className="w-5 h-5 text-emerald-600" />
-                      <h4 className="text-sm font-black text-zinc-900">{tr('UrCare Food Scan', 'UrCare फूड स्कैन')}</h4>
-                      <p className="text-xs text-zinc-500">{tr("Scan any meal — instantly know if it's good for YOUR health, or not.", 'किसी भी भोजन को स्कैन करें — तुरंत जानें कि यह आपके स्वास्थ्य के लिए अच्छा है या नहीं।')}</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenProModalFor('UrCare Premium')}
-                    className="px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 mx-auto cursor-pointer"
-                  >
-                    <Lock className="w-4 h-4" />
-                    <span>{tr('Upgrade to Premium', 'प्रीमियम में अपग्रेड करें')} — ₹400/{tr('mo', 'माह')}</span>
-                  </button>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Pro Badge */}
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-xs font-black uppercase tracking-wider">
-                    <Crown className="w-3.5 h-3.5" />
-                    <span>{tr('Pro Member', 'प्रो सदस्य')}</span>
-                  </div>
-
-                  {/* AI Food Scan */}
-                  <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
-                    <div className="flex items-start gap-3.5 min-w-0">
-                      <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
-                        <Camera className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="text-base font-black text-zinc-950">{tr('UrCare Food Scan', 'UrCare फूड स्कैन')}</h3>
-                        <p className="text-xs text-zinc-500 max-w-md mt-0.5">
-                          {tr("Snap a photo or describe your meal — UrCare tells you if it's good for your health profile, or not, and why.", 'फोटो लें या अपना भोजन बताएं — UrCare आपको बताएगा कि यह आपकी स्वास्थ्य प्रोफ़ाइल के लिए अच्छा है या नहीं, और क्यों।')}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsFoodScannerOpen(true)}
-                      className="w-full sm:w-auto shrink-0 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      <span>{tr('Scan Food Now', 'अभी भोजन स्कैन करें')}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setIsFoodScannerOpen(true)}
+                  className="w-full sm:w-auto shrink-0 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>{tr('Scan Food Now', 'अभी भोजन स्कैन करें')}</span>
+                </button>
+              </div>
             </div>
           )}
 
