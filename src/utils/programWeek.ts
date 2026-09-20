@@ -29,6 +29,34 @@ export function computeWeeks(dayNum: number, totalDays: number): WeekInfo[] {
   });
 }
 
+export interface MonthInfo {
+  month: number;
+  weeks: WeekInfo[];
+  status: WeekStatus;
+}
+
+/** Groups weeks into 4-week months (Month 1 = Week 1-4, Month 2 = Week 5-8,
+ *  ...) — never padded with weeks that don't actually exist in `weeks`, so a
+ *  program shorter than 4 weeks just shows a partial Month 1 instead of
+ *  fabricating locked weeks with no real day range behind them. A month's
+ *  own status is completed only once every one of its weeks is completed,
+ *  current as soon as any of its weeks is the current one, and upcoming
+ *  (locked) only while every one of its weeks is still upcoming — matching
+ *  the same three-state language the week rows already use. */
+export function computeMonths(weeks: WeekInfo[]): MonthInfo[] {
+  const months: MonthInfo[] = [];
+  for (let i = 0; i < weeks.length; i += 4) {
+    const monthWeeks = weeks.slice(i, i + 4);
+    const status: WeekStatus = monthWeeks.every((w) => w.status === 'completed')
+      ? 'completed'
+      : monthWeeks.some((w) => w.status === 'current')
+      ? 'current'
+      : 'upcoming';
+    months.push({ month: months.length + 1, weeks: monthWeeks, status });
+  }
+  return months;
+}
+
 /** Unifies the built-in plan's `programDay` (1-14) and a custom uploaded
  *  plan's calendar-based progress (1-35, from its upload date) into one
  *  {dayNum, totalDays} shape the week math above can work with either way. */

@@ -36,7 +36,50 @@ function getGroqClient(): Groq | null {
     console.warn('GROQ_API_KEY is not set in environment.');
     return null;
   }
-  return new Groq({ apiKey });
+  // maxRetries: 0 — the SDK's own default retry-with-backoff on a 429 was
+  // stacking on top of our own explicit rate-limit handling below (see
+  // callGroqForVisionWithRetry), each layer waiting and retrying
+  // independently. That double-backoff was a real, measured contributor to
+  // a long multi-page PDF upload taking far longer than the actual token
+  // budget requires — we now own retry timing completely ourselves.
+  return new Groq({ apiKey, maxRetries: 0 });
+}
+
+// ----------------------------------------------------------------------------
+// VISION-MODEL RATE LIMITING — Groq's free tier enforces a hard 1000
+// output-tokens-PER-MINUTE ceiling on the vision model specifically (see
+// callGroqForJson below); asking for more doesn't get truncated, the whole
+// request is rejected outright. A multi-page PDF upload calls this model
+// once per page — firing those back-to-back (as the old flat 350ms delay
+// did) mostly just bought 429s well before a minute of real budget had
+// elapsed, and a page that failed was silently dropped rather than retried,
+// which is exactly why a long upload was both slow AND incomplete.
+// This tracks ACTUAL token usage (not the requested max) in a rolling
+// 60-second window, process-wide (the ceiling is per API key, not per
+// user), and makes every vision call wait until it can actually fit before
+// ever sending it — so calls mostly succeed on the first try instead of
+// bouncing off 429s.
+// ----------------------------------------------------------------------------
+const VISION_TOKENS_PER_MINUTE = 1000;
+const visionUsageLog: { time: number; tokens: number }[] = [];
+
+function pruneVisionUsageLog(now: number) {
+  while (visionUsageLog.length && now - visionUsageLog[0].time >= 60_000) visionUsageLog.shift();
+}
+
+async function waitForVisionBudget(estimatedTokens: number): Promise<void> {
+  for (;;) {
+    const now = Date.now();
+    pruneVisionUsageLog(now);
+    const used = visionUsageLog.reduce((sum, e) => sum + e.tokens, 0);
+    if (used + estimatedTokens <= VISION_TOKENS_PER_MINUTE || visionUsageLog.length === 0) return;
+    const waitMs = Math.max(300, 60_000 - (now - visionUsageLog[0].time) + 100);
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+}
+
+function recordVisionUsage(tokens: number) {
+  visionUsageLog.push({ time: Date.now(), tokens: Math.max(1, tokens) });
 }
 
 // Strips the data-URL prefix ("data:image/jpeg;base64," or "data:application/pdf;base64,") if present.
@@ -126,52 +169,76 @@ async function callGroqForJson(opts: {
   const requestedMaxTokens = opts.maxTokens ?? 1536;
   const effectiveMaxTokens = hasImage ? Math.min(requestedMaxTokens, 1000) : requestedMaxTokens;
 
+  const requestOnce = () => opts.client.chat.completions.create({
+    model: hasImage ? GROQ_VISION_MODEL : GROQ_TEXT_MODEL,
+    max_completion_tokens: effectiveMaxTokens,
+    // Deterministic — this is structured data extraction, not creative
+    // writing; temperature 0 measurably reduced garbled/inconsistent output
+    // in testing (e.g. a biomarker value coming back as literal "}, {").
+    temperature: 0,
+    messages: [
+      { role: 'system', content: opts.system },
+      { role: 'user', content },
+    ],
+    response_format: {
+      type: 'json_schema',
+      // strict — every schema passed to this function must mark ALL its
+      // properties (at every nesting level) required, using a ['x','null']
+      // type union for anything actually optional, plus additionalProperties:
+      // false on every object. Tested: best-effort (strict:false) was
+      // unreliable — it sometimes returned only isValidReport and dropped
+      // every other field, which is exactly the silent-data-loss bug this
+      // whole file is already once bitten by (see maxTokens comment above).
+      json_schema: { name: opts.toolName, schema: opts.inputSchema, strict: true },
+    },
+  });
+
   let completion: Groq.Chat.Completions.ChatCompletion;
-  try {
-    completion = await opts.client.chat.completions.create({
-      model: hasImage ? GROQ_VISION_MODEL : GROQ_TEXT_MODEL,
-      max_completion_tokens: effectiveMaxTokens,
-      // Deterministic — this is structured data extraction, not creative
-      // writing; temperature 0 measurably reduced garbled/inconsistent output
-      // in testing (e.g. a biomarker value coming back as literal "}, {").
-      temperature: 0,
-      messages: [
-        { role: 'system', content: opts.system },
-        { role: 'user', content },
-      ],
-      response_format: {
-        type: 'json_schema',
-        // strict — every schema passed to this function must mark ALL its
-        // properties (at every nesting level) required, using a ['x','null']
-        // type union for anything actually optional, plus additionalProperties:
-        // false on every object. Tested: best-effort (strict:false) was
-        // unreliable — it sometimes returned only isValidReport and dropped
-        // every other field, which is exactly the silent-data-loss bug this
-        // whole file is already once bitten by (see maxTokens comment above).
-        json_schema: { name: opts.toolName, schema: opts.inputSchema, strict: true },
-      },
-    });
-  } catch (err: any) {
-    // Tested directly against the real API: on a long/dense generation (a
-    // 19-row lab report), the model sometimes emits a real, complete,
-    // internally-valid `biomarkers` array but stops without also writing
-    // the other required top-level keys — Groq's strict mode then rejects
-    // the WHOLE call with a 400 before ever returning it to us, discarding
-    // a perfectly good extraction. If that's what happened, salvage the
-    // model's own JSON (in `failed_generation`) instead of failing outright —
-    // real data it already read, just missing bookkeeping fields we can
-    // safely default (never fabricating what it didn't find).
-    const apiError = err?.error?.error;
-    if (apiError?.code === 'json_validate_failed' && typeof apiError?.failed_generation === 'string') {
-      try {
-        const partial = JSON.parse(apiError.failed_generation);
-        console.error(`callGroqForJson: '${opts.toolName}' failed strict validation — salvaged a partial result instead of discarding it.`);
-        return fillMissingRequiredKeys(partial, opts.inputSchema);
-      } catch {
-        // The salvaged text wasn't valid JSON either — nothing to recover, fall through.
+  // Up to 3 attempts total for a vision call, ONLY on an actual 429 — a
+  // multi-page PDF calls this once per page, and a page that silently lost
+  // its 429 used to just vanish from the extracted plan with no retry at
+  // all (see waitForVisionBudget above for why 429s happen in the first
+  // place). Every attempt still waits for real budget first, so this
+  // doesn't turn into another blind hammer against the same ceiling.
+  const maxAttempts = hasImage ? 3 : 1;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (hasImage) await waitForVisionBudget(effectiveMaxTokens);
+    try {
+      completion = await requestOnce();
+      if (hasImage) recordVisionUsage(completion.usage?.completion_tokens ?? effectiveMaxTokens);
+      break;
+    } catch (err: any) {
+      const isRateLimited = err?.status === 429 || err?.error?.error?.code === 'rate_limit_exceeded';
+      if (isRateLimited && attempt < maxAttempts) {
+        // The account-wide budget was already exhausted by a call outside
+        // our own tracking (or our estimate undercounted) — force the
+        // tracker to treat the whole current window as spent so the next
+        // waitForVisionBudget call above actually waits instead of
+        // immediately retrying into the same 429.
+        recordVisionUsage(VISION_TOKENS_PER_MINUTE);
+        continue;
       }
+      // Tested directly against the real API: on a long/dense generation (a
+      // 19-row lab report), the model sometimes emits a real, complete,
+      // internally-valid `biomarkers` array but stops without also writing
+      // the other required top-level keys — Groq's strict mode then rejects
+      // the WHOLE call with a 400 before ever returning it to us, discarding
+      // a perfectly good extraction. If that's what happened, salvage the
+      // model's own JSON (in `failed_generation`) instead of failing outright —
+      // real data it already read, just missing bookkeeping fields we can
+      // safely default (never fabricating what it didn't find).
+      const apiError = err?.error?.error;
+      if (apiError?.code === 'json_validate_failed' && typeof apiError?.failed_generation === 'string') {
+        try {
+          const partial = JSON.parse(apiError.failed_generation);
+          console.error(`callGroqForJson: '${opts.toolName}' failed strict validation — salvaged a partial result instead of discarding it.`);
+          return fillMissingRequiredKeys(partial, opts.inputSchema);
+        } catch {
+          // The salvaged text wasn't valid JSON either — nothing to recover, fall through.
+        }
+      }
+      throw err;
     }
-    throw err;
   }
 
   const choice = completion.choices[0];
@@ -896,8 +963,8 @@ app.post('/api/analyze-daily-plan', requireUser(async (req, res, user) => {
     const systemInstruction = `You are UrCare's clinical scheduling assistant. You are given a photo of one page of a person's own daily routine/schedule — it may be typed, handwritten, or a printout from their doctor or nutritionist. It could be a full 24-hour schedule or just a partial list of habits/timings, and if this came from a multi-page PDF it may be only ONE page of a larger document — that's expected, just extract whatever real schedule content is on THIS page.
 CRITICAL FIRST STEP: Decide whether the input is genuinely someone's daily routine/schedule/plan (e.g. wake-up time, meal times, exercise, medication times, sleep time, any timed daily activity list) versus something unrelated (a random photo, a selfie, a lab report, an unreadable/blank page, or text with no actual schedule content — a cover page, disclaimer, or table of contents from a larger document counts as unrelated too).
 - If it is NOT a daily routine/schedule, set isValidPlan to false, explain what was actually provided in rejectionReason, and leave sections empty.
-- If it IS a genuine daily routine, set isValidPlan to true and extract EVERY distinct step into "sections", ordered chronologically by time of day. For each step: timeLabel is REQUIRED and must always be a clock time like "7:00 AM" — use the exact time if one is stated, otherwise infer the single most reasonable clock time from context (e.g. "morning walk" → "6:30 AM", "after lunch" → "1:30 PM", "before bed" → "10:00 PM") so that every step gets a real time and none are ever left blank. title is a short (3-8 word) name for the step. body should preserve real, concrete detail from the source instead of just a generic label — up to 2-3 short sentences (roughly 40-50 words): include exact quantities/doses, durations, techniques or counts whenever the source actually states them, not invented ones. Never invent steps or details that aren't in the source — only structure and preserve what's actually there, and never drop a step just because it lacked a stated time.
-Prioritize including EVERY real step on this page over writing an even longer description for any single one of them — completeness first, then detail.
+- If it IS a genuine daily routine, set isValidPlan to true and extract EVERY distinct step into "sections", ordered chronologically by time of day. For each step: timeLabel is REQUIRED and must always be a clock time like "7:00 AM" — use the exact time if one is stated, otherwise infer the single most reasonable clock time from context (e.g. "morning walk" → "6:30 AM", "after lunch" → "1:30 PM", "before bed" → "10:00 PM") so that every step gets a real time and none are ever left blank. title is a short (3-8 word) name for the step. body should preserve real, concrete detail from the source instead of just a generic label — but STAY BRIEF: 1 short sentence, roughly 15-25 words — include only the single most important exact quantity/dose/duration the source actually states, not invented ones. Never invent steps or details that aren't in the source — only structure and preserve what's actually there, and never drop a step just because it lacked a stated time.
+CRITICAL OUTPUT BUDGET: your entire reply has a hard, small token limit. If this page has many steps, keeping every "body" to one short sentence is what makes room to include ALL of them — a page with 10+ steps must still list all 10+, each with a short body, rather than 4-5 steps each with a long body. Prioritize including EVERY real step on this page over writing an even longer description for any single one of them — completeness first, then detail, always.
 Call the record_daily_plan tool exactly once with the complete result.`;
 
     const parsed = await callGroqForJson({

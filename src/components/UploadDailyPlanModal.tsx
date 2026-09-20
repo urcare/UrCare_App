@@ -53,6 +53,7 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CustomDailyPlanResult | null>(null);
   const [pdfSummary, setPdfSummary] = useState<{ pagesRead: number; totalPages: number; truncated: boolean } | null>(null);
+  const [pdfFailedPages, setPdfFailedPages] = useState(0);
 
   if (!isOpen) return null;
 
@@ -66,6 +67,7 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
     setResult(null);
     setPdfProgress(null);
     setPdfSummary(null);
+    setPdfFailedPages(0);
   };
 
   const handleClose = () => {
@@ -115,18 +117,25 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
     });
 
     const allSections: DailyPlanSectionInput[] = [];
+    let failedPages = 0;
     for (let i = 0; i < images.length; i++) {
       setPdfProgress({ phase: 'extracting', page: i + 1, totalPages: images.length });
       const pageResult = await uploadCustomDailyPlan(images[i], 'image/jpeg', false);
       if (pageResult.isValidPlan && pageResult.sections && pageResult.sections.length > 0) {
         allSections.push(...pageResult.sections.map((s) => ({ timeLabel: s.timeLabel, title: s.title, body: s.body })));
+      } else if (pageResult.analysisFailed) {
+        // The server already retries a rate-limited page itself (see
+        // waitForVisionBudget/callGroqForJson) — this only happens if that
+        // was genuinely exhausted, so it's worth telling the user rather
+        // than letting the page silently vanish from their plan.
+        failedPages++;
       }
-      // A small pacing gap between sequential vision calls — a courteous
-      // buffer against the free-tier per-minute output-token ceiling (see
-      // callGroqForJson in server.ts), not a guarantee against every
-      // possible rate limit on a very large document.
-      if (i < images.length - 1) await new Promise((r) => setTimeout(r, 350));
+      // No artificial delay here anymore — the server itself now waits for
+      // real vision-model budget before every call (see callGroqForJson),
+      // so pacing happens exactly when it's actually needed instead of a
+      // flat guess added on top of it.
     }
+    setPdfFailedPages(failedPages);
 
     if (allSections.length === 0) {
       setError(tr(
@@ -240,6 +249,18 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
                         `Scanned all ${pdfSummary.totalPages} page${pdfSummary.totalPages === 1 ? '' : 's'} of your PDF and found ${result.sections?.length || 0} steps.`,
                         `आपके PDF के सभी ${pdfSummary.totalPages} पेज स्कैन किए और ${result.sections?.length || 0} चरण मिले।`
                       )}
+                </span>
+              </div>
+            )}
+
+            {pdfFailedPages > 0 && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-start gap-2">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  {tr(
+                    `${pdfFailedPages} page${pdfFailedPages === 1 ? '' : 's'} could not be read after multiple tries and may be missing from your plan below. You can re-upload just that page as a photo to add it.`,
+                    `${pdfFailedPages} पेज कई कोशिशों के बाद भी नहीं पढ़े जा सके और शायद आपके नीचे दिए प्लान में शामिल न हों। उस पेज को फोटो के रूप में दोबारा अपलोड कर सकते हैं।`
+                  )}
                 </span>
               </div>
             )}

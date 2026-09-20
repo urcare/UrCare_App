@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CalendarCheck, PartyPopper, CheckCircle2, Lock, X } from 'lucide-react';
-import { computeWeeks } from '../utils/programWeek';
+import { CalendarCheck, PartyPopper, CheckCircle2, Lock, X, ChevronDown } from 'lucide-react';
+import { computeWeeks, computeMonths } from '../utils/programWeek';
 
 interface WeeklyUpdatesPanelProps {
   userId: string;
@@ -19,8 +19,22 @@ interface WeeklyUpdatesPanelProps {
  *  "Completed" here and a one-time congratulations banner appears. */
 export const WeeklyUpdatesPanel: React.FC<WeeklyUpdatesPanelProps> = ({ userId, dayNum, totalDays, isDark, tr }) => {
   const weeks = useMemo(() => computeWeeks(dayNum, totalDays), [dayNum, totalDays]);
+  const months = useMemo(() => computeMonths(weeks), [weeks]);
   const currentWeek = weeks.find((w) => w.status === 'current') || weeks[weeks.length - 1];
+  const currentMonth = months.find((m) => m.status === 'current') || months[months.length - 1];
   const lastCompletedWeek = [...weeks].reverse().find((w) => w.status === 'completed')?.week ?? 0;
+
+  // Locked months start collapsed (just the header), since there's nothing
+  // actionable in them yet — tapping one still opens it to preview which
+  // weeks are coming, it just isn't sprawled open by default like the
+  // current/completed months are.
+  const [openMonths, setOpenMonths] = useState<Set<number>>(() => new Set());
+  const isMonthOpen = (m: typeof months[number]) => m.status !== 'upcoming' || openMonths.has(m.month);
+  const toggleMonth = (month: number) => setOpenMonths((prev) => {
+    const next = new Set(prev);
+    if (next.has(month)) next.delete(month); else next.add(month);
+    return next;
+  });
 
   const ackKey = `urcare_week_ack_${userId}`;
   const [dismissedUpTo, setDismissedUpTo] = useState<number>(() => {
@@ -54,7 +68,10 @@ export const WeeklyUpdatesPanel: React.FC<WeeklyUpdatesPanelProps> = ({ userId, 
         <div className="min-w-0">
           <h3 className={`text-base font-black tracking-tight ${textPrimary}`}>{tr('Weekly Updates', 'साप्ताहिक अपडेट')}</h3>
           <p className={`text-xs ${textMuted}`}>
-            {tr(`Week ${currentWeek.week} of ${weeks.length} — Day ${dayNum} of ${totalDays}`, `सप्ताह ${currentWeek.week} / ${weeks.length} — दिन ${dayNum} / ${totalDays}`)}
+            {tr(
+              `Month ${currentMonth.month} · Week ${currentWeek.week} of ${weeks.length} — Day ${dayNum} of ${totalDays}`,
+              `महीना ${currentMonth.month} · सप्ताह ${currentWeek.week} / ${weeks.length} — दिन ${dayNum} / ${totalDays}`
+            )}
           </p>
         </div>
       </div>
@@ -88,48 +105,115 @@ export const WeeklyUpdatesPanel: React.FC<WeeklyUpdatesPanelProps> = ({ userId, 
         )}
       </AnimatePresence>
 
-      <div className="space-y-1.5">
-        {weeks.map((w) => (
-          <div
-            key={w.week}
-            className={`flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl ${
-              w.status === 'current' ? 'bg-emerald-50 border border-emerald-200' : subCardClass
-            }`}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              {w.status === 'completed' ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              ) : w.status === 'upcoming' ? (
-                <Lock className="w-4 h-4 text-zinc-300 shrink-0" />
-              ) : (
-                <span className="w-4 h-4 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              )}
-              <div className="min-w-0">
-                <div className={`text-xs font-black ${w.status === 'upcoming' ? textMuted : textPrimary}`}>
-                  {tr(`Week ${w.week}`, `सप्ताह ${w.week}`)}
-                </div>
-                <div className={`text-[10px] font-semibold ${textMuted}`}>
-                  {tr(`Day ${w.dayStart}–${w.dayEnd}`, `दिन ${w.dayStart}–${w.dayEnd}`)}
-                </div>
-              </div>
-            </div>
-            <span
-              className={`text-[9px] font-black uppercase tracking-wide px-2 py-1 rounded-full shrink-0 ${
-                w.status === 'completed'
-                  ? 'bg-emerald-100 text-emerald-700'
-                  : w.status === 'current'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-zinc-100 text-zinc-400'
-              }`}
+      <div className="space-y-2.5">
+        {months.map((m) => {
+          const isLocked = m.status === 'upcoming';
+          const isOpen = isMonthOpen(m);
+          return (
+            <div
+              key={m.month}
+              className={`rounded-2xl border overflow-hidden ${
+                m.status === 'current'
+                  ? 'border-emerald-300'
+                  : isDark ? 'border-zinc-800' : 'border-zinc-200'
+              } ${isLocked ? 'opacity-60' : ''}`}
             >
-              {w.status === 'completed'
-                ? tr('Completed', 'पूर्ण')
-                : w.status === 'current'
-                ? tr('Active', 'सक्रिय')
-                : tr('Locked', 'लॉक्ड')}
-            </span>
-          </div>
-        ))}
+              <button
+                type="button"
+                onClick={() => isLocked && toggleMonth(m.month)}
+                className={`w-full flex items-center justify-between gap-3 px-3.5 py-2.5 text-left transition-colors ${
+                  isLocked ? 'cursor-pointer' : 'cursor-default'
+                } ${m.status === 'current' ? 'bg-emerald-50' : subCardClass}`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {m.status === 'completed' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : isLocked ? (
+                    <Lock className="w-4 h-4 text-zinc-400 shrink-0" />
+                  ) : (
+                    <span className="w-4 h-4 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  )}
+                  <span className={`text-sm font-black ${isLocked ? textMuted : textPrimary}`}>
+                    {tr(`Month ${m.month}`, `महीना ${m.month}`)}
+                  </span>
+                  <span
+                    className={`text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0 ${
+                      m.status === 'completed'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : m.status === 'current'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-zinc-100 text-zinc-400'
+                    }`}
+                  >
+                    {m.status === 'completed'
+                      ? tr('Completed', 'पूर्ण')
+                      : m.status === 'current'
+                      ? tr('Active', 'सक्रिय')
+                      : tr('Locked', 'लॉक्ड')}
+                  </span>
+                </div>
+                {isLocked && (
+                  <ChevronDown className={`w-4 h-4 shrink-0 ${textMuted} transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                )}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div
+                    initial={isLocked ? { height: 0, opacity: 0 } : false}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-2 space-y-1.5">
+                      {m.weeks.map((w) => (
+                        <div
+                          key={w.week}
+                          className={`flex items-center justify-between gap-3 px-3 py-2 rounded-xl ${
+                            w.status === 'current' ? 'bg-emerald-50 border border-emerald-200' : subCardClass
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {w.status === 'completed' ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            ) : w.status === 'upcoming' ? (
+                              <Lock className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
+                            ) : (
+                              <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <div className={`text-xs font-black ${w.status === 'upcoming' ? textMuted : textPrimary}`}>
+                                {tr(`Week ${w.week}`, `सप्ताह ${w.week}`)}
+                              </div>
+                              <div className={`text-[10px] font-semibold ${textMuted}`}>
+                                {tr(`Day ${w.dayStart}–${w.dayEnd}`, `दिन ${w.dayStart}–${w.dayEnd}`)}
+                              </div>
+                            </div>
+                          </div>
+                          <span
+                            className={`text-[9px] font-black uppercase tracking-wide px-2 py-1 rounded-full shrink-0 ${
+                              w.status === 'completed'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : w.status === 'current'
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-zinc-100 text-zinc-400'
+                            }`}
+                          >
+                            {w.status === 'completed'
+                              ? tr('Completed', 'पूर्ण')
+                              : w.status === 'current'
+                              ? tr('Active', 'सक्रिय')
+                              : tr('Locked', 'लॉक्ड')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
