@@ -954,6 +954,21 @@ export async function getMyQueueEntry(): Promise<{ entry: QueueEntry | null; pos
   }
 }
 
+// APP FEEDBACK — "is this app helping you / what's missing" (see
+// app_feedback in supabase/patches.sql). Written via the server.
+export async function submitAppFeedback(input: {
+  rating: number; isHelping: 'yes' | 'somewhat' | 'no'; whatHelps?: string; whatLacking?: string; category?: string;
+}): Promise<{ error?: string }> {
+  try {
+    const res = await authedFetch('/api/feedback', { method: 'POST', body: JSON.stringify(input) });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Could not send your feedback right now.' };
+    return {};
+  } catch {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
 export async function cancelMyQueueEntry(): Promise<{ error?: string }> {
   try {
     const res = await authedFetch('/api/queue/cancel', { method: 'POST', body: JSON.stringify({}) });

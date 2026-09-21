@@ -5,7 +5,7 @@ import {
   QrCode, Edit, ArrowRight, Lock, LogOut, Sparkles, Filter,
   Truck, Check, Stethoscope, Search, ExternalLink, RefreshCw, Upload, X,
   Zap, ChevronRight, HelpCircle, Save, Activity, HeartPulse, Trash2, Image as ImageIcon, Tag, Package,
-  User, Target, Flame, Droplets, Scale, Calendar, MessageCircle, Paperclip, Clock, Hash, PhoneCall,
+  User, Target, Flame, Droplets, Scale, Calendar, MessageCircle, Paperclip, Clock, Hash, PhoneCall, MessageSquareHeart,
 } from 'lucide-react';
 import {
   AdminStats, MedicalReportAnalysis, Order, Prescription,
@@ -47,7 +47,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'patients' | 'reports' | 'orders' | 'products_qr' | 'reviews' | 'messages' | 'queue'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'patients' | 'reports' | 'orders' | 'products_qr' | 'reviews' | 'messages' | 'queue' | 'feedback'>('overview');
 
   // Stats & Data — all real, fetched from Supabase via the server once logged in.
   const [stats, setStats] = useState<AdminStats>(EMPTY_STATS);
@@ -483,6 +483,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     adminFetch(adminToken, `/api/admin/chat/follow-ups/${id}`, { method: 'DELETE' }).then(() => {
       setFollowUps((prev) => prev.filter((f) => f.id !== id));
     }).catch(() => {});
+  };
+
+  // ---- App Feedback (what users say helps / is missing) ----
+  const [appFeedback, setAppFeedback] = useState<any[]>([]);
+  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
+  const loadAppFeedback = () => {
+    if (!adminToken) return;
+    setIsLoadingFeedback(true);
+    adminFetch(adminToken, '/api/admin/feedback').then((res) => res.json()).then((data) => {
+      if (Array.isArray(data?.feedback)) setAppFeedback(data.feedback);
+    }).catch(() => {}).finally(() => setIsLoadingFeedback(false));
   };
 
   // ---- Consultation Queue ----
@@ -976,6 +987,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           >
             <Hash className="w-4 h-4" />
             <span>Queue{queueEntries.filter((e) => e.status === 'waiting').length > 0 ? ` (${queueEntries.filter((e) => e.status === 'waiting').length})` : ''}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('feedback'); loadAppFeedback(); }}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+              activeTab === 'feedback' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+            }`}
+          >
+            <MessageSquareHeart className="w-4 h-4" />
+            <span>App Feedback{appFeedback.length > 0 ? ` (${appFeedback.length})` : ''}</span>
           </button>
         </div>
 
@@ -2200,6 +2222,80 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                   </>
                 )}
               </div>
+            </div>
+          );
+        })()}
+
+        {/* TAB 8: APP FEEDBACK */}
+        {activeTab === 'feedback' && (() => {
+          const total = appFeedback.length;
+          const avg = total ? (appFeedback.reduce((s, f) => s + (f.rating || 0), 0) / total).toFixed(1) : '0.0';
+          const helpingCount = (k: string) => appFeedback.filter((f) => f.is_helping === k).length;
+          return (
+            <div className="space-y-6 text-left">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-black text-zinc-950">What Users Say About UrCare</h3>
+                  <p className="text-xs text-zinc-500">Whether the app is helping them, and what they feel is missing.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadAppFeedback}
+                  className="px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingFeedback ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className={`p-4 rounded-2xl ${cardClass}`}><div className="text-[10px] font-black uppercase text-zinc-400">Responses</div><div className="text-2xl font-black text-zinc-950">{total}</div></div>
+                <div className={`p-4 rounded-2xl ${cardClass}`}><div className="text-[10px] font-black uppercase text-zinc-400">Avg Rating</div><div className="text-2xl font-black text-amber-500">{avg} <span className="text-sm text-zinc-400">/ 5</span></div></div>
+                <div className={`p-4 rounded-2xl ${cardClass}`}><div className="text-[10px] font-black uppercase text-zinc-400">Helping (Yes)</div><div className="text-2xl font-black text-emerald-600">{helpingCount('yes')}</div></div>
+                <div className={`p-4 rounded-2xl ${cardClass}`}><div className="text-[10px] font-black uppercase text-zinc-400">Not Helping</div><div className="text-2xl font-black text-rose-500">{helpingCount('no')}</div></div>
+              </div>
+
+              {isLoadingFeedback ? (
+                <div className={`p-12 rounded-3xl ${cardClass} text-center text-sm font-bold text-zinc-500`}>Loading feedback...</div>
+              ) : total === 0 ? (
+                <div className={`p-12 rounded-3xl ${cardClass} text-center text-sm font-bold text-zinc-500`}>No feedback submitted yet.</div>
+              ) : (
+                <div className="space-y-3">
+                  {appFeedback.map((f) => (
+                    <div key={f.id} className={`p-5 rounded-2xl ${cardClass} space-y-2.5`}>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-black text-zinc-900">{f.user_name || 'User'}</span>
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500">{f.category || 'other'}</span>
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            f.is_helping === 'yes' ? 'bg-emerald-100 text-emerald-700' : f.is_helping === 'no' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {f.is_helping === 'yes' ? 'Helping' : f.is_helping === 'no' ? 'Not helping' : 'Somewhat'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <Star key={n} className={`w-3.5 h-3.5 ${n <= f.rating ? 'fill-amber-400 text-amber-400' : 'text-zinc-200'}`} />
+                          ))}
+                        </div>
+                      </div>
+                      {f.what_helps && (
+                        <div className={`p-3 rounded-xl ${subCardClass}`}>
+                          <span className="text-[10px] font-black uppercase text-emerald-700">What helps</span>
+                          <p className="text-xs text-zinc-800 font-medium mt-0.5 whitespace-pre-wrap">{f.what_helps}</p>
+                        </div>
+                      )}
+                      {f.what_lacking && (
+                        <div className={`p-3 rounded-xl ${subCardClass}`}>
+                          <span className="text-[10px] font-black uppercase text-rose-600">What is missing</span>
+                          <p className="text-xs text-zinc-800 font-medium mt-0.5 whitespace-pre-wrap">{f.what_lacking}</p>
+                        </div>
+                      )}
+                      <div className="text-[10px] text-zinc-400 font-semibold">{new Date(f.created_at).toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })()}

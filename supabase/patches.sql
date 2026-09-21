@@ -458,3 +458,23 @@ drop policy if exists "own queue entries select" on public.consultation_queue;
 create policy "own queue entries select" on public.consultation_queue for select using (auth.uid() = user_id);
 -- Insert/update go through the server (service_role) only — token
 -- assignment and status changes must stay authoritative and race-free.
+
+-- 17. APP FEEDBACK — free-form product feedback from users ("is this app
+--     helping you?", "what's missing?"), separate from clinical_feedback
+--     (the per-cycle health check-in). Writes go through the server
+--     (service_role); a user can read back only their own submissions.
+create table if not exists public.app_feedback (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  user_name text,
+  rating int not null, -- 1-5 overall
+  is_helping text not null, -- 'yes' | 'somewhat' | 'no'
+  what_helps text,
+  what_lacking text,
+  category text, -- 'plan' | 'scan' | 'store' | 'tracker' | 'chat' | 'design' | 'other'
+  created_at timestamptz default now()
+);
+create index if not exists app_feedback_created_at_idx on public.app_feedback (created_at desc);
+alter table public.app_feedback enable row level security;
+drop policy if exists "own app feedback select" on public.app_feedback;
+create policy "own app feedback select" on public.app_feedback for select using (auth.uid() = user_id);

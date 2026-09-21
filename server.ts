@@ -1939,6 +1939,39 @@ app.post('/api/admin/queue/:id/status', requireAdmin(async (req, res) => {
 // ----------------------------------------------------------------------------
 // RAZORPAY — real REST API when configured, clearly-labelled simulation otherwise.
 // ----------------------------------------------------------------------------
+// APP FEEDBACK — users tell us what helps and what's missing (see
+// app_feedback in supabase/patches.sql). Admin reads them all.
+app.post('/api/feedback', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { rating, isHelping, whatHelps, whatLacking, category } = req.body as {
+    rating?: number; isHelping?: string; whatHelps?: string; whatLacking?: string; category?: string;
+  };
+  if (!rating || rating < 1 || rating > 5) return res.status(400).json({ error: 'Please pick a rating from 1 to 5.' });
+  if (!['yes', 'somewhat', 'no'].includes(isHelping || '')) return res.status(400).json({ error: 'Please tell us whether the app is helping you.' });
+  if (!whatHelps?.trim() && !whatLacking?.trim()) return res.status(400).json({ error: 'Please write what helps or what is missing.' });
+  const { data: profile } = await supabase.from('profiles').select('full_name').eq('user_id', user.id).maybeSingle();
+  const { data, error } = await supabase.from('app_feedback').insert({
+    user_id: user.id,
+    user_name: profile?.full_name || user.email,
+    rating,
+    is_helping: isHelping,
+    what_helps: whatHelps?.trim() || null,
+    what_lacking: whatLacking?.trim() || null,
+    category: category || 'other',
+  }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, feedback: data });
+}));
+
+app.get('/api/admin/feedback', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase.from('app_feedback').select('*').order('created_at', { ascending: false }).limit(500);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ feedback: data || [] });
+}));
+
 function isRazorpayConfigured() {
   return !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
 }

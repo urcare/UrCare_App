@@ -6,7 +6,7 @@ import {
   ShoppingBag, Stethoscope, Crown, Camera, Lock, ClipboardCheck,
   Package, User, Check, FileText, CheckCircle2, HeartPulse,
   LogOut, MessageSquare, AlertCircle, MoreVertical, X,
-  Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash,
+  Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash, MessageSquareHeart,
 } from 'lucide-react';
 import { 
   UserHealthProfile, MealItem, UserAccount, MedicalReportAnalysis, 
@@ -21,6 +21,7 @@ import { FoodScannerModal } from './FoodScannerModal';
 import { MyOrdersModal } from './MyOrdersModal';
 import { DoctorConsultModal } from './DoctorConsultModal';
 import { ClinicalFeedbackModal } from './ClinicalFeedbackModal';
+import { AppFeedbackModal } from './AppFeedbackModal';
 import { RootCauseAssessmentModal } from './RootCauseAssessmentModal';
 import { ProfilePage } from './ProfilePage';
 import { RecommendationsView } from './RecommendationsView';
@@ -84,6 +85,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // onClick). Used to be its own persistent sidebar card; moved in here to
     // declutter the sidebar.
     { id: 'doctor_hotline' as const, label: tr('Doctor Hotline', 'डॉक्टर हॉटलाइन'), icon: Stethoscope },
+    // Not a tab — opens the app-feedback form (what helps / what is missing).
+    { id: 'app_feedback' as const, label: tr('Give Feedback', 'प्रतिक्रिया दें'), icon: MessageSquareHeart },
     // Not a tab — opens the Settings modal directly (see the drawer's onClick).
     { id: 'settings' as const, label: tr('Settings', 'सेटिंग्स'), icon: Settings },
     // Not a tab either — opens the sign-out confirmation (see the drawer's onClick).
@@ -200,6 +203,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [proTriggerFeature, setProTriggerFeature] = useState('UrCare Premium');
   const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
   const [isDoctorConsultOpen, setIsDoctorConsultOpen] = useState(false);
+  const [isAppFeedbackOpen, setIsAppFeedbackOpen] = useState(false);
   const [doctorConsultReason, setDoctorConsultReason] = useState<string>('');
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -770,7 +774,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <nav className="flex-1 p-3 space-y-1">
                 {moduleMenuItems.map((item) => {
                   const ItemIcon = item.icon;
-                  const isActive = item.id !== 'settings' && item.id !== 'logout' && item.id !== 'doctor_hotline' && activeTab === (item.id as typeof activeTab);
+                  const isActive = item.id !== 'settings' && item.id !== 'logout' && item.id !== 'doctor_hotline' && item.id !== 'app_feedback' && activeTab === (item.id as typeof activeTab);
                   return (
                     <button
                       key={item.id}
@@ -782,6 +786,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           setShowLogoutConfirm(true);
                         } else if (item.id === 'doctor_hotline') {
                           handleOpenDoctorConsult();
+                        } else if (item.id === 'app_feedback') {
+                          setIsAppFeedbackOpen(true);
                         } else {
                           setActiveTab(item.id);
                         }
@@ -1130,6 +1136,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           orders={userOrders}
         />
       )}
+
+      <AppFeedbackModal isOpen={isAppFeedbackOpen} onClose={() => setIsAppFeedbackOpen(false)} />
 
       {isDoctorConsultOpen && (
         <DoctorConsultModal
