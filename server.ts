@@ -1651,11 +1651,16 @@ app.get('/api/admin/chat/threads', requireAdmin(async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   const userIds = (threads || []).map((t: any) => t.user_id);
   const { data: profiles } = userIds.length
-    ? await supabase.from('profiles').select('user_id, full_name, email').in('user_id', userIds)
+    ? await supabase.from('profiles').select('user_id, full_name, email, phone').in('user_id', userIds)
     : { data: [] as any[] };
   const profileById = new Map((profiles || []).map((p: any) => [p.user_id, p]));
   res.json({
-    threads: (threads || []).map((t: any) => ({ ...t, user_name: profileById.get(t.user_id)?.full_name, user_email: profileById.get(t.user_id)?.email })),
+    threads: (threads || []).map((t: any) => ({
+      ...t,
+      user_name: profileById.get(t.user_id)?.full_name,
+      user_email: profileById.get(t.user_id)?.email,
+      user_phone: profileById.get(t.user_id)?.phone,
+    })),
   });
 }));
 
@@ -1706,7 +1711,7 @@ app.post('/api/admin/chat/messages', requireAdmin(async (req, res) => {
       sender_type: 'admin',
       // Always the same brand — never the individual admin's own email/name,
       // regardless of who on the team actually typed the reply.
-      sender_name: 'UrCare Care Team',
+      sender_name: 'UrCare Health Team',
       body: body?.trim() || null,
       file_url: fileUrl || null,
       file_name: fileName || null,
@@ -1783,7 +1788,7 @@ async function sendDueChatFollowUps() {
           thread_id: thread.id,
           user_id: followUp.user_id,
           sender_type: 'admin',
-          sender_name: 'UrCare Care Team',
+          sender_name: 'UrCare Health Team',
           body: followUp.message,
         });
         await supabase.from('chat_threads').update({

@@ -391,7 +391,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               type="button"
               onClick={() => { setChatUnread(false); setIsChatOpen(true); }}
               className="relative w-9 h-9 rounded-full bg-emerald-600 hover:bg-emerald-500 shadow-sm flex items-center justify-center text-white transition-colors cursor-pointer"
-              title={tr('Care Team Chat', 'केयर टीम चैट')}
+              title={tr('Health Team Chat', 'हेल्थ टीम चैट')}
             >
               <MessageCircleMore className="w-4.5 h-4.5" />
               {chatUnread && (

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FileText, Stethoscope, Utensils, ClipboardList, File as FileIcon, Download, ShieldCheck } from 'lucide-react';
 import { AdminUserFile, UserPersonalizedPlan } from '../types';
 import { getMyAdminFiles, getMyPersonalizedPlan } from '../utils/supabase';
+import { openAttachment } from '../utils/openAttachment';
 
 interface MyCareFilesPanelProps {
   userId: string;
@@ -67,7 +68,7 @@ export const MyCareFilesPanel: React.FC<MyCareFilesPanelProps> = ({ userId, tr }
             </div>
             <div>
               <h3 className="text-base font-black text-zinc-950">{tr('Your Personalized Plan', 'आपकी व्यक्तिगत योजना')}</h3>
-              <p className="text-xs text-zinc-500 mt-0.5">{tr('Written for you by your care team.', 'आपके केयर टीम द्वारा आपके लिए लिखी गई।')}</p>
+              <p className="text-xs text-zinc-500 mt-0.5">{tr('Written for you by your health team.', 'आपकी हेल्थ टीम द्वारा आपके लिए लिखी गई।')}</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -88,7 +89,7 @@ export const MyCareFilesPanel: React.FC<MyCareFilesPanelProps> = ({ userId, tr }
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-black text-zinc-950">{tr('Files From Your Care Team', 'आपके केयर टीम की फाइलें')}</h3>
+              <h3 className="text-base font-black text-zinc-950">{tr('Files From Your Health Team', 'आपकी हेल्थ टीम की फाइलें')}</h3>
               <p className="text-xs text-zinc-500 mt-0.5">{tr('Only visible to you.', 'सिर्फ आपको दिखाई देता है।')}</p>
             </div>
           </div>
@@ -96,12 +97,11 @@ export const MyCareFilesPanel: React.FC<MyCareFilesPanelProps> = ({ userId, tr }
             {files.map((f) => {
               const meta = FILE_TYPE_META[f.fileType] || FILE_TYPE_META.other;
               return (
-                <a
+                <button
                   key={f.id}
-                  href={f.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-2xl bg-zinc-50 border border-zinc-200 hover:border-emerald-300 hover:bg-emerald-50/40 transition-colors"
+                  type="button"
+                  onClick={() => openAttachment(f.fileUrl, f.title)}
+                  className="w-full flex items-center gap-3 p-3 rounded-2xl bg-zinc-50 border border-zinc-200 hover:border-emerald-300 hover:bg-emerald-50/40 transition-colors cursor-pointer text-left"
                 >
                   <div className="w-9 h-9 rounded-xl bg-white border border-zinc-200 text-emerald-600 flex items-center justify-center shrink-0">
                     <meta.Icon className="w-4 h-4" />
@@ -115,7 +115,7 @@ export const MyCareFilesPanel: React.FC<MyCareFilesPanelProps> = ({ userId, tr }
                     </div>
                   </div>
                   <Download className="w-4 h-4 text-zinc-400 shrink-0" />
-                </a>
+                </button>
               );
             })}
           </div>

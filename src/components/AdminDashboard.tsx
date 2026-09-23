@@ -14,6 +14,7 @@ import {
 import { Logo } from './Logo';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { getReviews, getProducts } from '../utils/supabase';
+import { openAttachment } from '../utils/openAttachment';
 import { calculateNutritionPlan } from '../utils/calculator';
 
 const EMPTY_STATS: AdminStats = {
@@ -535,6 +536,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
         uid: p.user_id,
         email: p.email || '',
         displayName: p.full_name || p.email || 'Member',
+        phoneNumber: p.phone || undefined,
         avatarUrl: p.avatar_url || undefined,
         authProvider: 'email',
         supabaseSynced: true,
@@ -1380,13 +1382,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                       <div className="space-y-1.5">
                         {patientFiles.map((f) => (
                           <div key={f.id} className={`flex items-center gap-2.5 p-3 rounded-xl ${subCardClass}`}>
-                            <a href={f.file_url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 flex items-center gap-2.5 hover:text-emerald-700 cursor-pointer">
+                            <button type="button" onClick={() => openAttachment(f.file_url, f.title)} className="min-w-0 flex-1 flex items-center gap-2.5 hover:text-emerald-700 cursor-pointer text-left">
                               <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
                               <div className="min-w-0">
                                 <div className="text-xs font-bold text-zinc-900 truncate">{f.title}</div>
                                 <div className="text-[10px] text-zinc-400 capitalize">{(f.file_type || 'other').replace('_', ' ')} • {new Date(f.created_at).toLocaleDateString()}</div>
                               </div>
-                            </a>
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleDeletePatientFile(f.id)}
@@ -2086,21 +2088,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                   </div>
                 ) : (
                   <>
-                    <div className="p-4 border-b border-zinc-100 flex items-center justify-between gap-3">
-                      <div>
-                        <h4 className="text-sm font-black text-zinc-900">{selectedThread?.user_name || selectedThread?.user_email || 'Patient'}</h4>
-                        <p className={`text-[11px] font-semibold ${patientTyping ? 'text-emerald-600' : 'text-zinc-500'}`}>
+                    <div className="p-4 border-b border-zinc-100 flex flex-wrap items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-black text-zinc-900 truncate">{selectedThread?.user_name || selectedThread?.user_email || 'Patient'}</h4>
+                        <p className={`text-[11px] font-semibold truncate ${patientTyping ? 'text-emerald-600' : 'text-zinc-500'}`}>
                           {patientTyping ? 'typing...' : selectedThread?.user_email}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => { setIsFollowUpFormOpen((v) => !v); setFollowUpError(null); }}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black uppercase tracking-wide flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>Schedule Follow-up{followUps.filter((f) => !f.sent).length > 0 ? ` (${followUps.filter((f) => !f.sent).length})` : ''}</span>
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {selectedThread?.user_phone && (
+                          <a
+                            href={`tel:${String(selectedThread.user_phone).replace(/[^0-9+]/g, '')}`}
+                            title={`Call ${selectedThread.user_name || 'patient'} (${selectedThread.user_phone})`}
+                            className="w-8 h-8 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center cursor-pointer"
+                          >
+                            <PhoneCall className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { setIsFollowUpFormOpen((v) => !v); setFollowUpError(null); }}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black uppercase tracking-wide flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                        >
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Schedule Follow-up{followUps.filter((f) => !f.sent).length > 0 ? ` (${followUps.filter((f) => !f.sent).length})` : ''}</span>
+                        </button>
+                      </div>
                     </div>
 
                     {followUpSuccess && (
@@ -2146,6 +2159,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                             className="px-3 py-2 rounded-xl bg-white border border-zinc-200 text-xs font-bold focus:outline-none focus:border-emerald-600"
                           />
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const now = new Date(Date.now() + 60_000); // +1 min, so it's never already "in the past" by the time it's saved
+                            setFollowUpForm((p) => ({ ...p, date: now.toISOString().slice(0, 10), time: now.toTimeString().slice(0, 5) }));
+                          }}
+                          className="text-[10px] font-bold text-emerald-700 underline cursor-pointer"
+                        >
+                          Fill in "1 minute from now" (send almost immediately, to test)
+                        </button>
+                        <p className="text-[10px] text-zinc-400 -mt-1">
+                          The message only appears in the patient's chat at this exact date/time — it is not sent right away.
+                        </p>
                         <textarea
                           rows={2}
                           placeholder="Follow-up message to send automatically at that time..."
@@ -2179,10 +2205,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                             <div key={m.id} className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}>
                               <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${isAdmin ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-white border border-zinc-200 text-zinc-900 rounded-bl-md shadow-sm'}`}>
                                 {m.file_url && (
-                                  <a href={m.file_url} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-2 p-2 rounded-xl mb-1.5 ${isAdmin ? 'bg-white/15' : 'bg-zinc-50 border border-zinc-200'}`}>
-                                    <FileText className={`w-4 h-4 shrink-0 ${isAdmin ? 'text-white' : 'text-emerald-600'}`} />
-                                    <span className={`text-[11px] font-bold truncate ${isAdmin ? 'text-white' : 'text-zinc-700'}`}>{m.file_name || 'Attachment'}</span>
-                                  </a>
+                                  m.file_type?.startsWith('image/') ? (
+                                    <button type="button" onClick={() => openAttachment(m.file_url)} className="block mb-1.5 rounded-lg overflow-hidden cursor-pointer">
+                                      <img src={m.file_url} alt={m.file_name || ''} className="max-w-full max-h-64 w-auto object-cover" />
+                                    </button>
+                                  ) : (
+                                    <button type="button" onClick={() => openAttachment(m.file_url, m.file_name)} className={`flex items-center gap-2 p-2 rounded-xl mb-1.5 w-full cursor-pointer ${isAdmin ? 'bg-white/15' : 'bg-zinc-50 border border-zinc-200'}`}>
+                                      <FileText className={`w-4 h-4 shrink-0 ${isAdmin ? 'text-white' : 'text-emerald-600'}`} />
+                                      <span className={`text-[11px] font-bold truncate ${isAdmin ? 'text-white' : 'text-zinc-700'}`}>{m.file_name || 'Attachment'}</span>
+                                    </button>
+                                  )
                                 )}
                                 {m.body && <p className="text-sm leading-snug whitespace-pre-wrap break-words">{m.body}</p>}
                                 <div className={`text-[9px] mt-1 ${isAdmin ? 'text-white/70' : 'text-zinc-400'}`}>

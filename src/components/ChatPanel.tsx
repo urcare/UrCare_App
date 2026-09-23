@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Send, Paperclip, MessageCircleMore, RefreshCw, FileText, Phone, CheckCheck, X } from 'lucide-react';
 import { ChatMessage } from '../types';
 import { getMyChatThread, sendMyChatMessage, markMyChatRead, pingMyChatTyping, getCareTeamPhone } from '../utils/supabase';
+import { openAttachment } from '../utils/openAttachment';
 import { useLanguage } from '../context/LanguageContext';
 
 /** Three dots rising/brightening in a staggered wave — the universal
@@ -150,7 +151,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
           <MessageCircleMore className="w-5.5 h-5.5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[15px] font-bold truncate leading-tight">{tr('UrCare Care Team', 'UrCare केयर टीम')}</div>
+          <div className="text-[15px] font-bold truncate leading-tight">{tr('UrCare Health Team', 'UrCare हेल्थ टीम')}</div>
           <div className="text-[11px] text-white/75 leading-tight">
             {careTeamTyping ? tr('typing...', 'टाइप कर रहे हैं...') : tr('online', 'ऑनलाइन')}
           </div>
@@ -158,7 +159,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
         {carePhone && (
           <a
             href={`tel:${carePhone.replace(/[^0-9+]/g, '')}`}
-            title={tr('Call Care Team', 'केयर टीम को कॉल करें')}
+            title={tr('Call UrCare Health Team', 'यूआरकेयर हेल्थ टीम को कॉल करें')}
             className="p-2 rounded-full hover:bg-white/10 cursor-pointer shrink-0"
           >
             <Phone className="w-5 h-5" />
@@ -176,7 +177,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
           <div className="flex flex-col items-center justify-center h-full text-center gap-2 px-6">
             <MessageCircleMore className="w-10 h-10 text-zinc-400" />
             <p className="text-xs text-zinc-500 font-semibold">
-              {tr('No messages yet — say hello to your care team.', 'अभी तक कोई संदेश नहीं — अपने केयर टीम को नमस्ते कहें।')}
+              {tr('No messages yet — say hello to your health team.', 'अभी तक कोई संदेश नहीं — अपनी हेल्थ टीम को नमस्ते कहें।')}
             </p>
           </div>
         ) : (
@@ -203,19 +204,24 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
                       <div className="text-[11px] font-black text-emerald-700 mb-0.5">{m.senderName}</div>
                     )}
                     {m.fileUrl && (
-                      <a
-                        href={m.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-2 rounded-lg mb-1 bg-black/5"
-                      >
-                        {m.fileType?.startsWith('image/') ? (
-                          <img src={m.fileUrl} alt={m.fileName || ''} className="w-10 h-10 rounded-md object-cover shrink-0" />
-                        ) : (
+                      m.fileType?.startsWith('image/') ? (
+                        <button
+                          type="button"
+                          onClick={() => openAttachment(m.fileUrl!)}
+                          className="block mb-1 rounded-lg overflow-hidden cursor-pointer"
+                        >
+                          <img src={m.fileUrl} alt={m.fileName || ''} className="max-w-full max-h-64 w-auto object-cover" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => openAttachment(m.fileUrl!, m.fileName)}
+                          className="flex items-center gap-2 p-2 rounded-lg mb-1 bg-black/5 w-full cursor-pointer"
+                        >
                           <FileText className="w-5 h-5 shrink-0 text-emerald-700" />
-                        )}
-                        <span className="text-[11px] font-bold truncate text-zinc-700">{m.fileName || tr('Attachment', 'अटैचमेंट')}</span>
-                      </a>
+                          <span className="text-[11px] font-bold truncate text-zinc-700">{m.fileName || tr('Attachment', 'अटैचमेंट')}</span>
+                        </button>
+                      )
                     )}
                     {m.body && <p className="text-[14.5px] leading-snug whitespace-pre-wrap break-words">{m.body}</p>}
                     <div className="flex items-center justify-end gap-1 mt-0.5">
