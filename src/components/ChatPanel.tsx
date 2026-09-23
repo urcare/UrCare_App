@@ -4,14 +4,16 @@ import { ChatMessage } from '../types';
 import { getMyChatThread, sendMyChatMessage, markMyChatRead, pingMyChatTyping, getCareTeamPhone } from '../utils/supabase';
 import { useLanguage } from '../context/LanguageContext';
 
-/** Three bouncing dots — the universal "someone is typing" glyph. */
+/** Three dots rising/brightening in a staggered wave — the universal
+ *  "someone is typing" glyph, styled closer to WhatsApp's own than a flat
+ *  bounce (see the typing-wave keyframe in index.css). */
 const TypingDots: React.FC = () => (
-  <span className="inline-flex items-center gap-1">
+  <span className="inline-flex items-center gap-1.5">
     {[0, 1, 2].map((i) => (
       <span
         key={i}
-        className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce"
-        style={{ animationDelay: `${i * 0.15}s` }}
+        className="typing-dot w-2 h-2 rounded-full bg-emerald-600"
+        style={{ animationDelay: `${i * 0.2}s` }}
       />
     ))}
   </span>

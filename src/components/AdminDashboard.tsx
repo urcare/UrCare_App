@@ -2089,7 +2089,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                     <div className="p-4 border-b border-zinc-100 flex items-center justify-between gap-3">
                       <div>
                         <h4 className="text-sm font-black text-zinc-900">{selectedThread?.user_name || selectedThread?.user_email || 'Patient'}</h4>
-                        <p className="text-[11px] text-zinc-500">{selectedThread?.user_email}</p>
+                        <p className={`text-[11px] font-semibold ${patientTyping ? 'text-emerald-600' : 'text-zinc-500'}`}>
+                          {patientTyping ? 'typing...' : selectedThread?.user_email}
+                        </p>
                       </div>
                       <button
                         type="button"
@@ -2193,9 +2195,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                       )}
                       {patientTyping && (
                         <div className="flex justify-start">
-                          <div className="bg-white border border-zinc-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm flex items-center gap-1">
+                          <div className="bg-white border border-zinc-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm flex items-center gap-1.5">
                             {[0, 1, 2].map((i) => (
-                              <span key={i} className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                              <span key={i} className="typing-dot w-2 h-2 rounded-full bg-emerald-600" style={{ animationDelay: `${i * 0.2}s` }} />
                             ))}
                           </div>
                         </div>
