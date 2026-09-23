@@ -218,6 +218,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     upiId: 'urcare.official@okhdfcbank',
     payeeName: 'UrCare Health & Clinical Nutrition Inc.',
     merchantNote: 'Scan & Pay via any UPI App (GPay, PhonePe, Paytm, BHIM)',
+    careTeamPhone: '',
   });
   const [isUpdatingQr, setIsUpdatingQr] = useState(false);
   const [qrSuccessMessage, setQrSuccessMessage] = useState('');
@@ -604,6 +605,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
         setQrSettings({
           qrImageUrl: data.qr_image_url, upiId: data.upi_id || '',
           payeeName: data.payee_name || '', merchantNote: data.merchant_note || '',
+          careTeamPhone: data.care_team_phone || '',
         });
       }
     }).catch(() => {});
@@ -1943,6 +1945,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                       onChange={(e) => setQrSettings({ ...qrSettings, payeeName: e.target.value })}
                       className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-900 text-xs font-medium"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-700 mb-1">Care Team Phone (Chat call button)</label>
+                    <input
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={qrSettings.careTeamPhone}
+                      onChange={(e) => setQrSettings({ ...qrSettings, careTeamPhone: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-900 text-xs font-medium"
+                    />
+                    <p className="text-[10px] text-zinc-400 mt-1">Dialed when a patient taps the call icon in Care Team Chat. Leave blank to hide that button.</p>
                   </div>
 
                   {qrSuccessMessage && (

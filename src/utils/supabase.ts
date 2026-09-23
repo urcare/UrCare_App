@@ -954,6 +954,18 @@ export async function getMyQueueEntry(): Promise<{ entry: QueueEntry | null; pos
   }
 }
 
+/** The admin-set phone number Care Team Chat's call button dials — public,
+ *  no auth needed (same endpoint the UPI QR code itself already uses). */
+export async function getCareTeamPhone(): Promise<string | null> {
+  try {
+    const res = await fetch('/api/qr-settings');
+    const data = await res.json();
+    return data?.care_team_phone || null;
+  } catch {
+    return null;
+  }
+}
+
 // APP FEEDBACK — "is this app helping you / what's missing" (see
 // app_feedback in supabase/patches.sql). Written via the server.
 export async function submitAppFeedback(input: {

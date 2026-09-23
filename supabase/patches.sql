@@ -478,3 +478,9 @@ create index if not exists app_feedback_created_at_idx on public.app_feedback (c
 alter table public.app_feedback enable row level security;
 drop policy if exists "own app feedback select" on public.app_feedback;
 create policy "own app feedback select" on public.app_feedback for select using (auth.uid() = user_id);
+
+-- 18. CARE TEAM PHONE — a real, admin-set phone number the Call button
+--     inside Care Team Chat dials (tel: link). Stored on the existing
+--     qr_settings singleton row rather than a new table, since it's the
+--     same "one editable settings row" shape.
+alter table public.qr_settings add column if not exists care_team_phone text;

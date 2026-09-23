@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Send, Paperclip, MessageCircle, RefreshCw, FileText } from 'lucide-react';
+import { ArrowLeft, Send, Paperclip, MessageCircleMore, RefreshCw, FileText, Phone, CheckCheck, X } from 'lucide-react';
 import { ChatMessage } from '../types';
-import { getMyChatThread, sendMyChatMessage, markMyChatRead, pingMyChatTyping } from '../utils/supabase';
+import { getMyChatThread, sendMyChatMessage, markMyChatRead, pingMyChatTyping, getCareTeamPhone } from '../utils/supabase';
 import { useLanguage } from '../context/LanguageContext';
 
 /** Three bouncing dots — the universal "someone is typing" glyph. */
@@ -42,9 +42,12 @@ function formatDayLabel(iso: string, tr: (en: string, hi: string) => string): st
   return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/** A support-style chat with the admin/doctor team — not user-to-user.
- *  Polls every 4s while open (simple, no Supabase Realtime setup required)
- *  so a reply from the care team shows up without the user refreshing. */
+/** A support-style chat with the admin/doctor team — not user-to-user — laid
+ *  out as a true full-screen takeover with a WhatsApp-style look: dark-green
+ *  header, tan chat wallpaper, light-green outgoing bubbles / white incoming
+ *  ones, and a working call button that dials the admin-set Care Team phone
+ *  number. Polls every 2.5s while open (simple, no Supabase Realtime setup
+ *  required) so a reply — and the typing indicator — show up live. */
 export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
@@ -55,6 +58,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
   const [attachedFile, setAttachedFile] = useState<{ url: string; name: string; type: string } | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [careTeamTyping, setCareTeamTyping] = useState(false);
+  const [carePhone, setCarePhone] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastTypingPingRef = useRef(0);
@@ -71,6 +75,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
     if (!isOpen) return;
     load(true);
     markMyChatRead();
+    getCareTeamPhone().then(setCarePhone);
     // 2.5s — fast enough for the typing indicator to feel live without a
     // real Supabase Realtime subscription.
     const interval = setInterval(() => load(false), 2500);
@@ -125,104 +130,130 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full sm:max-w-md h-[88vh] sm:h-[80vh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#e5ddd5]">
+      {/* WhatsApp-style tan wallpaper — a very light repeating dot texture
+          instead of copying WhatsApp's own trademarked doodle graphic. */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-40"
+        style={{ backgroundImage: 'radial-gradient(circle, #d4cbc0 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+        aria-hidden="true"
+      />
 
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-zinc-100 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-              <MessageCircle className="w-4.5 h-4.5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-black truncate">{tr('Care Team Chat', 'केयर टीम चैट')}</div>
-              <div className="text-[11px] text-white/80">{tr('Message your doctor / care team', 'अपने डॉक्टर / केयर टीम को संदेश भेजें')}</div>
-            </div>
-          </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-white/15 cursor-pointer shrink-0">
-            <X className="w-4.5 h-4.5" />
-          </button>
+      {/* HEADER — WhatsApp's dark teal-green bar. */}
+      <div className="relative z-10 flex items-center gap-3 px-3 py-3 bg-[#075E54] text-white shrink-0 shadow-md">
+        <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-white/10 cursor-pointer shrink-0">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+          <MessageCircleMore className="w-5.5 h-5.5" />
         </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[15px] font-bold truncate leading-tight">{tr('UrCare Care Team', 'UrCare केयर टीम')}</div>
+          <div className="text-[11px] text-white/75 leading-tight">
+            {careTeamTyping ? tr('typing...', 'टाइप कर रहे हैं...') : tr('online', 'ऑनलाइन')}
+          </div>
+        </div>
+        {carePhone && (
+          <a
+            href={`tel:${carePhone.replace(/[^0-9+]/g, '')}`}
+            title={tr('Call Care Team', 'केयर टीम को कॉल करें')}
+            className="p-2 rounded-full hover:bg-white/10 cursor-pointer shrink-0"
+          >
+            <Phone className="w-5 h-5" />
+          </a>
+        )}
+      </div>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-zinc-50">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <RefreshCw className="w-5 h-5 text-zinc-300 animate-spin" />
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center gap-2 px-6">
-              <MessageCircle className="w-8 h-8 text-zinc-300" />
-              <p className="text-xs text-zinc-400 font-semibold">
-                {tr('No messages yet — say hello to your care team.', 'अभी तक कोई संदेश नहीं — अपने केयर टीम को नमस्ते कहें।')}
-              </p>
-            </div>
-          ) : (
-            messages.map((m, i) => {
-              const isUser = m.senderType === 'user';
-              const prev = messages[i - 1];
-              const showDay = !prev || formatDayLabel(prev.createdAt, tr) !== formatDayLabel(m.createdAt, tr);
-              return (
-                <React.Fragment key={m.id}>
-                  {showDay && (
-                    <div className="flex justify-center py-1">
-                      <span className="text-[10px] font-bold text-zinc-400 bg-zinc-200/60 px-2.5 py-1 rounded-full">
-                        {formatDayLabel(m.createdAt, tr)}
-                      </span>
-                    </div>
-                  )}
-                  <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 ${isUser ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-white border border-zinc-200 text-zinc-900 rounded-bl-md shadow-sm'}`}>
-                      {!isUser && m.senderName && (
-                        <div className="text-[10px] font-black text-emerald-600 mb-0.5">{m.senderName}</div>
-                      )}
-                      {m.fileUrl && (
-                        <a
-                          href={m.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`flex items-center gap-2 p-2 rounded-xl mb-1.5 ${isUser ? 'bg-white/15' : 'bg-zinc-50 border border-zinc-200'}`}
-                        >
-                          {m.fileType?.startsWith('image/') ? (
-                            <img src={m.fileUrl} alt={m.fileName || ''} className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                          ) : (
-                            <FileText className={`w-5 h-5 shrink-0 ${isUser ? 'text-white' : 'text-emerald-600'}`} />
-                          )}
-                          <span className={`text-[11px] font-bold truncate ${isUser ? 'text-white' : 'text-zinc-700'}`}>{m.fileName || tr('Attachment', 'अटैचमेंट')}</span>
-                        </a>
-                      )}
-                      {m.body && <p className="text-sm leading-snug whitespace-pre-wrap break-words">{m.body}</p>}
-                      <div className={`text-[9px] mt-1 ${isUser ? 'text-white/70' : 'text-zinc-400'}`}>{formatTime(m.createdAt)}</div>
+      {/* MESSAGE LIST */}
+      <div ref={scrollRef} className="relative z-10 flex-1 overflow-y-auto px-3 sm:px-6 md:px-16 lg:px-32 py-3 space-y-1.5">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <RefreshCw className="w-5 h-5 text-zinc-400 animate-spin" />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center gap-2 px-6">
+            <MessageCircleMore className="w-10 h-10 text-zinc-400" />
+            <p className="text-xs text-zinc-500 font-semibold">
+              {tr('No messages yet — say hello to your care team.', 'अभी तक कोई संदेश नहीं — अपने केयर टीम को नमस्ते कहें।')}
+            </p>
+          </div>
+        ) : (
+          messages.map((m, i) => {
+            const isUser = m.senderType === 'user';
+            const prev = messages[i - 1];
+            const showDay = !prev || formatDayLabel(prev.createdAt, tr) !== formatDayLabel(m.createdAt, tr);
+            return (
+              <React.Fragment key={m.id}>
+                {showDay && (
+                  <div className="flex justify-center py-2">
+                    <span className="text-[11px] font-bold text-zinc-600 bg-white/90 shadow-sm px-3 py-1 rounded-lg">
+                      {formatDayLabel(m.createdAt, tr)}
+                    </span>
+                  </div>
+                )}
+                <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`max-w-[82%] sm:max-w-[70%] px-2.5 pt-1.5 pb-1 rounded-lg shadow-sm ${
+                      isUser ? 'bg-[#dcf8c6] text-zinc-900 rounded-tr-none' : 'bg-white text-zinc-900 rounded-tl-none'
+                    }`}
+                  >
+                    {!isUser && m.senderName && (
+                      <div className="text-[11px] font-black text-emerald-700 mb-0.5">{m.senderName}</div>
+                    )}
+                    {m.fileUrl && (
+                      <a
+                        href={m.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2 rounded-lg mb-1 bg-black/5"
+                      >
+                        {m.fileType?.startsWith('image/') ? (
+                          <img src={m.fileUrl} alt={m.fileName || ''} className="w-10 h-10 rounded-md object-cover shrink-0" />
+                        ) : (
+                          <FileText className="w-5 h-5 shrink-0 text-emerald-700" />
+                        )}
+                        <span className="text-[11px] font-bold truncate text-zinc-700">{m.fileName || tr('Attachment', 'अटैचमेंट')}</span>
+                      </a>
+                    )}
+                    {m.body && <p className="text-[14.5px] leading-snug whitespace-pre-wrap break-words">{m.body}</p>}
+                    <div className="flex items-center justify-end gap-1 mt-0.5">
+                      <span className="text-[10px] text-zinc-500">{formatTime(m.createdAt)}</span>
+                      {isUser && <CheckCheck className="w-3.5 h-3.5 text-sky-500" />}
                     </div>
                   </div>
-                </React.Fragment>
-              );
-            })
-          )}
-          {careTeamTyping && (
-            <div className="flex justify-start">
-              <div className="bg-white border border-zinc-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
-                <TypingDots />
-              </div>
+                </div>
+              </React.Fragment>
+            );
+          })
+        )}
+        {careTeamTyping && (
+          <div className="flex justify-start">
+            <div className="bg-white rounded-lg rounded-tl-none px-3.5 py-3 shadow-sm">
+              <TypingDots />
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        <div className="p-3 border-t border-zinc-100 bg-white shrink-0 space-y-2">
-          {attachedFile && (
-            <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
-              <Paperclip className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate flex-1">{attachedFile.name}</span>
-              <button type="button" onClick={() => setAttachedFile(null)} className="shrink-0 cursor-pointer">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
+      {/* INPUT BAR */}
+      <div className="relative z-10 p-2 sm:p-3 bg-[#f0f0f0] shrink-0">
+        {attachedFile && (
+          <div className="flex items-center gap-2 p-2 mb-2 rounded-xl bg-white border border-zinc-200 text-xs font-bold text-emerald-700">
+            <Paperclip className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate flex-1">{attachedFile.name}</span>
+            <button type="button" onClick={() => setAttachedFile(null)} className="shrink-0 cursor-pointer text-zinc-400 hover:text-rose-500">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          <div className="flex-1 flex items-center gap-1.5 bg-white rounded-full px-2 py-1.5 shadow-sm min-w-0">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="shrink-0 w-10 h-10 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-500 flex items-center justify-center cursor-pointer"
+              className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-zinc-500 hover:bg-zinc-100 cursor-pointer"
             >
-              <Paperclip className="w-4.5 h-4.5" />
+              <Paperclip className="w-5 h-5" />
             </button>
             <input ref={fileInputRef} type="file" accept="image/*,application/pdf" onChange={handleFileChange} className="hidden" />
             <input
@@ -230,20 +261,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
               value={draft}
               onChange={(e) => handleDraftChange(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !isSending) handleSend(); }}
-              placeholder={tr('Type a message...', 'संदेश लिखें...')}
-              className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500"
+              placeholder={tr('Message', 'संदेश')}
+              className="flex-1 min-w-0 py-1.5 text-[15px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none bg-transparent"
             />
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={isSending || (!draft.trim() && !attachedFile)}
-              className="shrink-0 w-10 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white flex items-center justify-center cursor-pointer"
-            >
-              {isSending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </button>
           </div>
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={isSending || (!draft.trim() && !attachedFile)}
+            className="shrink-0 w-11 h-11 rounded-full bg-[#075E54] hover:bg-[#0a6b5f] disabled:opacity-40 text-white flex items-center justify-center cursor-pointer shadow-md"
+          >
+            {isSending ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 -ml-0.5" />}
+          </button>
         </div>
-
       </div>
     </div>
   );

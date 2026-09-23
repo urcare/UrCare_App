@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Bell, ChevronRight, FileText, BookOpen, Utensils, Sparkles, Leaf, MoreVertical,
-  Activity, Stethoscope, Droplets, Pill, GitCommit, MessageCircle,
+  Activity, Stethoscope, Droplets, Pill, GitCommit, MessageCircleMore,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, Prescription, MedicalReportAnalysis, DailyLog, ActivityLogEntry } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -390,12 +390,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <button
               type="button"
               onClick={() => { setChatUnread(false); setIsChatOpen(true); }}
-              className="relative w-9 h-9 rounded-full border border-zinc-200 bg-white flex items-center justify-center text-zinc-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors cursor-pointer"
+              className="relative w-9 h-9 rounded-full bg-emerald-600 hover:bg-emerald-500 shadow-sm flex items-center justify-center text-white transition-colors cursor-pointer"
               title={tr('Care Team Chat', 'केयर टीम चैट')}
             >
-              <MessageCircle className="w-4 h-4" />
+              <MessageCircleMore className="w-4.5 h-4.5" />
               {chatUnread && (
-                <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" />
+                <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-rose-500 border-2 border-white" />
               )}
             </button>
             <button

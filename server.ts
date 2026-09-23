@@ -2293,13 +2293,14 @@ app.get('/api/admin/qr-settings', requireAdmin(async (req, res) => {
 app.post('/api/admin/qr-settings', requireAdmin(async (req, res) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
-  const { qrImageUrl, upiId, payeeName, merchantNote } = req.body;
+  const { qrImageUrl, upiId, payeeName, merchantNote, careTeamPhone } = req.body;
   const { data, error } = await supabase.from('qr_settings').upsert({
     id: 'default',
     qr_image_url: qrImageUrl,
     upi_id: upiId,
     payee_name: payeeName,
     merchant_note: merchantNote,
+    care_team_phone: careTeamPhone,
     updated_at: new Date().toISOString(),
   }).select().single();
   if (error) return res.status(500).json({ error: error.message });
