@@ -862,28 +862,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     <div id="urcare-admin-dashboard" className="min-h-screen bg-[#F8FAFC] text-zinc-900 pb-16">
       
       {/* Top Navbar */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-4 sm:px-8 py-3.5 shadow-xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shadow-xs">
-              <ShieldCheck className="w-5 h-5" />
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-8 py-3 sm:py-3.5 shadow-xs">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shadow-xs shrink-0">
+              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-base font-black text-zinc-950">UrCare Admin</span>
-                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="text-sm sm:text-base font-black text-zinc-950 truncate">UrCare Admin</span>
+                <span className="hidden sm:inline text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
                   SUPER ADMIN
                 </span>
               </div>
-              <p className="text-[10px] text-zinc-500 font-medium">Dr. Arjun Mehta & Clinical Operations Portal</p>
+              <p className="hidden sm:block text-[10px] text-zinc-500 font-medium">Dr. Arjun Mehta & Clinical Operations Portal</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               type="button"
               onClick={handleAdminLogout}
-              className="px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-600 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-600 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Sign Out</span>
@@ -892,9 +892,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
             <button
               type="button"
               onClick={onExitAdmin}
-              className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+              className="px-2.5 sm:px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-sm transition-all cursor-pointer whitespace-nowrap"
             >
-              Back to User App
+              <span className="hidden sm:inline">Back to User App</span>
+              <span className="sm:hidden">Exit</span>
             </button>
           </div>
         </div>
@@ -902,13 +903,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
 
       {/* Main Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-8 py-6 space-y-6">
-        
+
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-zinc-200">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-zinc-200 -mx-4 px-4 sm:mx-0 sm:px-0">
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            className={`shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
               activeTab === 'overview' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
             }`}
           >
@@ -919,7 +920,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           <button
             type="button"
             onClick={() => { setActiveTab('patients'); loadRealPatient(); }}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            className={`shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
               activeTab === 'patients' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
             }`}
           >
@@ -930,7 +931,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           <button
             type="button"
             onClick={() => { setActiveTab('reports'); loadAllReports(); }}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            className={`shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
               activeTab === 'reports' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
             }`}
           >
@@ -941,7 +942,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           <button
             type="button"
             onClick={() => setActiveTab('orders')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            className={`shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
               activeTab === 'orders' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
             }`}
           >
@@ -952,7 +953,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           <button
             type="button"
             onClick={() => setActiveTab('products_qr')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            className={`shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
               activeTab === 'products_qr' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
             }`}
           >
@@ -963,7 +964,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           <button
             type="button"
             onClick={() => setActiveTab('reviews')}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            className={`shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
               activeTab === 'reviews' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
             }`}
           >
@@ -974,7 +975,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           <button
             type="button"
             onClick={() => { setActiveTab('messages'); loadChatThreads(); }}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            className={`shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
               activeTab === 'messages' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
             }`}
           >
@@ -985,7 +986,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           <button
             type="button"
             onClick={() => { setActiveTab('queue'); loadQueue(); }}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            className={`shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
               activeTab === 'queue' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
             }`}
           >
@@ -996,7 +997,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           <button
             type="button"
             onClick={() => { setActiveTab('feedback'); loadAppFeedback(); }}
-            className={`px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+            className={`shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
               activeTab === 'feedback' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
             }`}
           >
@@ -1143,7 +1144,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
         {/* Root-Cause Assessment, and issue a prescription directly to them.          */}
         {activeTab === 'patients' && (
           <div className="space-y-6 text-left">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-black text-zinc-950">Patients</h2>
                 <p className="text-xs text-zinc-500 mt-0.5">Every real signed-up account — pick one to view their profile and Root-Cause Assessment.</p>
@@ -1151,7 +1152,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
               <button
                 type="button"
                 onClick={loadPatientsList}
-                className="px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer"
+                className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Refresh List</span>
@@ -1672,7 +1673,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                       <span className="text-xs text-zinc-500 ml-2">({order.shippingAddress?.phone})</span>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       <span className="text-sm font-black text-zinc-900">₹{order.total}</span>
                       <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-700 font-bold border border-zinc-200 capitalize">
                         {order.paymentMethod === 'qr_upi' ? 'UPI QR' : 'Online Gateway'}
@@ -2145,7 +2146,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
 
                     {isFollowUpFormOpen && (
                       <div className={`m-4 p-4 rounded-2xl ${subCardClass} space-y-2.5`}>
-                        <div className="grid grid-cols-2 gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           <input
                             type="date"
                             value={followUpForm.date}
@@ -2281,7 +2282,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           const helpingCount = (k: string) => appFeedback.filter((f) => f.is_helping === k).length;
           return (
             <div className="space-y-6 text-left">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-black text-zinc-950">What Users Say About UrCare</h3>
                   <p className="text-xs text-zinc-500">Whether the app is helping them, and what they feel is missing.</p>
@@ -2289,7 +2290,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 <button
                   type="button"
                   onClick={loadAppFeedback}
-                  className="px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer"
+                  className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isLoadingFeedback ? 'animate-spin' : ''}`} />
                   <span>Refresh</span>
@@ -2351,7 +2352,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
         {/* TAB 7: CONSULTATION QUEUE */}
         {activeTab === 'queue' && (
           <div className="space-y-6 text-left">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-black text-zinc-950">Today's Consultation Queue</h3>
                 <p className="text-xs text-zinc-500">Real token numbers, reset fresh every day — call patients in as you're ready.</p>
@@ -2359,7 +2360,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
               <button
                 type="button"
                 onClick={loadQueue}
-                className="px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer"
+                className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoadingQueue ? 'animate-spin' : ''}`} />
                 <span>Refresh</span>
@@ -2817,7 +2818,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div>
                     <label className="block text-xs font-bold text-zinc-700 mb-1">Regular MRP (₹)</label>
                     <input
