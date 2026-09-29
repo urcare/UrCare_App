@@ -13,7 +13,8 @@ import { CompletionTicker, TickerItem } from './CompletionTicker';
 import { NotificationsPanel } from './NotificationsPanel';
 import { MyTimelinePanel, ACTION_META, CATEGORY_META, relativeTime } from './MyTimelinePanel';
 import { ChatPanel } from './ChatPanel';
-import { getDailyPlan, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog, getMyChatThread } from '../utils/supabase';
+import { TodaysExerciseCard } from './TodaysExerciseCard';
+import { getDailyPlan, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog, getMyChatThread, toggleDailyTask } from '../utils/supabase';
 import { toDateKey } from './DailyCalendar';
 
 // Hindi for the primary reversal-goal label used in the greeting subtitle —
@@ -328,6 +329,30 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nowTick is a deliberate re-run trigger, not a real input
   }, [timelineSections, nowTick]);
 
+  // The one exercise/movement step to feature on Home — same "current, else
+  // next upcoming" logic as `current`/`next` above, scoped to just the
+  // exercise-category steps from today's real plan (never invented).
+  const todaysExercise = useMemo(() => {
+    const exerciseSteps = timelineSections.filter((s) => categoryFor(s.title) === 'exercise');
+    if (exerciseSteps.length === 0) return null;
+    const sorted = [...exerciseSteps].sort((a, b) => labelMinutes(a.timeLabel || '') - labelMinutes(b.timeLabel || ''));
+    const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+    let cur: PlanSection | null = null;
+    let nxt: PlanSection | null = null;
+    for (const item of sorted) {
+      const mins = labelMinutes(item.timeLabel || '');
+      if (mins <= nowMinutes) cur = item;
+      else { nxt = item; break; }
+    }
+    return cur || nxt || sorted[0];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nowTick is a deliberate re-run trigger, not a real input
+  }, [timelineSections, nowTick]);
+
+  const handleMarkExerciseDone = () => {
+    if (!todaysExercise || !userId) return;
+    toggleDailyTask(userId, todayKey, todaysExercise.id).then(setCompletedToday);
+  };
+
   // Time-of-day greeting, and the same real condition-derived reversal focus
   // AccountPage leads with — reused here for the plan-continue card + the
   // greeting subtitle, so it never claims a condition the user doesn't have.
@@ -598,6 +623,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
           )}
         </motion.div>
+
+        {/* Today's Exercise — a featured video-led card for the day's one
+            exercise/movement step (if there is one), pulled straight off
+            the same real timeline as "Today's Plan" above. */}
+        {todaysExercise && (
+          <TodaysExerciseCard
+            step={todaysExercise}
+            isDone={!!completedToday[todaysExercise.id]}
+            onMarkDone={handleMarkExerciseDone}
+            tr={tr}
+          />
+        )}
 
         {/* Today's Health — a calm, continuously-scrolling stack of your
             real diabetes/reversal-focused stats (blood sugar, kidney
