@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, Prescription, MedicalReportAnalysis, DailyLog, ActivityLogEntry } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { RecommendationsView, REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL, labelMinutes } from './RecommendationsView';
+import { RecommendationsView, REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL, labelMinutes, categoryFor, STEP_CATEGORY_META, CATEGORY_GRADIENT } from './RecommendationsView';
 import { ReversalLibraryPanel, PlanSection } from './ReversalLibraryPanel';
 import { StreakWidget } from './StreakWidget';
 import { CompletionTicker, TickerItem } from './CompletionTicker';
@@ -545,9 +545,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 onClick={onOpenPlan}
                 className="w-full p-3.5 flex items-center gap-3 text-left cursor-pointer hover:bg-emerald-50/40 transition-colors"
               >
-                <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center shrink-0 ${completedToday[current.id] ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-emerald-400 text-emerald-500'}`}>
-                  <Utensils className="w-4 h-4" />
-                </div>
+                {(() => {
+                  const curCat = categoryFor(current.title);
+                  const CurIcon = STEP_CATEGORY_META[curCat].Icon;
+                  return (
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 shadow-sm bg-gradient-to-br ${CATEGORY_GRADIENT[curCat]} ${completedToday[current.id] ? 'ring-2 ring-emerald-400 ring-offset-2' : ''}`}>
+                      <CurIcon className="w-4.5 h-4.5 text-white" />
+                    </div>
+                  );
+                })()}
                 <div className="min-w-0 flex-1">
                   <div className="text-[11px] font-bold text-zinc-400">{tr('Next', 'अगला')}</div>
                   <div className="text-sm font-black text-zinc-950 truncate">{current.title}</div>
@@ -558,6 +564,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
               {next ? (
                 <div className="px-3.5 py-2.5 border-t border-zinc-100 bg-zinc-50/70 flex items-center gap-3">
+                  {(() => {
+                    const nextCat = categoryFor(next.title);
+                    const NextIcon = STEP_CATEGORY_META[nextCat].Icon;
+                    return (
+                      <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br ${CATEGORY_GRADIENT[nextCat]}`}>
+                        <NextIcon className="w-3.5 h-3.5 text-white" />
+                      </div>
+                    );
+                  })()}
                   <div className="min-w-0 flex-1">
                     <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide">{tr('Up next', 'इसके बाद')}</span>
                     <div className="text-xs font-bold text-zinc-700 truncate">{next.timeLabel} — {next.title}</div>

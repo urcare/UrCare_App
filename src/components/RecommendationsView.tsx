@@ -6,7 +6,7 @@ import {
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon, Edit3, AlertTriangle, Trash2,
   Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles, Utensils,
-  Pill, Dumbbell, Bath, BedDouble,
+  Pill, Dumbbell, Bath, BedDouble, Youtube,
 } from 'lucide-react';
 import { UserHealthProfile, Prescription, CustomPlanStep, FamilyMember } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -93,8 +93,8 @@ const PERIODS: { key: Period; label: string; range: string; Icon: typeof Sunrise
 // from its own title — adds a scannable "what kind of step is this" signal
 // (and, paired with computeDurationLabel below, roughly how long it takes)
 // without touching any of the actual herbal/medical content itself.
-type StepCategory = 'herbal' | 'exercise' | 'meal' | 'hygiene' | 'rest' | 'hydration' | 'other';
-const STEP_CATEGORY_META: Record<StepCategory, { Icon: typeof Pill; color: string; label: [string, string] }> = {
+export type StepCategory = 'herbal' | 'exercise' | 'meal' | 'hygiene' | 'rest' | 'hydration' | 'other';
+export const STEP_CATEGORY_META: Record<StepCategory, { Icon: typeof Pill; color: string; label: [string, string] }> = {
   herbal: { Icon: Pill, color: '#10b981', label: ['Herbal / Supplement', 'हर्बल / सप्लीमेंट'] },
   exercise: { Icon: Dumbbell, color: '#f97316', label: ['Exercise / Movement', 'व्यायाम / गतिविधि'] },
   meal: { Icon: Utensils, color: '#eab308', label: ['Meal', 'भोजन'] },
@@ -104,7 +104,30 @@ const STEP_CATEGORY_META: Record<StepCategory, { Icon: typeof Pill; color: strin
   other: { Icon: Clock, color: '#71717a', label: ['Step', 'कदम'] },
 };
 
-function categoryFor(title: string): StepCategory {
+/** A two-stop gradient per category — used for the bigger "poster" visuals
+ *  (hero card banner, Home's Today's Plan tile) so those read as a real
+ *  premium wellness-app visual instead of a flat icon chip. Kept as CSS
+ *  gradients (not hotlinked stock photos) so every card always renders
+ *  something polished, with zero dependency on an external image loading. */
+export const CATEGORY_GRADIENT: Record<StepCategory, string> = {
+  herbal: 'from-emerald-500 to-teal-600',
+  exercise: 'from-orange-500 to-red-600',
+  meal: 'from-amber-400 to-yellow-600',
+  hygiene: 'from-sky-500 to-blue-600',
+  rest: 'from-violet-500 to-indigo-600',
+  hydration: 'from-cyan-500 to-sky-600',
+  other: 'from-zinc-400 to-zinc-600',
+};
+
+/** A real, always-working YouTube search results link for a step's exact
+ *  title — the "Watch Video" action on exercise/movement steps, since we
+ *  can't host or generate a real demonstration video ourselves. Opens in a
+ *  new tab; YouTube's own search finds the best-matching real video. */
+export function youtubeSearchUrl(title: string): string {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} exercise how to`)}`;
+}
+
+export function categoryFor(title: string): StepCategory {
   const t = (title || '').toLowerCase();
   if (/herb|ayurvedic|churna|vati|guggulu|supplement|vitamin|medicine|reviv|glucolow/.test(t)) return 'herbal';
   if (/exercise|cardio|stretch|yoga|walk|movement|massage|pranayama|breathwork|abhyanga|strength|hiit/.test(t)) return 'exercise';
@@ -639,15 +662,28 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       {/* 2. RIGHT NOW — the single step whose time has arrived, enlarged and
           pinned to the top so there's nothing to scroll for. Swaps to the
           next step on its own the moment its time passes. */}
-      {heroInfo && (
-        <div className={`relative overflow-hidden rounded-3xl p-5 sm:p-7 ${isDark ? 'bg-zinc-950' : 'bg-white'} border-2 border-emerald-500/30 shadow-lg shadow-emerald-500/5`}>
-          <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-          <div className="relative space-y-3">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                {heroInfo.isUpcoming ? 'Coming Up' : 'Right Now'}
-              </span>
+      {heroInfo && (() => {
+        const heroCat = categoryFor(heroInfo.item.title);
+        const cat = STEP_CATEGORY_META[heroCat];
+        const CatIcon = cat.Icon;
+        const isExercise = heroCat === 'exercise';
+        return (
+        <div className={`relative overflow-hidden rounded-3xl ${isDark ? 'bg-zinc-950' : 'bg-white'} border-2 border-emerald-500/30 shadow-lg shadow-emerald-500/5`}>
+          {/* Poster banner — a big category-gradient visual up top, the
+              "professional, premium wellness app" treatment the plain
+              icon chip alone couldn't give it. */}
+          <div className={`relative h-20 sm:h-24 bg-gradient-to-br ${CATEGORY_GRADIENT[heroCat]} flex items-center px-5 sm:px-7 overflow-hidden`}>
+            <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white/15 blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-8 left-16 w-24 h-24 rounded-full bg-black/10 blur-2xl pointer-events-none" />
+            <CatIcon className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 w-16 h-16 sm:w-20 sm:h-20 text-white/20 rotate-[-8deg]" strokeWidth={1.25} />
+            <span className="relative inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-white bg-black/15 px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
+              {heroInfo.isUpcoming ? 'Coming Up' : 'Right Now'} · {tr(...cat.label)}
+            </span>
+          </div>
+
+          <div className="relative p-5 sm:p-7 space-y-3">
+            <div className="flex items-center justify-end gap-2 flex-wrap -mt-1">
               {heroInfo.item.timeLabel && (
                 <span className="text-xs font-black opacity-60">{durationLabelById.get(heroInfo.item.id) || heroInfo.item.timeLabel}</span>
               )}
@@ -670,15 +706,6 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               </button>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  {(() => {
-                    const cat = STEP_CATEGORY_META[categoryFor(heroInfo.item.title)];
-                    const CatIcon = cat.Icon;
-                    return (
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg shrink-0" style={{ background: `${cat.color}1a`, color: cat.color }} title={tr(...cat.label)}>
-                        <CatIcon className="w-3.5 h-3.5" />
-                      </span>
-                    );
-                  })()}
                   <h3 className={`text-lg sm:text-xl font-black break-words ${completedToday[heroInfo.item.id] ? 'text-emerald-600' : ''}`}>
                     {heroInfo.item.title}
                   </h3>
@@ -697,6 +724,17 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                     {heroInfo.item.verdictReason}
                   </p>
                 )}
+                {isExercise && (
+                  <a
+                    href={youtubeSearchUrl(heroInfo.item.title)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow-sm shadow-red-600/30 transition-colors"
+                  >
+                    <Youtube className="w-4 h-4" />
+                    {tr('Watch Exercise Video', 'व्यायाम वीडियो देखें')}
+                  </a>
+                )}
               </div>
             </div>
 
@@ -709,7 +747,8 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Whole-day progress — the reversal-focus tiles that used to live in
           this card moved to the Profile page (a static, condition-derived
@@ -944,11 +983,12 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                                       <span className="text-[10px] font-black text-emerald-500 shrink-0">{durationLabelById.get(section.id) || section.timeLabel}</span>
                                     )}
                                     {(() => {
-                                      const cat = STEP_CATEGORY_META[categoryFor(section.title)];
+                                      const sectionCat = categoryFor(section.title);
+                                      const cat = STEP_CATEGORY_META[sectionCat];
                                       const CatIcon = cat.Icon;
                                       return (
-                                        <span className="inline-flex items-center justify-center w-4.5 h-4.5 rounded shrink-0" style={{ background: `${cat.color}1a`, color: cat.color }} title={tr(...cat.label)}>
-                                          <CatIcon className="w-2.5 h-2.5" />
+                                        <span className={`inline-flex items-center justify-center w-5 h-5 rounded-md shrink-0 bg-gradient-to-br ${CATEGORY_GRADIENT[sectionCat]} text-white shadow-sm`} title={tr(...cat.label)}>
+                                          <CatIcon className="w-3 h-3" />
                                         </span>
                                       );
                                     })()}
@@ -990,6 +1030,18 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                                     {isRisky ? <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
                                     <span>{section.verdictReason}</span>
                                   </p>
+                                )}
+                                {categoryFor(section.title) === 'exercise' && (
+                                  <a
+                                    href={youtubeSearchUrl(section.title)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] font-black shadow-sm shadow-red-600/30 transition-colors"
+                                  >
+                                    <Youtube className="w-3.5 h-3.5" />
+                                    {tr('Watch Exercise Video', 'व्यायाम वीडियो देखें')}
+                                  </a>
                                 )}
                               </div>
                             )}
