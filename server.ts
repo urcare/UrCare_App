@@ -12,10 +12,11 @@ const app = express();
 const PORT = 3000;
 
 // Body parser middleware for large image payloads
-// 40mb — big enough for a short base64-encoded status video (~1.33x the raw
-// file size) without needing separate Storage-bucket upload plumbing.
-app.use(express.json({ limit: '40mb' }));
-app.use(express.urlencoded({ extended: true, limit: '40mb' }));
+// 150mb — big enough for a full-length base64-encoded status video (up to
+// ~100MB raw, ~1.33x as base64) without needing separate Storage-bucket
+// upload plumbing.
+app.use(express.json({ limit: '150mb' }));
+app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
 // Every AI call in this app goes through Groq's free tier (get a key at
 // https://console.groq.com/keys, then set GROQ_API_KEY in .env).

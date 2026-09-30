@@ -505,8 +505,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     const file = e.target.files?.[0];
     if (!file) return;
     const isVideo = file.type.startsWith('video/');
-    const maxSize = isVideo ? 20 * 1024 * 1024 : 10 * 1024 * 1024;
-    if (file.size > maxSize) { window.alert(`This ${isVideo ? 'video' : 'image'} is too large (max ${isVideo ? 20 : 10}MB).`); return; }
+    const maxSize = isVideo ? 100 * 1024 * 1024 : 25 * 1024 * 1024;
+    if (file.size > maxSize) { window.alert(`This ${isVideo ? 'video' : 'image'} is too large (max ${isVideo ? 100 : 25}MB).`); return; }
     const reader = new FileReader();
     reader.onload = () => {
       if (reader.result) setStatusMedia({ url: reader.result as string, name: file.name, type: isVideo ? 'video' : 'image' });
@@ -2368,7 +2368,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 <label className="flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-400 hover:border-emerald-300 hover:text-emerald-600 cursor-pointer transition-colors">
                   <Upload className="w-6 h-6" />
                   <span className="text-xs font-bold">Tap to choose an image or video</span>
-                  <span className="text-[10px] text-zinc-400">Images up to 10MB, videos up to 20MB</span>
+                  <span className="text-[10px] text-zinc-400">Images up to 25MB, videos up to 100MB</span>
                   <input type="file" accept="image/*,video/*" onChange={handleStatusMediaChange} className="hidden" />
                 </label>
               )}
