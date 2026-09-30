@@ -12,8 +12,10 @@ const app = express();
 const PORT = 3000;
 
 // Body parser middleware for large image payloads
-app.use(express.json({ limit: '25mb' }));
-app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+// 40mb — big enough for a short base64-encoded status video (~1.33x the raw
+// file size) without needing separate Storage-bucket upload plumbing.
+app.use(express.json({ limit: '40mb' }));
+app.use(express.urlencoded({ extended: true, limit: '40mb' }));
 
 // Every AI call in this app goes through Groq's free tier (get a key at
 // https://console.groq.com/keys, then set GROQ_API_KEY in .env).
@@ -2317,7 +2319,8 @@ app.post('/api/admin/qr-settings', requireAdmin(async (req, res) => {
 function mapCareTeamStatus(row: any) {
   return {
     id: row.id,
-    imageUrl: row.image_url,
+    mediaUrl: row.media_url,
+    mediaType: row.media_type || 'image',
     caption: row.caption,
     createdBy: row.created_by,
     createdAt: row.created_at,
@@ -2347,10 +2350,11 @@ app.get('/api/admin/status', requireAdmin(async (req, res) => {
 app.post('/api/admin/status', requireAdmin(async (req, res) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
-  const { imageUrl, caption } = req.body as { imageUrl?: string; caption?: string };
-  if (!imageUrl) return res.status(400).json({ error: 'An image is required.' });
+  const { mediaUrl, mediaType, caption } = req.body as { mediaUrl?: string; mediaType?: 'image' | 'video'; caption?: string };
+  if (!mediaUrl) return res.status(400).json({ error: 'An image or video is required.' });
   const { data, error } = await supabase.from('care_team_status').insert({
-    image_url: imageUrl,
+    media_url: mediaUrl,
+    media_type: mediaType === 'video' ? 'video' : 'image',
     caption: caption?.trim() || null,
     created_by: 'UrCare Health Team',
   }).select().single();

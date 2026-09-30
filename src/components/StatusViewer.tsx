@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Stethoscope } from 'lucide-react';
+import { X, Stethoscope, Volume2, VolumeX } from 'lucide-react';
 import { CareTeamStatus } from '../types';
 
-const SLIDE_MS = 5000;
+const IMAGE_SLIDE_MS = 5000;
 
 function timeAgo(iso: string, tr: (en: string, hi: string) => string): string {
   const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
@@ -20,30 +20,36 @@ interface StatusViewerProps {
 }
 
 /** A full-screen, WhatsApp-Status-style viewer — segmented auto-advancing
- *  progress bars, tap left/right to go back/forward, image + optional
- *  caption. Read-only (statuses are admin-posted only, see StatusRing). */
+ *  progress bars, tap left/right to go back/forward, image or video +
+ *  optional caption. Read-only (statuses are admin-posted only). Images
+ *  advance on a fixed timer; videos advance on their own real playback
+ *  progress/end instead of a guessed duration. */
 export const StatusViewer: React.FC<StatusViewerProps> = ({ statuses, startIndex = 0, onClose, tr }) => {
   const [index, setIndex] = useState(startIndex);
   const [progress, setProgress] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const current = statuses[index];
+  const isVideo = current?.mediaType === 'video';
 
   useEffect(() => {
     elapsedRef.current = 0;
     setProgress(0);
   }, [index]);
 
+  // Image timing — a fixed clock, same as a real WhatsApp photo status.
   useEffect(() => {
-    if (paused || !current) return;
+    if (paused || !current || isVideo) return;
     startRef.current = performance.now() - elapsedRef.current;
     const tick = (now: number) => {
       const elapsed = now - startRef.current;
       elapsedRef.current = elapsed;
-      const pct = Math.min(100, (elapsed / SLIDE_MS) * 100);
+      const pct = Math.min(100, (elapsed / IMAGE_SLIDE_MS) * 100);
       setProgress(pct);
       if (pct >= 100) {
         if (index < statuses.length - 1) setIndex((i) => i + 1);
@@ -55,7 +61,31 @@ export const StatusViewer: React.FC<StatusViewerProps> = ({ statuses, startIndex
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately re-runs on index/paused only
-  }, [index, paused, statuses.length]);
+  }, [index, paused, statuses.length, isVideo]);
+
+  // Video timing — driven by the video element's own real playback, not a
+  // guessed duration, so the progress bar always matches what's on screen.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!isVideo || !video) return;
+    if (paused) { video.pause(); return; }
+    video.currentTime = 0;
+    video.play().catch(() => {});
+    const onTimeUpdate = () => {
+      if (video.duration) setProgress(Math.min(100, (video.currentTime / video.duration) * 100));
+    };
+    const onEnded = () => {
+      if (index < statuses.length - 1) setIndex((i) => i + 1);
+      else onClose();
+    };
+    video.addEventListener('timeupdate', onTimeUpdate);
+    video.addEventListener('ended', onEnded);
+    return () => {
+      video.removeEventListener('timeupdate', onTimeUpdate);
+      video.removeEventListener('ended', onEnded);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately re-runs on index/paused only
+  }, [index, paused, isVideo, statuses.length]);
 
   if (!current) return null;
 
@@ -85,14 +115,34 @@ export const StatusViewer: React.FC<StatusViewerProps> = ({ statuses, startIndex
           <div className="text-white text-[13px] font-bold truncate">{current.createdBy || tr('UrCare Health Team', 'UrCare हेल्थ टीम')}</div>
           <div className="text-white/60 text-[11px]">{timeAgo(current.createdAt, tr)}</div>
         </div>
+        {isVideo && (
+          <button
+            type="button"
+            onClick={() => setIsMuted((m) => !m)}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white cursor-pointer shrink-0"
+          >
+            {isMuted ? <VolumeX className="w-4.5 h-4.5" /> : <Volume2 className="w-4.5 h-4.5" />}
+          </button>
+        )}
         <button type="button" onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 hover:text-white cursor-pointer shrink-0">
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Image + tap zones */}
+      {/* Media + tap zones */}
       <div className="relative flex-1 min-h-0 flex items-center justify-center overflow-hidden">
-        <img src={current.imageUrl} alt="" className="max-w-full max-h-full object-contain" />
+        {isVideo ? (
+          <video
+            key={current.id}
+            ref={videoRef}
+            src={current.mediaUrl}
+            muted={isMuted}
+            playsInline
+            className="max-w-full max-h-full object-contain"
+          />
+        ) : (
+          <img src={current.mediaUrl} alt="" className="max-w-full max-h-full object-contain" />
+        )}
         <button
           type="button"
           aria-label={tr('Previous', 'पिछला')}

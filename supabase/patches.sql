@@ -492,12 +492,24 @@ alter table public.qr_settings add column if not exists care_team_phone text;
 --     like a real WhatsApp status, via expires_at rather than a delete job.
 create table if not exists public.care_team_status (
   id uuid primary key default gen_random_uuid(),
-  image_url text not null,
+  media_url text,
+  media_type text not null default 'image', -- 'image' | 'video'
   caption text,
   created_by text,
   created_at timestamptz default now(),
   expires_at timestamptz not null default (now() + interval '24 hours')
 );
+-- Safe to run whether this table is brand new (nothing to do below) or was
+-- already created by an earlier version of this patch with an `image_url`
+-- column instead of `media_url` — renames it in place, no data loss.
+do $$
+begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'care_team_status' and column_name = 'image_url')
+     and not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'care_team_status' and column_name = 'media_url') then
+    alter table public.care_team_status rename column image_url to media_url;
+  end if;
+end $$;
+alter table public.care_team_status add column if not exists media_type text not null default 'image';
 create index if not exists care_team_status_expires_at_idx on public.care_team_status (expires_at desc);
 alter table public.care_team_status enable row level security;
 drop policy if exists "anyone signed in can read status" on public.care_team_status;

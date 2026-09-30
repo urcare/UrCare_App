@@ -684,7 +684,8 @@ export interface QueueEntry {
  *  supabase/patches.sql; expires 24h after posting. */
 export interface CareTeamStatus {
   id: string;
-  imageUrl: string;
+  mediaUrl: string;
+  mediaType: 'image' | 'video';
   caption: string | null;
   createdBy: string | null;
   createdAt: string;

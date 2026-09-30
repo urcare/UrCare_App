@@ -5,7 +5,7 @@ import {
   QrCode, Edit, ArrowRight, Lock, LogOut, Sparkles, Filter,
   Truck, Check, Stethoscope, Search, ExternalLink, RefreshCw, Upload, X,
   Zap, ChevronRight, HelpCircle, Save, Activity, HeartPulse, Trash2, Image as ImageIcon, Tag, Package,
-  User, Target, Flame, Droplets, Scale, Calendar, MessageCircle, Paperclip, Clock, Hash, PhoneCall, MessageSquareHeart,
+  User, Target, Flame, Droplets, Scale, Calendar, MessageCircle, Paperclip, Clock, Hash, PhoneCall, MessageSquareHeart, Play,
 } from 'lucide-react';
 import {
   AdminStats, MedicalReportAnalysis, Order, Prescription,
@@ -489,7 +489,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
 
   // ---- Care Team Status (WhatsApp-Status-style, admin-only posts) ----
   const [statusPosts, setStatusPosts] = useState<any[]>([]);
-  const [statusImage, setStatusImage] = useState<{ url: string; name: string } | null>(null);
+  const [statusMedia, setStatusMedia] = useState<{ url: string; name: string; type: 'image' | 'video' } | null>(null);
   const [statusCaption, setStatusCaption] = useState('');
   const [isPostingStatus, setIsPostingStatus] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -501,28 +501,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     }).catch(() => {});
   };
 
-  const handleStatusImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleStatusMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { window.alert('This image is too large (max 10MB).'); return; }
+    const isVideo = file.type.startsWith('video/');
+    const maxSize = isVideo ? 20 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) { window.alert(`This ${isVideo ? 'video' : 'image'} is too large (max ${isVideo ? 20 : 10}MB).`); return; }
     const reader = new FileReader();
     reader.onload = () => {
-      if (reader.result) setStatusImage({ url: reader.result as string, name: file.name });
+      if (reader.result) setStatusMedia({ url: reader.result as string, name: file.name, type: isVideo ? 'video' : 'image' });
     };
     reader.readAsDataURL(file);
   };
 
   const handlePostStatus = () => {
-    if (!adminToken || !statusImage) return;
+    if (!adminToken || !statusMedia) return;
     setIsPostingStatus(true);
     setStatusError(null);
     adminFetch(adminToken, '/api/admin/status', {
       method: 'POST',
-      body: JSON.stringify({ imageUrl: statusImage.url, caption: statusCaption.trim() || undefined }),
+      body: JSON.stringify({ mediaUrl: statusMedia.url, mediaType: statusMedia.type, caption: statusCaption.trim() || undefined }),
     }).then((res) => res.json()).then((data) => {
       if (!data?.status) { setStatusError(data?.error || 'Could not post this status.'); return; }
       setStatusPosts((prev) => [data.status, ...prev]);
-      setStatusImage(null);
+      setStatusMedia(null);
       setStatusCaption('');
     }).catch(() => setStatusError('Could not reach the server. Please try again.')).finally(() => setIsPostingStatus(false));
   };
@@ -2347,12 +2349,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 Visible to every patient for 24 hours, same as a WhatsApp status. Only you can post — patients can only view.
               </p>
 
-              {statusImage ? (
+              {statusMedia ? (
                 <div className="relative w-full max-w-xs mx-auto rounded-2xl overflow-hidden border border-zinc-200">
-                  <img src={statusImage.url} alt="" className="w-full aspect-[9/16] object-cover" />
+                  {statusMedia.type === 'video' ? (
+                    <video src={statusMedia.url} className="w-full aspect-[9/16] object-cover" controls muted />
+                  ) : (
+                    <img src={statusMedia.url} alt="" className="w-full aspect-[9/16] object-cover" />
+                  )}
                   <button
                     type="button"
-                    onClick={() => setStatusImage(null)}
+                    onClick={() => setStatusMedia(null)}
                     className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -2361,8 +2367,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
               ) : (
                 <label className="flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-400 hover:border-emerald-300 hover:text-emerald-600 cursor-pointer transition-colors">
                   <Upload className="w-6 h-6" />
-                  <span className="text-xs font-bold">Tap to choose an image</span>
-                  <input type="file" accept="image/*" onChange={handleStatusImageChange} className="hidden" />
+                  <span className="text-xs font-bold">Tap to choose an image or video</span>
+                  <span className="text-[10px] text-zinc-400">Images up to 10MB, videos up to 20MB</span>
+                  <input type="file" accept="image/*,video/*" onChange={handleStatusMediaChange} className="hidden" />
                 </label>
               )}
 
@@ -2378,7 +2385,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
 
               <button
                 type="button"
-                disabled={!statusImage || isPostingStatus}
+                disabled={!statusMedia || isPostingStatus}
                 onClick={handlePostStatus}
                 className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-sm font-black uppercase tracking-wide cursor-pointer flex items-center justify-center gap-2"
               >
@@ -2397,7 +2404,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                     const isExpired = new Date(s.expiresAt).getTime() < Date.now();
                     return (
                       <div key={s.id} className={`relative rounded-2xl overflow-hidden border ${isExpired ? 'border-zinc-200 opacity-50' : 'border-emerald-200'}`}>
-                        <img src={s.imageUrl} alt="" className="w-full aspect-[9/16] object-cover" />
+                        {s.mediaType === 'video' ? (
+                          <>
+                            <video src={s.mediaUrl} className="w-full aspect-[9/16] object-cover" muted />
+                            <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <span className="w-8 h-8 rounded-full bg-black/40 flex items-center justify-center">
+                                <Play className="w-4 h-4 text-white ml-0.5" fill="white" />
+                              </span>
+                            </span>
+                          </>
+                        ) : (
+                          <img src={s.mediaUrl} alt="" className="w-full aspect-[9/16] object-cover" />
+                        )}
                         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
                           <span className="text-[9px] font-bold text-white">
                             {isExpired ? 'Expired' : new Date(s.createdAt).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
