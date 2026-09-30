@@ -522,9 +522,13 @@ create policy "anyone signed in can read status" on public.care_team_status for 
 --     JSON request body was the real cause of "posting a large video is
 --     very slow". Public read (status media isn't sensitive); only the
 --     server ever writes to it.
-insert into storage.buckets (id, name, public)
-values ('status-media', 'status-media', true)
-on conflict (id) do nothing;
+--     file_size_limit is set explicitly (100MB, matching the server's own
+--     multer limit) — a bucket created via SQL rather than the dashboard
+--     defaults this to a much smaller size, which is what was causing
+--     "The object exceeded the maximum allowed size" on real uploads.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('status-media', 'status-media', true, 104857600)
+on conflict (id) do update set public = true, file_size_limit = 104857600;
 
 drop policy if exists "public read status media" on storage.objects;
 create policy "public read status media" on storage.objects for select
