@@ -16,7 +16,6 @@ import { PlanSection } from './ReversalLibraryPanel';
 import { WeeklyUpdatesPanel } from './WeeklyUpdatesPanel';
 import { FamilyViewSwitcher } from './FamilyViewSwitcher';
 import { unifiedProgramDay } from '../utils/programWeek';
-import { youtubeSearchUrl, youtubeSearchEmbedUrl } from '../utils/youtube';
 import { ExerciseVideoModal } from './ExerciseVideoModal';
 import {
   getDailyPlan, getDailyLog, getTaskCompletion,

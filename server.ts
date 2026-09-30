@@ -2322,6 +2322,46 @@ app.post('/api/admin/qr-settings', requireAdmin(async (req, res) => {
   res.json({ success: true, qrSettings: data });
 }));
 
+// ---- YouTube video resolution (for the in-app exercise video player) ----
+//
+// The embedded player needs one real, specific video id per exercise title
+// to actually play — an earlier attempt embedded a live YouTube SEARCH
+// ("listType=search") instead, since there was no API key to resolve a
+// real id, but YouTube has since dropped support for that embed mode
+// entirely (it now just shows "This video is unavailable"). This calls the
+// real YouTube Data API v3 search endpoint to find one, gated behind an
+// optional YOUTUBE_API_KEY (free tier: https://console.cloud.google.com/
+// — enable "YouTube Data API v3", create an API key). Without a key set,
+// this returns { videoId: null } and the client falls back to a plain
+// "Open in YouTube" link instead of a broken embed.
+const youtubeVideoIdCache = new Map<string, { videoId: string | null; cachedAt: number }>();
+const YOUTUBE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // a day — exercise titles recur daily, and video results don't change minute to minute
+
+app.get('/api/youtube-search', requireUser(async (req, res) => {
+  const query = String(req.query.q || '').trim();
+  if (!query) return res.status(400).json({ error: 'A search query is required.' });
+
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) return res.json({ videoId: null });
+
+  const cached = youtubeVideoIdCache.get(query);
+  if (cached && Date.now() - cached.cachedAt < YOUTUBE_CACHE_TTL_MS) {
+    return res.json({ videoId: cached.videoId });
+  }
+
+  try {
+    const searchQuery = `${query} exercise how to`;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&safeSearch=strict&q=${encodeURIComponent(searchQuery)}&key=${apiKey}`;
+    const response = await fetch(url);
+    const data: any = await response.json();
+    const videoId: string | null = data?.items?.[0]?.id?.videoId || null;
+    youtubeVideoIdCache.set(query, { videoId, cachedAt: Date.now() });
+    res.json({ videoId });
+  } catch (error: any) {
+    res.json({ videoId: null });
+  }
+}));
+
 // ---- Care Team Status (WhatsApp-Status-style, admin-posted only) ----
 
 function mapCareTeamStatus(row: any) {
