@@ -484,3 +484,21 @@ create policy "own app feedback select" on public.app_feedback for select using 
 --     qr_settings singleton row rather than a new table, since it's the
 --     same "one editable settings row" shape.
 alter table public.qr_settings add column if not exists care_team_phone text;
+
+-- 19. CARE TEAM STATUS — a WhatsApp-Status-style feed the admin/doctor posts
+--     to (image + optional caption), visible to every user, read-only for
+--     them (no user-to-user or user-posted statuses — admin-only, same
+--     "user <-> admin, never user <-> user" rule as chat). Expires after 24h
+--     like a real WhatsApp status, via expires_at rather than a delete job.
+create table if not exists public.care_team_status (
+  id uuid primary key default gen_random_uuid(),
+  image_url text not null,
+  caption text,
+  created_by text,
+  created_at timestamptz default now(),
+  expires_at timestamptz not null default (now() + interval '24 hours')
+);
+create index if not exists care_team_status_expires_at_idx on public.care_team_status (expires_at desc);
+alter table public.care_team_status enable row level security;
+drop policy if exists "anyone signed in can read status" on public.care_team_status;
+create policy "anyone signed in can read status" on public.care_team_status for select using (auth.role() = 'authenticated');

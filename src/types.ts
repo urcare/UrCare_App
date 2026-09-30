@@ -678,6 +678,19 @@ export interface QueueEntry {
   userEmail?: string | null;
 }
 
+/** A WhatsApp-Status-style post from the admin/doctor — image + optional
+ *  caption, visible to every user, read-only for them. Admin-only, same as
+ *  everything else in Care Team Chat. See care_team_status in
+ *  supabase/patches.sql; expires 24h after posting. */
+export interface CareTeamStatus {
+  id: string;
+  imageUrl: string;
+  caption: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
 export interface FeedbackSubmission {
   id: string;
   userId: string;

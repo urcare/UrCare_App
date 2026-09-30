@@ -4,7 +4,7 @@ import {
   Bell, ChevronRight, FileText, BookOpen, Utensils, Sparkles, Leaf, MoreVertical,
   Activity, Stethoscope, Droplets, Pill, GitCommit, MessageCircleMore,
 } from 'lucide-react';
-import { UserHealthProfile, UserAccount, Prescription, MedicalReportAnalysis, DailyLog, ActivityLogEntry } from '../types';
+import { UserHealthProfile, UserAccount, Prescription, MedicalReportAnalysis, DailyLog, ActivityLogEntry, CareTeamStatus } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { RecommendationsView, REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL, labelMinutes, categoryFor, STEP_CATEGORY_META, CATEGORY_GRADIENT } from './RecommendationsView';
 import { ReversalLibraryPanel, PlanSection } from './ReversalLibraryPanel';
@@ -14,7 +14,8 @@ import { NotificationsPanel } from './NotificationsPanel';
 import { MyTimelinePanel, ACTION_META, CATEGORY_META, relativeTime } from './MyTimelinePanel';
 import { ChatPanel } from './ChatPanel';
 import { TodaysExerciseCard } from './TodaysExerciseCard';
-import { getDailyPlan, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog, getMyChatThread, toggleDailyTask } from '../utils/supabase';
+import { StatusViewer } from './StatusViewer';
+import { getDailyPlan, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog, getMyChatThread, toggleDailyTask, getActiveStatuses } from '../utils/supabase';
 import { toDateKey } from './DailyCalendar';
 
 // Hindi for the primary reversal-goal label used in the greeting subtitle —
@@ -107,6 +108,24 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   // Care Team Chat — see ChatPanel.
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatUnread, setChatUnread] = useState(false);
+  // Care Team Status — a WhatsApp-Status-style feed, admin-posted only (see
+  // StatusViewer). "Seen" is tracked per-device via localStorage, same as
+  // any other purely-cosmetic per-viewer convenience — it never needs to be
+  // shared across devices or read back by anyone else.
+  const [statuses, setStatuses] = useState<CareTeamStatus[]>([]);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [lastSeenStatusAt, setLastSeenStatusAt] = useState<string | null>(() => {
+    try { return localStorage.getItem('urcare-status-last-seen'); } catch { return null; }
+  });
+  useEffect(() => { getActiveStatuses().then(setStatuses); }, []);
+  const hasUnseenStatus = statuses.some((s) => !lastSeenStatusAt || new Date(s.createdAt).getTime() > new Date(lastSeenStatusAt).getTime());
+  const handleCloseStatusViewer = () => {
+    setIsStatusOpen(false);
+    const latest = statuses[statuses.length - 1]?.createdAt;
+    if (!latest) return;
+    try { localStorage.setItem('urcare-status-last-seen', latest); } catch { /* per-viewer convenience only */ }
+    setLastSeenStatusAt(latest);
+  };
   // My Timeline — a real GitHub-commit-style audit trail of this user's own
   // actions (upload/edit/update/delete); see MyTimelinePanel/logActivity.
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
@@ -412,6 +431,19 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             <StreakWidget profile={profile} />
+            {statuses.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsStatusOpen(true)}
+                className="relative w-9 h-9 rounded-full flex items-center justify-center cursor-pointer shrink-0"
+                title={tr('Health Team Status', 'हेल्थ टीम स्टेटस')}
+              >
+                <span className={`absolute inset-0 rounded-full ${hasUnseenStatus ? 'bg-gradient-to-tr from-amber-400 via-rose-500 to-emerald-500' : 'bg-zinc-300'}`} />
+                <span className="absolute inset-0.5 rounded-full bg-white flex items-center justify-center">
+                  <Stethoscope className="w-4 h-4 text-emerald-600" />
+                </span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => { setChatUnread(false); setIsChatOpen(true); }}
@@ -776,6 +808,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       />
 
       <ChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+
+      {isStatusOpen && statuses.length > 0 && (
+        <StatusViewer statuses={statuses} onClose={handleCloseStatusViewer} tr={tr} />
+      )}
     </div>
   );
 };

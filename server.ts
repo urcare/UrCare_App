@@ -2312,6 +2312,60 @@ app.post('/api/admin/qr-settings', requireAdmin(async (req, res) => {
   res.json({ success: true, qrSettings: data });
 }));
 
+// ---- Care Team Status (WhatsApp-Status-style, admin-posted only) ----
+
+function mapCareTeamStatus(row: any) {
+  return {
+    id: row.id,
+    imageUrl: row.image_url,
+    caption: row.caption,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+  };
+}
+
+// User-facing — only ever the currently active (unexpired) statuses, oldest
+// first so a viewer plays through them in the order they were posted.
+app.get('/api/status', requireUser(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase
+    .from('care_team_status').select('*').gt('expires_at', new Date().toISOString()).order('created_at', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ statuses: (data || []).map(mapCareTeamStatus) });
+}));
+
+app.get('/api/admin/status', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase.from('care_team_status').select('*').order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ statuses: (data || []).map(mapCareTeamStatus) });
+}));
+
+app.post('/api/admin/status', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { imageUrl, caption } = req.body as { imageUrl?: string; caption?: string };
+  if (!imageUrl) return res.status(400).json({ error: 'An image is required.' });
+  const { data, error } = await supabase.from('care_team_status').insert({
+    image_url: imageUrl,
+    caption: caption?.trim() || null,
+    created_by: 'UrCare Health Team',
+  }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, status: mapCareTeamStatus(data) });
+}));
+
+app.delete('/api/admin/status/:id', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { error } = await supabase.from('care_team_status').delete().eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+}));
+
 // ---- Doctors (admin-managed directory) ----
 app.get('/api/admin/doctors', requireAdmin(async (req, res) => {
   const supabase = getSupabaseAdmin();

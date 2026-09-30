@@ -7,7 +7,7 @@ import {
   FeedbackSubmission, Order, Prescription, DoctorContact,
   MedicalReportAnalysis, Product, UserReview, CalculatedPlan,
   GoalType, GenderType, ActivityLevel, GoalPace, AppNotification, ActivityLogEntry, CustomPlanStep,
-  AdminUserFile, UserPersonalizedPlan, FamilyMember, ChatThread, ChatMessage, QueueEntry,
+  AdminUserFile, UserPersonalizedPlan, FamilyMember, ChatThread, ChatMessage, QueueEntry, CareTeamStatus,
 } from '../types';
 import { calculateNutritionPlan } from './calculator';
 
@@ -963,6 +963,19 @@ export async function getCareTeamPhone(): Promise<string | null> {
     return data?.care_team_phone || null;
   } catch {
     return null;
+  }
+}
+
+// CARE TEAM STATUS — WhatsApp-Status-style, admin-posted only (see
+// care_team_status in supabase/patches.sql). Read-only for users.
+export async function getActiveStatuses(): Promise<CareTeamStatus[]> {
+  try {
+    const res = await authedFetch('/api/status');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data?.statuses) ? data.statuses : [];
+  } catch {
+    return [];
   }
 }
 

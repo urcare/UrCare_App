@@ -48,7 +48,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'patients' | 'reports' | 'orders' | 'products_qr' | 'reviews' | 'messages' | 'queue' | 'feedback'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'patients' | 'reports' | 'orders' | 'products_qr' | 'reviews' | 'messages' | 'status' | 'queue' | 'feedback'>('overview');
 
   // Stats & Data — all real, fetched from Supabase via the server once logged in.
   const [stats, setStats] = useState<AdminStats>(EMPTY_STATS);
@@ -484,6 +484,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     if (!adminToken) return;
     adminFetch(adminToken, `/api/admin/chat/follow-ups/${id}`, { method: 'DELETE' }).then(() => {
       setFollowUps((prev) => prev.filter((f) => f.id !== id));
+    }).catch(() => {});
+  };
+
+  // ---- Care Team Status (WhatsApp-Status-style, admin-only posts) ----
+  const [statusPosts, setStatusPosts] = useState<any[]>([]);
+  const [statusImage, setStatusImage] = useState<{ url: string; name: string } | null>(null);
+  const [statusCaption, setStatusCaption] = useState('');
+  const [isPostingStatus, setIsPostingStatus] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  const loadStatusPosts = () => {
+    if (!adminToken) return;
+    adminFetch(adminToken, '/api/admin/status').then((res) => res.json()).then((data) => {
+      if (Array.isArray(data?.statuses)) setStatusPosts(data.statuses);
+    }).catch(() => {});
+  };
+
+  const handleStatusImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { window.alert('This image is too large (max 10MB).'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result) setStatusImage({ url: reader.result as string, name: file.name });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePostStatus = () => {
+    if (!adminToken || !statusImage) return;
+    setIsPostingStatus(true);
+    setStatusError(null);
+    adminFetch(adminToken, '/api/admin/status', {
+      method: 'POST',
+      body: JSON.stringify({ imageUrl: statusImage.url, caption: statusCaption.trim() || undefined }),
+    }).then((res) => res.json()).then((data) => {
+      if (!data?.status) { setStatusError(data?.error || 'Could not post this status.'); return; }
+      setStatusPosts((prev) => [data.status, ...prev]);
+      setStatusImage(null);
+      setStatusCaption('');
+    }).catch(() => setStatusError('Could not reach the server. Please try again.')).finally(() => setIsPostingStatus(false));
+  };
+
+  const handleDeleteStatus = (id: string) => {
+    if (!adminToken) return;
+    adminFetch(adminToken, `/api/admin/status/${id}`, { method: 'DELETE' }).then(() => {
+      setStatusPosts((prev) => prev.filter((s) => s.id !== id));
     }).catch(() => {});
   };
 
@@ -981,6 +1028,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           >
             <MessageCircle className="w-4 h-4" />
             <span>Messages{chatThreads.filter((t) => t.unread_by_admin).length > 0 ? ` (${chatThreads.filter((t) => t.unread_by_admin).length})` : ''}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('status'); loadStatusPosts(); }}
+            className={`shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
+              activeTab === 'status' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+            }`}
+          >
+            <Stethoscope className="w-4 h-4" />
+            <span>Status{statusPosts.length > 0 ? ` (${statusPosts.length})` : ''}</span>
           </button>
 
           <button
@@ -2274,6 +2332,92 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
             </div>
           );
         })()}
+
+        {/* TAB: CARE TEAM STATUS — WhatsApp-Status-style, admin-only posts
+            visible to every user (read-only for them). See StatusViewer.tsx
+            and StatusRing on the user's Home screen. */}
+        {activeTab === 'status' && (
+          <div className="space-y-5">
+            <div className={`p-4 sm:p-6 rounded-3xl ${cardClass} space-y-4`}>
+              <div className="flex items-center gap-2 text-emerald-600">
+                <Stethoscope className="w-5 h-5 shrink-0" />
+                <h3 className="text-sm sm:text-base font-black tracking-tight">Post a New Status</h3>
+              </div>
+              <p className="text-xs text-zinc-500">
+                Visible to every patient for 24 hours, same as a WhatsApp status. Only you can post — patients can only view.
+              </p>
+
+              {statusImage ? (
+                <div className="relative w-full max-w-xs mx-auto rounded-2xl overflow-hidden border border-zinc-200">
+                  <img src={statusImage.url} alt="" className="w-full aspect-[9/16] object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setStatusImage(null)}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-400 hover:border-emerald-300 hover:text-emerald-600 cursor-pointer transition-colors">
+                  <Upload className="w-6 h-6" />
+                  <span className="text-xs font-bold">Tap to choose an image</span>
+                  <input type="file" accept="image/*" onChange={handleStatusImageChange} className="hidden" />
+                </label>
+              )}
+
+              <textarea
+                rows={2}
+                placeholder="Caption (optional)…"
+                value={statusCaption}
+                onChange={(e) => setStatusCaption(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-sm focus:outline-none focus:border-emerald-600 resize-none"
+              />
+
+              {statusError && <p className="text-xs font-bold text-rose-600">{statusError}</p>}
+
+              <button
+                type="button"
+                disabled={!statusImage || isPostingStatus}
+                onClick={handlePostStatus}
+                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-sm font-black uppercase tracking-wide cursor-pointer flex items-center justify-center gap-2"
+              >
+                {isPostingStatus ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Stethoscope className="w-4 h-4" />}
+                {isPostingStatus ? 'Posting…' : 'Post Status'}
+              </button>
+            </div>
+
+            <div className={`p-4 sm:p-6 rounded-3xl ${cardClass} space-y-4`}>
+              <h3 className="text-sm font-black text-zinc-900">Active & Recent Statuses</h3>
+              {statusPosts.length === 0 ? (
+                <p className="text-xs text-zinc-500">No statuses posted yet.</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {statusPosts.map((s) => {
+                    const isExpired = new Date(s.expiresAt).getTime() < Date.now();
+                    return (
+                      <div key={s.id} className={`relative rounded-2xl overflow-hidden border ${isExpired ? 'border-zinc-200 opacity-50' : 'border-emerald-200'}`}>
+                        <img src={s.imageUrl} alt="" className="w-full aspect-[9/16] object-cover" />
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                          <span className="text-[9px] font-bold text-white">
+                            {isExpired ? 'Expired' : new Date(s.createdAt).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteStatus(s.id)}
+                          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 hover:bg-rose-600 text-white flex items-center justify-center cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* TAB 8: APP FEEDBACK */}
         {activeTab === 'feedback' && (() => {
