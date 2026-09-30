@@ -77,10 +77,18 @@ export async function compressVideoIfNeeded(file: File, onProgress?: (ratio: num
   const outputName = 'output.mp4';
   try {
     await ffmpeg.writeFile(inputName, await fetchFile(file));
+    // 480p + 'ultrafast' — this runs on ffmpeg.wasm's single-threaded core
+    // (see getFFmpeg's comment on why), so encode speed is genuinely CPU-
+    // bound with no parallelism to lean on. Resolution is the single
+    // biggest speed lever there (encode time roughly tracks pixel count —
+    // 480p is ~2.25x fewer pixels than 720p), and 'ultrafast' trades some
+    // compression efficiency for real wall-clock time — both reasonable
+    // trades for a status video that's only ever viewed small on a phone
+    // and expires in 24h anyway.
     await ffmpeg.exec([
       '-i', inputName,
-      '-vf', "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease",
-      '-c:v', 'libx264', '-crf', '28', '-preset', 'veryfast',
+      '-vf', "scale='min(854,iw)':'min(480,ih)':force_original_aspect_ratio=decrease",
+      '-c:v', 'libx264', '-crf', '30', '-preset', 'ultrafast',
       '-c:a', 'aac', '-b:a', '96k',
       '-movflags', '+faststart',
       outputName,
