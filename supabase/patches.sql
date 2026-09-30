@@ -514,3 +514,18 @@ create index if not exists care_team_status_expires_at_idx on public.care_team_s
 alter table public.care_team_status enable row level security;
 drop policy if exists "anyone signed in can read status" on public.care_team_status;
 create policy "anyone signed in can read status" on public.care_team_status for select using (auth.role() = 'authenticated');
+
+-- 20. STATUS MEDIA STORAGE BUCKET — Care Team Status images/videos now
+--     upload as real binary files (via the server's multipart endpoint,
+--     using the service_role key, which bypasses RLS) instead of giant
+--     base64 text blobs in the database — a base64 video inside one huge
+--     JSON request body was the real cause of "posting a large video is
+--     very slow". Public read (status media isn't sensitive); only the
+--     server ever writes to it.
+insert into storage.buckets (id, name, public)
+values ('status-media', 'status-media', true)
+on conflict (id) do nothing;
+
+drop policy if exists "public read status media" on storage.objects;
+create policy "public read status media" on storage.objects for select
+  using (bucket_id = 'status-media');

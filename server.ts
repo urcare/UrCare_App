@@ -3,6 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import Groq from 'groq-sdk';
+import multer from 'multer';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createServer as createViteServer } from 'vite';
 
@@ -11,12 +12,18 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-// Body parser middleware for large image payloads
-// 150mb — big enough for a full-length base64-encoded status video (up to
-// ~100MB raw, ~1.33x as base64) without needing separate Storage-bucket
-// upload plumbing.
-app.use(express.json({ limit: '150mb' }));
-app.use(express.urlencoded({ extended: true, limit: '150mb' }));
+// Body parser middleware for base64-data-URL payloads (chat/report/plan
+// attachments elsewhere in the app — all well under this). Large media
+// (Care Team Status images/videos) uploads as real binary via multer +
+// Supabase Storage instead (see /api/admin/status below), not through this
+// JSON body parser, so this limit stays modest.
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+
+// Real binary file uploads (currently: Care Team Status media) — kept in
+// memory just long enough to stream straight into Supabase Storage, never
+// written to local disk.
+const uploadMedia = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
 // Every AI call in this app goes through Groq's free tier (get a key at
 // https://console.groq.com/keys, then set GROQ_API_KEY in .env).
@@ -2348,15 +2355,31 @@ app.get('/api/admin/status', requireAdmin(async (req, res) => {
   res.json({ statuses: (data || []).map(mapCareTeamStatus) });
 }));
 
-app.post('/api/admin/status', requireAdmin(async (req, res) => {
+// Real multipart upload (not a base64 JSON body) — a base64-encoded video
+// in a single giant JSON request was the actual cause of "posting is very
+// slow", since it inflates the payload ~33%, doubles it in memory as a JS
+// string on both ends, and blocks on parsing/inserting one huge text value
+// into Postgres. Uploading the raw bytes straight to Supabase Storage and
+// only storing its (short) public URL avoids all of that.
+app.post('/api/admin/status', uploadMedia.single('media'), requireAdmin(async (req, res) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
-  const { mediaUrl, mediaType, caption } = req.body as { mediaUrl?: string; mediaType?: 'image' | 'video'; caption?: string };
-  if (!mediaUrl) return res.status(400).json({ error: 'An image or video is required.' });
+  const file = (req as any).file as Express.Multer.File | undefined;
+  if (!file) return res.status(400).json({ error: 'An image or video is required.' });
+  const isVideo = file.mimetype.startsWith('video/');
+  const ext = (file.originalname.split('.').pop() || (isVideo ? 'mp4' : 'jpg')).toLowerCase();
+  const objectPath = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
+  const { error: uploadError } = await supabase.storage.from('status-media').upload(objectPath, file.buffer, {
+    contentType: file.mimetype,
+    upsert: false,
+  });
+  if (uploadError) return res.status(500).json({ error: uploadError.message });
+  const { data: pub } = supabase.storage.from('status-media').getPublicUrl(objectPath);
+  const caption = (req.body?.caption as string | undefined)?.trim() || null;
   const { data, error } = await supabase.from('care_team_status').insert({
-    media_url: mediaUrl,
-    media_type: mediaType === 'video' ? 'video' : 'image',
-    caption: caption?.trim() || null,
+    media_url: pub.publicUrl,
+    media_type: isVideo ? 'video' : 'image',
+    caption,
     created_by: 'UrCare Health Team',
   }).select().single();
   if (error) return res.status(500).json({ error: error.message });
@@ -2524,6 +2547,17 @@ app.post('/api/admin/personalized-plan', requireAdmin(async (req, res) => {
   await createNotification(supabase, userId, 'system', 'Your personalized plan was updated', 'Your care team updated your diagnosis, treatment or daily plan.', {});
   res.json({ success: true, plan: data });
 }));
+
+// Turns a multer upload failure (e.g. over the file-size limit) into a
+// plain JSON error like every other API response here, instead of falling
+// through to Express's default HTML error page.
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'That file is too large.' });
+    return res.status(400).json({ error: err.message });
+  }
+  next(err);
+});
 
 // Start Vite / Express server
 async function startServer() {

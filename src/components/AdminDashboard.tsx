@@ -24,10 +24,14 @@ const EMPTY_STATS: AdminStats = {
 
 /** Every admin API call needs this — verified server-side against ADMIN_EMAIL/PASSWORD. */
 function adminFetch(token: string, path: string, options: RequestInit = {}): Promise<Response> {
+  // A FormData body (real file uploads) must NOT get a manual Content-Type —
+  // the browser sets its own `multipart/form-data; boundary=...`, which a
+  // fixed 'application/json' header would break.
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   return fetch(path, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       Authorization: `Bearer ${token}`,
       ...(options.headers || {}),
     },
@@ -489,7 +493,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
 
   // ---- Care Team Status (WhatsApp-Status-style, admin-only posts) ----
   const [statusPosts, setStatusPosts] = useState<any[]>([]);
-  const [statusMedia, setStatusMedia] = useState<{ url: string; name: string; type: 'image' | 'video' } | null>(null);
+  // Holds the raw File (not a base64 data URL) — that base64-in-one-giant-
+  // JSON-body approach used everywhere else in this admin panel is exactly
+  // why posting a large video used to be so slow (33% bigger payload,
+  // doubled in memory as a JS string on both ends, one huge Postgres text
+  // value). This upload instead goes out as real multipart/form-data
+  // straight to Supabase Storage — see /api/admin/status in server.ts.
+  const [statusMedia, setStatusMedia] = useState<{ file: File; previewUrl: string; type: 'image' | 'video' } | null>(null);
   const [statusCaption, setStatusCaption] = useState('');
   const [isPostingStatus, setIsPostingStatus] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -507,26 +517,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     const isVideo = file.type.startsWith('video/');
     const maxSize = isVideo ? 100 * 1024 * 1024 : 25 * 1024 * 1024;
     if (file.size > maxSize) { window.alert(`This ${isVideo ? 'video' : 'image'} is too large (max ${isVideo ? 100 : 25}MB).`); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (reader.result) setStatusMedia({ url: reader.result as string, name: file.name, type: isVideo ? 'video' : 'image' });
-    };
-    reader.readAsDataURL(file);
+    setStatusMedia((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return { file, previewUrl: URL.createObjectURL(file), type: isVideo ? 'video' : 'image' };
+    });
   };
 
   const handlePostStatus = () => {
     if (!adminToken || !statusMedia) return;
     setIsPostingStatus(true);
     setStatusError(null);
-    adminFetch(adminToken, '/api/admin/status', {
-      method: 'POST',
-      body: JSON.stringify({ mediaUrl: statusMedia.url, mediaType: statusMedia.type, caption: statusCaption.trim() || undefined }),
-    }).then((res) => res.json()).then((data) => {
-      if (!data?.status) { setStatusError(data?.error || 'Could not post this status.'); return; }
-      setStatusPosts((prev) => [data.status, ...prev]);
-      setStatusMedia(null);
-      setStatusCaption('');
-    }).catch(() => setStatusError('Could not reach the server. Please try again.')).finally(() => setIsPostingStatus(false));
+    const formData = new FormData();
+    formData.append('media', statusMedia.file);
+    if (statusCaption.trim()) formData.append('caption', statusCaption.trim());
+    adminFetch(adminToken, '/api/admin/status', { method: 'POST', body: formData })
+      .then((res) => res.json()).then((data) => {
+        if (!data?.status) { setStatusError(data?.error || 'Could not post this status.'); return; }
+        setStatusPosts((prev) => [data.status, ...prev]);
+        URL.revokeObjectURL(statusMedia.previewUrl);
+        setStatusMedia(null);
+        setStatusCaption('');
+      }).catch(() => setStatusError('Could not reach the server. Please try again.')).finally(() => setIsPostingStatus(false));
   };
 
   const handleDeleteStatus = (id: string) => {
@@ -2352,13 +2363,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
               {statusMedia ? (
                 <div className="relative w-full max-w-xs mx-auto rounded-2xl overflow-hidden border border-zinc-200">
                   {statusMedia.type === 'video' ? (
-                    <video src={statusMedia.url} className="w-full aspect-[9/16] object-cover" controls muted />
+                    <video src={statusMedia.previewUrl} className="w-full aspect-[9/16] object-cover" controls muted />
                   ) : (
-                    <img src={statusMedia.url} alt="" className="w-full aspect-[9/16] object-cover" />
+                    <img src={statusMedia.previewUrl} alt="" className="w-full aspect-[9/16] object-cover" />
                   )}
                   <button
                     type="button"
-                    onClick={() => setStatusMedia(null)}
+                    onClick={() => { URL.revokeObjectURL(statusMedia.previewUrl); setStatusMedia(null); }}
                     className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
