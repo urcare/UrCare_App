@@ -16,6 +16,8 @@ import { PlanSection } from './ReversalLibraryPanel';
 import { WeeklyUpdatesPanel } from './WeeklyUpdatesPanel';
 import { FamilyViewSwitcher } from './FamilyViewSwitcher';
 import { unifiedProgramDay } from '../utils/programWeek';
+import { youtubeSearchUrl, youtubeSearchEmbedUrl } from '../utils/youtube';
+import { ExerciseVideoModal } from './ExerciseVideoModal';
 import {
   getDailyPlan, getDailyLog, getTaskCompletion,
   toggleDailyTask, getActiveDates,
@@ -118,25 +120,6 @@ export const CATEGORY_GRADIENT: Record<StepCategory, string> = {
   hydration: 'from-cyan-500 to-sky-600',
   other: 'from-zinc-400 to-zinc-600',
 };
-
-/** A real, always-working YouTube search results link for a step's exact
- *  title — the "Watch Video" action on exercise/movement steps, since we
- *  can't host or generate a real demonstration video ourselves. Opens in a
- *  new tab; YouTube's own search finds the best-matching real video. */
-export function youtubeSearchUrl(title: string): string {
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} exercise how to`)}`;
-}
-
-/** An embeddable YouTube player pointed at the same search query, for an
- *  in-app "play right here" modal — we have no YouTube Data API key to
- *  resolve a specific, verified video id per (arbitrary, user-defined)
- *  exercise title, so a single wrong hardcoded id would be worse than this
- *  across different exercises. The modal that uses this always also shows a
- *  plain "Open in YouTube" link right below the player, so there's never a
- *  dead end if a given browser/region doesn't play the embedded search. */
-export function youtubeSearchEmbedUrl(title: string): string {
-  return `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(`${title} exercise how to`)}&autoplay=1`;
-}
 
 export function categoryFor(title: string): StepCategory {
   const t = (title || '').toLowerCase();
@@ -257,6 +240,11 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   const [mealCount, setMealCount] = useState(0);
 
   const [expandedItems, toggleItem] = useToggleSet();
+
+  // The in-app YouTube player modal for whichever exercise step's "Watch
+  // Exercise Video" button was tapped — a title, not a boolean, since it
+  // doubles as which step's video is showing (hero card or any row).
+  const [videoModalTitle, setVideoModalTitle] = useState<string | null>(null);
 
   // The user's own additions to the timeline (Plan tab → Edit → Add) — see
   // custom_plan_steps. Recurs every day, same as the built-in reversal plan.
@@ -736,15 +724,14 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                   </p>
                 )}
                 {isExercise && (
-                  <a
-                    href={youtubeSearchUrl(heroInfo.item.title)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow-sm shadow-red-600/30 transition-colors"
+                  <button
+                    type="button"
+                    onClick={() => setVideoModalTitle(heroInfo.item.title)}
+                    className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow-sm shadow-red-600/30 transition-colors cursor-pointer"
                   >
                     <Youtube className="w-4 h-4" />
                     {tr('Watch Exercise Video', 'व्यायाम वीडियो देखें')}
-                  </a>
+                  </button>
                 )}
               </div>
             </div>
@@ -1043,16 +1030,14 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                                   </p>
                                 )}
                                 {categoryFor(section.title) === 'exercise' && (
-                                  <a
-                                    href={youtubeSearchUrl(section.title)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] font-black shadow-sm shadow-red-600/30 transition-colors"
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setVideoModalTitle(section.title); }}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] font-black shadow-sm shadow-red-600/30 transition-colors cursor-pointer"
                                   >
                                     <Youtube className="w-3.5 h-3.5" />
                                     {tr('Watch Exercise Video', 'व्यायाम वीडियो देखें')}
-                                  </a>
+                                  </button>
                                 )}
                               </div>
                             )}
@@ -1118,6 +1103,13 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           />
         </React.Suspense>
       )}
+
+      <ExerciseVideoModal
+        title={videoModalTitle || ''}
+        isOpen={!!videoModalTitle}
+        onClose={() => setVideoModalTitle(null)}
+        tr={tr}
+      />
 
     </div>
   );
