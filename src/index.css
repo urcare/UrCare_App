@@ -129,7 +129,7 @@
   align-items: start;
 }
 
-.home-welcome { grid-column: 1 / -1; min-height: 220px; display: flex; align-items: center; }
+.home-welcome { grid-column: 1 / -1; min-height: 0; display: flex; align-items: center; }
 .home-focus { grid-column: span 4; }
 .home-plan { grid-column: span 8; }
 .home-exercise { grid-column: span 7; grid-row: span 2; }
@@ -140,10 +140,10 @@
 
 .health-orbit {
   position: absolute;
-  right: clamp(1rem, 5vw, 4rem);
+  right: clamp(1rem, 5vw, 3rem);
   top: 50%;
-  width: 180px;
-  height: 180px;
+  width: 104px;
+  height: 104px;
   transform: translateY(-50%);
   transform-style: preserve-3d;
   perspective: 700px;
@@ -151,7 +151,7 @@
 
 .health-orbit-ring {
   position: absolute;
-  inset: 24px;
+  inset: 14px;
   border: 1px solid color-mix(in oklab, var(--primary-foreground) 42%, transparent);
   border-radius: 50%;
   box-shadow: inset 0 0 20px color-mix(in oklab, var(--primary-foreground) 10%, transparent);
@@ -159,10 +159,10 @@
 
 .health-orbit-ring-a { transform: rotateX(68deg) rotateZ(10deg); animation: orbit-a 11s linear infinite; }
 .health-orbit-ring-b { transform: rotateY(68deg) rotateZ(28deg); animation: orbit-b 13s linear infinite reverse; }
-.health-orbit-ring-c { inset: 40px; transform: rotateX(54deg) rotateY(48deg); animation: orbit-a 9s linear infinite reverse; }
+.health-orbit-ring-c { inset: 23px; transform: rotateX(54deg) rotateY(48deg); animation: orbit-a 9s linear infinite reverse; }
 .health-orbit-core {
   position: absolute;
-  inset: 58px;
+  inset: 33px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -171,9 +171,9 @@
   box-shadow: 0 18px 35px color-mix(in oklab, var(--foreground) 28%, transparent), inset -8px -10px 18px color-mix(in oklab, var(--primary) 14%, transparent);
   animation: core-float 4.5s ease-in-out infinite;
 }
-.health-orbit-node { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: var(--primary-foreground); box-shadow: 0 0 18px color-mix(in oklab, var(--primary-foreground) 65%, transparent); }
-.health-orbit-node-a { left: 16px; top: 82px; animation: node-float 3.8s ease-in-out infinite; }
-.health-orbit-node-b { right: 28px; top: 34px; animation: node-float 4.6s ease-in-out infinite reverse; }
+.health-orbit-node { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--primary-foreground); box-shadow: 0 0 18px color-mix(in oklab, var(--primary-foreground) 65%, transparent); }
+.health-orbit-node-a { left: 9px; top: 47px; animation: node-float 3.8s ease-in-out infinite; }
+.health-orbit-node-b { right: 16px; top: 20px; animation: node-float 4.6s ease-in-out infinite reverse; }
 
 .exercise-visual { height: 280px; }
 .exercise-visual-shade,
@@ -222,18 +222,16 @@
 
 @media (max-width: 1023px) {
   .home-focus, .home-plan, .home-exercise, .home-food, .home-health, .home-library, .home-timeline { grid-column: span 6; }
-  .home-welcome { min-height: 210px; }
 }
 
 @media (max-width: 767px) {
   .urcare-home-grid { display: flex; flex-direction: column; gap: 1rem; }
   .urcare-home-grid > * { width: 100%; }
-  .home-welcome { min-height: 230px; align-items: flex-start; }
-  .home-welcome > div:last-child { max-width: 70%; }
-  .health-orbit { width: 138px; height: 138px; right: -10px; top: 58%; opacity: .9; }
-  .health-orbit-ring { inset: 20px; }
-  .health-orbit-ring-c { inset: 34px; }
-  .health-orbit-core { inset: 46px; }
+  .home-welcome > div:last-child { max-width: 66%; }
+  .health-orbit { width: 84px; height: 84px; right: -6px; top: 50%; opacity: .9; }
+  .health-orbit-ring { inset: 11px; }
+  .health-orbit-ring-c { inset: 19px; }
+  .health-orbit-core { inset: 27px; }
   .exercise-visual { height: 220px; }
   .home-food { min-height: 330px; }
 }

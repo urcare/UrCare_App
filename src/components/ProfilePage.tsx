@@ -485,19 +485,19 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             still lives right here as the subtitle. */}
         <motion.div
           initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="home-welcome relative overflow-hidden rounded-2xl p-6 sm:p-8 bg-primary text-primary-foreground shadow-hero"
+          className="home-welcome relative overflow-hidden rounded-2xl p-4 sm:p-5 bg-primary text-primary-foreground shadow-hero"
         >
           <div className="health-orbit" aria-hidden="true">
             <span className="health-orbit-ring health-orbit-ring-a" />
             <span className="health-orbit-ring health-orbit-ring-b" />
             <span className="health-orbit-ring health-orbit-ring-c" />
-            <span className="health-orbit-core"><Activity className="w-7 h-7" /></span>
+            <span className="health-orbit-core"><Activity className="w-4 h-4" /></span>
             <span className="health-orbit-node health-orbit-node-a" />
             <span className="health-orbit-node health-orbit-node-b" />
           </div>
           <div className="relative">
             <motion.h1
-              className="font-display text-2xl sm:text-4xl font-bold leading-tight max-w-2xl"
+              className="font-display text-lg sm:text-2xl font-bold leading-tight max-w-2xl"
               animate={{ scale: [1, 1.015, 1] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
             >
@@ -507,7 +507,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 2, ease: 'easeInOut' }}
               >👋</motion.span>
             </motion.h1>
-            <p className="flex items-center gap-1.5 text-xs sm:text-sm text-primary-foreground/80 font-medium mt-3 max-w-xl">
+            <p className="flex items-center gap-1.5 text-xs text-primary-foreground/80 font-medium mt-1.5 max-w-xl">
               <Sparkles className="w-3.5 h-3.5 shrink-0" />
               <span className="italic truncate">"{language === 'hi' ? dailyQuote.hi : dailyQuote.en}"</span>
             </p>
