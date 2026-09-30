@@ -14,6 +14,7 @@ import { NotificationsPanel } from './NotificationsPanel';
 import { MyTimelinePanel, ACTION_META, CATEGORY_META, relativeTime } from './MyTimelinePanel';
 import { ChatPanel } from './ChatPanel';
 import { TodaysExerciseCard } from './TodaysExerciseCard';
+import mealImage from '../assets/urcare-meal.jpg';
 import { StatusViewer } from './StatusViewer';
 import { getDailyPlan, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog, getMyChatThread, toggleDailyTask, getActiveStatuses } from '../utils/supabase';
 import { toDateKey } from './DailyCalendar';
@@ -405,20 +406,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const PlanIcon = primaryGoal.icon;
 
   return (
-    <div id="urcare-profile-page" className="min-h-screen bg-gradient-to-b from-emerald-50/60 via-transparent to-transparent text-zinc-900 pb-16 relative overflow-hidden">
+    <div id="urcare-profile-page" className="urcare-home min-h-screen text-foreground pb-16 relative overflow-hidden">
 
-      {/* Soft decorative color blobs behind everything — static (no motion),
-          just a calmer, more layered backdrop than a flat white page. */}
-      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-200/30 blur-3xl pointer-events-none" aria-hidden="true" />
-      <div className="absolute top-64 -left-28 w-72 h-72 rounded-full bg-sky-200/25 blur-3xl pointer-events-none" aria-hidden="true" />
-      <div className="absolute top-[420px] right-4 w-56 h-56 rounded-full bg-amber-200/20 blur-3xl pointer-events-none" aria-hidden="true" />
-      <Leaf className="absolute -top-6 -right-10 w-56 h-56 text-emerald-100 rotate-12 pointer-events-none" strokeWidth={1} aria-hidden="true" />
 
       {/* Header — the '⋮' module menu now sits on the left (the URCARE
           logo/wordmark was dropped per the brief); the streak, a
           (decorative, for now) notification bell, and the account avatar
           on the right. */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-zinc-200/70 px-4 sm:px-8 py-3 sm:py-3.5 shadow-sm">
+      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-xl border-b border-border px-4 sm:px-8 py-3 sm:py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           <button
             type="button"
@@ -483,30 +478,26 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </div>
       </header>
 
-      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-4 space-y-4 text-left">
+      <main className="urcare-home-grid relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-7 pb-6 text-left">
 
         {/* Greeting — a vivid gradient hero card instead of plain page text,
             so Home opens with a real "front door" moment. The daily quote
             still lives right here as the subtitle. */}
         <motion.div
           initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="relative overflow-hidden rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-emerald-600 via-teal-600 to-sky-700 text-white shadow-lg shadow-emerald-900/15"
+          className="home-welcome relative overflow-hidden rounded-2xl p-6 sm:p-8 bg-primary text-primary-foreground shadow-hero"
         >
-          <motion.div
-            className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 blur-2xl pointer-events-none"
-            aria-hidden="true"
-            animate={{ x: [0, 12, 0], y: [0, -10, 0] }}
-            transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-          />
-          <motion.div
-            className="absolute -bottom-14 -left-10 w-40 h-40 rounded-full bg-amber-300/20 blur-2xl pointer-events-none"
-            aria-hidden="true"
-            animate={{ x: [0, -10, 0], y: [0, 8, 0] }}
-            transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-          />
+          <div className="health-orbit" aria-hidden="true">
+            <span className="health-orbit-ring health-orbit-ring-a" />
+            <span className="health-orbit-ring health-orbit-ring-b" />
+            <span className="health-orbit-ring health-orbit-ring-c" />
+            <span className="health-orbit-core"><Activity className="w-7 h-7" /></span>
+            <span className="health-orbit-node health-orbit-node-a" />
+            <span className="health-orbit-node health-orbit-node-b" />
+          </div>
           <div className="relative">
             <motion.h1
-              className="text-xl sm:text-2xl font-black tracking-tight"
+              className="font-display text-2xl sm:text-4xl font-bold leading-tight max-w-2xl"
               animate={{ scale: [1, 1.015, 1] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
             >
@@ -516,7 +507,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 2, ease: 'easeInOut' }}
               >👋</motion.span>
             </motion.h1>
-            <p className="flex items-center gap-1.5 text-xs sm:text-sm text-white/85 font-semibold mt-1.5">
+            <p className="flex items-center gap-1.5 text-xs sm:text-sm text-primary-foreground/80 font-medium mt-3 max-w-xl">
               <Sparkles className="w-3.5 h-3.5 shrink-0" />
               <span className="italic truncate">"{language === 'hi' ? dailyQuote.hi : dailyQuote.en}"</span>
             </p>
@@ -528,14 +519,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             stays a compact single card instead of growing into a list. */}
         <motion.div
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1, ease: 'easeOut' }}
-          className="space-y-2"
+          className="home-focus space-y-2"
         >
           <motion.button
             type="button"
             onClick={onOpenPlan}
             whileHover={{ y: -3, scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
-            className="relative w-full p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm overflow-hidden text-left cursor-pointer hover:border-emerald-300 hover:shadow-lg transition-[border-color,box-shadow]"
+            className="relative w-full p-5 rounded-2xl bg-card border border-border shadow-depth overflow-hidden text-left cursor-pointer hover:border-primary/30 hover:shadow-float transition-[border-color,box-shadow]"
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -574,7 +565,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </motion.div>
 
         {/* Today's Plan */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15, ease: 'easeOut' }} className="space-y-2.5">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15, ease: 'easeOut' }} className="home-plan space-y-3">
           <div className="flex items-center justify-between px-0.5">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
@@ -595,7 +586,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           {current ? (
             <motion.div
               whileHover={{ y: -2 }}
-              className="w-full rounded-2xl bg-white border-2 border-emerald-200/70 shadow-md shadow-emerald-900/5 overflow-hidden transition-shadow hover:shadow-xl hover:shadow-emerald-900/10"
+              className="w-full rounded-2xl bg-card border border-border shadow-depth overflow-hidden transition-shadow hover:shadow-float"
             >
               <button
                 type="button"
@@ -660,13 +651,32 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             exercise/movement step (if there is one), pulled straight off
             the same real timeline as "Today's Plan" above. */}
         {todaysExercise && (
+          <div className="home-exercise">
           <TodaysExerciseCard
             step={todaysExercise}
             isDone={!!completedToday[todaysExercise.id]}
             onMarkDone={handleMarkExerciseDone}
             tr={tr}
           />
+          </div>
         )}
+
+        <motion.button
+          type="button"
+          onClick={onOpenScan}
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.18, ease: 'easeOut' }}
+          whileHover={{ y: -3 }} whileTap={{ scale: 0.99 }}
+          className="home-food group relative overflow-hidden rounded-2xl bg-card border border-border shadow-depth text-left cursor-pointer"
+        >
+          <img src={mealImage} alt="" width={768} height={768} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.035]" />
+          <span className="food-visual-shade" />
+          <span className="absolute left-5 right-5 bottom-5 text-primary-foreground">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"><Sparkles className="w-3.5 h-3.5" />{tr('UrCare Food Scan', 'UrCare फूड स्कैन')}</span>
+            <span className="mt-1 block font-display text-xl font-bold">{tr('Know what is on your plate', 'जानें आपकी प्लेट में क्या है')}</span>
+            <span className="mt-1 block text-xs text-primary-foreground/80">{tr('Snap a meal for personalised guidance', 'व्यक्तिगत मार्गदर्शन के लिए भोजन स्कैन करें')}</span>
+          </span>
+        </motion.button>
 
         {/* Today's Health — a calm, continuously-scrolling stack of your
             real diabetes/reversal-focused stats (blood sugar, kidney
@@ -675,8 +685,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             metric with nothing on file shows a genuine "add data" action
             instead of a fake number. */}
         <motion.div
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.18, ease: 'easeOut' }}
-          className="space-y-2.5"
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2, ease: 'easeOut' }}
+          className="home-health space-y-3"
         >
           <div className="flex items-center gap-2 px-0.5">
             <div className="w-6 h-6 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
@@ -703,7 +713,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             too (still reachable from Profile → Lab & Diab Reports), leaving
             just this one shortcut that doesn't live anywhere else on Home. */}
         <motion.div
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2, ease: 'easeOut' }}
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.22, ease: 'easeOut' }}
+          className="home-library"
         >
           <motion.button
             type="button"
@@ -728,8 +739,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             opens the full history. Only ever the 3 most recent real
             actions here, so Home stays calm — the full log is one tap away. */}
         <motion.div
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.22, ease: 'easeOut' }}
-          className="space-y-2.5"
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.24, ease: 'easeOut' }}
+          className="home-timeline space-y-3"
         >
           <div className="flex items-center justify-between px-0.5">
             <div className="flex items-center gap-2">

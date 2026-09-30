@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Dumbbell, Play, X, Youtube, Clock, CheckCircle2, ExternalLink } from 'lucide-react';
 import { PlanSection } from './ReversalLibraryPanel';
 import { youtubeSearchUrl, youtubeSearchEmbedUrl } from './RecommendationsView';
+import exerciseImage from '../assets/urcare-exercise.jpg';
 
 interface TodaysExerciseCardProps {
   step: PlanSection;
@@ -24,13 +25,13 @@ export const TodaysExerciseCard: React.FC<TodaysExerciseCardProps> = ({ step, is
 
   return (
     <>
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.17, ease: 'easeOut' }} className="space-y-2.5">
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.17, ease: 'easeOut' }} className="space-y-3 urcare-exercise-block">
         <div className="flex items-center justify-between px-0.5">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
               <Dumbbell className="w-3.5 h-3.5" />
             </div>
-            <h2 className="text-sm font-black text-zinc-950">{tr("Today's Exercise", 'आज का व्यायाम')}</h2>
+            <h2 className="text-sm font-bold font-display text-foreground">{tr("Today's Exercise", 'आज का व्यायाम')}</h2>
           </div>
           {step.timeLabel && (
             <span className="flex items-center gap-1 text-[10px] font-black text-zinc-400">
@@ -42,45 +43,39 @@ export const TodaysExerciseCard: React.FC<TodaysExerciseCardProps> = ({ step, is
 
         <motion.div
           whileHover={{ y: -2 }}
-          className="rounded-3xl bg-white border border-zinc-200 shadow-md shadow-zinc-900/5 overflow-hidden"
+          className="rounded-2xl bg-card border border-border shadow-depth overflow-hidden"
         >
-          {/* Thumbnail / poster — a gradient "video" surface (no hotlinked
-              stock photo, so it always renders) with a big glowing play
-              button, matching the video-thumbnail treatment of a real
-              fitness app instead of a flat icon chip. */}
           <button
             type="button"
             onClick={() => setIsPlayerOpen(true)}
-            className="relative w-full aspect-[16/10] overflow-hidden group cursor-pointer bg-gradient-to-br from-orange-500 to-red-600"
+            className="exercise-visual group relative block w-full overflow-hidden cursor-pointer"
+            aria-label={tr('Play exercise guide', 'व्यायाम गाइड चलाएं')}
           >
-            <div className="absolute -top-8 -left-8 w-40 h-40 rounded-full bg-white/10 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-10 -right-6 w-36 h-36 rounded-full bg-black/15 blur-3xl pointer-events-none" />
-            <Dumbbell className="absolute right-4 bottom-2 w-24 h-24 text-white/15 rotate-[-10deg]" strokeWidth={1} />
-
-            <span className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md text-white text-[11px] font-bold">
-              <Youtube className="w-3.5 h-3.5 text-red-400" />
-              {tr('Video Guide', 'वीडियो गाइड')}
-            </span>
-
-            <span className="absolute inset-0 flex items-center justify-center">
-              <span className="w-14 h-14 rounded-full bg-white/25 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/30 transition-transform group-hover:scale-110">
-                <Play className="w-6 h-6 text-white ml-0.5" fill="white" />
-              </span>
-            </span>
+            <img
+              src={exerciseImage}
+              alt=""
+              width={1024}
+              height={768}
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+            />
+            <span className="exercise-visual-shade" />
+            <span className="exercise-duration"><Clock className="w-3.5 h-3.5" />{step.timeLabel || tr('Guided session', 'निर्देशित सत्र')}</span>
+            <span className="exercise-play"><Play className="w-5 h-5" fill="currentColor" /></span>
           </button>
 
-          <div className="p-4 space-y-3">
+          <div className="p-5 space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-black uppercase tracking-wide text-emerald-600">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
                 {isDone ? tr('Completed', 'पूर्ण') : tr('Scheduled', 'निर्धारित')}
               </span>
               {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
             </div>
 
-            <h3 className="text-base font-black text-zinc-950 leading-snug">{step.title}</h3>
+            <h3 className="text-lg font-bold font-display text-foreground leading-snug">{step.title}</h3>
 
             {step.body && (
-              <p className="text-xs text-zinc-500 leading-relaxed line-clamp-2">{step.body}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{step.body}</p>
             )}
 
             <div className="pt-2.5 border-t border-zinc-100 flex items-center justify-between gap-3">
