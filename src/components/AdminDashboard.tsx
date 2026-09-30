@@ -15,6 +15,7 @@ import { Logo } from './Logo';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { getReviews, getProducts } from '../utils/supabase';
 import { openAttachment } from '../utils/openAttachment';
+import { compressImageIfNeeded, compressVideoIfNeeded } from '../utils/compressMedia';
 import { calculateNutritionPlan } from '../utils/calculator';
 
 const EMPTY_STATS: AdminStats = {
@@ -503,6 +504,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [statusCaption, setStatusCaption] = useState('');
   const [isPostingStatus, setIsPostingStatus] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+  // Any size is accepted at picking time — anything over Supabase's actual
+  // 50MB project upload cap gets compressed client-side (see
+  // compressMedia.ts) before it's ever added to statusMedia, instead of
+  // just rejecting a real doctor-recorded clip outright.
+  const [isCompressingStatus, setIsCompressingStatus] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState(0);
 
   const loadStatusPosts = () => {
     if (!adminToken) return;
@@ -511,16 +518,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     }).catch(() => {});
   };
 
-  const handleStatusMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleStatusMediaChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const isVideo = file.type.startsWith('video/');
-    const maxSize = isVideo ? 100 * 1024 * 1024 : 25 * 1024 * 1024;
-    if (file.size > maxSize) { window.alert(`This ${isVideo ? 'video' : 'image'} is too large (max ${isVideo ? 100 : 25}MB).`); return; }
-    setStatusMedia((prev) => {
-      if (prev) URL.revokeObjectURL(prev.previewUrl);
-      return { file, previewUrl: URL.createObjectURL(file), type: isVideo ? 'video' : 'image' };
-    });
+    const isImage = file.type.startsWith('image/');
+    if (!isVideo && !isImage) { window.alert('Please choose an image or video file.'); return; }
+
+    setStatusError(null);
+    setIsCompressingStatus(true);
+    setCompressionProgress(0);
+    try {
+      const processed = isVideo
+        ? await compressVideoIfNeeded(file, setCompressionProgress)
+        : await compressImageIfNeeded(file);
+      if (processed.size > 48 * 1024 * 1024) {
+        window.alert('This file is still too large even after compression — please choose a shorter clip or a smaller image.');
+        return;
+      }
+      setStatusMedia((prev) => {
+        if (prev) URL.revokeObjectURL(prev.previewUrl);
+        return { file: processed, previewUrl: URL.createObjectURL(processed), type: isVideo ? 'video' : 'image' };
+      });
+    } catch {
+      window.alert('Could not process this file. Please try a different one.');
+    } finally {
+      setIsCompressingStatus(false);
+    }
   };
 
   const handlePostStatus = () => {
@@ -2360,7 +2384,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 Visible to every patient for 24 hours, same as a WhatsApp status. Only you can post — patients can only view.
               </p>
 
-              {statusMedia ? (
+              {isCompressingStatus ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-10 rounded-2xl border-2 border-dashed border-emerald-200 text-emerald-600">
+                  <RefreshCw className="w-6 h-6 animate-spin" />
+                  <span className="text-xs font-bold">Compressing so it fits the upload limit…</span>
+                  {compressionProgress > 0 && (
+                    <div className="w-40 h-1.5 rounded-full bg-emerald-100 overflow-hidden">
+                      <div className="h-full bg-emerald-500 transition-[width]" style={{ width: `${Math.round(compressionProgress * 100)}%` }} />
+                    </div>
+                  )}
+                </div>
+              ) : statusMedia ? (
                 <div className="relative w-full max-w-xs mx-auto rounded-2xl overflow-hidden border border-zinc-200">
                   {statusMedia.type === 'video' ? (
                     <video src={statusMedia.previewUrl} className="w-full aspect-[9/16] object-cover" controls muted />
@@ -2379,7 +2413,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 <label className="flex flex-col items-center justify-center gap-2 py-8 rounded-2xl border-2 border-dashed border-zinc-200 text-zinc-400 hover:border-emerald-300 hover:text-emerald-600 cursor-pointer transition-colors">
                   <Upload className="w-6 h-6" />
                   <span className="text-xs font-bold">Tap to choose an image or video</span>
-                  <span className="text-[10px] text-zinc-400">Images up to 25MB, videos up to 100MB</span>
+                  <span className="text-[10px] text-zinc-400">Any size — automatically compressed if it's too large</span>
                   <input type="file" accept="image/*,video/*" onChange={handleStatusMediaChange} className="hidden" />
                 </label>
               )}
@@ -2396,7 +2430,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
 
               <button
                 type="button"
-                disabled={!statusMedia || isPostingStatus}
+                disabled={!statusMedia || isPostingStatus || isCompressingStatus}
                 onClick={handlePostStatus}
                 className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-sm font-black uppercase tracking-wide cursor-pointer flex items-center justify-center gap-2"
               >
