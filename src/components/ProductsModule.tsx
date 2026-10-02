@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ShoppingBag, Star, Plus, Minus, Check, ArrowRight, ShieldCheck,
-  Truck, QrCode, Sparkles, MapPin, X, Copy,
+  Truck, QrCode, CreditCard, Sparkles, MapPin, X, Copy,
   Package, ChevronRight, CheckCircle2, Lock, RefreshCw, Upload, Clock
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -869,8 +869,25 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             </button>
 
             <div>
-              <h3 className="text-xl font-black">{tr('Pay with UPI', 'UPI से भुगतान करें')}</h3>
+              <h3 className="text-xl font-black">{tr('Choose Payment', 'भुगतान चुनें')}</h3>
               <p className="text-xs opacity-60">{tr('Total Payable:', 'कुल देय राशि:')} <strong className="text-emerald-500 text-sm">₹{cartTotal}</strong></p>
+            </div>
+
+            {/* Payment method — UPI QR is the only live option; card /
+                netbanking via Razorpay is shown as "coming soon" and can't be
+                selected yet. */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border bg-emerald-500 text-black border-emerald-400 shadow-md">
+                <QrCode className="w-4 h-4" />
+                <span>{tr('UPI QR / App', 'UPI QR / ऐप')}</span>
+              </div>
+              <div
+                aria-disabled="true"
+                className={`py-2.5 px-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center border opacity-60 cursor-not-allowed ${subCardClass}`}
+              >
+                <span className="flex items-center gap-2"><CreditCard className="w-4 h-4" />{tr('Cards / NetBanking', 'कार्ड / नेटबैंकिंग')}</span>
+                <span className="text-[9px] font-black uppercase tracking-wider text-amber-500 mt-0.5">{tr('Coming soon', 'जल्द आ रहा है')}</span>
+              </div>
             </div>
 
             <div className="space-y-3">
