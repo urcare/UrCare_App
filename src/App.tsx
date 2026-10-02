@@ -10,6 +10,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AIConsentGate } from './components/AIConsentGate';
+import { loadAccountState } from './utils/accountState';
 import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn } from './utils/supabase';
 
 // The 3D body map pulls in three.js + react-three-fiber/drei — a sizeable
@@ -30,6 +31,9 @@ function MainApp() {
   const [nativeAuthError, setNativeAuthError] = useState<string | null>(null);
 
   const loadFromSession = useCallback(async (userId: string, email: string) => {
+    // Per-account saved state (language, cart, onboarding draft, …) first,
+    // so screens that read it on mount already see this account's values.
+    await loadAccountState().catch(() => {});
     const bundle = await fetchProfileBundle(userId, email);
     setAccount(bundle.account);
     setProfile(bundle.profile);

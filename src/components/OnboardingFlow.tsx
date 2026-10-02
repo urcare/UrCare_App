@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowRight, ArrowLeft, Check, Sparkles, Flame, Target, User, Heart, 
@@ -12,6 +12,7 @@ import {
   UserHealthProfile, UserAccount, UserPreferences 
 } from '../types';
 import { calculateNutritionPlan } from '../utils/calculator';
+import { getCachedAccountState, saveAccountState } from '../utils/accountState';
 import { useLanguage } from '../context/LanguageContext';
 import { WheelPicker } from './WheelPicker';
 import { RulerWheelPicker } from './RulerWheelPicker';
@@ -343,6 +344,53 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
   const weightDiff = Number((targetWeightKg - currentWeightKg).toFixed(1));
   const isLosing = weightDiff < 0;
 
+  // DRAFT — every answer is saved to the account as it changes (see
+  // accountState.ts), so a refresh, an app restart or signing in on another
+  // phone resumes at the same step with the same answers instead of starting
+  // over. Cleared once onboarding is finished.
+  const draft = {
+    currentStep, gender, workoutsPerWeek, heardFrom, triedOtherApps,
+    age, agePickerMode, birthYear, birthMonth, birthDay,
+    heightUnit, heightCm, heightFeet, heightInches,
+    weightUnit, currentWeightKg, currentWeightLbs,
+    targetWeightUnit, targetWeightKg, targetWeightLbs, pace,
+    goal, selectedAccomplishments, dietaryPreference, customDietText, selectedConditions, worksWithTrainer,
+    dd, otherTexts, name, email, phone, referralCode,
+    enableNotifications, colorBurnsBack, rolloverCalories,
+  };
+  const draftSetters: Record<keyof typeof draft, (value: any) => void> = {
+    currentStep: setCurrentStep, gender: setGender, workoutsPerWeek: setWorkoutsPerWeek, heardFrom: setHeardFrom, triedOtherApps: setTriedOtherApps,
+    age: setAge, agePickerMode: setAgePickerMode, birthYear: setBirthYear, birthMonth: setBirthMonth, birthDay: setBirthDay,
+    heightUnit: setHeightUnit, heightCm: setHeightCm, heightFeet: setHeightFeet, heightInches: setHeightInches,
+    weightUnit: setWeightUnit, currentWeightKg: setCurrentWeightKg, currentWeightLbs: setCurrentWeightLbs,
+    targetWeightUnit: setTargetWeightUnit, targetWeightKg: setTargetWeightKg, targetWeightLbs: setTargetWeightLbs, pace: setPace,
+    goal: setGoal, selectedAccomplishments: setSelectedAccomplishments, dietaryPreference: setDietaryPreference, customDietText: setCustomDietText, selectedConditions: setSelectedConditions, worksWithTrainer: setWorksWithTrainer,
+    dd: setDd, otherTexts: setOtherTexts, name: setName, email: setEmail, phone: setPhone, referralCode: setReferralCode,
+    enableNotifications: setEnableNotifications, colorBurnsBack: setColorBurnsBack, rolloverCalories: setRolloverCalories,
+  };
+  const draftRestoredRef = useRef(false);
+  // Declared before the restore effect on purpose: on the first render it
+  // runs first, sees nothing restored yet, and skips — so the default answers
+  // never overwrite a saved draft.
+  const draftJson = JSON.stringify(draft);
+  useEffect(() => {
+    if (!draftRestoredRef.current || draft.currentStep >= 25) return;
+    saveAccountState({ onboardingDraft: draft });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftJson]);
+  useEffect(() => {
+    const saved = getCachedAccountState().onboardingDraft;
+    if (saved && typeof saved === 'object') {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined || !(key in draftSetters)) continue;
+        // Step 25 is the plan-generation animation — resume just before it.
+        draftSetters[key as keyof typeof draft](key === 'currentStep' ? Math.min(Number(value) || 0, 24) : value);
+      }
+    }
+    draftRestoredRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // A short, varied "nice progress" toast shown after every step forward —
   // picked from a pool per progress tier so it never repeats the same line
   // twice in a row.
@@ -464,6 +512,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
 
   // Finish Onboarding — every feature is free; there is no paid tier.
   const handleFinishOnboarding = () => {
+    saveAccountState({ onboardingDraft: null }, { immediate: true });
     const finalPlan = calculateNutritionPlan(
       gender,
       finalAge,

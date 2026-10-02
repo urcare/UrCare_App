@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CalendarCheck, PartyPopper, CheckCircle2, Lock, X, ChevronDown } from 'lucide-react';
 import { computeWeeks, computeMonths } from '../utils/programWeek';
+import { getCachedAccountState, saveAccountState } from '../utils/accountState';
 
 interface WeeklyUpdatesPanelProps {
   userId: string;
@@ -58,8 +59,14 @@ export const WeeklyUpdatesPanel: React.FC<WeeklyUpdatesPanelProps> = ({ userId, 
   });
 
   const ackKey = `urcare_week_ack_${userId}`;
+  // "Seen up to week N" is saved to the account (accountState.ts) so a
+  // dismissed celebration stays dismissed on every device; this device's
+  // copy is kept as a fallback. Keyed by userId so a family member's
+  // progress is tracked separately from the account holder's.
   const [dismissedUpTo, setDismissedUpTo] = useState<number>(() => {
-    try { return Number(localStorage.getItem(ackKey) || 0); } catch { return 0; }
+    let local = 0;
+    try { local = Number(localStorage.getItem(ackKey) || 0); } catch {}
+    return Math.max(local, getCachedAccountState().weeklyAck?.[userId] || 0);
   });
 
   const showCelebration = lastCompletedWeek > 0 && lastCompletedWeek > dismissedUpTo;
@@ -73,6 +80,7 @@ export const WeeklyUpdatesPanel: React.FC<WeeklyUpdatesPanelProps> = ({ userId, 
   const dismissCelebration = () => {
     setDismissedUpTo(lastCompletedWeek);
     try { localStorage.setItem(ackKey, String(lastCompletedWeek)); } catch {}
+    saveAccountState({ weeklyAck: { ...(getCachedAccountState().weeklyAck || {}), [userId]: lastCompletedWeek } });
   };
 
   const cardClass = isDark ? 'bg-zinc-950 border border-zinc-800' : 'bg-white border border-zinc-200 shadow-sm';

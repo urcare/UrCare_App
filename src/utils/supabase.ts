@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { ensureAIConsent, AI_CONSENT_DECLINED_MESSAGE } from './aiConsent';
+import { flushAccountStateNow, clearAccountStateCache } from './accountState';
 import { Browser } from '@capacitor/browser';
 import { Preferences } from '@capacitor/preferences';
 import {
@@ -176,7 +177,10 @@ export async function sendPasswordReset(email: string): Promise<{ error?: string
 
 export async function signOutUser(): Promise<void> {
   const supabase = getSupabaseClient();
+  // Save any just-changed cart/onboarding/etc. before the session goes away.
+  await flushAccountStateNow().catch(() => {});
   if (supabase) await supabase.auth.signOut();
+  clearAccountStateCache();
 }
 
 export async function getCurrentSession(): Promise<Session | null> {

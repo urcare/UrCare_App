@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { onAccountStateLoaded, saveAccountState } from '../utils/accountState';
 import { motion } from 'motion/react';
 
 export type AppLanguage = 'en' | 'hi';
@@ -129,12 +130,33 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (e) {}
   }, []);
 
-  const setLanguage = (lang: AppLanguage) => {
-    setLanguageState(lang);
+  const storeLocally = (lang: AppLanguage) => {
     try {
       localStorage.setItem('urcare_lang', lang);
       localStorage.setItem('yourcare_lang', lang);
     } catch (e) {}
+  };
+
+  // The language is saved to the signed-in account too, so it follows the
+  // user to every device; on sign-in the account's choice wins over this
+  // device's last-used one.
+  useEffect(() => onAccountStateLoaded((state) => {
+    if (state.language === 'hi' || state.language === 'en') {
+      setLanguageState(state.language);
+      storeLocally(state.language);
+    } else {
+      // First sign-in since this was added — adopt this device's choice.
+      try {
+        const local = localStorage.getItem('urcare_lang');
+        if (local === 'hi' || local === 'en') saveAccountState({ language: local });
+      } catch (e) {}
+    }
+  }), []);
+
+  const setLanguage = (lang: AppLanguage) => {
+    setLanguageState(lang);
+    storeLocally(lang);
+    saveAccountState({ language: lang });
   };
 
   const toggleLanguage = () => {

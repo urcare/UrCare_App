@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShoppingBag, Star, Plus, Minus, Check, ArrowRight, ShieldCheck,
   Truck, QrCode, CreditCard, Sparkles, MapPin, X, Copy, Zap,
@@ -8,7 +8,8 @@ import confetti from 'canvas-confetti';
 import { Product, CartItem, ShippingAddress, Order, UserAccount } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { saveOrderAndReceiptToSupabase, getProducts, getPaymentQrSettings } from '../utils/supabase';
+import { saveOrderAndReceiptToSupabase, getProducts, getPaymentQrSettings, getMyOrders } from '../utils/supabase';
+import { getCachedAccountState, saveAccountState } from '../utils/accountState';
 import { compressImageToDataUrl } from '../utils/compressImage';
 
 interface ProductsModuleProps {
@@ -59,6 +60,39 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     state: '',
     pincode: '',
   });
+
+  // The cart is saved to the account (accountState.ts) so it survives a
+  // refresh, logout or switching phones. It's restored once the live catalog
+  // has loaded — items that are no longer in the catalog are dropped — and
+  // only saved after that, so an empty cart never overwrites a saved one
+  // before it has been restored.
+  const cartRestoredRef = useRef(false);
+  useEffect(() => {
+    if (productsLoading || cartRestoredRef.current || products.length === 0) return;
+    const saved = getCachedAccountState().cart || [];
+    const restored: CartItem[] = saved
+      .map((item) => {
+        const product = products.find((p) => p.id === item.productId);
+        return product && item.quantity > 0 ? { product, quantity: item.quantity } : null;
+      })
+      .filter(Boolean) as CartItem[];
+    if (restored.length) setCart(restored);
+    cartRestoredRef.current = true;
+  }, [products, productsLoading]);
+  useEffect(() => {
+    if (!cartRestoredRef.current) return;
+    saveAccountState({ cart: cart.map((item) => ({ productId: item.product.id, quantity: item.quantity })) });
+  }, [cart]);
+
+  // Pre-fill the delivery address from this account's most recent order, so a
+  // returning customer doesn't retype it. Never overwrites anything typed.
+  useEffect(() => {
+    if (!account.uid) return;
+    getMyOrders(account.uid).then((orders) => {
+      const last = orders.find((o) => o.shippingAddress?.streetAddress)?.shippingAddress;
+      if (last) setShippingAddress((prev) => (prev.streetAddress ? prev : { ...prev, ...last }));
+    }).catch(() => {});
+  }, [account.uid]);
 
   // Pincode → City/State autofill via India Post's free public lookup — no
   // API key, no data invented: a pincode can map to several post

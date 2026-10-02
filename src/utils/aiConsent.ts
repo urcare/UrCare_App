@@ -3,7 +3,10 @@
 // service. Every feature that sends a report, photo, or plan to the AI calls
 // ensureAIConsent() first; the first time, AIConsentGate (mounted once in
 // App.tsx) shows the explanation and resolves with the user's choice. The
-// answer is remembered on this device.
+// answer is saved to the account (see accountState.ts), so it holds on every
+// device, with this device's copy as a fallback.
+
+import { getCachedAccountState, saveAccountState } from './accountState';
 
 const STORAGE_KEY = 'urcare_ai_consent_v1';
 const REQUEST_EVENT = 'urcare:ai-consent-request';
@@ -11,6 +14,7 @@ const REQUEST_EVENT = 'urcare:ai-consent-request';
 export type AIConsentRequest = { resolve: (granted: boolean) => void };
 
 export function hasAIConsent(): boolean {
+  if (getCachedAccountState().aiConsent) return true;
   try {
     return localStorage.getItem(STORAGE_KEY) === 'granted';
   } catch {
@@ -19,6 +23,7 @@ export function hasAIConsent(): boolean {
 }
 
 export function saveAIConsent(granted: boolean): void {
+  if (granted) saveAccountState({ aiConsent: true }, { immediate: true });
   try {
     if (granted) localStorage.setItem(STORAGE_KEY, 'granted');
     else localStorage.removeItem(STORAGE_KEY);
