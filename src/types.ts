@@ -714,9 +714,6 @@ export interface UserAccount {
   authProvider: 'email' | 'google';
   supabaseSynced: boolean;
   role?: 'user' | 'admin';
-  isPro?: boolean;
-  proPlanType?: 'monthly' | 'yearly';
-  proExpiry?: string;
   hasPurchasedProducts?: boolean;
   lastSyncedAt?: string;
 }
@@ -815,8 +812,6 @@ export interface DoctorContact {
 
 export interface AdminStats {
   totalUsers: number;
-  proUsers: number;
-  freeUsers: number;
   totalBuyers: number;
   nonBuyers: number;
   totalReviews: number;

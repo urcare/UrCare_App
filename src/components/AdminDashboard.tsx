@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ShieldCheck, Users, Crown, ShoppingBag, Star, FileText,
+  ShieldCheck, Users, ShoppingBag, Star, FileText,
   DollarSign, CheckCircle2, AlertTriangle, Eye, Plus, Send,
   QrCode, Edit, ArrowRight, Lock, LogOut, Sparkles, Filter,
   Truck, Check, Stethoscope, Search, ExternalLink, RefreshCw, Upload, X,
@@ -19,7 +19,7 @@ import { compressImageIfNeeded, compressVideoIfNeeded } from '../utils/compressM
 import { calculateNutritionPlan } from '../utils/calculator';
 
 const EMPTY_STATS: AdminStats = {
-  totalUsers: 0, proUsers: 0, freeUsers: 0, totalBuyers: 0, nonBuyers: 0,
+  totalUsers: 0, totalBuyers: 0, nonBuyers: 0,
   totalReviews: 0, totalRevenue: 0, totalOrders: 0, pendingReportsCount: 0,
 };
 
@@ -624,7 +624,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
         avatarUrl: p.avatar_url || undefined,
         authProvider: 'email',
         supabaseSynced: true,
-        isPro: p.premium_status === 'active',
         role: p.role === 'admin' ? 'admin' : 'user',
       };
 
@@ -1123,7 +1122,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
           <div className="space-y-6 text-left">
             
             {/* Stat Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               
               {/* Total Users */}
               <div className={`p-5 rounded-3xl ${cardClass} space-y-1.5`}>
@@ -1134,18 +1133,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 <div className="text-2xl sm:text-3xl font-black font-mono text-zinc-950">{stats.totalUsers.toLocaleString()}</div>
                 <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
                   <span>+128 verified this week</span>
-                </div>
-              </div>
-
-              {/* Pro Subscriptions vs Free */}
-              <div className={`p-5 rounded-3xl ${cardClass} space-y-1.5`}>
-                <div className="flex items-center justify-between text-zinc-500">
-                  <span className="text-xs font-bold uppercase tracking-wider">Pro Members</span>
-                  <Crown className="w-4 h-4 text-amber-500" />
-                </div>
-                <div className="text-2xl sm:text-3xl font-black font-mono text-amber-600">{stats.proUsers.toLocaleString()}</div>
-                <div className="text-[11px] text-zinc-500">
-                  {stats.freeUsers.toLocaleString()} Free ({(stats.totalUsers > 0 ? (stats.proUsers / stats.totalUsers) * 100 : 0).toFixed(1)}% Conversion)
                 </div>
               </div>
 
@@ -1168,50 +1155,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                   <DollarSign className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-600">₹{((stats.totalRevenue || 0) / 100000).toFixed(2)} Lakhs</div>
-                <div className="text-[11px] text-zinc-500 font-medium">{stats.totalOrders} Fulfilled Orders</div>
+                <div className="text-[11px] text-zinc-500 font-medium">{stats.totalOrders} Paid Orders (payment verified)</div>
               </div>
             </div>
 
             {/* Visual Breakdown Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               
-              {/* Subscription Breakdown */}
-              <div className={`p-6 rounded-3xl ${cardClass} space-y-4`}>
-                <h3 className="text-base font-black text-zinc-950">Subscription Status Breakdown</h3>
-                
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1.5 font-bold">
-                      <span className="text-amber-600">Pro Subscriptions (Active Paid)</span>
-                      <span className="text-zinc-950">{stats.proUsers} users</span>
-                    </div>
-                    <div className="w-full h-3 rounded-full bg-zinc-100 overflow-hidden border border-zinc-200">
-                      <div 
-                        className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 rounded-full" 
-                        style={{ width: `${(stats.proUsers / stats.totalUsers) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs mb-1.5 font-bold">
-                      <span className="text-zinc-500">Free Baseline Users</span>
-                      <span className="text-zinc-950">{stats.freeUsers} users</span>
-                    </div>
-                    <div className="w-full h-3 rounded-full bg-zinc-100 overflow-hidden border border-zinc-200">
-                      <div 
-                        className="h-full bg-zinc-400 rounded-full" 
-                        style={{ width: `${(stats.freeUsers / stats.totalUsers) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className={`p-4 rounded-2xl ${subCardClass} text-xs text-zinc-600 flex items-center justify-between font-medium`}>
-                  <span>Pro users log 4.8x more daily meals and order 3x more clinical supplements.</span>
-                </div>
-              </div>
-
               {/* E-commerce Buyer Conversion */}
               <div className={`p-6 rounded-3xl ${cardClass} space-y-4`}>
                 <h3 className="text-base font-black text-zinc-950">Product Purchasing Conversion</h3>
@@ -1312,7 +1262,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          {p.premium_status === 'active' && <Crown className="w-3.5 h-3.5 text-amber-500" />}
                           {!p.onboarding_completed && <span className="text-[9px] font-bold uppercase text-zinc-400">No onboarding</span>}
                         </div>
                       </button>
@@ -1363,11 +1312,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {account.isPro && (
-                          <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1">
-                            <Crown className="w-3 h-3" /> Pro ({account.proPlanType || 'active'})
-                          </span>
-                        )}
                         <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                           {profile.goal?.replace('_', ' ')}
                         </span>

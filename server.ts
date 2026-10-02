@@ -2236,13 +2236,14 @@ app.get('/api/admin/stats', requireAdmin(async (req, res) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
 
-  const [{ count: totalUsers }, { count: proUsers }, { count: totalOrders }, { count: totalReviews }, { count: pendingReports }, { data: orders }] = await Promise.all([
+  // Revenue, buyers and order count only include payments an admin has
+  // verified (payment_status 'completed' — see ORDER_PAYMENT), not
+  // screenshots still waiting for review or ones that were rejected.
+  const [{ count: totalUsers }, { count: totalReviews }, { count: pendingReports }, { data: orders }] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('premium_status', 'active'),
-    supabase.from('orders').select('*', { count: 'exact', head: true }),
     supabase.from('reviews').select('*', { count: 'exact', head: true }),
     supabase.from('lab_reports').select('*', { count: 'exact', head: true }).eq('admin_reviewed', false),
-    supabase.from('orders').select('total_amount'),
+    supabase.from('orders').select('total_amount, user_id').eq('payment_status', ORDER_PAYMENT.verified),
   ]);
 
   const totalRevenue = (orders || []).reduce((sum: number, o: any) => sum + (Number(o.total_amount) || 0), 0);
@@ -2250,13 +2251,11 @@ app.get('/api/admin/stats', requireAdmin(async (req, res) => {
 
   res.json({
     totalUsers: totalUsers || 0,
-    proUsers: proUsers || 0,
-    freeUsers: (totalUsers || 0) - (proUsers || 0),
     totalBuyers,
     nonBuyers: (totalUsers || 0) - totalBuyers,
     totalReviews: totalReviews || 0,
     totalRevenue,
-    totalOrders: totalOrders || 0,
+    totalOrders: (orders || []).length,
     pendingReportsCount: pendingReports || 0,
   });
 }));

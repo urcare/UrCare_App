@@ -70,14 +70,12 @@ export const DICTIONARY: Translations = {
   bmiStatus: { en: 'BMI Status', hi: 'बीएमआई स्थिति' },
   dietType: { en: 'Dietary Preference', hi: 'खानपान की प्राथमिकता' },
   membershipStatus: { en: 'Membership Plan', hi: 'सदस्यता प्लान' },
-  activePro: { en: 'Pro Member (Active)', hi: 'प्रो सदस्य (सक्रिय)' },
   switchLanguage: { en: 'App Language', hi: 'ऐप की भाषा' },
 
   // Dashboard bottom/side navigation
   navHome: { en: 'Home', hi: 'होम' },
   navPlan: { en: 'Plan', hi: 'प्लान' },
-  navPro: { en: 'UrCare Camera', hi: 'यूआरकेयर कैमरा' },
-  navPremium: { en: 'UrCare Camera', hi: 'यूआरकेयर कैमरा' },
+  navCamera: { en: 'UrCare Camera', hi: 'यूआरकेयर कैमरा' },
   navProfile: { en: 'Profile', hi: 'प्रोफ़ाइल' },
   navReports: { en: 'My Reports', hi: 'मेरी रिपोर्ट्स' },
   navAssessment: { en: 'Assessment', hi: 'मूल्यांकन' },

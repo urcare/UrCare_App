@@ -298,7 +298,7 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
     );
   }
 
-  // PRO USERS: Full AI Vision & Camera Interface
+  // Main scanner screen — free for everyone.
   return (
     <div id="food-scanner-modal-backdrop" className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div id="food-scanner-modal" className="w-full max-w-lg bg-white border border-emerald-200 rounded-3xl p-6 text-zinc-900 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
@@ -312,7 +312,6 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <h3 className="text-base font-bold text-zinc-900">{tr('Scan Food & Macros', 'भोजन व मैक्रो स्कैन करें')}</h3>
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500 text-white">PRO</span>
               </div>
               <p className="text-[11px] text-zinc-500">{tr('Photo scan or describe meal', 'फोटो स्कैन करें या भोजन बताएं')}</p>
             </div>

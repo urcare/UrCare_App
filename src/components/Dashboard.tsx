@@ -59,7 +59,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Navigation Tabs — 'profile' is Home (the default/main summary screen),
   // 'plan' is the full Daily Plan timeline, 'premium' is UrCare Camera (the
-  // food scanner, gated), 'account' is the standalone Profile page
+  // food scanner, free for everyone — the tab id is just historical),
+  // 'account' is the standalone Profile page
   // (identity, stats, quick actions). 'reports', 'assessment' + 'store' are
   // always free — 'store' isn't in the primary nav (see navItems below) but
   // is still reachable from Home's quick-actions grid.
@@ -93,7 +94,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   ];
 
   // Without this, switching tabs while scrolled down on the previous tab
-  // (e.g. scrolled through Home, then tapping Pro) opens the new tab at that
+  // (e.g. scrolled through Home, then tapping UrCare Camera) opens the new tab at that
   // same leftover scroll position instead of its top — looking like the old
   // tab's content bled into the new one.
   useEffect(() => {
@@ -522,7 +523,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               }`}
             >
               <Camera className="w-4 h-4" />
-              <span>{account.isPro ? t('navPro') : t('navPremium')}</span>
+              <span>{t('navCamera')}</span>
             </button>
 
             {navItems.slice(2).map((item) => {
@@ -709,7 +710,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('premium')}
-            title={account.isPro ? t('navPro') : t('navPremium')}
+            title={t('navCamera')}
             className="absolute left-1/2 -translate-x-1/2 -top-7 cursor-pointer"
           >
             <motion.span
@@ -857,11 +858,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* ========================================================================= */}
 
           {/* ===================================================================== */}
-          {/* PRO TAB — AI Food Scan only. The Daily Plan now lives directly on Home. */}
+          {/* UrCare Camera tab — AI Food Scan. The Daily Plan lives directly on Home. */}
           {/* ===================================================================== */}
           {activeTab === 'premium' && (
             <div className="space-y-6 text-left">
-              {/* AI Food Scan — free for everyone now, no Pro paywall. */}
               <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
                 <div className="flex items-start gap-3.5 min-w-0">
                   <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">

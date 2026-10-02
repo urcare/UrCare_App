@@ -248,7 +248,6 @@ export async function fetchProfileBundle(userId: string, email: string): Promise
     displayName: email.split('@')[0],
     authProvider: 'google',
     supabaseSynced: true,
-    isPro: false,
   };
   if (!supabase) return { account, profile: null };
 
@@ -259,8 +258,6 @@ export async function fetchProfileBundle(userId: string, email: string): Promise
     account.displayName = p.full_name || account.displayName;
     account.email = p.email || account.email;
     account.avatarUrl = p.avatar_url || undefined;
-    account.isPro = p.premium_status === 'active';
-    account.proExpiry = p.premium_expires_at || undefined;
     account.role = p.role === 'admin' ? 'admin' : 'user';
   }
 
@@ -315,21 +312,6 @@ export async function updateAvatar(userId: string, dataUrl: string): Promise<{ e
   const supabase = getSupabaseClient();
   if (!supabase) return { error: 'Supabase is not configured.' };
   const { error } = await supabase.from('profiles').update({ avatar_url: dataUrl, updated_at: new Date().toISOString() }).eq('user_id', userId);
-  return { error: error?.message };
-}
-
-/** Persists a Pro/trial grant to the database — must be called any time isPro
- *  is set to true locally (e.g. an onboarding trial), or the very next session
- *  refresh will re-fetch 'inactive' from the DB and silently revoke it. */
-export async function activatePremium(userId: string, expiryIso: string): Promise<{ error?: string }> {
-  const supabase = getSupabaseClient();
-  if (!supabase) return { error: 'Supabase is not configured.' };
-  const { error } = await supabase.from('profiles').update({
-    premium_status: 'active',
-    premium_started_at: new Date().toISOString(),
-    premium_expires_at: expiryIso,
-    updated_at: new Date().toISOString(),
-  }).eq('user_id', userId);
   return { error: error?.message };
 }
 

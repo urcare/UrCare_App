@@ -462,8 +462,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
     }, 2800);
   };
 
-  // Finish Onboarding — no trial tier: everyone starts on the free plan and
-  // upgrades to Pro explicitly via the paywall, same as any returning user.
+  // Finish Onboarding — every feature is free; there is no paid tier.
   const handleFinishOnboarding = () => {
     const finalPlan = calculateNutritionPlan(
       gender,
@@ -529,7 +528,6 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
       phoneNumber: finalPhone,
       authProvider: initialAccount?.authProvider || 'email',
       supabaseSynced: true,
-      isPro: false,
       lastSyncedAt: new Date().toISOString(),
     };
 

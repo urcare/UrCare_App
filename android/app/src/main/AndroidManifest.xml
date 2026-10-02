@@ -53,4 +53,14 @@
          request from the WebView is rejected outright. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!-- Lets the app see installed UPI apps (Android 11+ package visibility),
+         so the store checkout's "Pay with UPI app" link (upi://pay...) can
+         hand off to GPay / PhonePe / Paytm / BHIM. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="upi" />
+        </intent>
+    </queries>
 </manifest>

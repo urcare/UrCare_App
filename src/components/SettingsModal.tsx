@@ -16,8 +16,6 @@ interface SettingsModalProps {
   profile: UserHealthProfile;
   account: UserAccount;
   onUpdateProfile: (updated: UserHealthProfile) => void;
-  /** Opens the Pro upgrade flow (or, for an existing Pro member, its plan
-   *  details) — reused as-is, not duplicated here. */
   /** "Health Metrics" — jumps to the Profile tab, where Edit Health Profile
    *  (weight/height/goals) already lives, rather than duplicating that form. */
   onOpenAccountTab: () => void;

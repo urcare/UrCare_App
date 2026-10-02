@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ShoppingBag, Star, Plus, Minus, Check, ArrowRight, ShieldCheck,
-  Truck, QrCode, CreditCard, Sparkles, MapPin, X, Copy,
+  Truck, QrCode, CreditCard, Sparkles, MapPin, X, Copy, Zap,
   Package, ChevronRight, CheckCircle2, Lock, RefreshCw, Upload, Clock
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -132,9 +132,16 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   // shown as-is; the hardcoded ID is only a last-resort default.
   const upiId = qrSettings.upiId || 'urcare.pay@okaxis';
   const payeeName = encodeURIComponent(qrSettings.payeeName || 'UrCare');
-  const qrUrl = qrSettings.upiId || !qrSettings.qrImageUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${payeeName}&am=${cartTotal}&cu=INR`)}`
+  const usesUpiId = !!qrSettings.upiId || !qrSettings.qrImageUrl;
+  // The same UPI payment link the QR encodes — opened directly, it launches
+  // GPay / PhonePe / Paytm / BHIM with the payee and amount already filled in.
+  const upiPayUrl = `upi://pay?pa=${upiId}&pn=${payeeName}&am=${cartTotal}.00&cu=INR&tn=${encodeURIComponent('UrCare order')}`;
+  const qrUrl = usesUpiId
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(upiPayUrl)}`
     : qrSettings.qrImageUrl;
+  // Only on a phone (a desktop has no UPI app), and only when the payee is a
+  // UPI ID — an admin-uploaded QR image alone has no ID to open an app with.
+  const canOpenUpiApp = usesUpiId && /Android|iPhone|iPad/i.test(navigator.userAgent);
 
   // Instant Reliable Add to Cart
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
@@ -891,6 +898,18 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             </div>
 
             <div className="space-y-3">
+              {canOpenUpiApp && (
+                <a
+                  href={upiPayUrl}
+                  className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex flex-col items-center justify-center shadow-lg shadow-emerald-500/20 active:scale-95"
+                >
+                  <span className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 fill-black" />
+                    {tr(`Step 1: Pay ₹${cartTotal} with UPI app`, `चरण 1: UPI ऐप से ₹${cartTotal} भुगतान करें`)}
+                  </span>
+                  <span className="text-[10px] font-bold opacity-70">{tr('Opens GPay, PhonePe, Paytm or BHIM with the amount filled in', 'GPay, PhonePe, Paytm या BHIM राशि भरी हुई के साथ खुलेगा')}</span>
+                </a>
+              )}
               <div className="p-4 rounded-2xl bg-white flex flex-col items-center justify-center text-center shadow-md">
                 <img
                   src={qrUrl}
@@ -898,7 +917,11 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                   className="w-40 h-40 object-contain rounded-lg"
                 />
                 <div className="mt-2 text-black">
-                  <p className="text-xs font-bold">{tr('Step 1: Scan & pay via GPay, PhonePe, Paytm, BHIM', 'चरण 1: GPay, PhonePe, Paytm, BHIM से स्कैन कर भुगतान करें')}</p>
+                  <p className="text-xs font-bold">
+                    {canOpenUpiApp
+                      ? tr('Or scan this QR from another phone', 'या किसी दूसरे फ़ोन से यह QR स्कैन करें')
+                      : tr('Step 1: Scan & pay via GPay, PhonePe, Paytm, BHIM', 'चरण 1: GPay, PhonePe, Paytm, BHIM से स्कैन कर भुगतान करें')}
+                  </p>
                   <p className="text-xs text-zinc-600 font-mono mt-0.5">{tr('Amount:', 'राशि:')} ₹{cartTotal}.00</p>
                 </div>
               </div>
