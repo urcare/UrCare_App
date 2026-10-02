@@ -1267,6 +1267,62 @@ app.post('/api/save-daily-plan', requireUser(async (req, res, user) => {
   }
 }));
 
+// EDIT the user's own uploaded plan — replaces its steps (time/title/details)
+// but keeps its original upload date and 35-day expiry. The built-in UrCare
+// plan is never touched by this.
+app.put('/api/custom-daily-plan', requireUser(async (req, res, user) => {
+  try {
+    const { sections, dependentId } = req.body as { sections?: any[]; dependentId?: string };
+    if (!Array.isArray(sections)) return res.status(400).json({ error: 'No steps to save.' });
+    const cleaned = sections
+      .filter((s) => s && typeof s.title === 'string' && s.title.trim())
+      .slice(0, 400)
+      .map((s) => ({
+        timeLabel: typeof s.timeLabel === 'string' ? s.timeLabel.trim() : '',
+        title: String(s.title).trim().slice(0, 200),
+        body: typeof s.body === 'string' ? s.body.trim().slice(0, 2000) : '',
+      }))
+      .sort((a, b) => parseClockTimeToMinutes(a.timeLabel) - parseClockTimeToMinutes(b.timeLabel))
+      .map((s, i) => ({ id: 'custom_' + i, ...s }));
+    if (cleaned.length === 0) {
+      return res.status(400).json({ error: 'Your plan needs at least one step. To remove the whole plan, use Delete plan instead.' });
+    }
+    const supabase = getSupabaseAdmin();
+    if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+    const actingUserId = await resolveActingUserId(supabase, user.id, dependentId);
+    const { data, error } = await supabase.from('custom_daily_plans')
+      .update({ sections: staggerDuplicateTimes(cleaned) })
+      .eq('user_id', actingUserId)
+      .select('sections, uploaded_at, expires_at')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'You do not have an uploaded plan to edit.' });
+    await createActivityLog(supabase, actingUserId, 'updated', 'plan', 'Edited your uploaded plan', `${cleaned.length} steps`);
+    return res.json({ customPlan: { uploadedAt: data.uploaded_at, expiresAt: data.expires_at, sections: data.sections || [] } });
+  } catch (error) {
+    console.error('Error editing uploaded plan:', error);
+    return res.status(500).json({ error: 'Could not save your changes right now.' });
+  }
+}));
+
+// DELETE the user's own uploaded plan — the built-in UrCare plan is all that
+// remains, exactly as it was.
+app.delete('/api/custom-daily-plan', requireUser(async (req, res, user) => {
+  try {
+    const dependentId = typeof req.query.dependentId === 'string' ? req.query.dependentId : undefined;
+    const supabase = getSupabaseAdmin();
+    if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+    const actingUserId = await resolveActingUserId(supabase, user.id, dependentId);
+    const { error } = await supabase.from('custom_daily_plans').delete().eq('user_id', actingUserId);
+    if (error) throw error;
+    await createActivityLog(supabase, actingUserId, 'deleted', 'plan', 'Deleted your uploaded plan', 'Back to the UrCare plan');
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting uploaded plan:', error);
+    return res.status(500).json({ error: 'Could not delete your plan right now.' });
+  }
+}));
+
 app.post('/api/daily-plan', requireUser(async (req, res, user) => {
   try {
     const { date, dependentId } = req.body as { date?: string; dependentId?: string };
@@ -1285,19 +1341,14 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
     ]);
     if (sectionsError) throw sectionsError;
 
-    // A user's own uploaded daily plan (see /api/analyze-daily-plan) takes
-    // over completely for 35 days from upload — same schedule every day,
-    // no program-day/condition filtering, since it's THEIR plan, not ours.
-    if (customPlan && new Date(customPlan.expires_at).getTime() > Date.now()) {
-      return res.json({
-        plan: {
-          isCustom: true,
-          uploadedAt: customPlan.uploaded_at,
-          expiresAt: customPlan.expires_at,
-          sections: customPlan.sections || [],
-        },
-      });
-    }
+    // The user's own uploaded plan (see /api/analyze-daily-plan) is returned
+    // SEPARATELY as `customPlan`, alongside the built-in UrCare plan in
+    // `plan` — the Plan tab shows them as two distinct plans the user
+    // switches between, so uploading one never hides or alters the other.
+    // It stays for 35 days from upload unless the user deletes it sooner.
+    const activeCustomPlan = customPlan && new Date(customPlan.expires_at).getTime() > Date.now()
+      ? { uploadedAt: customPlan.uploaded_at, expiresAt: customPlan.expires_at, sections: customPlan.sections || [] }
+      : null;
 
     // First time this user opens their plan — pin "Day 1" to today. Never
     // overwritten again, so later profile edits don't reset their progress.
@@ -1332,6 +1383,7 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
     });
 
     return res.json({
+      customPlan: activeCustomPlan,
       plan: {
         programDay,
         totalDays,

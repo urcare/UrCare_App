@@ -30,8 +30,9 @@ interface PdfProgress {
 
 /** Lets a user upload a daily routine they already have (e.g. from their own
  *  doctor, or their own handwritten schedule) as a photo OR a PDF — the AI
- *  extracts it into the app's own time-ordered plan format, and it replaces
- *  the built-in reversal plan for the next 35 days.
+ *  extracts it into the app's own time-ordered plan format, and it is kept
+ *  as a separate "My Uploaded Plan" for 35 days — the built-in UrCare plan
+ *  is never changed (see the plan switcher in RecommendationsView).
  *
  *  The vision model behind this (see /api/analyze-daily-plan) only ever
  *  reads a single image per call, never raw PDF bytes — so a PDF is
@@ -216,7 +217,7 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
             </div>
             <div>
               <h3 className="text-base font-bold text-zinc-900">{tr('Upload Your Own Daily Plan', 'अपना डेली प्लान अपलोड करें')}</h3>
-              <p className="text-[11px] text-zinc-500">{tr('Replaces your plan for 35 days', '35 दिनों के लिए आपका प्लान बदलता है')}</p>
+              <p className="text-[11px] text-zinc-500">{tr('Opens as a separate plan for 35 days — your UrCare plan stays as it is', '35 दिनों के लिए अलग प्लान के रूप में खुलेगा — आपका UrCare प्लान वैसा ही रहेगा')}</p>
             </div>
           </div>
           <button type="button" onClick={handleClose} className="p-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900 cursor-pointer">
@@ -231,8 +232,8 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
               <Check className="w-4 h-4 shrink-0 mt-0.5" />
               <span>
                 {tr(
-                  'Your plan has been extracted and is now active. It will be shown as your Daily Plan for the next 35 days.',
-                  'आपका प्लान निकाल लिया गया है और अब सक्रिय है। यह अगले 35 दिनों तक आपके डेली प्लान के रूप में दिखेगा।'
+                  'Your plan is ready! It now shows as "My Uploaded Plan" in the Plan tab for the next 35 days. Your UrCare plan is not changed — you can switch between the two anytime, and edit or delete your plan whenever you like.',
+                  'आपका प्लान तैयार है! यह अगले 35 दिनों तक Plan टैब में "मेरा अपलोड किया प्लान" के रूप में दिखेगा। आपका UrCare प्लान नहीं बदला है — आप कभी भी दोनों के बीच बदल सकते हैं, और अपना प्लान जब चाहें बदल या डिलीट कर सकते हैं।'
                 )}
               </span>
             </div>
@@ -296,8 +297,8 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
           <div className="space-y-4">
             <p className="text-xs text-zinc-500 leading-relaxed">
               {tr(
-                'Already have a daily routine from your own doctor or nutritionist, or your own handwritten schedule? Upload a photo or PDF here — even a long, multi-page PDF — and UrCare will read it and use it as your Daily Plan for the next 35 days.',
-                'क्या आपके पास पहले से अपने डॉक्टर या न्यूट्रिशनिस्ट का दिया हुआ डेली रूटीन है, या अपना हाथ से लिखा शेड्यूल है? यहां फोटो या PDF अपलोड करें — लंबी, कई-पेज वाली PDF भी — UrCare इसे पढ़कर अगले 35 दिनों तक आपके डेली प्लान के रूप में उपयोग करेगा।'
+                'Already have a daily routine from your own doctor or nutritionist, or your own handwritten schedule? Upload a photo or PDF here — even a long, multi-page PDF — and UrCare will read it and keep it as your separate "My Uploaded Plan" for the next 35 days. Your UrCare plan is not changed. If you already have an uploaded plan, this new one replaces it.',
+                'क्या आपके पास पहले से अपने डॉक्टर या न्यूट्रिशनिस्ट का दिया हुआ डेली रूटीन है, या अपना हाथ से लिखा शेड्यूल है? यहां फोटो या PDF अपलोड करें — लंबी, कई-पेज वाली PDF भी — UrCare इसे पढ़कर अगले 35 दिनों तक आपके अलग "मेरा अपलोड किया प्लान" के रूप में रखेगा। आपका UrCare प्लान नहीं बदलेगा। अगर पहले से कोई अपलोड किया प्लान है, तो यह नया प्लान उसकी जगह ले लेगा।'
               )}
             </p>
 

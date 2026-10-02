@@ -16,7 +16,7 @@ import { ChatPanel } from './ChatPanel';
 import { TodaysExerciseCard } from './TodaysExerciseCard';
 import mealImage from '../assets/urcare-meal.jpg';
 import { StatusViewer } from './StatusViewer';
-import { getDailyPlan, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog, getMyChatThread, toggleDailyTask, getActiveStatuses } from '../utils/supabase';
+import { getDailyPlan, activePlanSections, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog, getMyChatThread, toggleDailyTask, getActiveStatuses } from '../utils/supabase';
 import { toDateKey } from './DailyCalendar';
 
 // Hindi for the primary reversal-goal label used in the greeting subtitle —
@@ -169,7 +169,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       if (cancelled) return;
       setProgramDay(result.plan?.programDay ?? null);
       setProgramTotalDays(result.plan?.totalDays ?? null);
-      setSections(result.plan?.sections || []);
+      // Home shows whichever plan the user is following (UrCare or uploaded).
+      setSections(activePlanSections(result, userId));
     });
     getTaskCompletion(userId, todayKey).then((c) => { if (!cancelled) setCompletedToday(c); });
     // Powers the Hydration/Nutrition/Medication cards in Today's Health below

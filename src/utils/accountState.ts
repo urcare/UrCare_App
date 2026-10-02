@@ -16,6 +16,10 @@ export type AccountAppState = {
   cart?: SavedCartItem[];
   onboardingDraft?: Record<string, unknown> | null;
   weeklyAck?: Record<string, number>;
+  /** Which daily plan each person (the account holder, or a family member,
+   *  keyed by user id) has chosen to follow while they have an uploaded plan:
+   *  'mine' (the uploaded one, the default) or 'urcare' (the built-in one). */
+  planChoice?: Record<string, 'urcare' | 'mine'>;
 };
 
 let cache: AccountAppState = {};

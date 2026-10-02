@@ -32,7 +32,7 @@ import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { MyCareFilesPanel } from './MyCareFilesPanel';
 import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
-import { signOutUser, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity, getMyQueueEntry } from '../utils/supabase';
+import { signOutUser, activePlanSections, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity, getMyQueueEntry } from '../utils/supabase';
 import { calculateNutritionPlan } from '../utils/calculator';
 import { labelMinutes } from './RecommendationsView';
 import { useLanguage } from '../context/LanguageContext';
@@ -159,14 +159,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     const check = async () => {
       const todayKey = toDateKey(new Date());
-      const [{ plan }, completedToday] = await Promise.all([
+      const [planResult, completedToday] = await Promise.all([
         getDailyPlan(todayKey),
         getTaskCompletion(account.uid, todayKey),
       ]);
       if (cancelled) return;
 
       const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
-      const next = (plan?.sections || [])
+      // Remind about whichever plan the user is actually following.
+      const next = activePlanSections(planResult, account.uid)
         .filter((s: any) => !!s.timeLabel && !completedToday[s.id])
         .map((s: any) => ({ ...s, mins: labelMinutes(s.timeLabel) }))
         .filter((s: any) => s.mins > nowMinutes)

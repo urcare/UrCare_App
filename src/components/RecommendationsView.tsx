@@ -6,7 +6,7 @@ import {
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon, Edit3, AlertTriangle, Trash2,
   Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles, Utensils,
-  Pill, Dumbbell, Bath, BedDouble, Youtube,
+  Pill, Dumbbell, Bath, BedDouble, Youtube, Upload, Stethoscope, Info,
 } from 'lucide-react';
 import { UserHealthProfile, Prescription, CustomPlanStep, FamilyMember } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -21,8 +21,10 @@ import {
   getDailyPlan, getDailyLog, getTaskCompletion,
   toggleDailyTask, getActiveDates,
   addCustomPlanStep, getCustomPlanSteps, deleteCustomPlanStep,
-  getFamilyMembers,
+  getFamilyMembers, getPlanChoice, savePlanChoice, updateUploadedPlan, deleteUploadedPlan,
+  UploadedPlan,
 } from '../utils/supabase';
+import { UploadedPlanEditor } from './UploadedPlanEditor';
 
 // Lazy — pulls in pdfjs-dist (for the "upload a long PDF" flow), which has
 // no business being in everyone's initial bundle just because this tab
@@ -229,10 +231,18 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   // The real calendar date "Day 1" was pinned to (see /api/daily-plan) — lets
   // Weekly Updates label each 4-week block with the real month it actually
   // falls in, instead of a generic "Month 1/2/3".
-  const [programStartedAt, setProgramStartedAt] = useState<string | null>(null);
-  const [sections, setSections] = useState<PlanSection[]>([]);
-  const [customPlanExpiresAt, setCustomPlanExpiresAt] = useState<string | null>(null);
-  const [customPlanUploadedAt, setCustomPlanUploadedAt] = useState<string | null>(null);
+  const [builtInStartedAt, setBuiltInStartedAt] = useState<string | null>(null);
+  // TWO separate plans: the built-in UrCare plan (never changed by an upload)
+  // and the user's own uploaded plan (editable, deletable). `planSource` is
+  // the one currently shown — the user picks it in the plan switcher below,
+  // and the choice is saved to their account (see getPlanChoice).
+  const [builtInSections, setBuiltInSections] = useState<PlanSection[]>([]);
+  const [uploadedPlan, setUploadedPlan] = useState<UploadedPlan | null>(null);
+  const [planSource, setPlanSource] = useState<'urcare' | 'mine'>('urcare');
+  const [isPlanEditorOpen, setIsPlanEditorOpen] = useState(false);
+  const [isConfirmingDeletePlan, setIsConfirmingDeletePlan] = useState(false);
+  const [isDeletingPlan, setIsDeletingPlan] = useState(false);
+  const [planActionError, setPlanActionError] = useState<string | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
   const [planError, setPlanError] = useState<string | null>(null);
   const [completedToday, setCompletedToday] = useState<Record<string, boolean>>({});
@@ -327,7 +337,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     let cancelled = false;
     setPlanLoading(true);
     setPlanError(null);
-    setSections([]);
+    setBuiltInSections([]);
 
     (async () => {
       const result = await getDailyPlan(dateKey, activeDependentId);
@@ -337,19 +347,59 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       } else {
         setProgramDay(result.plan?.programDay ?? null);
         setProgramTotalDays(result.plan?.totalDays ?? null);
-        // A user's own uploaded plan has no program start date — its weeks
-        // count from the upload (see unifiedProgramDay), so its month names
-        // must too; otherwise Weekly Updates falls back to "Month 1/2".
-        setProgramStartedAt(result.plan?.startedAt ?? (result.plan?.isCustom ? result.plan?.uploadedAt ?? null : null));
-        setSections(result.plan?.sections || []);
-        setCustomPlanExpiresAt(result.plan?.isCustom ? result.plan?.expiresAt ?? null : null);
-        setCustomPlanUploadedAt(result.plan?.isCustom ? result.plan?.uploadedAt ?? null : null);
+        setBuiltInStartedAt(result.plan?.startedAt ?? null);
+        setBuiltInSections(result.plan?.sections || []);
+        setUploadedPlan(result.customPlan || null);
+        setPlanSource(getPlanChoice(effectiveUserId, !!result.customPlan));
       }
       setPlanLoading(false);
     })();
 
     return () => { cancelled = true; };
   }, [userId, activeDependentId, dateKey, planRefreshKey]);
+
+  // What the rest of this screen renders: whichever plan is selected.
+  const showingUploaded = planSource === 'mine' && !!uploadedPlan;
+  const sections: PlanSection[] = showingUploaded ? (uploadedPlan!.sections as PlanSection[]) : builtInSections;
+  const customPlanExpiresAt = showingUploaded ? uploadedPlan!.expiresAt : null;
+  const customPlanUploadedAt = showingUploaded ? uploadedPlan!.uploadedAt : null;
+  // An uploaded plan's weeks (and month names) count from its upload date.
+  const programStartedAt = showingUploaded ? uploadedPlan!.uploadedAt : builtInStartedAt;
+  const uploadedDaysLeft = uploadedPlan
+    ? Math.max(0, Math.ceil((new Date(uploadedPlan.expiresAt).getTime() - Date.now()) / 86_400_000))
+    : 0;
+  const shortDate = (iso: string) => new Date(iso).toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'short' });
+
+  const choosePlan = (choice: 'urcare' | 'mine') => {
+    setPlanSource(choice);
+    savePlanChoice(effectiveUserId, choice);
+    setIsEditMode(false);
+    setIsConfirmingDeletePlan(false);
+    setPlanActionError(null);
+  };
+
+  const handleSaveUploadedPlan = async (edited: { timeLabel: string; title: string; body: string }[]) => {
+    const { customPlan, error } = await updateUploadedPlan(edited, activeDependentId);
+    if (error || !customPlan) return error || tr('Could not save your changes.', 'बदलाव सेव नहीं हो सके।');
+    setUploadedPlan(customPlan);
+    setIsPlanEditorOpen(false);
+    window.dispatchEvent(new Event('urcare:daily-plan-changed'));
+    return undefined;
+  };
+
+  const handleDeleteUploadedPlan = async () => {
+    setIsDeletingPlan(true);
+    setPlanActionError(null);
+    const { error } = await deleteUploadedPlan(activeDependentId);
+    setIsDeletingPlan(false);
+    if (error) {
+      setPlanActionError(error);
+      return;
+    }
+    setUploadedPlan(null);
+    choosePlan('urcare');
+    window.dispatchEvent(new Event('urcare:daily-plan-changed'));
+  };
 
   // Load this day's actual logged activity (meals + task checkboxes).
   useEffect(() => {
@@ -414,12 +464,12 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   // into the same Morning/Afternoon/Evening/Night timeline as everything else.
   const timelineSections = useMemo<TimelineItem[]>(() => {
     const builtIn: TimelineItem[] = sections.filter((s) => !!s.timeLabel);
-    const custom: TimelineItem[] = customSteps.map((cs) => ({
+    const custom: TimelineItem[] = showingUploaded ? [] : customSteps.map((cs) => ({
       id: cs.id, timeLabel: cs.timeLabel, title: cs.title, body: cs.body,
       isCustom: true, verdict: cs.verdict, verdictReason: cs.verdictReason,
     }));
     return [...builtIn, ...custom];
-  }, [sections, customSteps]);
+  }, [sections, customSteps, showingUploaded]);
   const referenceSections = useMemo(() => sections.filter((s) => !s.timeLabel), [sections]);
 
   const taskIds = timelineSections.map((s) => s.id);
@@ -542,16 +592,6 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsUploadPlanOpen(true)}
-            title={tr('Upload your own daily plan', 'अपना डेली प्लान अपलोड करें')}
-            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 border transition-colors cursor-pointer ${
-              isDark ? 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-emerald-400 hover:border-emerald-500/40' : 'bg-zinc-50 border-zinc-200 text-zinc-600 hover:text-emerald-600 hover:border-emerald-300'
-            }`}
-          >
-            <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-          </button>
         </div>
 
         {/* "Viewing as" — only shows up once a family member has actually
@@ -583,15 +623,6 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             );
           })}
         </div>
-
-        {customPlanExpiresAt && (
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-2.5 py-1.5 w-fit">
-            <Sparkles className="w-3.5 h-3.5 shrink-0" />
-            <span>
-              {tr('Your uploaded plan is active', 'आपका अपलोड किया प्लान सक्रिय है')} — {tr('until', 'तक')} {new Date(customPlanExpiresAt).toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'short' })}
-            </span>
-          </div>
-        )}
 
         <div className={`pt-3 border-t ${isDark ? 'border-zinc-800' : 'border-zinc-100'} flex items-center justify-between gap-3 flex-wrap`}>
           <div className="text-xs opacity-70 font-semibold flex items-center gap-2 flex-wrap min-w-0">
@@ -643,6 +674,123 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* 1.2 WHICH PLAN — two clearly separate plans. The UrCare plan is
+          never changed by an upload; the user's own uploaded plan lives in
+          its own slot, where it can be edited or deleted (deleting simply
+          leaves the UrCare plan). */}
+      <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4`}>
+        <div>
+          <h3 className={`text-base sm:text-lg font-black ${isDark ? 'text-white' : 'text-zinc-950'}`}>
+            {tr('Which plan do you want to see?', 'आप कौन सा प्लान देखना चाहते हैं?')}
+          </h3>
+          <p className="text-xs opacity-60 mt-0.5">
+            {tr('You have two separate plans. Tap one to see its steps below.', 'आपके पास दो अलग प्लान हैं। नीचे उसके steps देखने के लिए किसी एक पर टैप करें।')}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* UrCare plan */}
+          <button
+            type="button"
+            onClick={() => choosePlan('urcare')}
+            className={`text-left p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+              !showingUploaded
+                ? 'border-emerald-500 bg-emerald-500/5 shadow-sm'
+                : isDark ? 'border-zinc-800 hover:border-zinc-700' : 'border-zinc-200 hover:border-zinc-300'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 font-black text-sm">
+                <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"><Stethoscope className="w-4 h-4" /></span>
+                {tr('UrCare Plan', 'UrCare प्लान')}
+              </span>
+              {!showingUploaded && <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-600 text-white">{tr('Showing', 'दिख रहा है')}</span>}
+            </div>
+            <p className="text-xs opacity-70 mt-2 leading-relaxed">
+              {tr('Made by UrCare for your health profile. It changes by itself as your program goes on. Uploading your own plan never changes it.', 'आपकी हेल्थ प्रोफ़ाइल के हिसाब से UrCare का बनाया प्लान। प्रोग्राम आगे बढ़ने के साथ अपने आप बदलता है। आपका अपना प्लान अपलोड करने से इसमें कोई बदलाव नहीं होता।')}
+            </p>
+          </button>
+
+          {/* The user's own uploaded plan */}
+          <button
+            type="button"
+            onClick={() => (uploadedPlan ? choosePlan('mine') : setIsUploadPlanOpen(true))}
+            className={`text-left p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+              showingUploaded
+                ? 'border-amber-500 bg-amber-500/5 shadow-sm'
+                : uploadedPlan
+                ? isDark ? 'border-zinc-800 hover:border-zinc-700' : 'border-zinc-200 hover:border-zinc-300'
+                : 'border-dashed border-amber-400/60 hover:bg-amber-500/5'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 font-black text-sm">
+                <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0"><FileText className="w-4 h-4" /></span>
+                {tr('My Uploaded Plan', 'मेरा अपलोड किया प्लान')}
+              </span>
+              {showingUploaded && <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500 text-white">{tr('Showing', 'दिख रहा है')}</span>}
+            </div>
+            {uploadedPlan ? (
+              <p className="text-xs opacity-70 mt-2 leading-relaxed">
+                {tr(
+                  `Your own plan, uploaded on ${shortDate(uploadedPlan.uploadedAt)} · ${uploadedPlan.sections.length} steps · active for ${uploadedDaysLeft} more day${uploadedDaysLeft === 1 ? '' : 's'} (till ${shortDate(uploadedPlan.expiresAt)}).`,
+                  `आपका अपना प्लान, ${shortDate(uploadedPlan.uploadedAt)} को अपलोड किया · ${uploadedPlan.sections.length} steps · ${uploadedDaysLeft} दिन और चालू (${shortDate(uploadedPlan.expiresAt)} तक)।`
+                )}
+              </p>
+            ) : (
+              <p className="text-xs opacity-70 mt-2 leading-relaxed flex items-start gap-1.5">
+                <Upload className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
+                <span>{tr("No plan uploaded yet. Tap here to upload a photo or PDF of your doctor's or dietitian's plan — it opens here as a separate plan.", 'अभी कोई प्लान अपलोड नहीं है। अपने डॉक्टर या डाइटीशियन के प्लान की फोटो या PDF अपलोड करने के लिए यहाँ टैप करें — ये यहाँ एक अलग प्लान के रूप में खुलेगा।')}</span>
+              </p>
+            )}
+          </button>
+        </div>
+
+        {/* Actions for the uploaded plan — only while it's the one shown. */}
+        {showingUploaded && uploadedPlan && (
+          <div className={`p-3 sm:p-4 rounded-2xl border space-y-3 ${isDark ? 'border-amber-500/30 bg-amber-500/5' : 'border-amber-200 bg-amber-50'}`}>
+            <p className={`text-xs flex items-start gap-1.5 ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>
+              <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <span>{tr('You are seeing your uploaded plan. Edit it, replace it with a new upload, or delete it to go back to the UrCare plan.', 'आप अपना अपलोड किया प्लान देख रहे हैं। इसे बदलें, नया अपलोड करके बदलें, या डिलीट करके UrCare प्लान पर वापस जाएँ।')}</span>
+            </p>
+            {isConfirmingDeletePlan ? (
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-rose-600">
+                  {tr('Delete your uploaded plan? This cannot be undone. Your UrCare plan stays exactly as it is.', 'अपना अपलोड किया प्लान डिलीट करें? इसे वापस नहीं लाया जा सकता। आपका UrCare प्लान जैसा है वैसा ही रहेगा।')}
+                </p>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setIsConfirmingDeletePlan(false)} disabled={isDeletingPlan}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold cursor-pointer ${isDark ? 'bg-zinc-900 text-zinc-300' : 'bg-white border border-zinc-200 text-zinc-700'}`}>
+                    {tr('Keep it', 'रहने दें')}
+                  </button>
+                  <button type="button" onClick={handleDeleteUploadedPlan} disabled={isDeletingPlan}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60">
+                    {isDeletingPlan ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    {tr('Yes, delete', 'हाँ, डिलीट करें')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                <button type="button" onClick={() => setIsPlanEditorOpen(true)}
+                  className="py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-1.5 cursor-pointer">
+                  <Edit3 className="w-3.5 h-3.5" /> {tr('Edit', 'बदलें')}
+                </button>
+                <button type="button" onClick={() => setIsUploadPlanOpen(true)}
+                  className={`py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${isDark ? 'bg-zinc-900 text-zinc-200' : 'bg-white border border-zinc-200 text-zinc-700'}`}>
+                  <Upload className="w-3.5 h-3.5" /> {tr('Upload new', 'नया अपलोड')}
+                </button>
+                <button type="button" onClick={() => setIsConfirmingDeletePlan(true)}
+                  className={`py-2.5 rounded-xl text-xs font-bold text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer ${isDark ? 'bg-zinc-900' : 'bg-white border border-rose-200'}`}>
+                  <Trash2 className="w-3.5 h-3.5" /> {tr('Delete', 'डिलीट')}
+                </button>
+              </div>
+            )}
+            {planActionError && <p className="text-xs font-bold text-rose-500">{planActionError}</p>}
+          </div>
+        )}
       </div>
 
       {/* 1.5 WEEKLY UPDATES — fully automatic week-by-week progress, derived
@@ -832,13 +980,23 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               <div className="flex items-center gap-2 text-emerald-500 min-w-0">
                 <Clock className="w-5 h-5 shrink-0" />
                 <h3 className="text-sm sm:text-base font-black tracking-tight truncate">
-                  24-Hour Reversal Timeline
+                  {showingUploaded ? tr('My Uploaded Plan — Steps', 'मेरा अपलोड किया प्लान — Steps') : tr('UrCare Plan — 24-Hour Timeline', 'UrCare प्लान — 24 घंटे की समय-सारणी')}
                 </h3>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500">
-                  Matched to you
+                <span className={`text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded ${showingUploaded ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                  {showingUploaded ? tr('Your plan', 'आपका प्लान') : tr('Matched to you', 'आपके लिए')}
                 </span>
+                {showingUploaded ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsPlanEditorOpen(true)}
+                    className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-lg border flex items-center gap-1 cursor-pointer transition-colors ${isDark ? 'border-zinc-700 text-zinc-300 hover:border-emerald-500/40' : 'border-zinc-200 text-zinc-600 hover:border-emerald-300'}`}
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    {tr('Edit plan', 'प्लान बदलें')}
+                  </button>
+                ) : (
                 <button
                   type="button"
                   onClick={() => { setIsEditMode((v) => !v); setIsAddFormOpen(false); setAddStepError(null); }}
@@ -848,9 +1006,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                       : isDark ? 'border-zinc-700 text-zinc-300 hover:border-emerald-500/40' : 'border-zinc-200 text-zinc-600 hover:border-emerald-300'
                   }`}
                 >
-                  <Edit3 className="w-3 h-3" />
-                  {isEditMode ? tr('Done', 'पूर्ण') : tr('Edit', 'संपादित करें')}
+                  <Plus className="w-3 h-3" />
+                  {isEditMode ? tr('Done', 'पूर्ण') : tr('Add my step', 'मेरा step जोड़ें')}
                 </button>
+                )}
               </div>
             </div>
 
@@ -1100,12 +1259,24 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             isOpen={isUploadPlanOpen}
             onClose={() => setIsUploadPlanOpen(false)}
             onUploaded={() => {
+              // A fresh upload is what the user wants to see next.
+              savePlanChoice(effectiveUserId, 'mine');
               setSelectedDate(startOfToday());
               setPlanRefreshKey((k) => k + 1);
             }}
             dependentId={activeDependentId}
           />
         </React.Suspense>
+      )}
+
+      {isPlanEditorOpen && uploadedPlan && (
+        <UploadedPlanEditor
+          plan={uploadedPlan}
+          isDark={isDark}
+          tr={tr}
+          onClose={() => setIsPlanEditorOpen(false)}
+          onSave={handleSaveUploadedPlan}
+        />
       )}
 
       <ExerciseVideoModal

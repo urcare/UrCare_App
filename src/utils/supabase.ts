@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
 import { ensureAIConsent, AI_CONSENT_DECLINED_MESSAGE } from './aiConsent';
-import { flushAccountStateNow, clearAccountStateCache } from './accountState';
+import { flushAccountStateNow, clearAccountStateCache, getCachedAccountState, saveAccountState } from './accountState';
 import { Browser } from '@capacitor/browser';
 import { Preferences } from '@capacitor/preferences';
 import {
@@ -610,14 +610,71 @@ export async function getActiveDates(userId: string): Promise<Set<string>> {
 // content itself is always the same for a given user + program day.
 // ============================================================================
 
-export async function getDailyPlan(date: string, dependentId?: string | null): Promise<{ plan?: any; error?: string }> {
+/** The user's own uploaded daily plan — kept separate from the built-in
+ *  UrCare plan (see /api/daily-plan), editable and deletable. */
+export interface UploadedPlan {
+  uploadedAt: string;
+  expiresAt: string;
+  sections: { id: string; timeLabel: string | null; title: string; body: string }[];
+}
+
+/** `plan` is always the built-in UrCare plan; `customPlan` is the user's own
+ *  uploaded plan, when they have one. */
+export async function getDailyPlan(date: string, dependentId?: string | null): Promise<{ plan?: any; customPlan?: UploadedPlan | null; error?: string }> {
   const res = await authedFetch('/api/daily-plan', {
     method: 'POST',
     body: JSON.stringify({ date, dependentId: dependentId || undefined }),
   });
   const data = await res.json();
   if (!res.ok) return { error: data.error || 'Could not load the plan for this day.' };
-  return { plan: data.plan };
+  return { plan: data.plan, customPlan: data.customPlan || null };
+}
+
+/** Which plan this person is following: their uploaded plan if they have one
+ *  (unless they switched back to the UrCare plan in the Plan tab), otherwise
+ *  the UrCare plan. */
+export function getPlanChoice(personUserId: string, hasUploadedPlan: boolean): 'urcare' | 'mine' {
+  if (!hasUploadedPlan) return 'urcare';
+  return getCachedAccountState().planChoice?.[personUserId] === 'urcare' ? 'urcare' : 'mine';
+}
+
+export function savePlanChoice(personUserId: string, choice: 'urcare' | 'mine'): void {
+  saveAccountState({ planChoice: { ...(getCachedAccountState().planChoice || {}), [personUserId]: choice } });
+}
+
+/** The steps of whichever plan this person is following today. */
+export function activePlanSections(result: { plan?: any; customPlan?: UploadedPlan | null }, personUserId: string): any[] {
+  return getPlanChoice(personUserId, !!result.customPlan) === 'mine'
+    ? result.customPlan!.sections
+    : result.plan?.sections || [];
+}
+
+/** Saves edits to the uploaded plan's steps (its upload date/expiry stay). */
+export async function updateUploadedPlan(sections: { timeLabel: string; title: string; body: string }[], dependentId?: string | null): Promise<{ customPlan?: UploadedPlan; error?: string }> {
+  try {
+    const res = await authedFetch('/api/custom-daily-plan', {
+      method: 'PUT',
+      body: JSON.stringify({ sections, dependentId: dependentId || undefined }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { error: data.error || 'Could not save your changes.' };
+    return { customPlan: data.customPlan };
+  } catch {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
+/** Deletes the uploaded plan — only the built-in UrCare plan remains. */
+export async function deleteUploadedPlan(dependentId?: string | null): Promise<{ error?: string }> {
+  try {
+    const query = dependentId ? `?dependentId=${encodeURIComponent(dependentId)}` : '';
+    const res = await authedFetch(`/api/custom-daily-plan${query}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: data.error || 'Could not delete your plan.' };
+    return {};
+  } catch {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
 }
 
 /** Today's real, AI-generated motivational line (same for every user,
