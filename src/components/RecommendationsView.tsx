@@ -226,6 +226,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
 
   const [programDay, setProgramDay] = useState<number | null>(null);
   const [programTotalDays, setProgramTotalDays] = useState<number | null>(null);
+  // The real calendar date "Day 1" was pinned to (see /api/daily-plan) — lets
+  // Weekly Updates label each 4-week block with the real month it actually
+  // falls in, instead of a generic "Month 1/2/3".
+  const [programStartedAt, setProgramStartedAt] = useState<string | null>(null);
   const [sections, setSections] = useState<PlanSection[]>([]);
   const [customPlanExpiresAt, setCustomPlanExpiresAt] = useState<string | null>(null);
   const [customPlanUploadedAt, setCustomPlanUploadedAt] = useState<string | null>(null);
@@ -333,6 +337,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       } else {
         setProgramDay(result.plan?.programDay ?? null);
         setProgramTotalDays(result.plan?.totalDays ?? null);
+        setProgramStartedAt(result.plan?.startedAt ?? null);
         setSections(result.plan?.sections || []);
         setCustomPlanExpiresAt(result.plan?.isCustom ? result.plan?.expiresAt ?? null : null);
         setCustomPlanUploadedAt(result.plan?.isCustom ? result.plan?.uploadedAt ?? null : null);
@@ -588,11 +593,6 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         <div className={`pt-3 border-t ${isDark ? 'border-zinc-800' : 'border-zinc-100'} flex items-center justify-between gap-3 flex-wrap`}>
           <div className="text-xs opacity-70 font-semibold flex items-center gap-2 flex-wrap min-w-0">
             <span className="break-words">{t('showingLabel')}: <span className="text-emerald-600 font-black">{isToday ? `${t('showingToday')} (${formatDate(selectedDate)})` : formatDate(selectedDate)}</span></span>
-            {weekProgress && (
-              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                Day {weekProgress.dayNum} of {weekProgress.totalDays} · Week {Math.ceil(weekProgress.dayNum / 7)}
-              </span>
-            )}
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {!isToday && (
@@ -652,7 +652,9 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           userId={effectiveUserId}
           dayNum={weekProgress.dayNum}
           totalDays={weekProgress.totalDays}
+          programStartedAt={programStartedAt}
           isDark={isDark}
+          language={language}
           tr={tr}
         />
       )}

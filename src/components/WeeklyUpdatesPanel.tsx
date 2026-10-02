@@ -7,8 +7,28 @@ interface WeeklyUpdatesPanelProps {
   userId: string;
   dayNum: number;
   totalDays: number;
+  /** The real calendar date "Day 1" was pinned to (see /api/daily-plan's
+   *  `startedAt`) — lets each 4-week block show the real month it actually
+   *  falls in (e.g. "October") instead of a generic "Month 1/2/3". Null
+   *  while still loading, or for a custom uploaded plan (no fixed start
+   *  date concept) — falls back to the generic numbering then. */
+  programStartedAt: string | null;
   isDark: boolean;
+  language: string;
   tr: (en: string, hi: string) => string;
+}
+
+/** The real calendar month a given 4-week block (1-indexed) falls in,
+ *  counting forward from the program's real start date — e.g. block 1 is
+ *  whatever month Day 1 actually fell in, block 2 is ~28 days later, etc.
+ *  Never guessed: always derived from the one real date the server pinned. */
+function monthNameForBlock(startedAtIso: string | null, blockIndex: number, language: string): string | null {
+  if (!startedAtIso) return null;
+  const start = new Date(startedAtIso);
+  if (Number.isNaN(start.getTime())) return null;
+  const blockStart = new Date(start);
+  blockStart.setUTCDate(blockStart.getUTCDate() + (blockIndex - 1) * 28);
+  return blockStart.toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', { month: 'long' });
 }
 
 /** Fully automatic — the only inputs are "what day of the program is it"
@@ -17,9 +37,10 @@ interface WeeklyUpdatesPanelProps {
  *  calendar-based day count). Nobody has to mark a week done by hand: as
  *  soon as the program crosses into a new week, the previous one flips to
  *  "Completed" here and a one-time congratulations banner appears. */
-export const WeeklyUpdatesPanel: React.FC<WeeklyUpdatesPanelProps> = ({ userId, dayNum, totalDays, isDark, tr }) => {
+export const WeeklyUpdatesPanel: React.FC<WeeklyUpdatesPanelProps> = ({ userId, dayNum, totalDays, programStartedAt, isDark, language, tr }) => {
   const weeks = useMemo(() => computeWeeks(dayNum, totalDays), [dayNum, totalDays]);
   const months = useMemo(() => computeMonths(weeks), [weeks]);
+  const monthLabel = (blockIndex: number) => monthNameForBlock(programStartedAt, blockIndex, language) || tr(`Month ${blockIndex}`, `महीना ${blockIndex}`);
   const currentWeek = weeks.find((w) => w.status === 'current') || weeks[weeks.length - 1];
   const currentMonth = months.find((m) => m.status === 'current') || months[months.length - 1];
   const lastCompletedWeek = [...weeks].reverse().find((w) => w.status === 'completed')?.week ?? 0;
@@ -69,8 +90,8 @@ export const WeeklyUpdatesPanel: React.FC<WeeklyUpdatesPanelProps> = ({ userId, 
           <h3 className={`text-base font-black tracking-tight ${textPrimary}`}>{tr('Weekly Updates', 'साप्ताहिक अपडेट')}</h3>
           <p className={`text-xs ${textMuted}`}>
             {tr(
-              `Month ${currentMonth.month} · Week ${currentWeek.week} of ${weeks.length} — Day ${dayNum} of ${totalDays}`,
-              `महीना ${currentMonth.month} · सप्ताह ${currentWeek.week} / ${weeks.length} — दिन ${dayNum} / ${totalDays}`
+              `${monthLabel(currentMonth.month)} · Week ${currentWeek.week} of ${weeks.length}`,
+              `${monthLabel(currentMonth.month)} · सप्ताह ${currentWeek.week} / ${weeks.length}`
             )}
           </p>
         </div>
@@ -134,7 +155,7 @@ export const WeeklyUpdatesPanel: React.FC<WeeklyUpdatesPanelProps> = ({ userId, 
                     <span className="w-4 h-4 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                   )}
                   <span className={`text-sm font-black ${isLocked ? textMuted : textPrimary}`}>
-                    {tr(`Month ${m.month}`, `महीना ${m.month}`)}
+                    {monthLabel(m.month)}
                   </span>
                   <span
                     className={`text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0 ${
