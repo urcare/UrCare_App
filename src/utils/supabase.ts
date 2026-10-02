@@ -80,9 +80,31 @@ export async function signInWithApple(): Promise<{ error?: string }> {
   return signInWithOAuthProvider('apple');
 }
 
+/** Whether this sign-in provider is switched on in the Supabase project
+ *  (Authentication → Providers). If it's off, Supabase answers the OAuth
+ *  request with a bare JSON error — in the native app that shows up as a
+ *  blank/garbled browser tab — so it's checked first and reported clearly.
+ *  Unknown (network failure) counts as enabled, so a flaky check never
+ *  blocks a working sign-in. */
+async function isAuthProviderEnabled(provider: 'google' | 'apple'): Promise<boolean> {
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/settings`, { headers: { apikey: supabaseAnonKey } });
+    if (!res.ok) return true;
+    const data = await res.json();
+    return data?.external?.[provider] !== false;
+  } catch {
+    return true;
+  }
+}
+
 async function signInWithOAuthProvider(provider: 'google' | 'apple'): Promise<{ error?: string }> {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: 'Supabase is not configured.' };
+
+  if (!(await isAuthProviderEnabled(provider))) {
+    const name = provider === 'google' ? 'Google' : 'Apple';
+    return { error: `${name} sign-in isn't available right now. Please sign up or sign in with your email and password.` };
+  }
 
   if (Capacitor.isNativePlatform()) {
     // Google refuses to complete sign-in from inside an embedded WebView

@@ -337,7 +337,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       } else {
         setProgramDay(result.plan?.programDay ?? null);
         setProgramTotalDays(result.plan?.totalDays ?? null);
-        setProgramStartedAt(result.plan?.startedAt ?? null);
+        // A user's own uploaded plan has no program start date — its weeks
+        // count from the upload (see unifiedProgramDay), so its month names
+        // must too; otherwise Weekly Updates falls back to "Month 1/2".
+        setProgramStartedAt(result.plan?.startedAt ?? (result.plan?.isCustom ? result.plan?.uploadedAt ?? null : null));
         setSections(result.plan?.sections || []);
         setCustomPlanExpiresAt(result.plan?.isCustom ? result.plan?.expiresAt ?? null : null);
         setCustomPlanUploadedAt(result.plan?.isCustom ? result.plan?.uploadedAt ?? null : null);

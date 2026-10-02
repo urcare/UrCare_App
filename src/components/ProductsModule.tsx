@@ -163,8 +163,9 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
   // UPI details come from Admin → Products & QR. With a UPI ID set, the QR
   // carries the exact cart amount; otherwise the admin's uploaded QR image is
-  // shown as-is; the hardcoded ID is only a last-resort default.
-  const upiId = qrSettings.upiId || 'urcare.pay@okaxis';
+  // shown as-is; the hardcoded ID (the same verified UrCare ID) is only a
+  // last-resort default if the settings request fails.
+  const upiId = qrSettings.upiId || 'archamasaini123-1@oksbi';
   const payeeName = encodeURIComponent(qrSettings.payeeName || 'UrCare');
   const usesUpiId = !!qrSettings.upiId || !qrSettings.qrImageUrl;
   // The same UPI payment link the QR encodes — opened directly, it launches

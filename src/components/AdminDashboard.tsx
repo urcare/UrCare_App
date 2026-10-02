@@ -218,12 +218,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [reportFilterStatus, setReportFilterStatus] = useState<'all' | 'pending' | 'reviewed' | 'high_risk'>('all');
   const [selectedReportForView, setSelectedReportForView] = useState<MedicalReportAnalysis | null>(null);
 
-  // QR Code Settings
+  // QR Code Settings — empty until the real saved settings load (see the
+  // /api/admin/qr-settings fetch below), so a made-up UPI ID can never be
+  // shown or saved by accident.
   const [qrSettings, setQrSettings] = useState({
-    qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=urcare.official@okhdfcbank&pn=UrCare%20Nutrition&mc=5411&cu=INR',
-    upiId: 'urcare.official@okhdfcbank',
-    payeeName: 'UrCare Health & Clinical Nutrition Inc.',
-    merchantNote: 'Scan & Pay via any UPI App (GPay, PhonePe, Paytm, BHIM)',
+    qrImageUrl: '',
+    upiId: '',
+    payeeName: '',
+    merchantNote: '',
     careTeamPhone: '',
   });
   const [isUpdatingQr, setIsUpdatingQr] = useState(false);
@@ -686,7 +688,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     }).catch(() => {});
 
     adminFetch(adminToken, '/api/admin/qr-settings').then((res) => res.json()).then((data) => {
-      if (data && data.qr_image_url) {
+      if (data && (data.qr_image_url || data.upi_id || data.care_team_phone)) {
         setQrSettings({
           qrImageUrl: data.qr_image_url, upiId: data.upi_id || '',
           payeeName: data.payee_name || '', merchantNote: data.merchant_note || '',
@@ -2087,11 +2089,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
               <div className={`p-6 rounded-3xl ${cardClass} flex flex-col items-center justify-center text-center space-y-3`}>
                 <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Live Checkout QR Preview</h4>
                 <div className="p-4 rounded-2xl bg-white border border-zinc-200 shadow-lg">
-                  <img
-                    src={qrSettings.qrImageUrl}
-                    alt="QR Preview"
-                    className="w-48 h-48 object-contain"
-                  />
+                  {qrSettings.qrImageUrl ? (
+                    <img
+                      src={qrSettings.qrImageUrl}
+                      alt="QR Preview"
+                      className="w-48 h-48 object-contain"
+                    />
+                  ) : (
+                    <div className="w-48 h-48 flex items-center justify-center text-xs text-zinc-400">No QR image set</div>
+                  )}
                 </div>
                 <div className="text-xs text-zinc-900 font-mono font-black">{qrSettings.upiId}</div>
                 <p className="text-[11px] text-zinc-500 font-medium">{qrSettings.payeeName}</p>
