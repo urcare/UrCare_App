@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
-  X, RefreshCw, Scale, ChevronRight, Leaf, BadgeCheck, Crown, Globe2, Ruler,
+  X, RefreshCw, Scale, ChevronRight, Leaf, BadgeCheck, Globe2, Ruler,
   Palette, Bell, Activity, FileText, Lock, UploadCloud, User, Package,
-  HelpCircle, Info, LogOut, Edit3, Check,
+  HelpCircle, Info, LogOut, Edit3, Check, ScrollText, Trash2,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount } from '../types';
 import { calculateNutritionPlan } from '../utils/calculator';
-import { logActivity } from '../utils/supabase';
+import { logActivity, authedFetch } from '../utils/supabase';
+import { LEGAL_PAGES, openExternalPage } from '../utils/externalPages';
 import { useLanguage } from '../context/LanguageContext';
 
 interface SettingsModalProps {
@@ -17,7 +18,6 @@ interface SettingsModalProps {
   onUpdateProfile: (updated: UserHealthProfile) => void;
   /** Opens the Pro upgrade flow (or, for an existing Pro member, its plan
    *  details) — reused as-is, not duplicated here. */
-  onOpenProUpgrade: () => void;
   /** "Health Metrics" — jumps to the Profile tab, where Edit Health Profile
    *  (weight/height/goals) already lives, rather than duplicating that form. */
   onOpenAccountTab: () => void;
@@ -124,7 +124,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   profile,
   account,
   onUpdateProfile,
-  onOpenProUpgrade,
   onOpenAccountTab,
   onOpenReports,
   onOpenOrders,
@@ -140,6 +139,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(profile.name || account.displayName || '');
   const [expanded, setExpanded] = useState<'appearance' | 'privacy' | 'backup' | 'about' | null>(null);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -151,6 +154,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       ...profile,
       preferences: { ...(profile.preferences as any || {}), ...patch },
     });
+  };
+
+  // Permanently deletes the account and all its data server-side (see
+  // DELETE /api/account), then signs out locally. Typing DELETE is the
+  // safeguard against an accidental tap.
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await authedFetch('/api/account', { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'failed');
+      onLogOut();
+    } catch {
+      setDeleteError(tr('Could not delete your account right now. Please try again.', 'अभी आपका खाता हटाया नहीं जा सका। कृपया दोबारा कोशिश करें।'));
+      setIsDeleting(false);
+    }
   };
 
   const handleSaveName = () => {
@@ -271,24 +291,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
           </div>
 
-          {/* MEMBERSHIP */}
-          <button
-            type="button"
-            onClick={onOpenProUpgrade}
-            className="w-full p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center gap-3 text-left hover:bg-emerald-100/70 transition-colors cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-xs">
-              <Crown className={`w-5 h-5 ${account.isPro ? 'text-amber-500' : 'text-emerald-600'}`} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-black text-zinc-950">{account.isPro ? tr('UrCare Pro Member', 'UrCare प्रो सदस्य') : tr('UrCare Free Member', 'UrCare फ्री सदस्य')}</div>
-              <div className="text-[11px] text-zinc-500 font-medium">
-                {account.isPro ? tr('Manage your premium plan', 'अपनी प्रीमियम योजना प्रबंधित करें') : tr('Access all core features for everyone', 'सभी के लिए मुख्य फीचर्स उपलब्ध हैं')}
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
-          </button>
-
           {/* APP PREFERENCES */}
           <SectionCard label={tr('App Preferences', 'ऐप प्राथमिकताएं')}>
             <div className="flex items-center gap-3 p-3.5">
@@ -384,6 +386,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               isOpen={expanded === 'privacy'}
               onToggle={() => setExpanded(expanded === 'privacy' ? null : 'privacy')}
             />
+            <Row
+              icon={Lock}
+              title={tr('Privacy Policy', 'गोपनीयता नीति')}
+              subtitle={tr('How we collect, use and protect your data', 'हम आपका डेटा कैसे लेते, उपयोग करते व सुरक्षित रखते हैं')}
+              onClick={() => openExternalPage(LEGAL_PAGES.privacy)}
+            />
+            <Row
+              icon={ScrollText}
+              title={tr('Terms of Service', 'सेवा की शर्तें')}
+              subtitle={tr('Rules for using UrCare, including the medical disclaimer', 'UrCare उपयोग के नियम, मेडिकल अस्वीकरण सहित')}
+              onClick={() => openExternalPage(LEGAL_PAGES.terms)}
+            />
             <ExpandableRow
               icon={UploadCloud}
               title={tr('Backup & Sync', 'बैकअप व सिंक')}
@@ -424,8 +438,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               title={tr('About UrCare', 'UrCare के बारे में')}
               subtitle={tr('App version, terms and policies', 'ऐप वर्शन, नियम व नीतियां')}
               detail={tr(
-                'UrCare — Doctor-Led Reversal & Metabolic Health. Version 1.0.0. By continuing to use the app you agree to our Terms of Service and Privacy Policy.',
-                'UrCare — डॉक्टर-नेतृत्व वाला रिवर्सल व मेटाबॉलिक स्वास्थ्य। वर्शन 1.0.0। ऐप का उपयोग जारी रखकर आप हमारी सेवा शर्तों व गोपनीयता नीति से सहमत होते हैं।'
+                'UrCare — Doctor-Led Reversal & Metabolic Health. Version 1.0.0. UrCare provides general wellness information and is not a substitute for professional medical advice, diagnosis or treatment. By continuing to use the app you agree to our Terms of Service and Privacy Policy.',
+                'UrCare — डॉक्टर-नेतृत्व वाला रिवर्सल व मेटाबॉलिक स्वास्थ्य। वर्शन 1.0.0। UrCare सामान्य स्वास्थ्य जानकारी देता है और यह पेशेवर चिकित्सा सलाह, निदान या इलाज का विकल्प नहीं है। ऐप का उपयोग जारी रखकर आप हमारी सेवा शर्तों व गोपनीयता नीति से सहमत होते हैं।'
               )}
               isOpen={expanded === 'about'}
               onToggle={() => setExpanded(expanded === 'about' ? null : 'about')}
@@ -486,6 +500,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <LogOut className="w-4 h-4" />
             {tr('Log Out', 'लॉग आउट')}
           </button>
+
+          {/* DELETE ACCOUNT — required by Google Play and the App Store. */}
+          {isConfirmingDelete ? (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 space-y-3">
+              <p className="text-xs text-rose-700 font-semibold leading-relaxed">
+                {tr(
+                  'This permanently deletes your account and all your data — profile, reports, plans, chats, orders and family members. This cannot be undone. Type DELETE to confirm.',
+                  'इससे आपका खाता और सारा डेटा — प्रोफ़ाइल, रिपोर्ट, प्लान, चैट, ऑर्डर और परिवार के सदस्य — हमेशा के लिए मिट जाएगा। इसे वापस नहीं लाया जा सकता। पुष्टि के लिए DELETE लिखें।'
+                )}
+              </p>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETE"
+                autoCapitalize="characters"
+                className="w-full bg-white border border-rose-200 focus:border-rose-400 focus:outline-none rounded-xl px-3 py-2 text-sm text-zinc-900 font-semibold"
+              />
+              {deleteError && <p className="text-[11px] text-rose-600">{deleteError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setIsConfirmingDelete(false); setDeleteConfirmText(''); setDeleteError(null); }}
+                  disabled={isDeleting}
+                  className="flex-1 py-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-700 font-bold text-xs cursor-pointer"
+                >
+                  {tr('Cancel', 'रद्द करें')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmText.trim().toUpperCase() !== 'DELETE' || isDeleting}
+                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs cursor-pointer disabled:opacity-50"
+                >
+                  {isDeleting ? tr('Deleting…', 'हटाया जा रहा है…') : tr('Delete forever', 'हमेशा के लिए हटाएँ')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsConfirmingDelete(true)}
+              className="w-full py-3 rounded-2xl text-rose-500 hover:bg-rose-50 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+              {tr('Delete Account', 'खाता हटाएँ')}
+            </button>
+          )}
 
           <div className="text-center pt-1 pb-1 space-y-0.5">
             <p className="text-[10px] text-zinc-400 font-semibold">{tr('Version 1.0.0', 'वर्शन 1.0.0')}</p>

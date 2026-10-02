@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ShoppingBag, Star, Plus, Minus, Check, ArrowRight, ShieldCheck,
-  Truck, QrCode, CreditCard, Sparkles, MapPin, X, Copy, Zap,
-  Package, ChevronRight, CheckCircle2, Lock, RefreshCw
+  Truck, QrCode, Sparkles, MapPin, X, Copy,
+  Package, ChevronRight, CheckCircle2, Lock, RefreshCw, Upload, Clock
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Product, CartItem, ShippingAddress, Order, UserAccount } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { saveOrderAndReceiptToSupabase, getProducts } from '../utils/supabase';
+import { saveOrderAndReceiptToSupabase, getProducts, getPaymentQrSettings } from '../utils/supabase';
+import { compressImageToDataUrl } from '../utils/compressImage';
 
 interface ProductsModuleProps {
   account: UserAccount;
@@ -108,9 +109,15 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     setShowPincodeDropdown(false);
   };
 
-  const [paymentMethod, setPaymentMethod] = useState<'qr_upi' | 'razorpay' | 'autopay'>('qr_upi');
   const [transactionId, setTransactionId] = useState('');
+  // Payment screenshot — REQUIRED before an order can be placed; an admin
+  // checks it and approves the payment before the order is confirmed.
+  const [paymentScreenshot, setPaymentScreenshot] = useState<string | null>(null);
+  const [isReadingScreenshot, setIsReadingScreenshot] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const [qrSettings, setQrSettings] = useState<{ qrImageUrl?: string; upiId?: string; payeeName?: string }>({});
+  useEffect(() => { getPaymentQrSettings().then(setQrSettings); }, []);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
   const [copiedUpi, setCopiedUpi] = useState(false);
 
@@ -120,8 +127,14 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const deliveryFee = cartSubtotal > 1500 || cartSubtotal === 0 ? 0 : 99;
   const cartTotal = cartSubtotal + deliveryFee;
 
-  const upiId = 'urcare.pay@okaxis';
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa=${upiId}&pn=UR%20CARE%20Nutrition&am=${cartTotal}&cu=INR`;
+  // UPI details come from Admin → Products & QR. With a UPI ID set, the QR
+  // carries the exact cart amount; otherwise the admin's uploaded QR image is
+  // shown as-is; the hardcoded ID is only a last-resort default.
+  const upiId = qrSettings.upiId || 'urcare.pay@okaxis';
+  const payeeName = encodeURIComponent(qrSettings.payeeName || 'UrCare');
+  const qrUrl = qrSettings.upiId || !qrSettings.qrImageUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`upi://pay?pa=${upiId}&pn=${payeeName}&am=${cartTotal}&cu=INR`)}`
+    : qrSettings.qrImageUrl;
 
   // Instant Reliable Add to Cart
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
@@ -175,10 +188,31 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     setCheckoutStep('payment');
   };
 
-  // Immediate Reliable Payment Execution
+  const handleScreenshotChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setPaymentError(null);
+    setIsReadingScreenshot(true);
+    try {
+      setPaymentScreenshot(await compressImageToDataUrl(file));
+    } catch {
+      setPaymentError(tr('Could not read this image. Please choose a screenshot of your payment.', 'यह इमेज पढ़ी नहीं जा सकी। कृपया भुगतान का स्क्रीनशॉट चुनें।'));
+    } finally {
+      setIsReadingScreenshot(false);
+    }
+  };
+
+  // Places the order with the payment screenshot. It is NOT confirmed yet —
+  // it waits in the admin panel until someone verifies the payment.
   const handleFinalizePayment = async () => {
+    if (!paymentScreenshot) {
+      setPaymentError(tr('Please upload a screenshot of your payment first.', 'कृपया पहले अपने भुगतान का स्क्रीनशॉट अपलोड करें।'));
+      return;
+    }
+    setPaymentError(null);
     setIsProcessingOrder(true);
-    
+
     const orderPayload: Order = {
       id: 'URC-' + Math.floor(100000 + Math.random() * 900000), // display placeholder until the server assigns the real id
       userId: account.uid,
@@ -189,37 +223,41 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
       subtotal: cartSubtotal,
       discount: 0,
       total: cartTotal,
-      paymentMethod,
-      paymentStatus: 'paid',
-      orderStatus: 'confirmed',
-      transactionId: transactionId || 'TXN_UR_' + Math.random().toString(36).substring(2, 9).toUpperCase(),
+      paymentMethod: 'qr_upi',
+      paymentStatus: 'pending',
+      orderStatus: 'awaiting_payment',
+      transactionId: transactionId.trim() || undefined,
+      receiptImageUrl: paymentScreenshot,
       createdAt: new Date().toISOString(),
       estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     };
 
-    // The server assigns the canonical order (real id, status, etc.) — that's what
-    // Admin sees too, so the confirmation must reflect the id it actually returned.
     const result = await saveOrderAndReceiptToSupabase(orderPayload);
-    const finalOrder: Order = { ...orderPayload, id: result.success ? result.orderId : orderPayload.id };
-
-    setTimeout(() => {
-      setConfirmedOrder(finalOrder);
-      if (onOrderPlaced) onOrderPlaced(finalOrder);
-
-      try {
-        confetti({
-          particleCount: 70,
-          spread: 60,
-          origin: { y: 0.6 },
-          colors: ['#00a800', '#ffffff', '#008000'],
-        });
-      } catch (e) {}
-
-      setCart([]);
-      setIsCartOpen(false);
-      setCheckoutStep('order_confirmed');
+    if (!result.success) {
+      setPaymentError(result.error || tr('Could not place your order. Please try again.', 'ऑर्डर नहीं हो सका। कृपया दोबारा कोशिश करें।'));
       setIsProcessingOrder(false);
-    }, 1000);
+      return;
+    }
+    // The server assigns the canonical order id — that's what Admin sees too.
+    const finalOrder: Order = { ...orderPayload, id: result.orderId };
+    setConfirmedOrder(finalOrder);
+    if (onOrderPlaced) onOrderPlaced(finalOrder);
+
+    try {
+      confetti({
+        particleCount: 70,
+        spread: 60,
+        origin: { y: 0.6 },
+        colors: ['#00a800', '#ffffff', '#008000'],
+      });
+    } catch (e) {}
+
+    setCart([]);
+    setTransactionId('');
+    setPaymentScreenshot(null);
+    setIsCartOpen(false);
+    setCheckoutStep('order_confirmed');
+    setIsProcessingOrder(false);
   };
 
   const categories = [
@@ -831,127 +869,112 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             </button>
 
             <div>
-              <h3 className="text-xl font-black">{tr('Choose Payment', 'भुगतान चुनें')}</h3>
+              <h3 className="text-xl font-black">{tr('Pay with UPI', 'UPI से भुगतान करें')}</h3>
               <p className="text-xs opacity-60">{tr('Total Payable:', 'कुल देय राशि:')} <strong className="text-emerald-500 text-sm">₹{cartTotal}</strong></p>
             </div>
 
-            {/* Payment Method Selector */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('qr_upi')}
-                className={`py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border transition-all ${
-                  paymentMethod === 'qr_upi'
-                    ? 'bg-emerald-500 text-black border-emerald-400 shadow-md'
-                    : subCardClass
-                }`}
-              >
-                <QrCode className="w-4 h-4" />
-                <span>{tr('UPI QR / App', 'UPI QR / ऐप')}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod('razorpay')}
-                className={`py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border transition-all ${
-                  paymentMethod === 'razorpay'
-                    ? 'bg-emerald-500 text-black border-emerald-400 shadow-md'
-                    : subCardClass
-                }`}
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>{tr('Cards / NetBanking', 'कार्ड / नेटबैंकिंग')}</span>
-              </button>
-            </div>
-
-            {/* UPI QR & Instant Confirm */}
-            {paymentMethod === 'qr_upi' && (
-              <div className="space-y-3 pt-2">
-                <div className="p-4 rounded-2xl bg-white flex flex-col items-center justify-center text-center shadow-md">
-                  <img
-                    src={qrUrl}
-                    alt="UPI QR Code"
-                    className="w-40 h-40 object-contain rounded-lg"
-                  />
-                  <div className="mt-2 text-black">
-                    <p className="text-xs font-bold">{tr('Scan & Pay via GPay, PhonePe, Paytm, BHIM', 'GPay, PhonePe, Paytm, BHIM से स्कैन कर भुगतान करें')}</p>
-                    <p className="text-xs text-zinc-600 font-mono mt-0.5">{tr('Amount:', 'राशि:')} ₹{cartTotal}.00</p>
-                  </div>
+            <div className="space-y-3">
+              <div className="p-4 rounded-2xl bg-white flex flex-col items-center justify-center text-center shadow-md">
+                <img
+                  src={qrUrl}
+                  alt="UPI QR Code"
+                  className="w-40 h-40 object-contain rounded-lg"
+                />
+                <div className="mt-2 text-black">
+                  <p className="text-xs font-bold">{tr('Step 1: Scan & pay via GPay, PhonePe, Paytm, BHIM', 'चरण 1: GPay, PhonePe, Paytm, BHIM से स्कैन कर भुगतान करें')}</p>
+                  <p className="text-xs text-zinc-600 font-mono mt-0.5">{tr('Amount:', 'राशि:')} ₹{cartTotal}.00</p>
                 </div>
+              </div>
 
-                <div className={`p-3 rounded-xl ${subCardClass} flex items-center justify-between`}>
-                  <div>
-                    <div className="text-[10px] opacity-60 font-bold uppercase">UPI ID</div>
-                    <div className="text-xs font-mono font-bold text-emerald-500">{upiId}</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCopyUpi}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 text-xs font-bold hover:bg-emerald-500/20"
-                  >
-                    {copiedUpi ? tr('Copied!', 'कॉपी हुआ!') : tr('Copy', 'कॉपी करें')}
-                  </button>
-                </div>
-
+              <div className={`p-3 rounded-xl ${subCardClass} flex items-center justify-between`}>
                 <div>
-                  <label className="block text-xs font-bold opacity-75 mb-1">
-                    {tr('UPI Reference / UTR Number (Optional)', 'UPI संदर्भ / UTR संख्या (वैकल्पिक)')}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={tr('e.g. 423981092831', 'जैसे 423981092831')}
-                    value={transactionId}
-                    onChange={(e) => setTransactionId(e.target.value)}
-                    className={`w-full p-2.5 rounded-xl border text-sm font-medium ${isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-300 text-zinc-900'}`}
-                  />
+                  <div className="text-[10px] opacity-60 font-bold uppercase">UPI ID</div>
+                  <div className="text-xs font-mono font-bold text-emerald-500">{upiId}</div>
                 </div>
-
                 <button
-                  id="pay-and-confirm-upi-btn"
                   type="button"
-                  onClick={handleFinalizePayment}
-                  disabled={isProcessingOrder}
-                  className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                  onClick={handleCopyUpi}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 text-xs font-bold hover:bg-emerald-500/20"
                 >
-                  {isProcessingOrder ? (
-                    <div className="w-5 h-5 rounded-full border-2 border-black border-t-transparent animate-spin" />
-                  ) : (
-                    <>
-                      <span>{tr('I Have Paid', 'मैंने भुगतान कर दिया है')} ₹{cartTotal} ({tr('Confirm Order', 'ऑर्डर की पुष्टि करें')})</span>
-                      <Check className="w-4 h-4" />
-                    </>
-                  )}
+                  {copiedUpi ? tr('Copied!', 'कॉपी हुआ!') : tr('Copy', 'कॉपी करें')}
                 </button>
               </div>
-            )}
 
-            {/* Online Cards & NetBanking */}
-            {paymentMethod === 'razorpay' && (
-              <div className="space-y-4 pt-2">
-                <div className={`p-5 rounded-2xl ${subCardClass} text-center space-y-2`}>
-                  <CreditCard className="w-8 h-8 mx-auto text-emerald-500" />
-                  <h4 className="text-sm font-extrabold">{tr('Instant Card & NetBanking Gateway', 'तुरंत कार्ड व नेटबैंकिंग गेटवे')}</h4>
-                  <p className="text-xs opacity-60">{tr('128-bit Encrypted secure payment for instant order authorization.', 'तुरंत ऑर्डर प्राधिकरण हेतु 128-बिट एन्क्रिप्टेड सुरक्षित भुगतान।')}</p>
-                </div>
-
-                <button
-                  id="pay-gateway-btn"
-                  type="button"
-                  onClick={handleFinalizePayment}
-                  disabled={isProcessingOrder}
-                  className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+              {/* Step 2 — payment screenshot (required) */}
+              <div>
+                <label className="block text-xs font-bold opacity-75 mb-1">
+                  {tr('Step 2: Upload payment screenshot (required)', 'चरण 2: भुगतान का स्क्रीनशॉट अपलोड करें (ज़रूरी)')}
+                </label>
+                <label
+                  htmlFor="payment-screenshot-input"
+                  className={`block p-3 rounded-xl border-2 border-dashed cursor-pointer text-center transition-colors ${
+                    paymentScreenshot ? 'border-emerald-500' : isDark ? 'border-zinc-700 hover:border-emerald-500' : 'border-zinc-300 hover:border-emerald-500'
+                  }`}
                 >
-                  {isProcessingOrder ? (
-                    <div className="w-5 h-5 rounded-full border-2 border-black border-t-transparent animate-spin" />
+                  {isReadingScreenshot ? (
+                    <RefreshCw className="w-5 h-5 mx-auto animate-spin opacity-60" />
+                  ) : paymentScreenshot ? (
+                    <div className="flex items-center gap-3 text-left">
+                      <img src={paymentScreenshot} alt="" className="w-14 h-14 object-cover rounded-lg border border-zinc-200" />
+                      <div className="text-xs">
+                        <div className="font-bold text-emerald-500 flex items-center gap-1"><Check className="w-3.5 h-3.5" /> {tr('Screenshot added', 'स्क्रीनशॉट जुड़ गया')}</div>
+                        <div className="opacity-60">{tr('Tap to change', 'बदलने के लिए टैप करें')}</div>
+                      </div>
+                    </div>
                   ) : (
-                    <>
-                      <span>{tr('Pay', 'भुगतान करें')} ₹{cartTotal} {tr('Securely', 'सुरक्षित रूप से')}</span>
-                      <Zap className="w-4 h-4 fill-black" />
-                    </>
+                    <div className="text-xs space-y-1">
+                      <Upload className="w-5 h-5 mx-auto text-emerald-500" />
+                      <div className="font-bold">{tr('Tap to upload the payment screenshot', 'भुगतान स्क्रीनशॉट अपलोड करने हेतु टैप करें')}</div>
+                      <div className="opacity-60">{tr('It must show the amount and the UPI transaction ID', 'इसमें राशि और UPI ट्रांज़ैक्शन ID दिखनी चाहिए')}</div>
+                    </div>
                   )}
-                </button>
+                </label>
+                <input
+                  id="payment-screenshot-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleScreenshotChange}
+                />
               </div>
-            )}
+
+              <div>
+                <label className="block text-xs font-bold opacity-75 mb-1">
+                  {tr('UPI Reference / UTR Number (Optional)', 'UPI संदर्भ / UTR संख्या (वैकल्पिक)')}
+                </label>
+                <input
+                  type="text"
+                  placeholder={tr('e.g. 423981092831', 'जैसे 423981092831')}
+                  value={transactionId}
+                  onChange={(e) => setTransactionId(e.target.value)}
+                  className={`w-full p-2.5 rounded-xl border text-sm font-medium ${isDark ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-300 text-zinc-900'}`}
+                />
+              </div>
+
+              {paymentError && (
+                <p className="text-xs font-bold text-rose-500">{paymentError}</p>
+              )}
+
+              <button
+                id="pay-and-confirm-upi-btn"
+                type="button"
+                onClick={handleFinalizePayment}
+                disabled={isProcessingOrder || isReadingScreenshot || !paymentScreenshot}
+                className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+              >
+                {isProcessingOrder ? (
+                  <div className="w-5 h-5 rounded-full border-2 border-black border-t-transparent animate-spin" />
+                ) : (
+                  <>
+                    <span>{tr('Submit Payment for Verification', 'भुगतान सत्यापन हेतु भेजें')}</span>
+                    <Check className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+              <p className="text-[11px] opacity-60 text-center">
+                {tr('Your order is confirmed once our team verifies the payment (usually within a few hours).', 'हमारी टीम द्वारा भुगतान सत्यापित होते ही आपका ऑर्डर कन्फ़र्म हो जाएगा (आमतौर पर कुछ घंटों में)।')}
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -960,14 +983,14 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
       {checkoutStep === 'order_confirmed' && confirmedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
           <div className={`relative w-full max-w-md ${cardClass} rounded-3xl p-6 sm:p-7 shadow-2xl text-center space-y-4`}>
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/30 flex items-center justify-center mx-auto">
+              <Clock className="w-8 h-8 stroke-[2.5]" />
             </div>
 
             <div>
-              <h3 className="text-2xl font-black">{tr('Order Placed Successfully!', 'ऑर्डर सफलतापूर्वक दिया गया!')}</h3>
+              <h3 className="text-2xl font-black">{tr('Order Received!', 'ऑर्डर मिल गया!')}</h3>
               <p className="text-xs text-emerald-500 font-mono font-bold mt-1">{tr('Order', 'ऑर्डर')} #{confirmedOrder.id}</p>
-              <p className="text-xs opacity-60 mt-1">{tr('Estimated Delivery:', 'अनुमानित डिलीवरी:')} {confirmedOrder.estimatedDelivery}</p>
+              <p className="text-xs opacity-60 mt-1">{tr('We are verifying your payment screenshot. You will get a notification as soon as your order is confirmed.', 'हम आपके भुगतान स्क्रीनशॉट की जाँच कर रहे हैं। ऑर्डर कन्फ़र्म होते ही आपको सूचना मिलेगी।')}</p>
             </div>
 
             <div className={`p-4 rounded-2xl ${subCardClass} text-left text-xs space-y-1.5`}>
@@ -976,12 +999,12 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 <span>{confirmedOrder.shippingAddress.fullName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="opacity-60">{tr('Total Paid:', 'कुल भुगतान:')}</span>
+                <span className="opacity-60">{tr('Amount:', 'राशि:')}</span>
                 <span className="font-extrabold text-emerald-500">₹{confirmedOrder.total}</span>
               </div>
               <div className="flex justify-between">
                 <span className="opacity-60">{tr('Status:', 'स्थिति:')}</span>
-                <span className="text-emerald-500 font-bold uppercase text-[10px]">{tr('Processing Dispatch', 'भेजने की प्रक्रिया जारी')}</span>
+                <span className="text-amber-500 font-bold uppercase text-[10px]">{tr('Payment verification pending', 'भुगतान सत्यापन बाकी')}</span>
               </div>
             </div>
 

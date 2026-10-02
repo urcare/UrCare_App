@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { AIResultNotice } from './AIResultNotice';
+import { ensureAIConsent, AI_CONSENT_DECLINED_MESSAGE } from '../utils/aiConsent';
 import { 
   Upload, FileText, CheckCircle2, Sparkles, RefreshCw, Type, AlertCircle, 
   Cpu, Activity, ShieldCheck, HeartPulse, Stethoscope, ArrowRight, Check, Zap, Eye
@@ -76,6 +78,13 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      // The server's JSON body limit is 25 MB and base64 adds ~33%, so cap
+      // the raw file at 15 MB with a clear message instead of a vague failure.
+      if (file.size > 15 * 1024 * 1024) {
+        setError(lang2 === 'hi' ? 'फ़ाइल बहुत बड़ी है (15 MB से ज़्यादा)। कृपया छोटी फ़ाइल चुनें।' : 'This file is too large (over 15 MB). Please choose a smaller file.');
+        e.target.value = '';
+        return;
+      }
       setSelectedFile(file);
       setError(null);
       setFileBase64(null);
@@ -130,6 +139,11 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       setError(lang2 === 'hi'
         ? 'फ़ाइल पढ़ी नहीं जा सकी। कृपया दोबारा अपलोड करें।'
         : "We couldn't read that file. Please try uploading it again.");
+      return;
+    }
+
+    if (!(await ensureAIConsent())) {
+      setError(lang2 === 'hi' ? AI_CONSENT_DECLINED_MESSAGE.hi : AI_CONSENT_DECLINED_MESSAGE.en);
       return;
     }
 
@@ -319,6 +333,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
             userName={userAccount?.displayName || tr('Member Patient', 'सदस्य रोगी')}
             theme="light"
           />
+          <AIResultNotice feature="report" />
 
           <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
             <button
@@ -346,9 +361,10 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       {!isAnalyzing && !analysisResult && (
         <div className="space-y-4">
           
-          {/* OPTION 1: UPLOAD REPORT PHOTO — PDF intentionally not offered here:
-              the vision model behind this scanner reads images only, not PDF
-              bytes, so accepting one would just guarantee a rejection. */}
+          {/* OPTION 1: UPLOAD REPORT PHOTO OR PDF — Claude (the primary AI,
+              see callAIForJson in server.ts) reads PDFs natively. If a call
+              ever falls back to Groq, the server answers a PDF with a clear
+              "please upload a photo" rejection instead. */}
           {inputMode === 'upload' && (
             <div
               onClick={() => document.getElementById('report-file-input')?.click()}
@@ -357,7 +373,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
               <input
                 id="report-file-input"
                 type="file"
-                accept="image/*"
+                accept="image/*,application/pdf"
                 className="hidden"
                 onChange={handleFileChange}
               />
@@ -369,7 +385,7 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
                   {selectedFile ? selectedFile.name : tr('Click to Upload a Report Photo', 'रिपोर्ट फोटो अपलोड करने हेतु क्लिक करें')}
                 </p>
                 <p className="text-xs text-zinc-500">
-                  {tr('Supports doctor prescription or blood test photos (PDF not supported right now)', 'डॉक्टर पर्चे या ब्लड टेस्ट फोटो समर्थित हैं (PDF अभी समर्थित नहीं है)')}
+                  {tr('Supports blood test reports or doctor prescriptions — photo or PDF (up to 15 MB)', 'ब्लड टेस्ट रिपोर्ट या डॉक्टर पर्चा — फोटो या PDF (15 MB तक)')}
                 </p>
               </div>
               {selectedFile && (

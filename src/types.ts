@@ -769,8 +769,9 @@ export interface Order {
   discount: number;
   total: number;
   paymentMethod: 'qr_upi' | 'razorpay' | 'autopay' | 'trial_checkout' | 'card_netbanking';
-  paymentStatus: 'paid' | 'pending' | 'verified';
-  orderStatus: 'confirmed' | 'processing' | 'shipped' | 'delivered';
+  /** 'pending' until an admin checks the uploaded payment screenshot. */
+  paymentStatus: 'paid' | 'pending' | 'verified' | 'rejected';
+  orderStatus: 'awaiting_payment' | 'confirmed' | 'processing' | 'shipped' | 'delivered';
   transactionId?: string;
   receiptImageUrl?: string;
   receiptUploadedAt?: string;

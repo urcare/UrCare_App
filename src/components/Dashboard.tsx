@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Settings, Clock,
   ChevronRight, Sparkles, Trash2, Calendar, ShieldCheck, Activity,
-  ShoppingBag, Stethoscope, Crown, Camera, Lock, ClipboardCheck,
+  ShoppingBag, Stethoscope, Camera, Lock, ClipboardCheck,
   Package, User, Check, FileText, CheckCircle2, HeartPulse,
   LogOut, MessageSquare, AlertCircle, MoreVertical, X,
   Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash, MessageSquareHeart,
@@ -16,7 +16,6 @@ import AppBackground from './AppBackground';
 import { HealthReportModal } from './HealthReportModal';
 import { SettingsModal } from './SettingsModal';
 import { ProductsModule } from './ProductsModule';
-import { ProUpgradeModal } from './ProUpgradeModal';
 import { FoodScannerModal } from './FoodScannerModal';
 import { MyOrdersModal } from './MyOrdersModal';
 import { DoctorConsultModal } from './DoctorConsultModal';
@@ -199,8 +198,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Modals state
   const [isHealthReportOpen, setIsHealthReportOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isProUpgradeOpen, setIsProUpgradeOpen] = useState(false);
-  const [proTriggerFeature, setProTriggerFeature] = useState('UrCare Premium');
   const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
   const [isDoctorConsultOpen, setIsDoctorConsultOpen] = useState(false);
   const [isAppFeedbackOpen, setIsAppFeedbackOpen] = useState(false);
@@ -222,14 +219,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Store Order Placement
   const handleOrderPlaced = (newOrder: Order) => {
     setUserOrders((prev) => [newOrder, ...prev]);
-  };
-
-  const handleOpenProModalFor = (featureName?: any) => {
-    const validFeature = typeof featureName === 'string' && featureName.trim().length > 0
-      ? featureName.trim()
-      : 'UrCare Premium';
-    setProTriggerFeature(validFeature);
-    setIsProUpgradeOpen(true);
   };
 
   // `addedConditions` — real condition labels the server already merged into
@@ -1093,7 +1082,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           account={account}
           onClose={() => setIsSettingsOpen(false)}
           onUpdateProfile={onUpdateProfile}
-          onOpenProUpgrade={() => { setIsSettingsOpen(false); handleOpenProModalFor('UrCare Premium'); }}
           onOpenAccountTab={() => setActiveTab('account')}
           onOpenReports={() => setActiveTab('reports')}
           onOpenOrders={() => setIsMyOrdersOpen(true)}
@@ -1102,30 +1090,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
         />
       )}
 
-      {isProUpgradeOpen && (
-        <ProUpgradeModal
-          isOpen={isProUpgradeOpen}
-          account={account}
-          featureTriggerName={proTriggerFeature}
-          onClose={() => setIsProUpgradeOpen(false)}
-          onUpgradeSuccess={(updatedAccount) => {
-            setIsProUpgradeOpen(false);
-            if (onUpdateAccount) onUpdateAccount(updatedAccount);
-          }}
-        />
-      )}
-
       {isFoodScannerOpen && (
         <FoodScannerModal
           isOpen={isFoodScannerOpen}
           onClose={() => setIsFoodScannerOpen(false)}
           onAddMeal={handleAddMeal}
-          isPro={!!account.isPro}
           profile={profile}
-          onOpenProUpgrade={() => {
-            setIsFoodScannerOpen(false);
-            handleOpenProModalFor('UrCare Food Scan');
-          }}
         />
       )}
 

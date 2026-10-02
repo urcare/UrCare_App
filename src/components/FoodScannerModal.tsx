@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { AIResultNotice } from './AIResultNotice';
+import { ensureAIConsent, AI_CONSENT_DECLINED_MESSAGE } from '../utils/aiConsent';
 import {
   X, Camera, Sparkles, Utensils, RefreshCw, Check, Plus,
   AlertCircle, Image as ImageIcon, Upload
@@ -19,8 +21,6 @@ interface FoodScannerModalProps {
   onClose: () => void;
   onAddMeal: (meal: MealItem) => void;
   defaultCategory?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  isPro?: boolean;
-  onOpenProUpgrade?: () => void;
   /** User's onboarding health profile — used to personalize the AI suitability verdict */
   profile?: UserHealthProfile;
 }
@@ -39,8 +39,6 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
   onClose,
   onAddMeal,
   defaultCategory = 'lunch',
-  isPro = false,
-  onOpenProUpgrade,
   profile,
 }) => {
   const [category, setCategory] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>(defaultCategory);
@@ -138,6 +136,11 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
   const handleAnalyzeFood = async () => {
     if (!description.trim() && !selectedImage) {
       setError(tr('Please type your meal description or upload a food photo.', 'कृपया अपने भोजन का विवरण लिखें या भोजन की फोटो अपलोड करें।'));
+      return;
+    }
+
+    if (!(await ensureAIConsent())) {
+      setError(language === 'hi' ? AI_CONSENT_DECLINED_MESSAGE.hi : AI_CONSENT_DECLINED_MESSAGE.en);
       return;
     }
 
@@ -514,6 +517,8 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
                 </p>
               )}
             </div>
+
+            <AIResultNotice feature="food" />
 
             <div className="flex items-center gap-2">
               <button

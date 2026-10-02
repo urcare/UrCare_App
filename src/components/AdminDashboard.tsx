@@ -13,7 +13,7 @@ import {
 } from '../types';
 import { Logo } from './Logo';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
-import { getReviews, getProducts } from '../utils/supabase';
+import { getReviews, getProducts, mapOrderRow } from '../utils/supabase';
 import { openAttachment } from '../utils/openAttachment';
 import { compressImageIfNeeded, compressVideoIfNeeded } from '../utils/compressMedia';
 import { calculateNutritionPlan } from '../utils/calculator';
@@ -683,7 +683,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     }).catch(() => {});
 
     adminFetch(adminToken, '/api/admin/orders').then((res) => res.json()).then((data) => {
-      if (Array.isArray(data?.orders)) setOrders(data.orders);
+      if (Array.isArray(data?.orders)) setOrders(data.orders.map(mapOrderRow));
     }).catch(() => {});
 
     adminFetch(adminToken, '/api/admin/qr-settings').then((res) => res.json()).then((data) => {
@@ -731,17 +731,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     setAdminToken(null);
   };
 
-  const handleStatusChange = async (orderId: string, newStatus: 'confirmed' | 'processing' | 'shipped' | 'delivered') => {
+  // Sends one order update and replaces the row with what the server saved
+  // (the server enforces the rules, e.g. no dispatch before payment is verified).
+  const updateAdminOrder = async (orderId: string, body: { status?: string; paymentStatus?: 'verified' | 'rejected' }) => {
     if (!adminToken) return;
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, orderStatus: newStatus } : o))
-    );
     try {
-      await adminFetch(adminToken, `/api/admin/orders/${orderId}`, {
+      const res = await adminFetch(adminToken, `/api/admin/orders/${orderId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(body),
       });
-    } catch (e) {}
+      const data = await res.json();
+      if (!res.ok || !data.order) {
+        alert(data.error || 'Could not update this order.');
+        return;
+      }
+      setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...mapOrderRow(data.order), items: o.items } : o)));
+    } catch {
+      alert('Could not reach the server. Please try again.');
+    }
+  };
+
+  const handleStatusChange = (orderId: string, newStatus: 'confirmed' | 'processing' | 'shipped' | 'delivered') =>
+    updateAdminOrder(orderId, { status: newStatus });
+
+  const handleVerifyPayment = (orderId: string, verdict: 'verified' | 'rejected') => {
+    const question = verdict === 'verified'
+      ? 'Approve this payment? The order will be confirmed and the customer notified.'
+      : 'Reject this payment? The customer will be asked to upload a new screenshot.';
+    if (window.confirm(question)) updateAdminOrder(orderId, { paymentStatus: verdict });
   };
 
   const handleOpenRxModal = (report: MedicalReportAnalysis) => {
@@ -1031,7 +1048,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
             }`}
           >
             <ShoppingBag className="w-4 h-4" />
-            <span>Store Orders ({orders.length})</span>
+            <span>Store Orders ({orders.length}){orders.some((o) => o.paymentStatus === 'pending') ? ` • ${orders.filter((o) => o.paymentStatus === 'pending').length} to verify` : ''}</span>
           </button>
 
           <button
@@ -1751,7 +1768,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-black text-zinc-950">Store Order Fulfillment</h3>
-                <p className="text-xs text-zinc-500">Track user supplement purchases, verify UPI QR payments, and manage shipment dispatch.</p>
+                <p className="text-xs text-zinc-500">Check each payment screenshot, approve or reject it, then manage shipment dispatch.</p>
               </div>
             </div>
 
@@ -1770,22 +1787,70 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
 
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       <span className="text-sm font-black text-zinc-900">₹{order.total}</span>
-                      <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-700 font-bold border border-zinc-200 capitalize">
-                        {order.paymentMethod === 'qr_upi' ? 'UPI QR' : 'Online Gateway'}
+                      <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
+                        order.paymentStatus === 'verified'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : order.paymentStatus === 'rejected'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        {order.paymentStatus === 'verified' ? 'Payment verified' : order.paymentStatus === 'rejected' ? 'Payment rejected' : 'Payment to verify'}
                       </span>
 
-                      {/* Status Selector */}
-                      <select
-                        value={order.orderStatus}
-                        onChange={(e) => handleStatusChange(order.id, e.target.value as any)}
-                        className="px-3 py-1.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-emerald-700 focus:outline-none cursor-pointer"
-                      >
-                        <option value="confirmed">Confirmed</option>
-                        <option value="processing">Processing</option>
-                        <option value="shipped">Shipped (In Transit)</option>
-                        <option value="delivered">Delivered</option>
-                      </select>
+                      {/* Status Selector — dispatch only after the payment is verified */}
+                      {order.paymentStatus === 'verified' && (
+                        <select
+                          value={order.orderStatus}
+                          onChange={(e) => handleStatusChange(order.id, e.target.value as any)}
+                          className="px-3 py-1.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs font-bold text-emerald-700 focus:outline-none cursor-pointer"
+                        >
+                          <option value="confirmed">Confirmed</option>
+                          <option value="processing">Processing</option>
+                          <option value="shipped">Shipped (In Transit)</option>
+                          <option value="delivered">Delivered</option>
+                        </select>
+                      )}
                     </div>
+                  </div>
+
+                  {/* Payment proof + verification */}
+                  <div className="flex flex-wrap items-center gap-3 p-3 rounded-2xl bg-zinc-50 border border-zinc-200">
+                    {order.receiptImageUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => openAttachment(order.receiptImageUrl!, `payment-${order.id}.jpg`)}
+                        className="shrink-0 cursor-pointer"
+                        title="Open full screenshot"
+                      >
+                        <img src={order.receiptImageUrl} alt="Payment screenshot" className="w-16 h-16 object-cover rounded-xl border border-zinc-200" />
+                      </button>
+                    ) : (
+                      <div className="w-16 h-16 rounded-xl border border-dashed border-zinc-300 flex items-center justify-center text-[10px] text-zinc-400 text-center shrink-0">No screenshot</div>
+                    )}
+                    <div className="text-xs text-zinc-600 space-y-0.5 min-w-0 flex-1">
+                      <div><span className="font-bold text-zinc-800">UTR:</span> {order.transactionId || '—'}</div>
+                      {order.receiptUploadedAt && <div><span className="font-bold text-zinc-800">Uploaded:</span> {new Date(order.receiptUploadedAt).toLocaleString()}</div>}
+                      <div className="text-[11px] text-zinc-500">Tap the screenshot to open it full size. Match the amount (₹{order.total}) in your bank/UPI app before approving.</div>
+                    </div>
+                    {order.paymentStatus !== 'verified' && order.receiptImageUrl && (
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyPayment(order.id, 'rejected')}
+                          disabled={order.paymentStatus === 'rejected'}
+                          className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-white border border-rose-200 text-rose-600 text-xs font-black cursor-pointer disabled:opacity-40"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyPayment(order.id, 'verified')}
+                          className="flex-1 sm:flex-none px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black cursor-pointer"
+                        >
+                          Approve payment
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Items */}

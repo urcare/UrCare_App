@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient, Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
+import { ensureAIConsent, AI_CONSENT_DECLINED_MESSAGE } from './aiConsent';
 import { Browser } from '@capacitor/browser';
 import { Preferences } from '@capacitor/preferences';
 import {
@@ -68,6 +69,17 @@ export function isSupabaseConfigured(): boolean {
 // ============================================================================
 
 export async function signInWithGoogle(): Promise<{ error?: string }> {
+  return signInWithOAuthProvider('google');
+}
+
+/** Sign in with Apple — offered on iOS, where App Review Guideline 4.8
+ *  expects it alongside Google sign-in. Same native/browser flow as Google;
+ *  needs the Apple provider enabled in Supabase (Authentication → Providers). */
+export async function signInWithApple(): Promise<{ error?: string }> {
+  return signInWithOAuthProvider('apple');
+}
+
+async function signInWithOAuthProvider(provider: 'google' | 'apple'): Promise<{ error?: string }> {
   const supabase = getSupabaseClient();
   if (!supabase) return { error: 'Supabase is not configured.' };
 
@@ -82,7 +94,7 @@ export async function signInWithGoogle(): Promise<{ error?: string }> {
     // appUrlOpen listener in App.tsx, which calls completeNativeOAuthSignIn
     // below).
     const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider,
       options: {
         redirectTo: 'org.urcare.app://auth-callback',
         skipBrowserRedirect: true,
@@ -94,7 +106,7 @@ export async function signInWithGoogle(): Promise<{ error?: string }> {
   }
 
   const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
+    provider,
     options: { redirectTo: window.location.origin },
   });
   return { error: error?.message };
@@ -637,6 +649,7 @@ export interface CustomDailyPlanResult {
  *  true, which is the original save-immediately behavior for a single
  *  photo upload. */
 export async function uploadCustomDailyPlan(fileBase64: string, mimeType: string, persist: boolean = true, dependentId?: string | null): Promise<CustomDailyPlanResult> {
+  if (!(await ensureAIConsent())) return { isValidPlan: false, rejectionReason: AI_CONSENT_DECLINED_MESSAGE.en };
   try {
     const res = await authedFetch('/api/analyze-daily-plan', {
       method: 'POST',
@@ -740,6 +753,7 @@ export async function deleteFamilyMember(id: string): Promise<{ error?: string }
 }
 
 export async function addCustomPlanStep(timeLabel: string, title: string, body: string, dependentId?: string | null): Promise<{ step?: CustomPlanStep; error?: string }> {
+  if (!(await ensureAIConsent())) return { error: AI_CONSENT_DECLINED_MESSAGE.en };
   try {
     const res = await authedFetch('/api/custom-plan-steps', {
       method: 'POST',
@@ -951,6 +965,18 @@ export async function getMyQueueEntry(): Promise<{ entry: QueueEntry | null; pos
     return { entry: mapQueueEntry(data.entry), position: data.position };
   } catch {
     return { entry: null, position: 0 };
+  }
+}
+
+/** The admin-set UPI payment details (Admin → Products & QR) used by the
+ *  store checkout. Public, no auth needed. */
+export async function getPaymentQrSettings(): Promise<{ qrImageUrl?: string; upiId?: string; payeeName?: string }> {
+  try {
+    const res = await fetch('/api/qr-settings');
+    const data = await res.json();
+    return { qrImageUrl: data?.qr_image_url || undefined, upiId: data?.upi_id || undefined, payeeName: data?.payee_name || undefined };
+  } catch {
+    return {};
   }
 }
 
@@ -1169,11 +1195,10 @@ export async function saveOrderAndReceiptToSupabase(order: Order): Promise<{ suc
       subtotal: order.subtotal,
       discount: order.discount,
       total: order.total,
-      paymentMethod: order.paymentMethod,
-      // UPI-QR transactions carry a manually-entered reference; Razorpay
-      // transactions carry the real payment id — either way it's the one
-      // payment reference this order has, so it goes in the same slot.
-      razorpayPaymentId: order.transactionId,
+      // UPI reference/UTR (optional) + the payment screenshot (required —
+      // the server rejects an order without one; an admin verifies it).
+      transactionId: order.transactionId,
+      receiptImageUrl: order.receiptImageUrl,
     }),
   });
   const data = await res.json();
@@ -1181,10 +1206,9 @@ export async function saveOrderAndReceiptToSupabase(order: Order): Promise<{ suc
   return { success: true, orderId: data.order?.id || order.id };
 }
 
-/** Updates an existing order the caller owns — e.g. attaching a payment
- *  reference / receipt screenshot and marking it verified. Pass the REAL id
- *  returned by saveOrderAndReceiptToSupabase, not the display placeholder. */
-export async function updateOrderPayment(orderId: string, patch: { transactionId?: string; receiptImageUrl?: string; paymentStatus?: string }): Promise<{ success: boolean; error?: string }> {
+/** Re-uploads the payment screenshot for an order the caller owns (after an
+ *  admin rejected the first one) — puts it back in the verification queue. */
+export async function updateOrderPayment(orderId: string, patch: { transactionId?: string; receiptImageUrl: string }): Promise<{ success: boolean; error?: string }> {
   const res = await authedFetch(`/api/orders/${orderId}`, { method: 'PATCH', body: JSON.stringify(patch) });
   const data = await res.json();
   if (!res.ok) return { success: false, error: data.error };
@@ -1275,11 +1299,10 @@ export async function getActivityLog(userId: string, limit = 50): Promise<Activi
   }));
 }
 
-export async function getMyOrders(userId: string): Promise<Order[]> {
-  const supabase = getSupabaseClient();
-  if (!supabase) return [];
-  const { data } = await supabase.from('orders').select('*, order_items(*)').eq('user_id', userId).order('created_at', { ascending: false });
-  return (data || []).map((o: any) => ({
+/** Maps a raw `orders` row (with its `order_items`) to the app's Order
+ *  shape — shared by My Orders and the admin Orders tab. */
+export function mapOrderRow(o: any): Order {
+  return {
     id: o.id,
     userId: o.user_id,
     userName: o.customer_name,
@@ -1292,13 +1315,26 @@ export async function getMyOrders(userId: string): Promise<Order[]> {
     subtotal: o.total_amount,
     discount: 0,
     total: o.total_amount,
-    paymentMethod: o.razorpay_order_id ? 'razorpay' : 'qr_upi',
-    paymentStatus: o.payment_status,
-    orderStatus: o.status,
-    transactionId: o.razorpay_payment_id,
+    paymentMethod: 'qr_upi',
+    // The orders table stores a verified payment as 'completed' and a
+    // rejected one as 'failed' (its CHECK constraint; see server.ts). Until
+    // the payment is verified the order is shown as awaiting payment.
+    paymentStatus: o.payment_status === 'completed' ? 'verified' : o.payment_status === 'failed' ? 'rejected' : 'pending',
+    orderStatus: o.payment_status === 'completed' ? o.status : 'awaiting_payment',
+    // The UPI reference/UTR the customer typed (stored in this column).
+    transactionId: o.razorpay_payment_id || undefined,
+    receiptImageUrl: o.receipt_image_url || undefined,
+    receiptUploadedAt: o.receipt_uploaded_at || undefined,
     createdAt: o.created_at,
     estimatedDelivery: '',
-  }));
+  };
+}
+
+export async function getMyOrders(userId: string): Promise<Order[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return [];
+  const { data } = await supabase.from('orders').select('*, order_items(*)').eq('user_id', userId).order('created_at', { ascending: false });
+  return (data || []).map(mapOrderRow);
 }
 
 // ============================================================================

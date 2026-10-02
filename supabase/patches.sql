@@ -533,3 +533,12 @@ on conflict (id) do update set public = true, file_size_limit = 104857600;
 drop policy if exists "public read status media" on storage.objects;
 create policy "public read status media" on storage.objects for select
   using (bucket_id = 'status-media');
+
+-- 21. MANUAL UPI PAYMENT VERIFICATION — no SQL needed. The live orders
+--     table's existing CHECK constraints (orders_status_check,
+--     orders_payment_status_check) allow
+--       status: processing | confirmed | shipped | delivered | cancelled
+--       payment_status: pending | completed | failed | refunded
+--     and the screenshot-verification flow uses only those values
+--     (pending -> completed on approve, -> failed on reject; see server.ts).
+--     receipt_image_url / receipt_uploaded_at already exist (section 3b).

@@ -3,6 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import Groq from 'groq-sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import multer from 'multer';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createServer as createViteServer } from 'vite';
@@ -25,9 +26,11 @@ app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 // written to local disk.
 const uploadMedia = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
-// Every AI call in this app goes through Groq's free tier (get a key at
-// https://console.groq.com/keys, then set GROQ_API_KEY in .env).
-// Two different models, picked by whether THIS call includes an image —
+// Every AI call in this app goes through callAIForJson (further down), which
+// uses Claude when ANTHROPIC_API_KEY is set and falls back to Groq
+// (GROQ_API_KEY, https://console.groq.com/keys) when Claude is missing or a
+// Claude call fails. With only GROQ_API_KEY set, the app behaves exactly as
+// before. Groq setup below — two different models, picked by whether THIS call includes an image —
 // verified directly against the real Groq API before shipping this:
 // - qwen/qwen3.8-27b: the vision-capable model, used whenever an image is
 //   attached. It reliably follows a strict JSON schema for image input, but
@@ -269,6 +272,155 @@ async function callGroqForJson(opts: {
 }
 
 // ============================================================================
+// CLAUDE (Anthropic) — primary AI provider when ANTHROPIC_API_KEY is set.
+// Two tiers, both overridable from .env without a code change:
+// - heavy (lab reports, daily-plan pages): Claude Sonnet 5.5 — reads PDFs
+//   natively and has no tiny per-minute output ceiling, so dense multi-panel
+//   reports come back complete.
+// - light (food scan, custom-step safety check, daily quote): Claude Haiku
+//   4.5 — the cheapest/fastest Claude, plenty for short structured answers.
+// Any Claude failure (outage, rate limit, refusal, bad output) falls back to
+// Groq inside callAIForJson, so a user never sees a hard failure just
+// because one provider had a bad moment.
+// ============================================================================
+type AITier = 'heavy' | 'light';
+type ClaudeEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
+const CLAUDE_MODELS: Record<AITier, string> = {
+  heavy: process.env.CLAUDE_HEAVY_MODEL || 'claude-sonnet-5-5',
+  light: process.env.CLAUDE_LIGHT_MODEL || 'claude-haiku-4-5',
+};
+const CLAUDE_MAX_TOKENS: Record<AITier, number> = { heavy: 16000, light: 4096 };
+// Lab-report/plan extraction is transcription plus light interpretation, not
+// deep reasoning — "low" keeps it fast and cheap. Raise to "medium" in .env
+// if results ever look shallow.
+const CLAUDE_HEAVY_EFFORT = (process.env.CLAUDE_HEAVY_EFFORT || 'low') as ClaudeEffort;
+const CLAUDE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
+let claudeClient: Anthropic | null = null;
+function getClaudeClient(): Anthropic | null {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+  // The SDK's own retries (2, honoring retry-after on 429/5xx) are the only
+  // retry layer for Claude — anything still failing after them goes to Groq.
+  if (!claudeClient) claudeClient = new Anthropic({ apiKey, maxRetries: 2, timeout: 120_000 });
+  return claudeClient;
+}
+
+function isAIConfigured(): boolean {
+  return !!(process.env.ANTHROPIC_API_KEY || process.env.GROQ_API_KEY);
+}
+
+/** Rewrites the Groq-style strict schemas used throughout this file into the
+ *  shape Claude's structured outputs accept: a nullable union written as
+ *  `type: ['string', 'null']` becomes `anyOf: [{type: 'string', ...}, {type:
+ *  'null'}]` (keeping the non-null branch's own properties/items/enum), at
+ *  every nesting level. */
+function toClaudeSchema(schema: any): any {
+  if (Array.isArray(schema)) return schema.map(toClaudeSchema);
+  if (!schema || typeof schema !== 'object') return schema;
+  const out: Record<string, any> = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === 'properties' && value && typeof value === 'object') {
+      out.properties = Object.fromEntries(Object.entries(value as Record<string, any>).map(([k, v]) => [k, toClaudeSchema(v)]));
+    } else if (key === 'items' || key === 'anyOf' || key === 'allOf') {
+      out[key] = toClaudeSchema(value);
+    } else {
+      out[key] = value;
+    }
+  }
+  if (Array.isArray(out.type)) {
+    const types: string[] = out.type;
+    const nonNull = types.filter((t) => t !== 'null');
+    if (types.includes('null') && nonNull.length === 1) {
+      const { description, ...rest } = out;
+      return {
+        ...(description ? { description } : {}),
+        anyOf: [{ ...rest, type: nonNull[0] }, { type: 'null' }],
+      };
+    }
+  }
+  return out;
+}
+
+type AIJsonOptions = {
+  system: string;
+  text: string;
+  /** A data URL (or raw base64) of an image — or, with Claude, a PDF. */
+  imageBase64?: string;
+  toolName: string;
+  inputSchema: Record<string, any>;
+  /** Output budget for the Groq path only (see callGroqForJson) — Claude
+   *  uses CLAUDE_MAX_TOKENS for its tier instead, since it has no tiny
+   *  per-minute output ceiling to squeeze under. */
+  maxTokens?: number;
+  tier: AITier;
+};
+
+async function callClaudeForJson(client: Anthropic, opts: AIJsonOptions): Promise<Record<string, any>> {
+  const model = CLAUDE_MODELS[opts.tier];
+  const content: Anthropic.ContentBlockParam[] = [];
+  if (opts.imageBase64) {
+    const mediaType = fileMediaType(opts.imageBase64);
+    const data = toRawBase64(opts.imageBase64);
+    if (mediaType === 'application/pdf') {
+      content.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } });
+    } else if (CLAUDE_IMAGE_TYPES.has(mediaType)) {
+      content.push({ type: 'image', source: { type: 'base64', media_type: mediaType as 'image/jpeg', data } });
+    } else {
+      throw new Error(`Unsupported file type for Claude: ${mediaType}`);
+    }
+  }
+  content.push({ type: 'text', text: opts.text });
+
+  const outputConfig: Anthropic.OutputConfig = {
+    format: { type: 'json_schema', schema: toClaudeSchema(opts.inputSchema) },
+  };
+  // Haiku 4.5 rejects the effort parameter; every current Sonnet/Opus takes it.
+  if (opts.tier === 'heavy' && !model.startsWith('claude-haiku')) outputConfig.effort = CLAUDE_HEAVY_EFFORT;
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: CLAUDE_MAX_TOKENS[opts.tier],
+    system: opts.system,
+    messages: [{ role: 'user', content }],
+    output_config: outputConfig,
+  });
+
+  if (response.stop_reason === 'refusal') {
+    throw new Error(`Claude declined '${opts.toolName}' (${response.stop_details?.category ?? 'no category'})`);
+  }
+  if (response.stop_reason === 'max_tokens') {
+    console.error(`callClaudeForJson: '${opts.toolName}' hit max_tokens (${CLAUDE_MAX_TOKENS[opts.tier]}) — response was truncated.`);
+  }
+  const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === 'text');
+  if (!textBlock) throw new Error(`Claude returned no text for '${opts.toolName}'`);
+  // A truncated response fails to parse here and throws — which sends this
+  // call on to Groq rather than returning a silently partial result.
+  return JSON.parse(textBlock.text);
+}
+
+/** The one entry point every AI feature uses: Claude first (when
+ *  configured), Groq as the fallback. Returns which model actually answered
+ *  so callers that record it (food_scans.model_version) stay accurate.
+ *  Throws PdfNotSupportedError only when the call ends up on Groq with a PDF. */
+async function callAIForJson(opts: AIJsonOptions): Promise<{ data: Record<string, any>; model: string }> {
+  const claude = getClaudeClient();
+  const groq = getGroqClient();
+  if (claude) {
+    try {
+      return { data: await callClaudeForJson(claude, opts), model: CLAUDE_MODELS[opts.tier] };
+    } catch (err) {
+      if (!groq) throw err;
+      console.error(`callAIForJson: Claude failed for '${opts.toolName}', falling back to Groq —`, extractDebugReason(err));
+    }
+  }
+  if (!groq) throw new Error('No AI provider is configured (set ANTHROPIC_API_KEY or GROQ_API_KEY).');
+  const data = await callGroqForJson({ ...opts, client: groq });
+  return { data, model: opts.imageBase64 ? GROQ_VISION_MODEL : GROQ_TEXT_MODEL };
+}
+
+// ============================================================================
 // SUPABASE — service-role client (server-only, bypasses RLS). Every real
 // record lives in Postgres; nothing here is cached in memory.
 // ============================================================================
@@ -391,7 +543,8 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    aiConfigured: !!process.env.GROQ_API_KEY,
+    aiConfigured: isAIConfigured(),
+    aiProvider: process.env.ANTHROPIC_API_KEY ? 'claude' : process.env.GROQ_API_KEY ? 'groq' : null,
     supabaseConfigured: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
   });
 });
@@ -411,12 +564,11 @@ app.get('/api/daily-quote', async (req, res) => {
     return res.json({ en: dailyQuoteCache.en, hi: dailyQuoteCache.hi });
   }
 
-  const ai = getGroqClient();
-  if (!ai) return res.json(DAILY_QUOTE_FALLBACK);
+  if (!isAIConfigured()) return res.json(DAILY_QUOTE_FALLBACK);
 
   try {
-    const parsed = await callGroqForJson({
-      client: ai,
+    const { data: parsed } = await callAIForJson({
+      tier: 'light',
       system: 'You write one short, original, motivating line for a metabolic-health/diabetes-reversal app\'s home screen, in the spirit of "Discipline today, freedom tomorrow." Under 10 words, no clichés about "journeys", no medical claims, no emoji. Provide an English version and a natural (not literally/machine-translated-sounding) Hindi version with the same meaning.',
       text: `Write today's motivational line (today is ${today}).`,
       toolName: 'record_daily_quote',
@@ -430,7 +582,7 @@ app.get('/api/daily-quote', async (req, res) => {
         additionalProperties: false,
       },
     });
-    if (!parsed.en || !parsed.hi) throw new Error('Incomplete quote from Groq');
+    if (!parsed.en || !parsed.hi) throw new Error('Incomplete quote from AI');
     dailyQuoteCache = { date: today, en: parsed.en, hi: parsed.hi };
     res.json({ en: parsed.en, hi: parsed.hi });
   } catch (error) {
@@ -574,8 +726,7 @@ const MAX_REPORTS_PER_USER = 2;
 app.post('/api/analyze-report', requireUser(async (req, res, user) => {
   try {
     const { imageBase64, mimeType = 'image/jpeg', reportText, reportType } = req.body;
-    const ai = getGroqClient();
-    if (!ai) {
+    if (!isAIConfigured()) {
       return res.status(503).json({ analysisFailed: true, rejectionReason: 'The scanner is not configured right now. Please try again later.' });
     }
 
@@ -603,8 +754,8 @@ OUTPUT LENGTH IS STRICTLY LIMITED — you must fit ALL test rows within a small 
 Prioritize including EVERY test row over writing any explanatory text — completeness of the biomarker list matters more than prose anywhere else.
 MANDATORY OUTPUT SHAPE — your JSON MUST always contain ALL EIGHT top-level keys, every single time, with no exceptions: isValidReport, rejectionReason, reportName, summary, biomarkers, identifiedRisks, dietaryRecommendations, macroAdjustments. Never stop generating after only "biomarkers" — a response missing any of these keys is invalid and will be rejected outright. If a key doesn't apply, its value is null (for a string/object) or an empty array [] (for a list) — but the key itself must still be written. Write the short/empty top-level keys (isValidReport, rejectionReason, reportName, summary) FIRST, then biomarkers, then the remaining keys — never let a long biomarkers list be the last thing you write. Call the record_report_analysis tool exactly once with the complete result.`;
 
-    const parsed = await callGroqForJson({
-      client: ai,
+    const { data: parsed } = await callAIForJson({
+      tier: 'heavy',
       system: systemInstruction,
       text: `Please analyze this health/medical report${reportText ? `: "${reportText}"` : ''} and output structured clinical nutrition recommendations.`,
       imageBase64: imageBase64 ? (imageBase64.startsWith('data:') ? imageBase64 : `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`) : undefined,
@@ -736,7 +887,7 @@ MANDATORY OUTPUT SHAPE — your JSON MUST always contain ALL EIGHT top-level key
     if (error instanceof PdfNotSupportedError) {
       return res.json({ isValidReport: false, rejectionReason: 'PDF reports aren\'t supported right now — please upload a clear photo of your report instead.' });
     }
-    console.error('Error analyzing report with Groq:', error);
+    console.error('Error analyzing report:', error);
     return res.status(200).json({
       isValidReport: null,
       analysisFailed: true,
@@ -750,7 +901,6 @@ MANDATORY OUTPUT SHAPE — your JSON MUST always contain ALL EIGHT top-level key
 app.post('/api/analyze-food', requireUser(async (req, res, user) => {
   try {
     const { imageBase64, description, mealCategory = 'lunch', profile } = req.body;
-    const ai = getGroqClient();
 
     const profileContext = profile
       ? [
@@ -765,7 +915,7 @@ app.post('/api/analyze-food', requireUser(async (req, res, user) => {
         ].filter(Boolean).join('. ')
       : '';
 
-    if (!ai) {
+    if (!isAIConfigured()) {
       return res.status(503).json({ analysisFailed: true, rejectionReason: 'The scanner is not configured right now. Please try again later.' });
     }
 
@@ -776,8 +926,8 @@ CRITICAL FIRST STEP: Decide whether the image (or, if no image, the text descrip
 - When isFood is true, also use the user's health profile context provided to decide whether THIS SPECIFIC MEAL is a "good", "moderate" or "avoid" choice for THIS user, and briefly explain why (consider their goal, dietary preference, and any medical conditions).
 Call the record_food_analysis tool exactly once with the complete result.`;
 
-    const parsed = await callGroqForJson({
-      client: ai,
+    const { data: parsed, model: answeredBy } = await callAIForJson({
+      tier: 'light',
       system: systemInstruction,
       text: `Analyze this food image/description: "${description || 'Meal on plate'}". Category: ${mealCategory}.${
         profileContext ? ` User health profile context: ${profileContext}.` : ''
@@ -821,7 +971,7 @@ Call the record_food_analysis tool exactly once with the complete result.`;
           verdict: parsed.suitability || null,
           explanation: parsed.suitabilityReason || parsed.healthNote || null,
           confidence: parsed.confidence || null,
-          model_version: imageBase64 ? GROQ_VISION_MODEL : GROQ_TEXT_MODEL,
+          model_version: answeredBy,
         });
       }
     }
@@ -975,8 +1125,7 @@ app.post('/api/analyze-daily-plan', requireUser(async (req, res, user) => {
     if (!imageBase64) {
       return res.json({ isValidPlan: false, rejectionReason: 'Please upload a photo or PDF of your daily plan.' });
     }
-    const ai = getGroqClient();
-    if (!ai) {
+    if (!isAIConfigured()) {
       return res.status(503).json({ analysisFailed: true, rejectionReason: 'The plan scanner is not configured right now. Please try again later.' });
     }
 
@@ -987,8 +1136,8 @@ CRITICAL FIRST STEP: Decide whether the input is genuinely someone's daily routi
 CRITICAL OUTPUT BUDGET: your entire reply has a hard, small token limit. If this page has many steps, keeping every "body" to one short sentence is what makes room to include ALL of them — a page with 10+ steps must still list all 10+, each with a short body, rather than 4-5 steps each with a long body. Prioritize including EVERY real step on this page over writing an even longer description for any single one of them — completeness first, then detail, always.
 Call the record_daily_plan tool exactly once with the complete result.`;
 
-    const parsed = await callGroqForJson({
-      client: ai,
+    const { data: parsed } = await callAIForJson({
+      tier: 'heavy',
       system: systemInstruction,
       text: 'Please extract this daily routine/schedule into structured, time-ordered steps.',
       imageBase64: imageBase64.startsWith('data:') ? imageBase64 : `data:${mimeType};base64,${imageBase64}`,
@@ -1063,7 +1212,7 @@ Call the record_daily_plan tool exactly once with the complete result.`;
     if (error instanceof PdfNotSupportedError) {
       return res.json({ isValidPlan: false, rejectionReason: 'PDF plans aren\'t supported right now — please upload a clear photo of your schedule instead.' });
     }
-    console.error('Error analyzing daily plan with Groq:', error);
+    console.error('Error analyzing daily plan:', error);
     return res.status(200).json({
       isValidPlan: null,
       analysisFailed: true,
@@ -1217,8 +1366,7 @@ app.post('/api/custom-plan-steps', requireUser(async (req, res, user) => {
     }
     const supabase = getSupabaseAdmin();
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
-    const ai = getGroqClient();
-    if (!ai) return res.status(503).json({ error: 'The safety check is not configured right now. Please try again later.' });
+    if (!isAIConfigured()) return res.status(503).json({ error: 'The safety check is not configured right now. Please try again later.' });
     const actingUserId = await resolveActingUserId(supabase, user.id, dependentId);
 
     const [{ data: hp }, { data: reports }] = await Promise.all([
@@ -1241,8 +1389,8 @@ app.post('/api/custom-plan-steps', requireUser(async (req, res, user) => {
 ${contextLines}
 Set verdict to "yellow" whenever the step is safe, neutral, or beneficial given their profile — including whenever there simply isn't enough real data on file to raise a concern (never invent a conflict that isn't actually supported by the conditions/findings above). Set verdict to "red" ONLY when the step genuinely conflicts with a real condition or lab finding on file (e.g. a high-sugar food/drink for someone with diabetes or high blood sugar, a high-sodium habit for someone with hypertension or kidney disease, an intense activity contraindicated by a real condition). Always give a short, specific, one-sentence reason either way — never a generic one. Call the record_step_review tool exactly once.`;
 
-    const parsed = await callGroqForJson({
-      client: ai,
+    const { data: parsed } = await callAIForJson({
+      tier: 'light',
       system: systemInstruction,
       text: `The user wants to add this step to their daily plan. Time: "${timeLabel}". Title: "${title}".${body ? ` Details: "${body}"` : ''}`,
       toolName: 'record_step_review',
@@ -1408,11 +1556,34 @@ app.delete('/api/family-members/:id', requireUser(async (req, res, user) => {
 }));
 
 // ----------------------------------------------------------------------------
-// ORDERS & CHECKOUT — real `orders` + `order_items` rows.
+// ORDERS & CHECKOUT — real `orders` + `order_items` rows. Payment is UPI QR
+// only, verified by a human: the customer pays, then MUST upload a screenshot
+// of the payment (optionally with the UPI reference/UTR). The order starts as
+// payment_status 'pending' and only becomes 'confirmed' once an admin approves
+// the screenshot in the admin panel (see PATCH /api/admin/orders/:id).
+// The live orders table has CHECK constraints allowing only
+//   status: processing | confirmed | shipped | delivered | cancelled
+//   payment_status: pending | completed | failed | refunded
+// so "verified" is stored as 'completed' and "rejected" as 'failed' (the
+// client maps them back — see mapOrderRow in src/utils/supabase.ts). The UPI reference is stored in the existing
+// razorpay_payment_id column — it's the one payment-reference slot the
+// orders table has.
 // ----------------------------------------------------------------------------
+const MAX_RECEIPT_DATA_URL_LENGTH = 6 * 1024 * 1024;
+const ORDER_PAYMENT = { pending: 'pending', verified: 'completed', rejected: 'failed' } as const;
+
+function isValidReceiptImage(value: unknown): value is string {
+  return typeof value === 'string'
+    && /^data:image\/(jpeg|jpg|png|webp);base64,/.test(value)
+    && value.length <= MAX_RECEIPT_DATA_URL_LENGTH;
+}
+
 app.post('/api/orders', requireUser(async (req, res, user) => {
   try {
-    const { items = [], shippingAddress, subtotal, discount = 0, total, paymentMethod, transactionId, razorpayOrderId, razorpayPaymentId } = req.body;
+    const { items = [], shippingAddress, subtotal, total, transactionId, receiptImageUrl } = req.body;
+    if (!isValidReceiptImage(receiptImageUrl)) {
+      return res.status(400).json({ error: 'Please upload a screenshot of your payment to place the order.' });
+    }
     const supabase = getSupabaseAdmin();
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
 
@@ -1424,9 +1595,10 @@ app.post('/api/orders', requireUser(async (req, res, user) => {
       customer_email: profileRow?.email || user.email,
       total_amount: total ?? subtotal ?? 0,
       shipping_address: shippingAddress || null,
-      payment_status: 'paid',
-      razorpay_order_id: razorpayOrderId || null,
-      razorpay_payment_id: razorpayPaymentId || null,
+      payment_status: ORDER_PAYMENT.pending,
+      razorpay_payment_id: typeof transactionId === 'string' && transactionId.trim() ? transactionId.trim().slice(0, 64) : null,
+      receipt_image_url: receiptImageUrl,
+      receipt_uploaded_at: new Date().toISOString(),
       status: 'processing',
     }).select().single();
     if (orderErr) throw orderErr;
@@ -1443,41 +1615,48 @@ app.post('/api/orders', requireUser(async (req, res, user) => {
       await supabase.from('order_items').insert(orderItems);
     }
 
-    await createActivityLog(supabase, user.id, 'created', 'order', `Placed an order — ₹${total ?? subtotal ?? 0}`, undefined, { orderId: order.id });
-    res.json({ success: true, order, message: 'Order placed successfully! Delivery in 2-3 business days.' });
+    await createNotification(supabase, user.id, 'order', 'Order received — verifying your payment', `Order #${order.id} will be confirmed once our team checks your payment screenshot.`, { orderId: order.id });
+    await createActivityLog(supabase, user.id, 'created', 'order', `Placed an order — ₹${total ?? subtotal ?? 0}`, 'Payment screenshot uploaded, awaiting verification', { orderId: order.id });
+    res.json({ success: true, order, message: 'Order received! It will be confirmed after we verify your payment.' });
   } catch (e: any) {
     console.error('Order creation failed:', e);
     res.status(500).json({ error: e.message });
   }
 }));
 
-// Update an order the caller owns — used to attach a UPI payment reference /
-// receipt screenshot after the order was created, and to mark it verified.
+// Re-upload a payment screenshot for an order the caller owns — used when an
+// admin rejected the first one. Puts the order back into the verification
+// queue. Customers can never mark their own payment as verified.
 app.patch('/api/orders/:id', requireUser(async (req, res, user) => {
   try {
     const supabase = getSupabaseAdmin();
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
 
-    const { data: existing } = await supabase.from('orders').select('user_id').eq('id', req.params.id).maybeSingle();
+    const { data: existing } = await supabase.from('orders').select('user_id, payment_status').eq('id', req.params.id).maybeSingle();
     if (!existing || existing.user_id !== user.id) {
       return res.status(404).json({ error: 'Order not found.' });
     }
-
-    const { transactionId, receiptImageUrl, paymentStatus } = req.body;
-    const patch: Record<string, any> = { updated_at: new Date().toISOString() };
-    if (transactionId) patch.razorpay_payment_id = transactionId;
-    if (receiptImageUrl) {
-      patch.receipt_image_url = receiptImageUrl;
-      patch.receipt_uploaded_at = new Date().toISOString();
+    if (existing.payment_status === ORDER_PAYMENT.verified) {
+      return res.status(400).json({ error: 'This payment is already verified.' });
     }
-    if (paymentStatus) patch.payment_status = paymentStatus;
+
+    const { transactionId, receiptImageUrl } = req.body;
+    if (!isValidReceiptImage(receiptImageUrl)) {
+      return res.status(400).json({ error: 'Please upload a screenshot of your payment.' });
+    }
+    const patch: Record<string, any> = {
+      receipt_image_url: receiptImageUrl,
+      receipt_uploaded_at: new Date().toISOString(),
+      payment_status: ORDER_PAYMENT.pending,
+      status: 'processing',
+      updated_at: new Date().toISOString(),
+    };
+    if (typeof transactionId === 'string' && transactionId.trim()) patch.razorpay_payment_id = transactionId.trim().slice(0, 64);
 
     const { data, error } = await supabase.from('orders').update(patch).eq('id', req.params.id).select().single();
     if (error) throw error;
-    if (receiptImageUrl) {
-      await createNotification(supabase, user.id, 'order', 'Payment receipt uploaded', `Order #${req.params.id} — awaiting verification.`, { orderId: req.params.id });
-      await createActivityLog(supabase, user.id, 'uploaded', 'order', 'Uploaded payment receipt', `Order #${req.params.id}`, { orderId: req.params.id });
-    }
+    await createNotification(supabase, user.id, 'order', 'Payment screenshot uploaded', `Order #${req.params.id} — awaiting verification.`, { orderId: req.params.id });
+    await createActivityLog(supabase, user.id, 'uploaded', 'order', 'Uploaded payment screenshot', `Order #${req.params.id}`, { orderId: req.params.id });
     res.json({ success: true, order: data });
   } catch (e: any) {
     console.error('Order update failed:', e);
@@ -1951,9 +2130,6 @@ app.post('/api/admin/queue/:id/status', requireAdmin(async (req, res) => {
   res.json({ success: true, entry: data });
 }));
 
-// ----------------------------------------------------------------------------
-// RAZORPAY — real REST API when configured, clearly-labelled simulation otherwise.
-// ----------------------------------------------------------------------------
 // APP FEEDBACK — users tell us what helps and what's missing (see
 // app_feedback in supabase/patches.sql). Admin reads them all.
 app.post('/api/feedback', requireUser(async (req, res, user) => {
@@ -1987,143 +2163,58 @@ app.get('/api/admin/feedback', requireAdmin(async (req, res) => {
   res.json({ feedback: data || [] });
 }));
 
-function isRazorpayConfigured() {
-  return !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
-}
-
-app.post('/api/razorpay/order', async (req, res) => {
-  const { amount, currency = 'INR', receipt, notes } = req.body;
-
-  if (!amount || amount <= 0) {
-    return res.status(400).json({ error: 'A valid amount is required.' });
-  }
-
-  if (isRazorpayConfigured()) {
-    try {
-      const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
-      const rzpResponse = await fetch('https://api.razorpay.com/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Basic ${auth}`,
-        },
-        body: JSON.stringify({
-          amount: Math.round(amount * 100),
-          currency,
-          receipt: receipt || `receipt_${Date.now()}`,
-          notes: notes || {},
-        }),
-      });
-
-      if (!rzpResponse.ok) {
-        const errBody = await rzpResponse.text();
-        console.error('Razorpay order creation failed:', errBody);
-        throw new Error('Razorpay order creation failed');
-      }
-
-      const rzpOrder: any = await rzpResponse.json();
-      return res.json({ ...rzpOrder, keyId: process.env.RAZORPAY_KEY_ID, mode: 'live' });
-    } catch (err) {
-      console.error('Falling back to simulated Razorpay order due to error:', err);
-    }
-  }
-
-  const rzpOrderId = 'order_sim_' + Math.random().toString(36).substring(2, 12);
-  res.json({
-    id: rzpOrderId,
-    entity: 'order',
-    amount: Math.round(amount * 100),
-    amount_paid: 0,
-    amount_due: Math.round(amount * 100),
-    currency,
-    receipt: receipt || 'receipt_' + Date.now(),
-    status: 'created',
-    keyId: process.env.RAZORPAY_KEY_ID || '',
-    mode: 'simulated',
-  });
-});
-
-app.post('/api/razorpay/verify', (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-
-  if (isRazorpayConfigured() && razorpay_order_id && razorpay_payment_id && razorpay_signature) {
-    const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET as string)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest('hex');
-
-    const verified = expectedSignature === razorpay_signature;
-    return res.json({ success: verified, verified, paymentId: razorpay_payment_id, orderId: razorpay_order_id, mode: 'live' });
-  }
-
-  res.json({
-    success: true,
-    verified: true,
-    paymentId: razorpay_payment_id || 'pay_sim_' + Math.random().toString(36).substring(2, 10),
-    orderId: razorpay_order_id,
-    mode: 'simulated',
-  });
-});
-
 // ----------------------------------------------------------------------------
-// PRO / PREMIUM UPGRADE — updates `profiles.premium_status` + `premium_transactions`.
+// DELETE ACCOUNT — required by both Google Play and the App Store: a user
+// must be able to delete their account and its data from inside the app.
+// Deleting the auth user cascades through every table keyed on
+// auth.users(id) ... on delete cascade (see supabase/schema.sql +
+// patches.sql). Tables created outside those files are cleared explicitly
+// first, best-effort, so a missing FK can't leave personal data behind.
+// Family dependents are real auth users owned by this account, so they go too.
 // ----------------------------------------------------------------------------
-app.post('/api/user/upgrade-pro', requireUser(async (req, res, user) => {
+const USER_TABLES_WITHOUT_KNOWN_CASCADE = ['food_scans', 'premium_transactions', 'ai_daily_plans'];
+
+app.delete('/api/account', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
   try {
-    const {
-      planType = 'yearly',
-      amount = 0,
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-    } = req.body;
-
-    if (isRazorpayConfigured() && razorpay_order_id && razorpay_payment_id && razorpay_signature) {
-      const expectedSignature = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET as string)
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest('hex');
-      if (expectedSignature !== razorpay_signature) {
-        return res.status(400).json({ success: false, message: 'Payment verification failed. Please try again.' });
+    const { data: dependents } = await supabase.from('family_members').select('dependent_user_id').eq('primary_user_id', user.id);
+    const userIds = [...(dependents || []).map((d: any) => d.dependent_user_id as string), user.id];
+    for (const id of userIds) {
+      for (const table of USER_TABLES_WITHOUT_KNOWN_CASCADE) {
+        const { error } = await supabase.from(table).delete().eq('user_id', id);
+        if (error) console.warn(`delete account: could not clear ${table}:`, error.message);
       }
+      const { error } = await supabase.auth.admin.deleteUser(id);
+      if (error) throw error;
     }
-
-    const supabase = getSupabaseAdmin();
-    if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
-
-    const durationDays = planType === 'monthly' ? 30 : 365;
-    const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString();
-
-    await supabase.from('profiles').update({
-      premium_status: 'active',
-      premium_started_at: new Date().toISOString(),
-      premium_expires_at: expiresAt,
-      updated_at: new Date().toISOString(),
-    }).eq('user_id', user.id);
-
-    await supabase.from('premium_transactions').insert({
-      user_id: user.id,
-      amount,
-      plan_name: planType,
-      plan_duration_days: durationDays,
-      razorpay_order_id: razorpay_order_id || null,
-      razorpay_payment_id: razorpay_payment_id || null,
-      payment_status: 'paid',
-      premium_started_at: new Date().toISOString(),
-      premium_expires_at: expiresAt,
-    });
-
-    res.json({
-      success: true,
-      isPro: true,
-      proPlanType: planType,
-      proExpiry: expiresAt,
-      message: 'Welcome to UrCare Premium! UrCare Food Scan & your Daily Personalized Plan are now unlocked.',
-    });
-  } catch (e: any) {
-    console.error('Upgrade failed:', e);
-    res.status(500).json({ error: e.message });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error deleting account:', error);
+    return res.status(500).json({ error: 'Could not delete your account right now. Please try again or contact support.', debugReason: extractDebugReason(error) });
   }
+}));
+
+// ----------------------------------------------------------------------------
+// REPORT AN AI RESULT — Google Play's AI-generated content policy requires an
+// in-app way to flag offensive/incorrect AI output. Stored in the existing
+// app_feedback table (category 'ai_result') so it shows up in the admin
+// Feedback panel with no new table or migration.
+// ----------------------------------------------------------------------------
+app.post('/api/ai-feedback', requireUser(async (req, res, user) => {
+  const { feature, reason } = req.body as { feature?: string; reason?: string };
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { error } = await supabase.from('app_feedback').insert({
+    user_id: user.id,
+    user_name: user.email,
+    rating: 1,
+    is_helping: 'no',
+    category: 'ai_result',
+    what_lacking: `[${String(feature || 'unknown').slice(0, 40)}] ${String(reason || '').slice(0, 1000)}`,
+  });
+  if (error) return res.status(500).json({ error: 'Could not send your report. Please try again.' });
+  return res.json({ success: true });
 }));
 
 // ----------------------------------------------------------------------------
@@ -2273,25 +2364,52 @@ app.get('/api/admin/orders', requireAdmin(async (req, res) => {
   res.json({ orders: data || [] });
 }));
 
+// Admin order updates. Two kinds:
+// - payment verification: paymentStatus 'verified' (approve — also confirms
+//   the order) or 'rejected' (the customer is asked to upload a new
+//   screenshot from My Orders);
+// - fulfilment: status 'confirmed' | 'processing' | 'shipped' | 'delivered',
+//   only allowed once the payment is verified.
 app.patch('/api/admin/orders/:id', requireAdmin(async (req, res) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
   const { id } = req.params;
-  const { status, paymentStatus } = req.body;
+  const { status, paymentStatus } = req.body as { status?: string; paymentStatus?: string };
+
+  const { data: existing } = await supabase.from('orders').select('payment_status').eq('id', id).maybeSingle();
+  if (!existing) return res.status(404).json({ error: 'Order not found.' });
+
   const patch: Record<string, any> = { updated_at: new Date().toISOString() };
-  if (status) patch.status = status;
-  if (paymentStatus) patch.payment_status = paymentStatus;
+  if (paymentStatus === 'verified') {
+    patch.payment_status = ORDER_PAYMENT.verified;
+    patch.status = 'confirmed';
+  } else if (paymentStatus === 'rejected') {
+    patch.payment_status = ORDER_PAYMENT.rejected;
+    patch.status = 'processing';
+  } else if (paymentStatus) {
+    return res.status(400).json({ error: 'Unknown payment status.' });
+  }
+  if (status) {
+    if (!['confirmed', 'processing', 'shipped', 'delivered'].includes(status)) return res.status(400).json({ error: 'Unknown order status.' });
+    if ((patch.payment_status || existing.payment_status) !== ORDER_PAYMENT.verified) {
+      return res.status(400).json({ error: 'Verify the payment before updating the order status.' });
+    }
+    patch.status = status;
+  }
+
   const { data, error } = await supabase.from('orders').update(patch).eq('id', id).select().single();
-  if (error) return res.status(404).json({ error: error.message });
+  if (error) return res.status(500).json({ error: error.message });
 
   if (data?.user_id) {
-    if (status) {
+    if (paymentStatus === 'verified') {
+      await createNotification(supabase, data.user_id, 'order', 'Payment verified — order confirmed', `Order #${id} is confirmed and will be dispatched soon.`, { orderId: id, paymentStatus });
+      await createActivityLog(supabase, data.user_id, 'updated', 'order', 'Payment verified, order confirmed', `Order #${id}`, { orderId: id, paymentStatus });
+    } else if (paymentStatus === 'rejected') {
+      await createNotification(supabase, data.user_id, 'order', 'Payment could not be verified', `Order #${id} — please upload a clear screenshot of your payment from My Orders.`, { orderId: id, paymentStatus });
+      await createActivityLog(supabase, data.user_id, 'updated', 'order', 'Payment could not be verified', `Order #${id}`, { orderId: id, paymentStatus });
+    } else if (status) {
       await createNotification(supabase, data.user_id, 'order', `Your order is now ${status}`, `Order #${id}`, { orderId: id, status });
       await createActivityLog(supabase, data.user_id, 'updated', 'order', `Order status changed to ${status}`, `Order #${id}`, { orderId: id, status });
-    }
-    if (paymentStatus) {
-      await createNotification(supabase, data.user_id, 'order', `Payment ${paymentStatus} for your order`, `Order #${id}`, { orderId: id, paymentStatus });
-      await createActivityLog(supabase, data.user_id, 'updated', 'order', `Payment marked ${paymentStatus}`, `Order #${id}`, { orderId: id, paymentStatus });
     }
   }
 

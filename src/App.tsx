@@ -9,6 +9,7 @@ import { Dashboard } from './components/Dashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { AIConsentGate } from './components/AIConsentGate';
 import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn } from './utils/supabase';
 
 // The 3D body map pulls in three.js + react-three-fiber/drei — a sizeable
@@ -226,6 +227,7 @@ export default function App() {
     <LanguageProvider>
       <ThemeProvider>
         <MainApp />
+        <AIConsentGate />
       </ThemeProvider>
     </LanguageProvider>
   );

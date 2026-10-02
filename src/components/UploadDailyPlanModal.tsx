@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AIResultNotice } from './AIResultNotice';
 import { X, Upload, FileText, Check, AlertCircle, RefreshCw, CalendarClock, Sparkles, Files } from 'lucide-react';
 import { uploadCustomDailyPlan, saveMergedDailyPlan, CustomDailyPlanResult, DailyPlanSectionInput } from '../utils/supabase';
 import { renderPdfPagesToImages, getPdfPageCount } from '../utils/pdfToImages';
@@ -235,6 +236,8 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
                 )}
               </span>
             </div>
+
+            <AIResultNotice feature="plan" />
 
             {pdfSummary && (
               <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-200 text-[11px] text-zinc-500 flex items-start gap-2">
