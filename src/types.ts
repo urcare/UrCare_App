@@ -725,7 +725,7 @@ export interface UserAccount {
 export interface Product {
   id: string;
   name: string;
-  category: 'protein' | 'vitamins' | 'superfoods' | 'accessories' | 'snacks';
+  category: 'protein' | 'vitamins' | 'superfoods' | 'accessories' | 'snacks' | 'plan' | 'meals' | 'herbal_support' | 'exercises';
   price: number;
   discountPrice: number;
   rating: number;

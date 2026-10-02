@@ -229,6 +229,10 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     { id: 'superfoods', label: tr('Diet & Gut Support', 'आहार व गट सहयोग') },
     { id: 'snacks', label: tr('Diabetic-Friendly Snacks', 'डायबिटीज-अनुकूल स्नैक्स') },
     { id: 'accessories', label: tr('Monitoring & Accessories', 'मॉनिटरिंग व सहायक उपकरण') },
+    { id: 'plan', label: tr('Plans & Programs', 'योजनाएं व कार्यक्रम') },
+    { id: 'meals', label: tr('Meals', 'भोजन') },
+    { id: 'herbal_support', label: tr('Herbal Support', 'हर्बल सहयोग') },
+    { id: 'exercises', label: tr('Exercises', 'व्यायाम') },
   ];
 
   const filteredProducts = selectedCategory === 'all'

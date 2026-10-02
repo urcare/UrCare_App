@@ -82,7 +82,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [productForm, setProductForm] = useState({
     id: '',
     name: '',
-    category: 'protein' as 'protein' | 'vitamins' | 'superfoods' | 'snacks' | 'accessories',
+    category: 'protein' as 'protein' | 'vitamins' | 'superfoods' | 'snacks' | 'accessories' | 'plan' | 'meals' | 'herbal_support' | 'exercises',
     price: 1999,
     discountPrice: 1499,
     image: PRESET_PRODUCT_PHOTOS[0].url,
@@ -1843,7 +1843,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 
                 {/* Category Pills */}
                 <div className="flex flex-wrap gap-1.5">
-                  {['all', 'protein', 'vitamins', 'superfoods', 'snacks', 'accessories'].map((cat) => (
+                  {['all', 'protein', 'vitamins', 'superfoods', 'snacks', 'accessories', 'plan', 'meals', 'herbal_support', 'exercises'].map((cat) => (
                     <button
                       key={cat}
                       type="button"
@@ -3022,6 +3022,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                     <option value="superfoods">Diet & Gut Support</option>
                     <option value="snacks">Diabetic-Friendly Snacks</option>
                     <option value="accessories">Monitoring & Accessories</option>
+                    <option value="plan">Plans & Programs</option>
+                    <option value="meals">Meals</option>
+                    <option value="herbal_support">Herbal Support</option>
+                    <option value="exercises">Exercises</option>
                   </select>
                 </div>
 
