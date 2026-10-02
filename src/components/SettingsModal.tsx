@@ -23,6 +23,9 @@ interface SettingsModalProps {
   onOpenOrders: () => void;
   onOpenDoctorConsult: () => void;
   onLogOut: () => void;
+  /** Called right after the account was deleted — signs out immediately,
+   *  with no "are you sure?" step (there is no account left to stay in). */
+  onAccountDeleted: () => void;
 }
 
 // Turns 'lose_weight' / 'steady' style enum values into readable labels.
@@ -127,6 +130,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onOpenOrders,
   onOpenDoctorConsult,
   onLogOut,
+  onAccountDeleted,
 }) => {
   const { language, setLanguage } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
@@ -163,10 +167,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       const res = await authedFetch('/api/account', { method: 'DELETE' });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'failed');
-      onLogOut();
+      if (!res.ok) {
+        // Show the server's real reason too, so a failure is diagnosable
+        // from the device that hit it.
+        const base = tr('Could not delete your account right now. Please try again.', 'अभी आपका खाता हटाया नहीं जा सका। कृपया दोबारा कोशिश करें।');
+        setDeleteError(data.debugReason ? `${base} (${data.debugReason})` : res.status === 404 ? `${base} (server is out of date — restart it)` : base);
+        setIsDeleting(false);
+        return;
+      }
+      onAccountDeleted();
     } catch {
-      setDeleteError(tr('Could not delete your account right now. Please try again.', 'अभी आपका खाता हटाया नहीं जा सका। कृपया दोबारा कोशिश करें।'));
+      setDeleteError(tr('Could not reach the server. Please check your connection and try again.', 'सर्वर से संपर्क नहीं हो सका। कृपया इंटरनेट जाँचकर दोबारा कोशिश करें।'));
       setIsDeleting(false);
     }
   };

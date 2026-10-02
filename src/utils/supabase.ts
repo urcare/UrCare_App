@@ -121,6 +121,8 @@ async function signInWithOAuthProvider(provider: 'google' | 'apple'): Promise<{ 
       options: {
         redirectTo: 'org.urcare.app://auth-callback',
         skipBrowserRedirect: true,
+        // Always show Google's account picker, so a different Gmail can be chosen.
+        queryParams: provider === 'google' ? { prompt: 'select_account' } : undefined,
       },
     });
     if (error) return { error: error.message };
@@ -130,7 +132,10 @@ async function signInWithOAuthProvider(provider: 'google' | 'apple'): Promise<{ 
 
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
-    options: { redirectTo: window.location.origin },
+    options: {
+      redirectTo: window.location.origin,
+      queryParams: provider === 'google' ? { prompt: 'select_account' } : undefined,
+    },
   });
   return { error: error?.message };
 }
@@ -201,7 +206,12 @@ export async function signOutUser(): Promise<void> {
   const supabase = getSupabaseClient();
   // Save any just-changed cart/onboarding/etc. before the session goes away.
   await flushAccountStateNow().catch(() => {});
-  if (supabase) await supabase.auth.signOut();
+  if (supabase) {
+    const { error } = await supabase.auth.signOut();
+    // A just-deleted account's session can't be revoked on the server —
+    // make sure it's at least cleared from this device.
+    if (error) await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  }
   clearAccountStateCache();
 }
 

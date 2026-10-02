@@ -13,6 +13,7 @@ import {
 } from '../types';
 import { calculateNutritionPlan } from '../utils/calculator';
 import { getCachedAccountState, saveAccountState } from '../utils/accountState';
+import { signOutUser } from '../utils/supabase';
 import { useLanguage } from '../context/LanguageContext';
 import { WheelPicker } from './WheelPicker';
 import { RulerWheelPicker } from './RulerWheelPicker';
@@ -344,10 +345,12 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
   const weightDiff = Number((targetWeightKg - currentWeightKg).toFixed(1));
   const isLosing = weightDiff < 0;
 
-  // DRAFT — every answer is saved to the account as it changes (see
-  // accountState.ts), so a refresh, an app restart or signing in on another
-  // phone resumes at the same step with the same answers instead of starting
-  // over. Cleared once onboarding is finished.
+  // DRAFT — every answer is saved as it changes, twice: instantly to this
+  // device (localStorage — survives a refresh even mid-keystroke) and,
+  // debounced, to the account (accountState.ts — for another phone). On
+  // load, whichever copy is newer (savedAt) wins, so a refresh or app
+  // restart resumes at the same step with the same answers. Cleared once
+  // onboarding is finished.
   const draft = {
     currentStep, gender, workoutsPerWeek, heardFrom, triedOtherApps,
     age, agePickerMode, birthYear, birthMonth, birthDay,
@@ -368,18 +371,28 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
     dd: setDd, otherTexts: setOtherTexts, name: setName, email: setEmail, phone: setPhone, referralCode: setReferralCode,
     enableNotifications: setEnableNotifications, colorBurnsBack: setColorBurnsBack, rolloverCalories: setRolloverCalories,
   };
-  const draftRestoredRef = useRef(false);
+  // A state flag, not a ref: it flips in the same render the restored
+  // answers land in. With a ref, React StrictMode's dev-only double effect
+  // run saved the DEFAULT answers over the real draft before they arrived.
+  const [draftRestored, setDraftRestored] = useState(false);
+  const localDraftKey = `urcare_onboarding_draft_${initialAccount?.uid || 'anon'}`;
   // Declared before the restore effect on purpose: on the first render it
   // runs first, sees nothing restored yet, and skips — so the default answers
   // never overwrite a saved draft.
   const draftJson = JSON.stringify(draft);
   useEffect(() => {
-    if (!draftRestoredRef.current || draft.currentStep >= 25) return;
-    saveAccountState({ onboardingDraft: draft });
+    if (!draftRestored || draft.currentStep >= 25) return;
+    const saved = { ...draft, savedAt: Date.now() };
+    try { localStorage.setItem(localDraftKey, JSON.stringify(saved)); } catch {}
+    saveAccountState({ onboardingDraft: saved });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftJson]);
+  }, [draftJson, draftRestored]);
   useEffect(() => {
-    const saved = getCachedAccountState().onboardingDraft;
+    let local: Record<string, unknown> | null = null;
+    try { local = JSON.parse(localStorage.getItem(localDraftKey) || 'null'); } catch {}
+    const remote = getCachedAccountState().onboardingDraft || null;
+    const savedAtOf = (d: Record<string, unknown> | null) => Number(d?.savedAt) || 0;
+    const saved = savedAtOf(local) >= savedAtOf(remote) ? (local || remote) : remote;
     if (saved && typeof saved === 'object') {
       for (const [key, value] of Object.entries(saved)) {
         if (value === undefined || !(key in draftSetters)) continue;
@@ -387,7 +400,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
         draftSetters[key as keyof typeof draft](key === 'currentStep' ? Math.min(Number(value) || 0, 24) : value);
       }
     }
-    draftRestoredRef.current = true;
+    setDraftRestored(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -513,6 +526,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
   // Finish Onboarding — every feature is free; there is no paid tier.
   const handleFinishOnboarding = () => {
     saveAccountState({ onboardingDraft: null }, { immediate: true });
+    try { localStorage.removeItem(localDraftKey); } catch {}
     const finalPlan = calculateNutritionPlan(
       gender,
       finalAge,
@@ -853,6 +867,19 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   <span>{tr('Free to Start • Instant Calibration', 'निःशुल्क शुरुआत • तुरंत विश्लेषण')}</span>
                 </p>
+                {/* Wrong account? Sign out and pick another one. */}
+                <div className="mt-2 text-xs text-zinc-500 text-center">
+                  {initialAccount?.email && (
+                    <span>{tr('Signed in as', 'साइन इन:')} <strong className="text-zinc-700">{initialAccount.email}</strong> · </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { signOutUser().catch(() => {}); }}
+                    className="font-bold text-emerald-700 underline cursor-pointer"
+                  >
+                    {tr('Sign in with another account', 'दूसरे अकाउंट से साइन इन करें')}
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}

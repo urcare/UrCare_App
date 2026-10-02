@@ -84,13 +84,21 @@ function flushAccountState(): void {
   writeChain = writeChain.then(async () => {
     const supabase = getSupabaseClient();
     if (!supabase || Object.keys(pending).length === 0) return;
-    const { data } = await supabase.auth.getSession();
+    const { data } = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<{ data: { session: null } }>((resolve) => setTimeout(() => resolve({ data: { session: null } }), 10_000)),
+    ]);
     const user = data.session?.user;
-    if (!user) { pending = {}; return; }
+    if (!user) return; // keep `pending` — retried on the next change
     const patch = pending;
     pending = {};
     const next = { ...readFromMetadata(user.user_metadata), ...patch };
-    const { error } = await supabase.auth.updateUser({ data: { app_state: next } });
+    // Time-boxed: writes are chained, so one request that never settles
+    // would otherwise hold up every save after it.
+    const { error } = await Promise.race([
+      supabase.auth.updateUser({ data: { app_state: next } }),
+      new Promise<{ error: Error }>((resolve) => setTimeout(() => resolve({ error: new Error('timed out') }), 10_000)),
+    ]);
     if (error) {
       // Keep the unsaved keys so the next change retries them.
       pending = { ...patch, ...pending };

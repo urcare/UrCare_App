@@ -1088,6 +1088,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           onOpenOrders={() => setIsMyOrdersOpen(true)}
           onOpenDoctorConsult={() => handleOpenDoctorConsult()}
           onLogOut={() => { setIsSettingsOpen(false); setShowLogoutConfirm(true); }}
+          onAccountDeleted={() => { setIsSettingsOpen(false); handleLogout(); }}
         />
       )}
 

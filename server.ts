@@ -2218,32 +2218,61 @@ app.get('/api/admin/feedback', requireAdmin(async (req, res) => {
 // ----------------------------------------------------------------------------
 // DELETE ACCOUNT — required by both Google Play and the App Store: a user
 // must be able to delete their account and its data from inside the app.
-// Deleting the auth user cascades through every table keyed on
-// auth.users(id) ... on delete cascade (see supabase/schema.sql +
-// patches.sql). Tables created outside those files are cleared explicitly
-// first, best-effort, so a missing FK can't leave personal data behind.
+// The live database has many user tables that were created outside this
+// repo's SQL files, some with foreign keys to auth.users that do NOT cascade
+// — any leftover row in one of those blocks the auth delete ("Database error
+// deleting user"). So every user table is cleared explicitly first, children
+// before parents (order_items → orders, chat_messages → chat_threads,
+// prescriptions → lab_reports), and only then is the auth user removed.
 // Family dependents are real auth users owned by this account, so they go too.
 // ----------------------------------------------------------------------------
-const USER_TABLES_WITHOUT_KNOWN_CASCADE = ['food_scans', 'premium_transactions', 'ai_daily_plans'];
+const USER_DATA_TABLES = [
+  // children first
+  'chat_messages', 'prescriptions', 'reviews',
+  // then everything keyed directly on the user
+  'activity_log', 'admin_user_files', 'ai_daily_plans', 'app_feedback', 'assessments', 'cart_items',
+  'chat_follow_ups', 'chat_threads', 'clinical_feedback', 'consultation_queue', 'custom_daily_plans',
+  'custom_plan_steps', 'daily_logs', 'daily_plans', 'food_scans', 'health_assessments', 'lab_reports',
+  'notifications', 'patient_trackers', 'premium_transactions', 'razorpay_orders', 'subscriptions',
+  'user_personalized_plans', 'orders', 'health_profiles', 'profiles',
+];
+
+async function deleteUserData(supabase: SupabaseClient, userId: string): Promise<void> {
+  // order_items has no user_id — remove the items of this user's orders first.
+  const { data: orders } = await supabase.from('orders').select('id').eq('user_id', userId);
+  const orderIds = (orders || []).map((o: any) => o.id);
+  if (orderIds.length) {
+    const { error } = await supabase.from('order_items').delete().in('order_id', orderIds);
+    if (error) console.warn('delete account: could not clear order_items:', error.message);
+  }
+  for (const table of USER_DATA_TABLES) {
+    const { error } = await supabase.from(table).delete().eq('user_id', userId);
+    // A table that doesn't exist in this database is fine to skip.
+    if (error && !/does not exist|schema cache/i.test(error.message)) {
+      console.warn(`delete account: could not clear ${table}:`, error.message);
+    }
+  }
+}
 
 app.delete('/api/account', requireUser(async (req, res, user) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
   try {
     const { data: dependents } = await supabase.from('family_members').select('dependent_user_id').eq('primary_user_id', user.id);
-    const userIds = [...(dependents || []).map((d: any) => d.dependent_user_id as string), user.id];
-    for (const id of userIds) {
-      for (const table of USER_TABLES_WITHOUT_KNOWN_CASCADE) {
-        const { error } = await supabase.from(table).delete().eq('user_id', id);
-        if (error) console.warn(`delete account: could not clear ${table}:`, error.message);
-      }
+    const dependentIds = (dependents || []).map((d: any) => d.dependent_user_id as string);
+    for (const id of [...dependentIds, user.id]) {
+      await deleteUserData(supabase, id);
+      await supabase.from('family_members').delete().or(`primary_user_id.eq.${id},dependent_user_id.eq.${id}`);
       const { error } = await supabase.auth.admin.deleteUser(id);
       if (error) throw error;
     }
     return res.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting account:', error);
-    return res.status(500).json({ error: 'Could not delete your account right now. Please try again or contact support.', debugReason: extractDebugReason(error) });
+    return res.status(500).json({
+      error: 'Could not delete your account right now. Please try again or contact support.',
+      debugReason: extractDebugReason(error),
+    });
   }
 }));
 
