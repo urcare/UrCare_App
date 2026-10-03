@@ -1046,6 +1046,37 @@ export async function getMyQueueEntry(): Promise<{ entry: QueueEntry | null; pos
   }
 }
 
+/** The account's saved AI Health Bot chats. `stored` is false until the
+ *  health_bot_messages table exists (supabase/patches.sql §22). */
+export async function getHealthBotHistory(): Promise<{ stored: boolean; chats: Record<string, { role: 'user' | 'assistant'; content: string; at: string }[]> }> {
+  try {
+    const res = await authedFetch('/api/health-bots/history');
+    if (!res.ok) return { stored: false, chats: {} };
+    const data = await res.json();
+    return { stored: !!data.stored, chats: data.chats || {} };
+  } catch {
+    return { stored: false, chats: {} };
+  }
+}
+
+export async function clearHealthBotHistory(botId: string): Promise<void> {
+  try { await authedFetch(`/api/health-bots/history?botId=${encodeURIComponent(botId)}`, { method: 'DELETE' }); } catch {}
+}
+
+/** One turn with an AI Health Bot (see /api/health-bots/chat). `messages`
+ *  is the conversation so far, ending with the user's new message. */
+export async function chatWithHealthBot(botId: string, messages: { role: 'user' | 'assistant'; content: string }[]): Promise<{ reply?: string; error?: string }> {
+  try {
+    const res = await authedFetch('/api/health-bots/chat', { method: 'POST', body: JSON.stringify({ botId, messages }) });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) return { error: 'Please sign in again.' };
+    if (!res.ok) return { error: data.error || 'The assistant could not reply right now.' };
+    return { reply: data.reply };
+  } catch {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
 /** The admin-set UPI payment details (Admin → Products & QR) used by the
  *  store checkout. Public, no auth needed. */
 export async function getPaymentQrSettings(): Promise<{ qrImageUrl?: string; upiId?: string; payeeName?: string }> {

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { MedicalReportAnalysis } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { VerifiedSeal, REVIEWING_DOCTOR_NAME } from './VerifiedStamp';
 
 interface ReportPhotoViewerProps {
   report: MedicalReportAnalysis;
@@ -236,17 +237,19 @@ export const ReportPhotoViewer: React.FC<ReportPhotoViewerProps> = ({
 
               {/* Review status — honest: "Reviewed" only once the care team has
                   actually reviewed this report in the admin panel
-                  (lab_reports.admin_reviewed); until then it's labelled as an
-                  AI analysis. Never a named doctor who didn't review it. */}
+                  (lab_reports.admin_reviewed) does the doctor's seal show; until
+                  then it's labelled as an AI analysis. */}
               <div className="mt-6 pt-4 border-t border-zinc-200 flex items-center justify-between gap-3">
                 {report.adminReviewed ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-full border-2 border-emerald-600 border-dashed flex items-center justify-center text-emerald-700 text-[8px] font-black uppercase text-center rotate-[-6deg]">
-                      {tr('REVIEWED', 'जाँचा गया')}
-                    </div>
-                    <div className="text-[10px] text-zinc-500">
-                      <span className="font-bold text-zinc-800 block">{tr('Reviewed by the UrCare care team', 'UrCare केयर टीम द्वारा जाँचा गया')}</span>
-                      {tr('Discuss any changes to treatment with your doctor.', 'इलाज में कोई भी बदलाव अपने डॉक्टर से पूछकर करें।')}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <VerifiedSeal size={72} />
+                    <div className="min-w-0">
+                      <span className="block text-[9px] font-black uppercase tracking-[0.15em] text-emerald-700">{tr('Verified by', 'सत्यापनकर्ता')}</span>
+                      <span className="block text-base font-black italic text-zinc-900 leading-tight" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>{REVIEWING_DOCTOR_NAME}</span>
+                      <span className="block text-[10px] text-zinc-500">{tr('UrCare Clinical Review', 'UrCare क्लिनिकल समीक्षा')}</span>
+                      {report.adminNotes && (
+                        <span className="block text-[10px] text-zinc-700 mt-1 italic">“{report.adminNotes}”</span>
+                      )}
                     </div>
                   </div>
                 ) : (

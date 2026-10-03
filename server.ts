@@ -41,6 +41,7 @@ const uploadMedia = multer({ storage: multer.memoryStorage(), limits: { fileSize
 //   occasionally emitted malformed JSON that failed schema validation.
 const GROQ_VISION_MODEL = 'qwen/qwen3.8-27b';
 const GROQ_TEXT_MODEL = 'openai/gpt-oss-20b';
+const GROQ_CHAT_MODEL = 'openai/gpt-oss-120b';
 
 // Lazy Groq client helper
 function getGroqClient(): Groq | null {
@@ -382,7 +383,9 @@ async function callClaudeForJson(client: Anthropic, opts: AIJsonOptions): Promis
   const response = await client.messages.create({
     model,
     max_tokens: CLAUDE_MAX_TOKENS[opts.tier],
-    system: opts.system,
+    // Identical for every user of this feature — cached, so repeat calls
+    // within a few minutes pay ~10% for it.
+    system: [{ type: 'text', text: opts.system, cache_control: { type: 'ephemeral' } }],
     messages: [{ role: 'user', content }],
     output_config: outputConfig,
   });
@@ -548,6 +551,225 @@ app.get('/api/health', (req, res) => {
     supabaseConfigured: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
   });
 });
+
+// ============================================================================
+// AI HEALTH BOTS — six AI chat personas (three-dots menu → "AI Health Bots").
+// Every one is clearly an AI ("... Bot", AI badge in the UI) with a made-up
+// name — never a real person. Each reply is grounded in the signed-in user's
+// own data (health profile, conditions, recent lab findings) and follows the
+// same safety rules: no diagnosis, no prescription-drug or dose changes,
+// emergencies → 112, and a nudge to the real care team when it matters.
+// ============================================================================
+type HealthBotId = 'sharma' | 'mehra' | 'joshi' | 'iyer' | 'priya' | 'arjun';
+
+const HEALTH_BOT_PERSONAS: Record<HealthBotId, { name: string; role: string; style: string }> = {
+  sharma: {
+    name: 'Dr. Sharma Health Bot',
+    role: 'an AI general-health assistant trained on general medicine (MBBS curriculum) knowledge',
+    style: 'A man (use masculine Hindi forms like "karunga", "bataunga"). Calm, methodical family-doctor manner. Starts by understanding symptoms (onset, duration, severity), then explains in simple words.',
+  },
+  mehra: {
+    name: 'Dr. Mehra Sugar Bot',
+    role: 'an AI diabetes and blood-sugar assistant trained on general medicine (MBBS curriculum) and diabetology knowledge',
+    style: 'A woman (use feminine Hindi forms like "karungi", "bataungi"). Focused and data-driven about blood sugar: fasting/post-meal values, HbA1c, meal timing, hypoglycemia signs. Encouraging but precise.',
+  },
+  joshi: {
+    name: 'Vaidya Joshi Ayur Bot',
+    role: 'an AI Ayurveda assistant trained on Ayurveda (BAMS curriculum) knowledge',
+    style: 'A man (use masculine Hindi forms like "karunga", "bataunga"). Warm, traditional vaidya manner. Talks about dinacharya (daily routine), digestion (agni), seasonal eating and simple home practices, always alongside modern care.',
+  },
+  iyer: {
+    name: 'Dr. Iyer Ayurveda Bot',
+    role: 'an AI Ayurveda assistant trained on Ayurveda (BAMS curriculum) knowledge, focused on gut health and metabolism',
+    style: 'A woman (use feminine Hindi forms like "karungi", "bataungi"). Gentle and analytical. Connects digestion, sleep and stress to metabolic health; suggests food-first, low-risk Ayurvedic habits.',
+  },
+  priya: {
+    name: 'Coach Priya Diet Bot',
+    role: 'an AI diet and nutrition coach',
+    style: 'A woman (use feminine Hindi forms like "karungi", "bataungi"). Friendly, practical Indian-kitchen coach. Gives concrete meal ideas with portions (roti, dal, sabzi, millets), plate method, and easy swaps based on the user’s diet preference.',
+  },
+  arjun: {
+    name: 'Coach Arjun Fitness Bot',
+    role: 'an AI fitness, yoga and lifestyle coach',
+    style: 'A man (use masculine Hindi forms like "karunga", "bataunga"). Energetic and motivating. Gives safe, beginner-friendly walking, strength and yoga routines with sets/minutes, adjusted to the user’s conditions and activity level.',
+  },
+};
+
+const HEALTH_BOT_RULES = `Safety rules (always follow):
+- You are an AI, not a human and not a licensed doctor. If asked whether you are a real person or doctor, say clearly that you are an AI health assistant in the UrCare app.
+- Never give a diagnosis as certain; say what a finding "may suggest" and recommend confirming with a doctor.
+- Never tell the user to start, stop, skip, reduce, increase or re-time ANY prescription medicine or insulin — not even "slightly" or "maybe". If a medicine could be involved (e.g. low sugar on insulin), say their doctor must review the dose soon and point them to the care team. Ayurvedic herbs/supplements: mention possible interactions (especially with diabetes/BP medicines) and advise checking with their doctor first.
+- Emergency signs (chest pain, severe breathlessness, fainting, blood sugar below 70 mg/dL with symptoms or above 300 mg/dL, signs of stroke, very high BP with headache/vision problems): tell them to call 112 or go to the nearest hospital immediately.
+- When something needs a real professional, suggest the UrCare care team: "Profile → Care Team chat" or the Doctor Hotline in the app menu.
+How to talk:
+- Understand Hindi, Hinglish (Hindi in English letters) and English, including typos and mixed words. Reply in the language named at the end of the user's message.
+- Address the user according to the gender in their data (Hindi/Hinglish verb forms like "le rahe hain" for a man, "le rahi hain" for a woman); if unknown, use neutral phrasing.
+- Chat like a caring human expert on WhatsApp: warm, natural, a little personal (use their first name now and then), never robotic. React to what they said before giving advice.
+- Short: usually 3-6 sentences or a short list, under about 120 words. Go longer only if they ask for detail or a full plan.
+- Plain chat text: no headings, tables or italics; **bold** for at most two key words; "- " for short lists.
+- Personalise with their data below and say plainly what in it is concerning and why.
+- If you need more information, ask ONE clear follow-up question at the end instead of guessing.
+- Mention the AI/doctor/emergency notes only when relevant to this message — not in every reply.`;
+
+async function buildHealthBotContext(supabase: SupabaseClient, userId: string): Promise<string> {
+  const [{ data: profile }, { data: hp }, { data: reports }] = await Promise.all([
+    supabase.from('profiles').select('full_name').eq('user_id', userId).maybeSingle(),
+    supabase.from('health_profiles').select('age, gender, height, weight, target_weight_kg, goal, diet_preference, existing_concerns, activity_level, extra_data').eq('user_id', userId).maybeSingle(),
+    supabase.from('lab_reports').select('report_name, uploaded_at, biomarkers, identified_risks').eq('user_id', userId).order('uploaded_at', { ascending: false }).limit(2),
+  ]);
+  const lines: string[] = [];
+  if (profile?.full_name) lines.push(`Name: ${profile.full_name}`);
+  if (hp) {
+    if (hp.age) lines.push(`Age: ${hp.age}`);
+    if (hp.gender) lines.push(`Gender: ${hp.gender}`);
+    if (hp.height && hp.weight) lines.push(`Height ${hp.height} cm, weight ${hp.weight} kg${hp.target_weight_kg ? `, target ${hp.target_weight_kg} kg` : ''}`);
+    if (hp.goal) lines.push(`Goal: ${String(hp.goal).replace(/_/g, ' ')}`);
+    if (hp.diet_preference) lines.push(`Diet: ${hp.diet_preference}`);
+    if (hp.activity_level) lines.push(`Activity: ${String(hp.activity_level).replace(/_/g, ' ')}`);
+    const conditions = (hp.existing_concerns || []).filter((c: string) => c && c !== 'None');
+    lines.push(`Medical conditions: ${conditions.length ? conditions.join(', ') : 'none reported'}`);
+    const dd = hp.extra_data?.healthDeepDive || {};
+    if (dd.medicinesText) lines.push(`Medicines: ${dd.medicinesText}`);
+    if (dd.onInsulin === 'yes') lines.push(`On insulin${dd.insulinDetails ? `: ${dd.insulinDetails}` : ''}`);
+    if (dd.fastingSugar || dd.postMealSugar || dd.hba1c) lines.push(`Self-reported sugar: fasting ${dd.fastingSugar || '?'}, post-meal ${dd.postMealSugar || '?'}, HbA1c ${dd.hba1c || '?'}`);
+    if (dd.bloodPressure) lines.push(`Self-reported BP: ${dd.bloodPressure}`);
+    if (dd.sleepHours) lines.push(`Sleep: ${dd.sleepHours} hours`);
+    if (dd.stressLevel) lines.push(`Stress: ${dd.stressLevel}`);
+  }
+  for (const r of reports || []) {
+    const abnormal = (r.biomarkers || []).filter((b: any) => b.status && b.status !== 'normal')
+      .map((b: any) => `${b.name} ${b.value} (${b.status}, ref ${b.referenceRange})`);
+    lines.push(`Lab report "${r.report_name}" (${String(r.uploaded_at).slice(0, 10)}): ${abnormal.length ? 'abnormal — ' + abnormal.join('; ') : 'all values normal'}`);
+  }
+  if (!reports?.length) lines.push('No lab reports uploaded yet.');
+  return lines.join('\n');
+}
+
+/** Free-text chat reply: Claude first, Groq as the fallback (same pattern as
+ *  callAIForJson, but for plain conversational text). */
+async function callAIChat(system: string, messages: { role: 'user' | 'assistant'; content: string }[]): Promise<string> {
+  const claude = getClaudeClient();
+  const groq = getGroqClient();
+  if (claude) {
+    try {
+      const model = CLAUDE_MODELS.heavy;
+      const response = await claude.messages.create({
+        model,
+        max_tokens: 1024,
+        // The system prompt (persona + rules + this user's data) and the
+        // earlier turns repeat on every message of a chat — cache them so
+        // each new turn pays ~10% for that repeated part.
+        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+        cache_control: { type: 'ephemeral' },
+        messages,
+        ...(!model.startsWith('claude-haiku') ? { output_config: { effort: 'low' as const } } : {}),
+      });
+      if (response.stop_reason === 'refusal') throw new Error('Claude declined this chat turn');
+      const text = response.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('\n').trim();
+      if (text) return text;
+      throw new Error('Claude returned no text');
+    } catch (err) {
+      if (!groq) throw err;
+      console.error('callAIChat: Claude failed, falling back to Groq —', extractDebugReason(err));
+    }
+  }
+  if (!groq) throw new Error('No AI provider is configured.');
+  // The larger model for chat: it follows the safety and language rules far
+  // more reliably than the small one used for short structured answers.
+  const completion = await groq.chat.completions.create({
+    model: GROQ_CHAT_MODEL,
+    max_completion_tokens: 1500,
+    temperature: 0.6,
+    messages: [{ role: 'system', content: system }, ...messages],
+  });
+  return completion.choices[0]?.message?.content?.trim() || '';
+}
+
+app.post('/api/health-bots/chat', requireUser(async (req, res, user) => {
+  try {
+    const { botId, messages } = req.body as { botId?: string; messages?: { role: string; content: string }[] };
+    const persona = HEALTH_BOT_PERSONAS[botId as HealthBotId];
+    if (!persona) return res.status(400).json({ error: 'Unknown assistant.' });
+    if (!isAIConfigured()) return res.status(503).json({ error: 'The assistant is not available right now. Please try again later.' });
+    // Last 20 turns, user/assistant only, trimmed — must start with a user turn.
+    let history = (Array.isArray(messages) ? messages : [])
+      .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+      .slice(-12)
+      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content.slice(0, 3000) }));
+    while (history.length && history[0].role !== 'user') history = history.slice(1);
+    if (!history.length || history[history.length - 1].role !== 'user') return res.status(400).json({ error: 'Please type a message.' });
+
+    // Models often answer Roman-script Hindi ("meri sugar high hai") in
+    // Devanagari — detect the script/language of the latest message and say
+    // exactly which one to reply in.
+    const lastText = history[history.length - 1].content;
+    const replyLanguage = /[\u0900-\u097F]/.test(lastText)
+      ? 'Hindi in Devanagari script'
+      : /\b(hai|hain|kya|kyu|kyun|kaise|kese|meri|mera|mere|mujhe|karu|karun|karna|nahi|nhi|aap|ap|hu|hoon|ho|raha|rahi|batao|bataiye|kab|kitna|kitni|kuch|sab|accha|acha|theek|thik)\b/i.test(lastText)
+      ? 'Hinglish — Hindi written in English (Roman) letters, like "aapki fasting sugar thodi high hai". Do NOT use Devanagari script'
+      : 'English';
+    const supabase = getSupabaseAdmin();
+    const context = supabase ? await buildHealthBotContext(supabase, user.id) : 'No health data available.';
+    const system = `You are "${persona.name}", ${persona.role}, inside the UrCare metabolic-health app (India).
+Personality: ${persona.style}
+
+${HEALTH_BOT_RULES}
+
+The user's own health data from their UrCare account (use it, but don't recite it all back):
+${context}`;
+    const genderLine = /Gender: male/i.test(context)
+      ? ' The user is a man (masculine verb forms).'
+      : /Gender: female/i.test(context) ? ' The user is a woman (feminine verb forms).' : '';
+    const sent = history.map((m, i) => (i === history.length - 1
+      ? { ...m, content: `${m.content}\n\n[Reply language: ${replyLanguage}.${genderLine} Never suggest changing any medicine or insulin dose or timing.]` }
+      : m));
+    const reply = await callAIChat(system, sent);
+    if (!reply) return res.status(502).json({ error: 'The assistant could not reply right now. Please try again.' });
+    // Saved to the account so the chat shows on every device. Before the
+    // health_bot_messages table exists (supabase/patches.sql §22) this just
+    // reports stored:false and the app keeps the chat on the device.
+    let stored = false;
+    if (supabase) {
+      const now = Date.now();
+      const { error } = await supabase.from('health_bot_messages').insert([
+        { user_id: user.id, bot_id: botId, role: 'user', content: lastText, created_at: new Date(now - 1).toISOString() },
+        { user_id: user.id, bot_id: botId, role: 'assistant', content: reply, created_at: new Date(now).toISOString() },
+      ]);
+      stored = !error;
+      if (error && !/does not exist|schema cache/i.test(error.message)) console.error('Could not save bot chat:', error.message);
+    }
+    return res.json({ reply, stored });
+  } catch (error) {
+    console.error('Health bot chat failed:', error);
+    return res.status(500).json({ error: 'The assistant could not reply right now. Please try again.', debugReason: extractDebugReason(error) });
+  }
+}));
+
+// The signed-in user's saved bot chats (last 80 messages per bot).
+app.get('/api/health-bots/history', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.json({ stored: false, chats: {} });
+  const { data, error } = await supabase.from('health_bot_messages')
+    .select('bot_id, role, content, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
+    .limit(2000);
+  if (error) return res.json({ stored: false, chats: {} });
+  const chats: Record<string, { role: string; content: string; at: string }[]> = {};
+  for (const row of data || []) {
+    (chats[row.bot_id] ||= []).push({ role: row.role, content: row.content, at: row.created_at });
+  }
+  for (const id of Object.keys(chats)) chats[id] = chats[id].slice(-80);
+  return res.json({ stored: true, chats });
+}));
+
+app.delete('/api/health-bots/history', requireUser(async (req, res, user) => {
+  const botId = typeof req.query.botId === 'string' ? req.query.botId : '';
+  if (!HEALTH_BOT_PERSONAS[botId as HealthBotId]) return res.status(400).json({ error: 'Unknown assistant.' });
+  const supabase = getSupabaseAdmin();
+  if (supabase) await supabase.from('health_bot_messages').delete().eq('user_id', user.id).eq('bot_id', botId);
+  return res.json({ success: true });
+}));
 
 // ----------------------------------------------------------------------------
 // DAILY QUOTE — one real Groq-generated line per calendar day, cached in
@@ -2276,7 +2498,7 @@ const USER_DATA_TABLES = [
   'chat_follow_ups', 'chat_threads', 'clinical_feedback', 'consultation_queue', 'custom_daily_plans',
   'custom_plan_steps', 'daily_logs', 'daily_plans', 'food_scans', 'health_assessments', 'lab_reports',
   'notifications', 'patient_trackers', 'premium_transactions', 'razorpay_orders', 'subscriptions',
-  'user_personalized_plans', 'orders', 'health_profiles', 'profiles',
+  'user_personalized_plans', 'health_bot_messages', 'orders', 'health_profiles', 'profiles',
 ];
 
 async function deleteUserData(supabase: SupabaseClient, userId: string): Promise<void> {

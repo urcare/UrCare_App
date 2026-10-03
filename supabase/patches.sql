@@ -542,3 +542,23 @@ create policy "public read status media" on storage.objects for select
 --     and the screenshot-verification flow uses only those values
 --     (pending -> completed on approve, -> failed on reject; see server.ts).
 --     receipt_image_url / receipt_uploaded_at already exist (section 3b).
+
+-- 22. AI HEALTH BOT CHATS — conversations with the six AI Health Bots
+--     (three-dots menu → AI Health Bots), saved per account so they show on
+--     every device. Written by the server (service_role) when a reply comes
+--     back; a user can read and clear only their own. Removed with the
+--     account (on delete cascade).
+create table if not exists public.health_bot_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  bot_id text not null,
+  role text not null check (role in ('user', 'assistant')),
+  content text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists health_bot_messages_user_bot_idx on public.health_bot_messages (user_id, bot_id, created_at);
+alter table public.health_bot_messages enable row level security;
+drop policy if exists "own bot messages select" on public.health_bot_messages;
+create policy "own bot messages select" on public.health_bot_messages for select using (auth.uid() = user_id);
+drop policy if exists "own bot messages delete" on public.health_bot_messages;
+create policy "own bot messages delete" on public.health_bot_messages for delete using (auth.uid() = user_id);

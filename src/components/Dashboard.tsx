@@ -5,7 +5,7 @@ import {
   ChevronRight, Sparkles, Trash2, Calendar, ShieldCheck, Activity,
   ShoppingBag, Stethoscope, Camera, Lock, ClipboardCheck,
   Package, User, Check, FileText, CheckCircle2, HeartPulse,
-  LogOut, MessageSquare, AlertCircle, MoreVertical, X,
+  LogOut, MessageSquare, AlertCircle, MoreVertical, X, Bot,
   Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash, MessageSquareHeart,
 } from 'lucide-react';
 import { 
@@ -17,6 +17,7 @@ import { HealthReportModal } from './HealthReportModal';
 import { SettingsModal } from './SettingsModal';
 import { ProductsModule } from './ProductsModule';
 import { FoodScannerModal } from './FoodScannerModal';
+import { AIHealthBots } from './AIHealthBots';
 import { MyOrdersModal } from './MyOrdersModal';
 import { DoctorConsultModal } from './DoctorConsultModal';
 import { ClinicalFeedbackModal } from './ClinicalFeedbackModal';
@@ -70,6 +71,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // persistent header/sidebar (never inline in a tab's scrolling content), so
   // it never jumps position when the tab changes or the page scrolls.
   const [isModuleMenuOpen, setIsModuleMenuOpen] = useState(false);
+  const [isHealthBotsOpen, setIsHealthBotsOpen] = useState(false);
   // 'Daily Plan', 'UrCare Camera' and 'Profile' are deliberately left out
   // here — they already have their own permanent spot in the bottom/side
   // nav bar, so listing them again in this drawer was pure duplication.
@@ -85,6 +87,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // onClick). Used to be its own persistent sidebar card; moved in here to
     // declutter the sidebar.
     { id: 'doctor_hotline' as const, label: tr('Doctor Hotline', 'डॉक्टर हॉटलाइन'), icon: Stethoscope },
+    // Not a tab — opens the AI Health Bots chat (six AI assistants).
+    { id: 'ai_bots' as const, label: tr('AI Health Bots (Chat)', 'AI हेल्थ बॉट्स (चैट)'), icon: Bot },
     // Not a tab — opens the app-feedback form (what helps / what is missing).
     { id: 'app_feedback' as const, label: tr('Give Feedback', 'प्रतिक्रिया दें'), icon: MessageSquareHeart },
     // Not a tab — opens the Settings modal directly (see the drawer's onClick).
@@ -765,7 +769,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <nav className="flex-1 p-3 space-y-1">
                 {moduleMenuItems.map((item) => {
                   const ItemIcon = item.icon;
-                  const isActive = item.id !== 'settings' && item.id !== 'logout' && item.id !== 'doctor_hotline' && item.id !== 'app_feedback' && activeTab === (item.id as typeof activeTab);
+                  const isActive = item.id !== 'settings' && item.id !== 'logout' && item.id !== 'doctor_hotline' && item.id !== 'app_feedback' && item.id !== 'ai_bots' && activeTab === (item.id as typeof activeTab);
                   return (
                     <button
                       key={item.id}
@@ -779,6 +783,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           handleOpenDoctorConsult();
                         } else if (item.id === 'app_feedback') {
                           setIsAppFeedbackOpen(true);
+                        } else if (item.id === 'ai_bots') {
+                          setIsHealthBotsOpen(true);
                         } else {
                           setActiveTab(item.id);
                         }
@@ -1089,6 +1095,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           onOpenDoctorConsult={() => handleOpenDoctorConsult()}
           onLogOut={() => { setIsSettingsOpen(false); setShowLogoutConfirm(true); }}
           onAccountDeleted={() => { setIsSettingsOpen(false); handleLogout(); }}
+        />
+      )}
+
+      {isHealthBotsOpen && (
+        <AIHealthBots
+          userId={account.uid}
+          onClose={() => setIsHealthBotsOpen(false)}
+          onOpenCareTeam={() => { setIsHealthBotsOpen(false); handleOpenDoctorConsult(); }}
         />
       )}
 
