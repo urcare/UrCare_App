@@ -12,6 +12,7 @@ import {
   UserReview, Product, Biomarker, UserHealthProfile, UserAccount, GenderType, ActivityLevel, GoalType, GoalPace
 } from '../types';
 import { Logo } from './Logo';
+import { AdminDoctorsPanel } from './AdminDoctorsPanel';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { getReviews, getProducts, mapOrderRow } from '../utils/supabase';
 import { openAttachment } from '../utils/openAttachment';
@@ -2599,6 +2600,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
         {/* TAB 7: CONSULTATION QUEUE */}
         {activeTab === 'queue' && (
           <div className="space-y-6 text-left">
+            {adminToken && <AdminDoctorsPanel adminFetch={(path, options) => adminFetch(adminToken, path, options)} />}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-black text-zinc-950">Today's Consultation Queue</h3>

@@ -109,7 +109,7 @@ export const DoctorConsultModal: React.FC<DoctorConsultModalProps> = ({
           </div>
           <h3 className="text-xl font-black text-zinc-950 dark:text-white">{tr('Physician Telephony Support', 'डॉक्टर टेलीफोन सहायता')}</h3>
           <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-            {tr('Directly connect with a board-certified medical doctor via direct telephone call.', 'सीधे फोन कॉल के माध्यम से एक प्रमाणित डॉक्टर से जुड़ें।')}
+            {tr('Talk to a UrCare doctor directly over a phone call.', 'फोन कॉल पर सीधे UrCare डॉक्टर से बात करें।')}
           </p>
         </div>
 
