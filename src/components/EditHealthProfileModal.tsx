@@ -128,6 +128,9 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
   onUpdateProfile,
 }) => {
   const [name, setName] = useState(profile.name || '');
+  // The care team's call button dials this number (admin chat), so it has
+  // to be editable here too — older accounts never had one saved.
+  const [phone, setPhone] = useState(profile.phone || '');
   const [gender, setGender] = useState<GenderType>(profile.gender || 'male');
   const [age, setAge] = useState(profile.age?.toString() || '28');
   const [heightCm, setHeightCm] = useState(profile.heightCm?.toString() || '170');
@@ -177,6 +180,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
     const updated: UserHealthProfile = {
       ...profile,
       name: name.trim() || profile.name,
+      phone: phone.trim() || undefined,
       gender,
       age: parsedAge,
       heightCm: parsedHeight,
@@ -243,6 +247,18 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
                   onChange={(e) => setName(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-zinc-200 bg-white text-xs font-bold text-zinc-900 focus:border-emerald-500 focus:outline-none"
                 />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-600 mb-1">{tr('Mobile Number', 'मोबाइल नंबर')}</label>
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/[^0-9+\s-]/g, ''))}
+                  placeholder="+91 98xxx xxxxx"
+                  className="w-full p-2.5 rounded-xl border border-zinc-200 bg-white text-xs font-bold text-zinc-900 focus:border-emerald-500 focus:outline-none"
+                />
+                <p className="text-[10px] text-zinc-500 mt-1">{tr('Our care team calls you on this number.', 'हमारी केयर टीम इसी नंबर पर आपको कॉल करेगी।')}</p>
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-zinc-600 mb-1">{tr('Age (years)', 'आयु (वर्ष)')}</label>

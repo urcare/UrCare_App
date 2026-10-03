@@ -207,15 +207,17 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
                       m.fileType?.startsWith('image/') ? (
                         <button
                           type="button"
-                          onClick={() => openAttachment(m.fileUrl!)}
+                          onClick={() => openAttachment(m.fileUrl!, m.fileName, m.fileType)}
                           className="block mb-1 rounded-lg overflow-hidden cursor-pointer"
                         >
                           <img src={m.fileUrl} alt={m.fileName || ''} className="max-w-full max-h-64 w-auto object-cover" />
                         </button>
+                      ) : m.fileType?.startsWith('video/') ? (
+                        <video src={m.fileUrl} controls playsInline preload="metadata" className="block mb-1 rounded-lg max-w-full max-h-64" />
                       ) : (
                         <button
                           type="button"
-                          onClick={() => openAttachment(m.fileUrl!, m.fileName)}
+                          onClick={() => openAttachment(m.fileUrl!, m.fileName, m.fileType)}
                           className="flex items-center gap-2 p-2 rounded-lg mb-1 bg-black/5 w-full cursor-pointer"
                         >
                           <FileText className="w-5 h-5 shrink-0 text-emerald-700" />
@@ -263,7 +265,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
             >
               <Paperclip className="w-5 h-5" />
             </button>
-            <input ref={fileInputRef} type="file" accept="image/*,application/pdf" onChange={handleFileChange} className="hidden" />
+            <input ref={fileInputRef} type="file" accept="image/*,video/*,application/pdf" onChange={handleFileChange} className="hidden" />
             <input
               type="text"
               value={draft}

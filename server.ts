@@ -716,6 +716,30 @@ function deriveConditionTagsFromReport(biomarkers: any[], identifiedRisks: any[]
   return tags;
 }
 
+// health_profiles has many NOT NULL columns that only onboarding fills. To
+// create a row for someone who hasn't onboarded (a family member, or a plan
+// view before onboarding finishes), those columns get the same neutral
+// values onboarding itself writes (see upsertProfile in src/utils/supabase.ts)
+// — they are never displayed anywhere; real answers live in extra_data.
+// Without this, the insert failed silently and the family member's
+// conditions / plan start date were simply never saved.
+const HEALTH_PROFILE_REQUIRED_DEFAULTS = {
+  age: 0, gender: 'other', height: 0, weight: 0, activity_level: 'lightly_active',
+  daily_routine_type: 'standard', sitting_hours_per_day: 8, exercise_frequency_per_week: 3,
+  diet_preference: 'Not specified', meals_per_day: 3, daily_water_intake_liters: 2.5,
+  average_sleep_hours: 7, sleep_quality: 'average', bedtime: '23:00', wake_time: '07:00',
+  stress_level: 'moderate', energy_level: 'moderate', primary_goals: [] as string[],
+  smoking_status: 'never', alcohol_consumption: 'none',
+};
+
+async function saveHealthProfileFields(supabase: SupabaseClient, userId: string, fields: Record<string, any>): Promise<void> {
+  const { data: existing } = await supabase.from('health_profiles').select('user_id').eq('user_id', userId).maybeSingle();
+  const { error } = existing
+    ? await supabase.from('health_profiles').update({ ...fields, updated_at: new Date().toISOString() }).eq('user_id', userId)
+    : await supabase.from('health_profiles').insert({ ...HEALTH_PROFILE_REQUIRED_DEFAULTS, ...fields, user_id: userId });
+  if (error) console.error(`Could not save health profile for ${userId}:`, error.message);
+}
+
 // 1. Medical & Health Report AI Analysis — persists to `lab_reports`
 // Max lab reports a user can have on file — every upload (including a
 // "Re-upload" from an existing report's card) inserts a brand new row, so
@@ -1362,12 +1386,10 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
     let startedAt = hp?.program_started_at as string | undefined;
     if (!startedAt) {
       startedAt = date || new Date().toISOString().slice(0, 10);
-      // Upsert (not a plain update) so this also bootstraps a brand-new
-      // family member's health_profiles row on their very first plan view —
-      // they otherwise have no row here at all yet. Only program_started_at
-      // is written, so an existing row's other columns are left untouched.
-      supabase.from('health_profiles').upsert({ user_id: actingUserId, program_started_at: startedAt }, { onConflict: 'user_id' })
-        .then(({ error }) => { if (error) console.error('Could not pin program_started_at:', error); });
+      // Creates the health_profiles row if this person has none yet (e.g. a
+      // new family member) — see saveHealthProfileFields. Only
+      // program_started_at is set; an existing row's other columns stay.
+      saveHealthProfileFields(supabase, actingUserId, { program_started_at: startedAt });
     }
 
     const programDay = computeProgramDay(startedAt, date);
@@ -1546,10 +1568,11 @@ app.post('/api/family-members', requireUser(async (req, res, user) => {
     const dependentUserId = created.user.id;
 
     await supabase.from('profiles').update({ full_name: name.trim() }).eq('user_id', dependentUserId);
-    await supabase.from('health_profiles').upsert(
-      { user_id: dependentUserId, existing_concerns: conditions || [], age: age || null, gender: gender || null },
-      { onConflict: 'user_id' }
-    );
+    await saveHealthProfileFields(supabase, dependentUserId, {
+      existing_concerns: conditions || [],
+      ...(age ? { age } : {}),
+      ...(gender ? { gender } : {}),
+    });
 
     const { data: member, error: memberError } = await supabase.from('family_members').insert({
       primary_user_id: user.id,
@@ -1590,7 +1613,11 @@ app.patch('/api/family-members/:id', requireUser(async (req, res, user) => {
   if (error) return res.status(500).json({ error: error.message });
 
   await supabase.from('profiles').update({ full_name: data.name }).eq('user_id', existing.dependent_user_id);
-  await supabase.from('health_profiles').update({ existing_concerns: data.conditions, age: data.age, gender: data.gender }).eq('user_id', existing.dependent_user_id);
+  await saveHealthProfileFields(supabase, existing.dependent_user_id, {
+    existing_concerns: data.conditions || [],
+    ...(data.age ? { age: data.age } : {}),
+    ...(data.gender ? { gender: data.gender } : {}),
+  });
   res.json({ success: true, member: data });
 }));
 
@@ -1891,16 +1918,31 @@ app.get('/api/admin/chat/threads', requireAdmin(async (req, res) => {
   const { data: threads, error } = await supabase.from('chat_threads').select('*').order('last_message_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
   const userIds = (threads || []).map((t: any) => t.user_id);
-  const { data: profiles } = userIds.length
-    ? await supabase.from('profiles').select('user_id, full_name, email, phone').in('user_id', userIds)
-    : { data: [] as any[] };
+  // profiles has no phone column (selecting one failed the whole query and
+  // every patient showed as "Unknown") — the phone lives in
+  // health_profiles.extra_data (see upsertProfile).
+  const [{ data: profiles }, { data: healthProfiles }] = userIds.length
+    ? await Promise.all([
+        supabase.from('profiles').select('user_id, full_name, email').in('user_id', userIds),
+        supabase.from('health_profiles').select('user_id, extra_data').in('user_id', userIds),
+      ])
+    : [{ data: [] as any[] }, { data: [] as any[] }];
   const profileById = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+  const phoneById = new Map((healthProfiles || []).map((h: any) => [h.user_id, h.extra_data?.phone]));
+  // Some accounts never set a profile name — fall back to the sign-in email
+  // / name from auth so nobody shows up as "Unknown".
+  const missing = userIds.filter((id: string) => !profileById.get(id)?.full_name && !profileById.get(id)?.email);
+  const authById = new Map<string, { email?: string; name?: string }>();
+  for (const id of missing) {
+    const { data } = await supabase.auth.admin.getUserById(id);
+    if (data?.user) authById.set(id, { email: data.user.email, name: data.user.user_metadata?.full_name || data.user.user_metadata?.name });
+  }
   res.json({
     threads: (threads || []).map((t: any) => ({
       ...t,
-      user_name: profileById.get(t.user_id)?.full_name,
-      user_email: profileById.get(t.user_id)?.email,
-      user_phone: profileById.get(t.user_id)?.phone,
+      user_name: profileById.get(t.user_id)?.full_name || authById.get(t.user_id)?.name,
+      user_email: profileById.get(t.user_id)?.email || authById.get(t.user_id)?.email,
+      user_phone: phoneById.get(t.user_id),
     })),
   });
 }));

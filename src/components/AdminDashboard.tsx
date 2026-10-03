@@ -622,7 +622,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
         uid: p.user_id,
         email: p.email || '',
         displayName: p.full_name || p.email || 'Member',
-        phoneNumber: p.phone || undefined,
+        // The profiles table has no phone column — the number the patient
+        // gave at onboarding / Edit Profile lives in health_profiles.extra_data.
+        phoneNumber: p.phone || hp?.extra_data?.phone || undefined,
         avatarUrl: p.avatar_url || undefined,
         authProvider: 'email',
         supabaseSynced: true,
@@ -977,7 +979,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                   SUPER ADMIN
                 </span>
               </div>
-              <p className="hidden sm:block text-[10px] text-zinc-500 font-medium">Dr. Arjun Mehta & Clinical Operations Portal</p>
+              <p className="hidden sm:block text-[10px] text-zinc-500 font-medium">Clinical Operations Portal</p>
             </div>
           </div>
 
@@ -1134,7 +1136,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 </div>
                 <div className="text-2xl sm:text-3xl font-black font-mono text-zinc-950">{stats.totalUsers.toLocaleString()}</div>
                 <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
-                  <span>+128 verified this week</span>
+                  <span>Accounts in the database</span>
                 </div>
               </div>
 
@@ -1310,7 +1312,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                         </div>
                         <div>
                           <h3 className="text-base font-black text-zinc-950">{profile.name || account.displayName}</h3>
-                          <p className="text-xs text-zinc-500">{account.email} • {account.phoneNumber}</p>
+                          <p className="text-xs text-zinc-500 flex items-center gap-2 flex-wrap">
+                            <span>{account.email}</span>
+                            {account.phoneNumber ? (
+                              <a href={`tel:${String(account.phoneNumber).replace(/[^0-9+]/g, '')}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-500">
+                                <PhoneCall className="w-3 h-3" /> Call {account.phoneNumber}
+                              </a>
+                            ) : (
+                              <span className="text-zinc-400">No mobile number on file</span>
+                            )}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -2207,14 +2218,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {selectedThread?.user_phone && (
+                        {/* Voice call — dials the mobile number the patient gave at
+                            onboarding / Edit Profile. Always visible, so it's clear
+                            when a patient simply hasn't added a number yet. */}
+                        {selectedThread?.user_phone ? (
                           <a
                             href={`tel:${String(selectedThread.user_phone).replace(/[^0-9+]/g, '')}`}
                             title={`Call ${selectedThread.user_name || 'patient'} (${selectedThread.user_phone})`}
-                            className="w-8 h-8 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center cursor-pointer"
+                            className="h-8 px-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 cursor-pointer text-[11px] font-black"
                           >
                             <PhoneCall className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">{selectedThread.user_phone}</span>
                           </a>
+                        ) : (
+                          <span
+                            title="This patient hasn't added a mobile number yet (they can add it in Profile → Edit Your Profile)."
+                            className="h-8 px-2.5 rounded-xl bg-zinc-100 text-zinc-400 flex items-center gap-1.5 text-[11px] font-bold cursor-not-allowed"
+                          >
+                            <PhoneCall className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">No number</span>
+                          </span>
                         )}
                         <button
                           type="button"
@@ -2317,11 +2340,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                               <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${isAdmin ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-white border border-zinc-200 text-zinc-900 rounded-bl-md shadow-sm'}`}>
                                 {m.file_url && (
                                   m.file_type?.startsWith('image/') ? (
-                                    <button type="button" onClick={() => openAttachment(m.file_url)} className="block mb-1.5 rounded-lg overflow-hidden cursor-pointer">
+                                    <button type="button" onClick={() => openAttachment(m.file_url, m.file_name, m.file_type)} className="block mb-1.5 rounded-lg overflow-hidden cursor-pointer">
                                       <img src={m.file_url} alt={m.file_name || ''} className="max-w-full max-h-64 w-auto object-cover" />
                                     </button>
+                                  ) : m.file_type?.startsWith('video/') ? (
+                                    <video src={m.file_url} controls playsInline preload="metadata" className="block mb-1.5 rounded-lg max-w-full max-h-64" />
                                   ) : (
-                                    <button type="button" onClick={() => openAttachment(m.file_url, m.file_name)} className={`flex items-center gap-2 p-2 rounded-xl mb-1.5 w-full cursor-pointer ${isAdmin ? 'bg-white/15' : 'bg-zinc-50 border border-zinc-200'}`}>
+                                    <button type="button" onClick={() => openAttachment(m.file_url, m.file_name, m.file_type)} className={`flex items-center gap-2 p-2 rounded-xl mb-1.5 w-full cursor-pointer ${isAdmin ? 'bg-white/15' : 'bg-zinc-50 border border-zinc-200'}`}>
                                       <FileText className={`w-4 h-4 shrink-0 ${isAdmin ? 'text-white' : 'text-emerald-600'}`} />
                                       <span className={`text-[11px] font-bold truncate ${isAdmin ? 'text-white' : 'text-zinc-700'}`}>{m.file_name || 'Attachment'}</span>
                                     </button>
@@ -2358,7 +2383,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                       <div className="flex items-center gap-2">
                         <label className="shrink-0 w-9 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-500 flex items-center justify-center cursor-pointer">
                           <Paperclip className="w-4 h-4" />
-                          <input type="file" accept="image/*,application/pdf" onChange={handleChatFileChange} className="hidden" />
+                          <input type="file" accept="image/*,video/*,application/pdf" onChange={handleChatFileChange} className="hidden" />
                         </label>
                         <input
                           type="text"

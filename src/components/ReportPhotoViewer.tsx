@@ -234,20 +234,30 @@ export const ReportPhotoViewer: React.FC<ReportPhotoViewerProps> = ({
                 </div>
               </div>
 
-              {/* Official Stamp on the Document */}
-              <div className="mt-6 pt-4 border-t border-zinc-200 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-full border-2 border-emerald-600 border-dashed flex items-center justify-center text-emerald-700 text-[9px] font-black uppercase text-center rotate-[-6deg]">
-                    {tr('VERIFIED', 'सत्यापित')}
+              {/* Review status — honest: "Reviewed" only once the care team has
+                  actually reviewed this report in the admin panel
+                  (lab_reports.admin_reviewed); until then it's labelled as an
+                  AI analysis. Never a named doctor who didn't review it. */}
+              <div className="mt-6 pt-4 border-t border-zinc-200 flex items-center justify-between gap-3">
+                {report.adminReviewed ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-full border-2 border-emerald-600 border-dashed flex items-center justify-center text-emerald-700 text-[8px] font-black uppercase text-center rotate-[-6deg]">
+                      {tr('REVIEWED', 'जाँचा गया')}
+                    </div>
+                    <div className="text-[10px] text-zinc-500">
+                      <span className="font-bold text-zinc-800 block">{tr('Reviewed by the UrCare care team', 'UrCare केयर टीम द्वारा जाँचा गया')}</span>
+                      {tr('Discuss any changes to treatment with your doctor.', 'इलाज में कोई भी बदलाव अपने डॉक्टर से पूछकर करें।')}
+                    </div>
                   </div>
+                ) : (
                   <div className="text-[10px] text-zinc-500">
-                    <span className="font-bold text-zinc-800 block">Dr. Alok Sharma, MD</span>
-                    {tr('Consulting Diabetologist & Clinical Nutritionist', 'परामर्शदाता डायबिटोलॉजिस्ट व क्लिनिकल न्यूट्रिशनिस्ट')}
+                    <span className="font-bold text-zinc-800 block">{tr('AI analysis — not yet reviewed by our care team', 'AI विश्लेषण — अभी हमारी केयर टीम ने नहीं जाँचा')}</span>
+                    {tr('Our team will review it. This is not a medical diagnosis.', 'हमारी टीम इसे जाँचेगी। यह मेडिकल निदान नहीं है।')}
                   </div>
-                </div>
+                )}
 
-                <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
-                  {tr('Official Record Filed', 'आधिकारिक रिकॉर्ड दर्ज')}
+                <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold shrink-0">
+                  {tr('Saved to your records', 'आपके रिकॉर्ड में सेव')}
                 </span>
               </div>
 

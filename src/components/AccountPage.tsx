@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
-  Mail, Phone, Flame, Edit3, LogOut, RefreshCw,
+  Mail, Phone, Flame, Edit3, LogOut, RefreshCw, ClipboardList,
   Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight, Droplets,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, MedicalReportAnalysis } from '../types';
@@ -13,6 +13,7 @@ import { BiomarkerTracker } from './BiomarkerTracker';
 import { useDailyNutrition } from '../hooks/useDailyNutrition';
 import { REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL } from './RecommendationsView';
 import { FamilyMembersPanel } from './FamilyMembersPanel';
+import { EditHealthProfileModal } from './EditHealthProfileModal';
 
 function formatGoalLabel(goal?: string): string {
   if (!goal) return 'Reversal Plan';
@@ -105,6 +106,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   const { t, language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -419,15 +421,36 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         {/* ACCOUNT — a single tappable list, one row per action, instead of
             a grid of separate cards; each row keeps its real destination. */}
         <div className="rounded-3xl bg-white border border-zinc-200 shadow-sm overflow-hidden divide-y divide-zinc-100">
+          {/* Edit the details given at sign-up (name, phone, age, height,
+              weight, goal, activity, diet, conditions) — saved to the account
+              and used everywhere (plan, targets, care team). */}
+          <button
+            type="button"
+            onClick={() => setIsEditProfileOpen(true)}
+            className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left"
+          >
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Edit3 className="w-4.5 h-4.5" />
+            </div>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-bold text-zinc-900 truncate">{tr('Edit Your Profile', 'अपनी प्रोफ़ाइल बदलें')}</span>
+              <span className="block text-[11px] text-zinc-500 truncate">{tr('Name, mobile, weight, goal, diet, conditions', 'नाम, मोबाइल, वज़न, लक्ष्य, डाइट, बीमारियाँ')}</span>
+            </span>
+            <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
+          </button>
+
           <button
             type="button"
             onClick={onOpenAssessment}
             className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left"
           >
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <Edit3 className="w-4.5 h-4.5" />
+              <ClipboardList className="w-4.5 h-4.5" />
             </div>
-            <span className="text-sm font-bold text-zinc-900 flex-1 min-w-0 truncate">{tr('Edit Health Profile', 'स्वास्थ्य प्रोफ़ाइल संपादित करें')}</span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-bold text-zinc-900 truncate">{tr('Detailed Health Assessment', 'विस्तृत स्वास्थ्य आकलन')}</span>
+              <span className="block text-[11px] text-zinc-500 truncate">{tr('Full medical history for your doctor', 'डॉक्टर के लिए पूरी मेडिकल जानकारी')}</span>
+            </span>
             <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
           </button>
 
@@ -469,6 +492,19 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         </button>
 
       </main>
+
+      {isEditProfileOpen && (
+        <EditHealthProfileModal
+          isOpen={isEditProfileOpen}
+          onClose={() => setIsEditProfileOpen(false)}
+          profile={profile}
+          onUpdateProfile={(updated) => {
+            onUpdateProfile(updated);
+            // Conditions may have changed — let an open Plan tab refetch.
+            window.dispatchEvent(new Event('urcare:daily-plan-changed'));
+          }}
+        />
+      )}
     </div>
   );
 };

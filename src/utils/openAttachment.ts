@@ -1,46 +1,52 @@
-/** Opens a data: URL (how every file attachment in this app is stored —
- *  chat files, admin-uploaded documents, report images, etc.) reliably,
- *  regardless of file size or type, and regardless of whether it's being
- *  viewed in a normal browser tab or inside the app's embedded WebView
- *  (the Android APK, via Capacitor).
+/** Opening attachments — chat files, admin-uploaded documents, report
+ *  images, payment screenshots (mostly data: URLs, sometimes https URLs).
  *
- *  Two separate problems this works around:
- *  1) Navigating straight to a `data:` URL via `<a href target="_blank">`
- *     works for small files, but a real photo/PDF (often 1-4MB, i.e. a
- *     base64 string well over a million characters) can silently fail to
- *     render once the data: URL gets long enough as a navigation target.
- *     Converting it to a `blob:` URL first (via fetch, which DOES support
- *     data: URLs directly) sidesteps that — blob: URLs have no such
- *     length ceiling.
- *  2) `window.open(blobUrl)` renders fine for images (the browser/WebView
- *     can always paint an <img>), but a bare embedded WebView has no
- *     built-in PDF (or .docx etc.) viewer the way a full desktop/mobile
- *     browser does — opening a PDF blob: URL in a new "tab" there just
- *     shows blank. Forcing a real download instead sidesteps that too:
- *     every OS knows how to save + hand a downloaded file to whatever app
- *     is registered to open it. */
-export async function openAttachment(dataUrl: string, fileName?: string): Promise<void> {
-  let blobUrl: string | null = null;
+ *  openAttachment() shows the file inside the app via AttachmentViewer
+ *  (mounted once in App.tsx): images full-screen, videos in a player, PDFs
+ *  rendered page by page. That matters most in the Android/iOS app: a bare
+ *  WebView has no PDF viewer and no reliable download handling, so the old
+ *  "open a new tab / force a download" approach showed nothing there.
+ *  If the viewer isn't mounted, it falls back to downloadAttachment(). */
+
+export const ATTACHMENT_EVENT = 'urcare:open-attachment';
+
+export type AttachmentRequest = { url: string; name?: string; type?: string };
+export type AttachmentKind = 'image' | 'video' | 'pdf' | 'other';
+
+/** Works out what kind of file this is from its declared MIME type, the
+ *  data: URL prefix, or the file name's extension — whichever is known. */
+export function attachmentKind({ url, name, type }: AttachmentRequest): AttachmentKind {
+  const mime = (type || /^data:([^;,]+)/.exec(url)?.[1] || '').toLowerCase();
+  const ext = (name || url.split('?')[0]).toLowerCase().split('.').pop() || '';
+  if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext)) return 'image';
+  if (mime.startsWith('video/') || ['mp4', 'webm', 'mov', 'm4v', '3gp'].includes(ext)) return 'video';
+  if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
+  return 'other';
+}
+
+export async function openAttachment(url: string, fileName?: string, fileType?: string): Promise<void> {
+  if ((window as any).__urcareAttachmentViewer) {
+    window.dispatchEvent(new CustomEvent<AttachmentRequest>(ATTACHMENT_EVENT, { detail: { url, name: fileName, type: fileType } }));
+    return;
+  }
+  return downloadAttachment(url, fileName);
+}
+
+/** Saves the file to the device. Goes through a blob: URL because a long
+ *  data: URL can silently fail as a navigation/download target. */
+export async function downloadAttachment(dataUrl: string, fileName?: string): Promise<void> {
   try {
     const res = await fetch(dataUrl);
     const blob = await res.blob();
-    blobUrl = URL.createObjectURL(blob);
-    if (blob.type.startsWith('image/')) {
-      const win = window.open(blobUrl, '_blank');
-      if (!win) window.location.href = dataUrl;
-    } else {
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = fileName || 'attachment';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    }
-    const url = blobUrl;
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = fileName || 'attachment';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
   } catch {
-    // If the conversion itself fails for some reason, still try the plain
-    // data: URL rather than doing nothing.
     window.open(dataUrl, '_blank');
   }
 }

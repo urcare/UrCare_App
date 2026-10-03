@@ -10,6 +10,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AIConsentGate } from './components/AIConsentGate';
+import { AttachmentViewer } from './components/AttachmentViewer';
 import { loadAccountState } from './utils/accountState';
 import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn } from './utils/supabase';
 
@@ -126,8 +127,15 @@ function MainApp() {
   };
 
   const handleUpdateProfile = async (updatedProfile: UserHealthProfile) => {
-    if (account) await upsertProfile(account.uid, updatedProfile);
     setProfile(updatedProfile);
+    if (!account) return;
+    const { error } = await upsertProfile(account.uid, updatedProfile);
+    // Never let a failed save look like it worked — the change would be gone
+    // on the next refresh.
+    if (error) {
+      console.error('Could not save profile:', error);
+      window.alert('Your changes could not be saved. Please check your internet connection and try again.');
+    }
   };
 
   const handleUpdateAccount = (updatedAccount: UserAccount) => {
@@ -232,6 +240,7 @@ export default function App() {
       <ThemeProvider>
         <MainApp />
         <AIConsentGate />
+        <AttachmentViewer />
       </ThemeProvider>
     </LanguageProvider>
   );

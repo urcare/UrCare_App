@@ -320,7 +320,7 @@ export async function fetchProfileBundle(userId: string, email: string): Promise
     id: userId,
     name: p.full_name || '',
     email: p.email || email,
-    phone: p.phone || undefined,
+    phone: p.phone || extra.phone || undefined,
     gender,
     age,
     heightCm,
@@ -369,6 +369,9 @@ export async function upsertProfile(userId: string, profile: UserHealthProfile):
   if (pErr) return { error: pErr.message };
 
   const extra_data = {
+    // The profiles table has no phone column, so the number lives here
+    // (read back below, and by the admin chat's call button).
+    phone: profile.phone,
     obstacles: profile.obstacles,
     preferences: profile.preferences,
     assessmentData: profile.assessmentData,

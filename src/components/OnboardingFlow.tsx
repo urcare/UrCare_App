@@ -557,7 +557,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
 
     const finalName = name.trim() || initialAccount?.displayName || (lang === 'hi' ? 'UrCare Member' : 'UrCare Member');
     const finalEmail = email.trim() || initialAccount?.email || 'member@urcare.app';
-    const finalPhone = phone.trim() || initialAccount?.phoneNumber || '+91 98765 43210';
+    // Never a made-up number — this is shown to the care team (call button).
+    const finalPhone = phone.trim() || initialAccount?.phoneNumber || '';
 
     const profile: UserHealthProfile = {
       name: finalName,
@@ -822,7 +823,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
             >
               <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black shadow-xs">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{tr("India's #1 Reversal Platform", 'भारत का #1 रिवर्सल प्लेटफॉर्म')}</span>
+                <span>{tr('Doctor-led metabolic health program', 'डॉक्टर-निर्देशित मेटाबॉलिक स्वास्थ्य प्रोग्राम')}</span>
               </div>
 
               <div className="space-y-2">
@@ -830,7 +831,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
                   {tr('Get', '')} <span className="text-emerald-600">{tr('Healthified', 'हेल्दी')}</span> {tr('with UrCare', 'UrCare के साथ')}
                 </h1>
                 <p className="text-sm text-zinc-600 max-w-md mx-auto leading-relaxed">
-                  {tr('Join over 35 million users who transformed their metabolic health, reversed pre-diabetes, and achieved sustainable fat loss.', '3.5 करोड़ से अधिक लोगों से जुड़ें जिन्होंने अपना मेटाबॉलिक स्वास्थ्य सुधारा, प्री-डायबिटीज को उलटा और स्थायी वज़न घटाया।')}
+                  {tr('Answer a few questions and get a daily plan built around your health, food habits and goals — with support from our care team.', 'कुछ सवालों के जवाब दें और अपनी सेहत, खान-पान और लक्ष्य के हिसाब से बना डेली प्लान पाएँ — हमारी केयर टीम के साथ।')}
                 </p>
               </div>
 
