@@ -20,6 +20,8 @@ import { NumberTicker } from './magicui/number-ticker';
 import { BorderBeam } from './magicui/border-beam';
 import { MagicCard } from './magicui/magic-card';
 import { ShineBorder } from './magicui/shine-border';
+import { PulsatingButton } from './magicui/pulsating-button';
+import { RippleButton } from './magicui/ripple-button';
 import mealImage from '../assets/urcare-meal.jpg';
 import { StatusViewer } from './StatusViewer';
 import { getDailyPlan, activePlanSections, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog, getMyChatThread, toggleDailyTask, getActiveStatuses } from '../utils/supabase';
@@ -510,14 +512,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           on the right. */}
       <header className="home-header sticky top-0 z-30 px-4 sm:px-8 py-3 sm:py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-          <button
+          <RippleButton
             type="button"
             onClick={onOpenMoreMenu}
-            className="w-9 h-9 rounded-full border border-zinc-200 bg-white flex items-center justify-center text-zinc-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors cursor-pointer shrink-0"
+            rippleColor="#10b981"
+            className="header-icon-btn shrink-0"
             title={tr('More', 'अधिक')}
           >
             <MoreVertical className="w-4 h-4" />
-          </button>
+          </RippleButton>
 
           <div className="flex items-center gap-2 shrink-0">
             <StreakWidget profile={profile} />
@@ -534,34 +537,39 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 </span>
               </button>
             )}
-            <button
+            {/* Magic UI Pulsating Button — pulses only while a reply is unread. */}
+            <div className="relative shrink-0">
+            <PulsatingButton
               type="button"
               onClick={() => { setChatUnread(false); setIsChatOpen(true); }}
-              className="relative w-9 h-9 rounded-full bg-emerald-600 hover:bg-emerald-500 shadow-sm flex items-center justify-center text-white transition-colors cursor-pointer"
+              pulseColor={chatUnread ? 'rgba(16, 185, 129, 0.45)' : 'transparent'}
+              distance="7px"
+              duration="1.8s"
+              className="header-chat-btn w-9 h-9 p-0 rounded-full text-white"
               title={tr('Health Team Chat', 'हेल्थ टीम चैट')}
             >
-              <MessageCircleMore className="w-4.5 h-4.5" />
-              {chatUnread && (
-                <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-rose-500 border-2 border-white" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsNotificationsOpen(true)}
-              className="relative w-9 h-9 rounded-full border border-zinc-200 bg-white flex items-center justify-center text-zinc-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors cursor-pointer"
-              title={tr('Notifications', 'सूचनाएं')}
-            >
-              <Bell className="w-4 h-4" />
+              <MessageCircleMore className="w-[18px] h-[18px]" />
+            </PulsatingButton>
+            {chatUnread && <span className="absolute -top-0.5 -right-0.5 z-20 w-3 h-3 rounded-full bg-rose-500 border-2 border-white pointer-events-none" />}
+            </div>
+            <div className="relative shrink-0">
+              <RippleButton
+                type="button"
+                onClick={() => setIsNotificationsOpen(true)}
+                rippleColor="#10b981"
+                className="header-icon-btn"
+                title={tr('Notifications', 'सूचनाएं')}
+              >
+                <Bell className={`w-4 h-4 ${unreadCount > 0 ? 'bell-ring text-emerald-600' : ''}`} />
+              </RippleButton>
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-emerald-500 text-white text-[9px] font-black flex items-center justify-center leading-none">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
+                <span className="header-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
               )}
-            </button>
+            </div>
             <button
               type="button"
               onClick={onOpenProfile}
-              className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-black overflow-hidden shrink-0 cursor-pointer"
+              className="header-avatar w-9 h-9 rounded-full text-white flex items-center justify-center text-xs font-black overflow-hidden shrink-0 cursor-pointer active:scale-95 transition-transform"
             >
               {account.avatarUrl ? (
                 <img src={account.avatarUrl} alt="" className="w-full h-full object-cover" />

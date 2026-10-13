@@ -5,6 +5,7 @@ import { X, Bell, FileText, Pill, Package, CheckCheck, ClipboardCheck } from 'lu
 import { AppNotification } from '../types';
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../utils/supabase';
 import { useLanguage } from '../context/LanguageContext';
+import { AnimatedListItem } from './magicui/animated-list';
 
 const ICONS: Record<AppNotification['type'], React.ComponentType<{ className?: string }>> = {
   prescription: Pill,
@@ -12,6 +13,15 @@ const ICONS: Record<AppNotification['type'], React.ComponentType<{ className?: s
   order: Package,
   plan: ClipboardCheck,
   system: Bell,
+};
+
+// Colour per notification type (icon tile).
+const TONES: Record<AppNotification['type'], string> = {
+  prescription: 'from-violet-500 to-fuchsia-500',
+  report: 'from-sky-500 to-cyan-500',
+  order: 'from-amber-500 to-orange-500',
+  plan: 'from-emerald-500 to-teal-500',
+  system: 'from-zinc-500 to-zinc-600',
 };
 
 /** Human-friendly "3h ago" / "2d ago" style relative time — small enough
@@ -96,21 +106,31 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, 
               transition={{ type: 'spring', damping: 26, stiffness: 300 }}
               className="relative w-full max-w-sm max-h-[80vh] rounded-3xl bg-white shadow-2xl flex flex-col text-left overflow-hidden"
             >
-              <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-zinc-100 shrink-0">
-                <h2 className="text-lg font-black text-zinc-950">{tr('Notifications', 'सूचनाएं')}</h2>
+              <div className="notif-header flex items-center justify-between px-5 pt-5 pb-4 shrink-0 text-white">
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-2xl bg-white/20 border border-white/25 flex items-center justify-center">
+                    <Bell className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-lg font-black leading-tight">{tr('Notifications', 'सूचनाएं')}</h2>
+                    <p className="text-[11px] font-semibold text-white/80">
+                      {unreadCount > 0 ? tr(`${unreadCount} unread`, `${unreadCount} अपठित`) : tr("You're all caught up", 'सब पढ़ लिया')}
+                    </p>
+                  </div>
+                </div>
                 <div className="flex items-center gap-1">
                   {unreadCount > 0 && (
                     <button
                       type="button"
                       onClick={handleMarkAllRead}
                       title={tr('Mark all as read', 'सभी को पढ़ा हुआ चिह्नित करें')}
-                      className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-500 hover:text-emerald-600 cursor-pointer"
+                      className="p-2 rounded-full bg-white/15 hover:bg-white/25 text-white cursor-pointer"
                     >
                       <CheckCheck className="w-4 h-4" />
                     </button>
                   )}
-                  <button type="button" onClick={onClose} className="p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer">
-                    <X className="w-4 h-4 text-zinc-500" />
+                  <button type="button" onClick={onClose} className="p-2 rounded-full bg-white/15 hover:bg-white/25 cursor-pointer">
+                    <X className="w-4 h-4 text-white" />
                   </button>
                 </div>
               </div>
@@ -124,25 +144,27 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, 
                   </div>
                 ) : items.length === 0 ? (
                   <div className="py-10 text-center">
-                    <Bell className="w-8 h-8 text-zinc-300 mx-auto mb-2" strokeWidth={1.5} />
+                    <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 flex items-center justify-center mx-auto mb-3">
+                      <Bell className="w-7 h-7 text-emerald-500" strokeWidth={1.75} />
+                    </div>
                     <p className="text-sm font-bold text-zinc-400">{tr('No notifications yet', 'अभी तक कोई सूचना नहीं')}</p>
                     <p className="text-xs text-zinc-400 mt-1">{tr("We'll let you know when something real happens.", 'जब कुछ वास्तविक होगा, हम आपको बताएंगे।')}</p>
                   </div>
                 ) : (
-                  <div className="space-y-1.5 py-1">
+                  <div className="space-y-2 py-1">
                     {items.map((item) => {
                       const Icon = ICONS[item.type] || Bell;
                       return (
+                        <AnimatedListItem key={item.id}>
                         <button
-                          key={item.id}
                           type="button"
                           onClick={() => handleItemClick(item)}
-                          className={`w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-colors cursor-pointer ${
-                            item.read ? 'bg-white hover:bg-zinc-50' : 'bg-emerald-50/70 hover:bg-emerald-50'
+                          className={`w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-all cursor-pointer border ${
+                            item.read ? 'bg-white border-zinc-100 hover:bg-zinc-50' : 'bg-white border-emerald-200 shadow-[0_8px_24px_-16px_rgba(5,150,105,0.6)] hover:-translate-y-0.5'
                           }`}
                         >
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${item.read ? 'bg-zinc-50 text-zinc-400' : 'bg-white text-emerald-600 shadow-sm'}`}>
-                            <Icon className="w-4 h-4" />
+                          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-white bg-gradient-to-br ${TONES[item.type] || TONES.system} ${item.read ? 'opacity-50' : 'shadow-md'}`}>
+                            <Icon className="w-4.5 h-4.5" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
@@ -155,6 +177,7 @@ export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({ isOpen, 
                             <p className="text-[10px] text-zinc-400 font-semibold mt-1">{relativeTime(item.createdAt, tr)}</p>
                           </div>
                         </button>
+                        </AnimatedListItem>
                       );
                     })}
                   </div>

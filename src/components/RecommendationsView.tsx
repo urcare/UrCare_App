@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   CheckCircle2, ChevronRight, ChevronDown,
@@ -6,7 +6,7 @@ import {
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon, Edit3, AlertTriangle, Trash2,
   Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles, Utensils,
-  Pill, Dumbbell, Bath, BedDouble, Youtube, Upload, Stethoscope, Info,
+  Pill, Dumbbell, Bath, BedDouble, Youtube, Upload, Stethoscope, Info, Lock,
 } from 'lucide-react';
 import { UserHealthProfile, Prescription, CustomPlanStep, FamilyMember } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -440,8 +440,34 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     'Good work today.', 'One step closer to your goal.',
   ];
 
+  // A step can only be ticked once its time has come: every step on a
+  // future day is locked, and today's timed steps unlock at their start
+  // time. Past days stay editable, and a step that is already ticked can
+  // always be un-ticked.
+  const isFutureDay = toDateKey(selectedDate) > toDateKey(todayDate);
+  const lockedUntil = (section: { id: string; timeLabel?: string | null }): string | null => {
+    if (completedToday[section.id]) return null;
+    if (isFutureDay) return tr('that day', 'उस दिन');
+    if (!isToday || !section.timeLabel || !/\d{1,2}:\d{2}\s*(AM|PM)/i.test(section.timeLabel)) return null;
+    const now = new Date();
+    if (labelMinutes(section.timeLabel) <= now.getHours() * 60 + now.getMinutes()) return null;
+    return section.timeLabel.match(/\d{1,2}:\d{2}\s*(AM|PM)/i)?.[0] || section.timeLabel;
+  };
+  const [lockNotice, setLockNotice] = useState<string | null>(null);
+  const lockTimer = useRef<number | null>(null);
+  const showLockNotice = (until: string) => {
+    setLockNotice(isFutureDay
+      ? tr('You can tick this on that day', 'इसे उसी दिन टिक कर सकते हैं')
+      : tr(`You can tick this after ${until}`, `इसे ${until} के बाद टिक कर सकते हैं`));
+    if (lockTimer.current) window.clearTimeout(lockTimer.current);
+    lockTimer.current = window.setTimeout(() => setLockNotice(null), 2200);
+  };
+
   const toggleTask = (taskId: string) => {
     if (!effectiveUserId) return;
+    const section = sections.find((x) => x.id === taskId);
+    const until = section ? lockedUntil(section) : (isFutureDay && !completedToday[taskId] ? 'later' : null);
+    if (until) { showLockNotice(until); return; }
     const willBeDone = !completedToday[taskId];
     setCompletedToday((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
     toggleDailyTask(effectiveUserId, dateKey, taskId);
@@ -572,6 +598,21 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               <Check className="w-3 h-3 text-white stroke-[3]" />
             </span>
             {celebration}
+          </motion.div>
+        )}
+        {lockNotice && (
+          <motion.div
+            key="lock-notice"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 pl-2.5 pr-4 py-2 rounded-full bg-white border border-amber-200 text-zinc-800 text-xs font-bold shadow-lg pointer-events-none whitespace-nowrap"
+          >
+            <span className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+              <Lock className="w-3 h-3 text-white" />
+            </span>
+            {lockNotice}
           </motion.div>
         )}
       </AnimatePresence>
@@ -894,6 +935,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                   <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm shadow-emerald-500/40">
                     <Check className="w-4 h-4 text-white stroke-[3]" />
                   </div>
+                ) : lockedUntil(heroInfo.item) ? (
+                  <div className="w-7 h-7 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center" title={tr(`Unlocks at ${lockedUntil(heroInfo.item)}`, `${lockedUntil(heroInfo.item)} पर खुलेगा`)}>
+                    <Lock className="w-3.5 h-3.5 text-zinc-400" />
+                  </div>
                 ) : (
                   <Circle className="w-7 h-7 opacity-30" />
                 )}
@@ -1172,6 +1217,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                                   <div className="w-4.5 h-4.5 rounded-full bg-emerald-500 flex items-center justify-center shadow-sm shadow-emerald-500/40">
                                     <Check className="w-3 h-3 text-white stroke-[3]" />
                                   </div>
+                                ) : lockedUntil(section) ? (
+                                  <span title={tr(`Unlocks at ${lockedUntil(section)}`, `${lockedUntil(section)} पर खुलेगा`)}>
+                                    <Lock className="w-3.5 h-3.5 text-zinc-400" />
+                                  </span>
                                 ) : (
                                   <Circle className="w-4 h-4 opacity-40" />
                                 )}

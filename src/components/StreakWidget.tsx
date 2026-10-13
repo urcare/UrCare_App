@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { CoolMode } from './magicui/cool-mode';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Heart, Check, X, Calendar, Target, BarChart3, Trophy } from 'lucide-react';
@@ -151,15 +152,18 @@ const StreakHeartImage: React.FC<{ size?: number }> = ({ size = 28 }) => (
  *  "Days" label, no week of numbers — tapping it opens the same full
  *  streak card below. */
 const StreakBar: React.FC<{ streak: number; onOpen: () => void }> = ({ streak, onOpen }) => (
-  <button
-    type="button"
-    onClick={onOpen}
-    title="Streak"
-    className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-white shadow-sm hover:shadow-md border border-zinc-100 transition-all cursor-pointer"
-  >
-    <StreakHeartImage size={26} />
-    <span className="text-sm font-black text-zinc-900 tabular-nums">{streak}</span>
-  </button>
+  // Magic UI Cool Mode: a little burst of hearts on every tap.
+  <CoolMode options={{ particle: '❤️', size: 18, particleCount: 6, speedUp: 8 }}>
+    <button
+      type="button"
+      onClick={onOpen}
+      title="Streak"
+      className={`streak-pill inline-flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full cursor-pointer active:scale-95 transition-transform ${streak > 0 ? 'is-active' : ''}`}
+    >
+      <span className="streak-pill-heart"><StreakHeartImage size={26} /></span>
+      <span className="text-sm font-black tabular-nums">{streak}</span>
+    </button>
+  </CoolMode>
 );
 
 /** The heart + streak-count trigger next to the '⋮' module menu, and the

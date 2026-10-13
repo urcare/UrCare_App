@@ -356,3 +356,71 @@
     to { background-position: 0% 0%; }
   }
 }
+
+/* ---- Header buttons (Magic UI Ripple / Pulsating / Cool Mode) ---- */
+.header-icon-btn {
+  width: 2.25rem; height: 2.25rem; padding: 0; border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--primary) 14%, #e4e4e7);
+  background: linear-gradient(180deg, #ffffff, #f4fbf7);
+  color: #52525b;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 6px 16px -10px rgba(6, 78, 59, 0.45);
+  transition: color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+.header-icon-btn:hover { color: #059669; border-color: #6ee7b7; }
+.header-icon-btn:active { transform: scale(0.94); }
+.header-chat-btn {
+  background: linear-gradient(135deg, #10b981, #059669 55%, #0d9488);
+  box-shadow: 0 8px 18px -8px rgba(5, 150, 105, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.header-badge {
+  position: absolute; top: -4px; right: -4px; z-index: 11;
+  min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #f43f5e, #f97316); color: #fff;
+  font-size: 9px; font-weight: 900; line-height: 1;
+  border: 2px solid #fff; box-shadow: 0 4px 10px -4px rgba(244, 63, 94, 0.8);
+  pointer-events: none;
+}
+.bell-ring { transform-origin: 50% 0; animation: bell-ring 2.4s ease-in-out infinite; }
+@keyframes bell-ring {
+  0%, 60%, 100% { transform: rotate(0); }
+  64% { transform: rotate(16deg); } 70% { transform: rotate(-14deg); }
+  76% { transform: rotate(10deg); } 82% { transform: rotate(-6deg); } 88% { transform: rotate(3deg); }
+}
+.header-avatar {
+  background: linear-gradient(135deg, #059669, #0d9488);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #34d399, 0 8px 18px -8px rgba(5, 150, 105, 0.7);
+}
+.streak-pill {
+  background: linear-gradient(180deg, #ffffff, #fff7ed);
+  border: 1px solid #fed7aa; color: #9a3412;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 6px 16px -10px rgba(234, 88, 12, 0.55);
+}
+.streak-pill.is-active {
+  background: linear-gradient(135deg, #fff1f2, #ffedd5);
+  border-color: #fdba74;
+}
+.streak-pill-heart { display: inline-flex; }
+.streak-pill.is-active .streak-pill-heart { animation: streak-beat 1.6s ease-in-out infinite; }
+@keyframes streak-beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.15); } 30% { transform: scale(1); } 45% { transform: scale(1.1); } }
+.notif-header { background: linear-gradient(135deg, #047857, #059669 45%, #0d9488); }
+@media (prefers-reduced-motion: reduce) {
+  .bell-ring, .streak-pill.is-active .streak-pill-heart { animation: none; }
+}
+@theme {
+  --animate-magic-pulse: magic-pulse var(--duration) ease-out infinite;
+  --animate-pulse-ripple: pulse-ripple var(--duration) cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  --animate-rippling: rippling var(--duration) ease-out;
+  @keyframes magic-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--pulse-color); }
+    50% { box-shadow: 0 0 0 var(--distance) var(--pulse-color); }
+  }
+  @keyframes pulse-ripple {
+    0% { box-shadow: 0 0 0 0 var(--pulse-color); }
+    100% { box-shadow: 0 0 0 var(--distance) transparent; }
+  }
+  @keyframes rippling {
+    0% { opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+  }
+}
