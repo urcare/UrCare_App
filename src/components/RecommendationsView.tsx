@@ -703,16 +703,16 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               </div>
               <p className={`text-[11px] mt-2 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
                 {tr(
-                  `Taken from your ${Object.values(planRoutine.given).includes('assessment') ? 'Detailed Health Assessment' : 'onboarding answers'}. Every step below moves with these times. To change them, update Profile → Detailed Health Assessment → Daily Routine.`,
-                  `${Object.values(planRoutine.given).includes('assessment') ? 'विस्तृत स्वास्थ्य आकलन' : 'ऑनबोर्डिंग जवाबों'} से लिया गया। नीचे का हर step इन्हीं समयों के हिसाब से है। बदलने के लिए Profile → विस्तृत स्वास्थ्य आकलन → Daily Routine अपडेट करें।`
+                  `Taken from your ${Object.values(planRoutine.given).includes('assessment') ? 'Detailed Health Assessment' : 'onboarding answers'}. Every step below moves with these times. To change them: Profile → Edit Your Profile → Daily Routine.`,
+                  `${Object.values(planRoutine.given).includes('assessment') ? 'विस्तृत स्वास्थ्य आकलन' : 'ऑनबोर्डिंग जवाबों'} से लिया गया। नीचे का हर step इन्हीं समयों के हिसाब से है। बदलने के लिए: Profile → अपनी प्रोफ़ाइल बदलें → दिनचर्या।`
                 )}
               </p>
             </>
           ) : (
             <p className={`text-[11px] mt-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
               {tr(
-                'Add your wake-up, meal and sleep times in Profile → Detailed Health Assessment → Daily Routine, and every step will be re-timed to your day.',
-                'Profile → विस्तृत स्वास्थ्य आकलन → Daily Routine में अपने उठने, खाने और सोने का समय डालें — हर step आपके दिन के हिसाब से हो जाएगा।'
+                'Add your wake-up, meal and sleep times in Profile → Edit Your Profile → Daily Routine, and every step will be re-timed to your day.',
+                'Profile → अपनी प्रोफ़ाइल बदलें → दिनचर्या में अपने उठने, खाने और सोने का समय डालें — हर step आपके दिन के हिसाब से हो जाएगा।'
               )}
             </p>
           )}

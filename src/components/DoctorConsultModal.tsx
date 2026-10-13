@@ -223,7 +223,8 @@ export const DoctorConsultModal: React.FC<DoctorConsultModalProps> = ({
                     </div>
                   </div>
                   <span className="text-[10px] font-black px-2.5 py-1 rounded-md bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 uppercase whitespace-nowrap shadow-xs">
-                    {tr('Verified MD', 'सत्यापित MD')}
+                    {/* Never a made-up credential — the admin-entered qualification, if any. */}
+                    {doc.qualification || tr('UrCare Doctor', 'UrCare डॉक्टर')}
                   </span>
                 </div>
 

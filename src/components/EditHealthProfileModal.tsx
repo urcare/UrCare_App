@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, Scale, Target, Activity, Gauge, Apple, Stethoscope, Check, Save } from 'lucide-react';
+import { X, User, Scale, Target, Activity, Gauge, Apple, Stethoscope, Check, Save, Clock } from 'lucide-react';
 import { UserHealthProfile, GenderType, GoalType, ActivityLevel, GoalPace } from '../types';
 import { calculateNutritionPlan } from '../utils/calculator';
 import { logActivity } from '../utils/supabase';
@@ -59,6 +59,33 @@ const CONDITION_OPTIONS = [
   'Uric Acid / Gout',
   'Digestive / IBS',
 ];
+
+type RoutineKey = 'wakeUpTime' | 'breakfastTime' | 'lunchTime' | 'dinnerTime' | 'sleepTime';
+const ROUTINE_FIELDS: { key: RoutineKey; en: string; hi: string }[] = [
+  { key: 'wakeUpTime', en: 'Wake up', hi: 'उठना' },
+  { key: 'breakfastTime', en: 'Breakfast', hi: 'नाश्ता' },
+  { key: 'lunchTime', en: 'Lunch', hi: 'लंच' },
+  { key: 'dinnerTime', en: 'Dinner', hi: 'डिनर' },
+  { key: 'sleepTime', en: 'Sleep', hi: 'सोना' },
+];
+
+/** "7:30 AM" / "19:30" → "07:30" for an <input type="time">; '' if unclear. */
+function toTimeInput(raw: unknown): string {
+  if (typeof raw !== 'string') return '';
+  const m = /(\d{1,2})[:.](\d{2})\s*(am|pm)?/i.exec(raw.trim());
+  if (!m) return '';
+  let h = parseInt(m[1], 10);
+  if (m[3]) { h = h % 12; if (/pm/i.test(m[3])) h += 12; }
+  return h > 23 ? '' : `${String(h).padStart(2, '0')}:${m[2]}`;
+}
+
+/** "19:30" → "7:30 PM" (the format stored everywhere else). */
+function fromTimeInput(value: string): string {
+  const [hs, ms] = value.split(':');
+  const h = parseInt(hs, 10);
+  if (Number.isNaN(h)) return '';
+  return `${h % 12 || 12}:${ms} ${h >= 12 ? 'PM' : 'AM'}`;
+}
 
 const pillActive = 'bg-emerald-600 border-emerald-600 text-white shadow-sm';
 const pillInactive = 'bg-white border-zinc-200 text-zinc-700 hover:border-emerald-300';
@@ -141,6 +168,14 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
   const [pace, setPace] = useState<GoalPace>(profile.pace || 'steady');
   const [dietaryPreference, setDietaryPreference] = useState(profile.dietaryPreference || 'Vegetarian');
   const [medicalConditions, setMedicalConditions] = useState<string[]>(profile.medicalConditions || []);
+  // Daily routine — prefilled from the assessment first, then onboarding
+  // (the same order the plan reads them in).
+  const [routine, setRoutine] = useState<Record<RoutineKey, string>>(() => {
+    const fromAssessment: any = profile.assessmentData?.dailyRoutine || {};
+    const dd: any = profile.healthDeepDive || {};
+    const pick = (key: RoutineKey) => toTimeInput(fromAssessment[key]) || toTimeInput(dd[key]) || (key === 'wakeUpTime' ? toTimeInput(dd.wakeTime) : '');
+    return { wakeUpTime: pick('wakeUpTime'), breakfastTime: pick('breakfastTime'), lunchTime: pick('lunchTime'), dinnerTime: pick('dinnerTime'), sleepTime: pick('sleepTime') };
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const { language } = useLanguage();
@@ -166,6 +201,7 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
     const parsedCurrentWeight = Math.max(30, Math.min(250, parseFloat(currentWeightKg) || profile.currentWeightKg));
     const parsedTargetWeight = Math.max(30, Math.min(250, parseFloat(targetWeightKg) || profile.targetWeightKg));
 
+    const routineLabels = Object.fromEntries(ROUTINE_FIELDS.map(({ key }) => [key, routine[key] ? fromTimeInput(routine[key]) : ''])) as Record<RoutineKey, string>;
     const recalculatedPlan = calculateNutritionPlan(
       gender,
       parsedAge,
@@ -192,6 +228,13 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
       dietaryPreference,
       medicalConditions,
       calculatedPlan: recalculatedPlan,
+      // Routine times go to BOTH places the plan reads them from (the
+      // assessment wins over onboarding server-side), so they can never
+      // disagree after an edit here.
+      healthDeepDive: { ...(profile.healthDeepDive || {}), ...routineLabels },
+      assessmentData: profile.assessmentData
+        ? { ...profile.assessmentData, dailyRoutine: { ...profile.assessmentData.dailyRoutine, ...routineLabels } }
+        : profile.assessmentData,
       updatedAt: new Date().toISOString(),
     };
 
@@ -293,6 +336,28 @@ export const EditHealthProfileModal: React.FC<EditHealthProfileModalProps> = ({
                   ))}
                 </div>
               </div>
+            </div>
+          </section>
+
+          {/* Daily Routine — the times the UrCare plan is built around */}
+          <section className="space-y-2.5">
+            <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-emerald-600" />
+              {tr('Daily Routine', 'दिनचर्या')}
+            </h4>
+            <p className="text-[11px] text-zinc-500">{tr('Your Daily Plan is timed to these. Leave blank if you are not sure.', 'आपका डेली प्लान इन्हीं समयों के हिसाब से बनता है। पता न हो तो खाली छोड़ दें।')}</p>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+              {ROUTINE_FIELDS.map(({ key, en, hi }) => (
+                <label key={key} className="block">
+                  <span className="block text-[11px] font-bold text-zinc-600 mb-1">{tr(en, hi)}</span>
+                  <input
+                    type="time"
+                    value={routine[key]}
+                    onChange={(e) => setRoutine({ ...routine, [key]: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-zinc-200 bg-white text-xs font-bold text-zinc-900 focus:border-emerald-500 focus:outline-none"
+                  />
+                </label>
+              ))}
             </div>
           </section>
 

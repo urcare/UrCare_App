@@ -81,14 +81,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const moduleMenuItems = [
     { id: 'tracker' as const, label: tr('Tracker', 'ट्रैकर'), icon: Activity },
     { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
-    { id: 'assessment' as const, label: tr('Assessment', 'मूल्यांकन'), icon: ClipboardCheck },
+    { id: 'assessment' as const, label: tr('Root Cause Analysis', 'रूट कॉज़ एनालिसिस'), icon: ClipboardCheck },
     { id: 'store' as const, label: tr('Store', 'स्टोर'), icon: ShoppingBag },
     // Not a tab — opens the Doctor Consult modal directly (see the drawer's
     // onClick). Used to be its own persistent sidebar card; moved in here to
     // declutter the sidebar.
     { id: 'doctor_hotline' as const, label: tr('Doctor Hotline', 'डॉक्टर हॉटलाइन'), icon: Stethoscope },
-    // Not a tab — opens the AI Health Bots chat (six AI assistants).
-    { id: 'ai_bots' as const, label: tr('AI Health Bots (Chat)', 'AI हेल्थ बॉट्स (चैट)'), icon: Bot },
+    // Not a tab — opens the AI chat (six AI assistants). "(AI)" stays in the
+    // name so nobody mistakes it for real doctors chatting.
+    { id: 'ai_bots' as const, label: tr('UrCare Medical Team (AI)', 'UrCare मेडिकल टीम (AI)'), icon: Bot },
     // Not a tab — opens the app-feedback form (what helps / what is missing).
     { id: 'app_feedback' as const, label: tr('Give Feedback', 'प्रतिक्रिया दें'), icon: MessageSquareHeart },
     // Not a tab — opens the Settings modal directly (see the drawer's onClick).

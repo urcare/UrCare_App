@@ -150,7 +150,7 @@ export const AIHealthBots: React.FC<AIHealthBotsProps> = ({ userId, onClose, onO
         <aside className={`${active ? 'hidden sm:flex' : 'flex'} w-full sm:w-80 flex-col border-r border-zinc-100`}>
           <div className="p-4 border-b border-zinc-100 flex items-center justify-between gap-2">
             <div>
-              <h2 className="text-lg font-black text-zinc-950 flex items-center gap-2"><Bot className="w-5 h-5 text-emerald-600" /> {tr('AI Health Bots', 'AI हेल्थ बॉट्स')}</h2>
+              <h2 className="text-lg font-black text-zinc-950 flex items-center gap-2"><Bot className="w-5 h-5 text-emerald-600" /> {tr('UrCare Medical Team', 'UrCare मेडिकल टीम')}</h2>
               <p className="text-[11px] text-zinc-500">{tr('Chat any time · powered by AI', 'कभी भी चैट करें · AI द्वारा संचालित')}</p>
             </div>
             <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-zinc-100 cursor-pointer" aria-label={tr('Close', 'बंद करें')}><X className="w-5 h-5" /></button>
