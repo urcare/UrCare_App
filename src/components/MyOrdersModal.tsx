@@ -130,6 +130,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                       {order.orderStatus === 'shipped' ? tr('In Transit', 'ट्रांजिट में') : order.orderStatus === 'awaiting_payment' ? tr('Verifying payment', ORDER_STATUS_HI.awaiting_payment) : tr(order.orderStatus, ORDER_STATUS_HI[order.orderStatus] || order.orderStatus)}
                     </span>
                     <span className="text-xs font-bold text-zinc-900">₹{order.total}</span>
+                    {order.couponCode && <span className="text-[10px] font-bold text-amber-700">{order.couponCode} −₹{order.discount}</span>}
                   </div>
                 </div>
 

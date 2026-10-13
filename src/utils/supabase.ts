@@ -1308,6 +1308,7 @@ export async function saveOrderAndReceiptToSupabase(order: Order): Promise<{ suc
       subtotal: order.subtotal,
       discount: order.discount,
       total: order.total,
+      couponCode: order.couponCode,
       // UPI reference/UTR (optional) + the payment screenshot (required —
       // the server rejects an order without one; an admin verifies it).
       transactionId: order.transactionId,
@@ -1317,6 +1318,22 @@ export async function saveOrderAndReceiptToSupabase(order: Order): Promise<{ suc
   const data = await res.json();
   if (!res.ok) return { success: false, orderId: order.id, error: data.error };
   return { success: true, orderId: data.order?.id || order.id };
+}
+
+/** Checks the store coupon against the cart — the server works out the
+ *  discount from each pack's coupon value (same as urcare.org). */
+export async function checkStoreCoupon(code: string, items: { product: { id: string }; quantity: number }[]): Promise<{ valid: boolean; discount: number; message: string; lines: { id: string; discount: number }[] }> {
+  try {
+    const res = await fetch('/api/store/coupon', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, items: items.map((it) => ({ id: it.product.id, quantity: it.quantity })) }),
+    });
+    const data = await res.json();
+    return { valid: !!data.valid, discount: Number(data.discount) || 0, message: String(data.message || ''), lines: Array.isArray(data.lines) ? data.lines : [] };
+  } catch {
+    return { valid: false, discount: 0, message: 'Could not check the coupon right now. Please try again.', lines: [] };
+  }
 }
 
 /** Re-uploads the payment screenshot for an order the caller owns (after an
@@ -1425,8 +1442,10 @@ export function mapOrderRow(o: any): Order {
       quantity: it.quantity,
     })),
     shippingAddress: o.shipping_address,
-    subtotal: o.total_amount,
-    discount: 0,
+    // Orders keep their price breakdown next to the address (no columns for it).
+    subtotal: o.shipping_address?.pricing?.subtotal ?? o.total_amount,
+    discount: o.shipping_address?.pricing?.discount ?? 0,
+    couponCode: o.shipping_address?.pricing?.couponCode || undefined,
     total: o.total_amount,
     paymentMethod: 'qr_upi',
     // The orders table stores a verified payment as 'completed' and a

@@ -2043,6 +2043,82 @@ function isValidReceiptImage(value: unknown): value is string {
     && value.length <= MAX_RECEIPT_DATA_URL_LENGTH;
 }
 
+// ----------------------------------------------------------------------------
+// CART PRICING + COUPON — the server prices every cart from the products table
+// (never from what the app sends). A cart line id is either a product id or
+// "<product id>__pack<months>" for a duration pack. The store coupon gives
+// each pack its own flat discount (pack.couponOff, set in Admin → Products),
+// the same way urcare.org prices URCARE4U.
+// ----------------------------------------------------------------------------
+const STORE_COUPON_CODE = (process.env.STORE_COUPON_CODE || 'URCARE4U').trim().toUpperCase();
+const STORE_PACK_SEP = '__pack';
+const storeDeliveryFee = (subtotal: number) => (subtotal > 1500 || subtotal === 0 ? 0 : 99);
+const formatInr = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+
+interface PricedLine { id: string; productId: string; name: string; image: string | null; unitPrice: number; quantity: number; couponOff: number }
+interface PricedCart {
+  lines: PricedLine[]; subtotal: number; discount: number; deliveryFee: number; total: number;
+  coupon: { code: string; valid: boolean; message: string; lines: { id: string; discount: number }[] } | null;
+}
+
+async function priceStoreCart(supabase: any, rawItems: any[], rawCode?: string): Promise<PricedCart | { error: string }> {
+  const items = (Array.isArray(rawItems) ? rawItems : [])
+    .map((it: any) => ({ id: String(it?.product?.id || it?.id || it?.productId || ''), quantity: Math.max(1, Math.min(20, Math.floor(Number(it?.quantity) || 1))) }))
+    .filter((it) => it.id);
+  if (!items.length) return { error: 'Your cart is empty.' };
+
+  const baseIds = [...new Set(items.map((it) => it.id.split(STORE_PACK_SEP)[0]))];
+  const { data: rows, error } = await supabase.from('products').select('id, name, image, price, discount_price, in_stock, nutrition_info').in('id', baseIds);
+  if (error) return { error: 'Could not check prices right now. Please try again.' };
+  const byId = new Map<string, any>((rows || []).map((r: any) => [r.id, r]));
+
+  const lines: PricedLine[] = [];
+  for (const it of items) {
+    const [baseId, monthsText] = it.id.split(STORE_PACK_SEP);
+    const row = byId.get(baseId);
+    if (!row || row.in_stock === false) return { error: `${row?.name || 'An item in your cart'} is no longer available. Please remove it from your cart.` };
+    const packs: any[] = row.nutrition_info?.listing?.packs || [];
+    if (monthsText) {
+      const months = Number(monthsText);
+      const pack = packs.find((pk) => Number(pk.months) === months);
+      if (!pack || pack.inStock === false) return { error: `${row.name} (${months} month pack) is out of stock. Please remove it from your cart.` };
+      lines.push({ id: it.id, productId: baseId, name: `${row.name} — ${months} Month${months > 1 ? 's' : ''}`, image: row.image, unitPrice: Number(pack.price) || 0, quantity: it.quantity, couponOff: Math.max(0, Number(pack.couponOff) || 0) });
+    } else {
+      if (packs.length) return { error: `Please choose a duration for ${row.name}.` };
+      lines.push({ id: it.id, productId: baseId, name: row.name, image: row.image, unitPrice: Number(row.discount_price ?? row.price) || 0, quantity: it.quantity, couponOff: 0 });
+    }
+  }
+
+  const subtotal = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
+  let discount = 0;
+  let coupon: PricedCart['coupon'] = null;
+  const code = String(rawCode || '').trim().toUpperCase();
+  if (code) {
+    if (code !== STORE_COUPON_CODE) {
+      coupon = { code, valid: false, message: 'This coupon code is not valid.', lines: [] };
+    } else {
+      const couponLines = lines.filter((l) => l.couponOff > 0).map((l) => ({ id: l.id, discount: Math.min(l.couponOff, l.unitPrice) * l.quantity }));
+      discount = couponLines.reduce((sum, l) => sum + l.discount, 0);
+      coupon = discount > 0
+        ? { code, valid: true, message: `Coupon applied! You saved ${formatInr(discount)} on this order.`, lines: couponLines }
+        : { code, valid: false, message: 'This coupon is not applicable to the items in your cart.', lines: [] };
+    }
+  }
+  const deliveryFee = storeDeliveryFee(subtotal);
+  return { lines, subtotal, discount, deliveryFee, total: subtotal - discount + deliveryFee, coupon };
+}
+
+// Checks a coupon against the current cart (the cart drawer calls this).
+app.post('/api/store/coupon', async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ valid: false, discount: 0, message: 'Store is not available right now.' });
+  const { code, items } = req.body || {};
+  if (!String(code || '').trim()) return res.json({ valid: false, discount: 0, message: 'Please enter a coupon code.' });
+  const priced = await priceStoreCart(supabase, items, code);
+  if ('error' in priced) return res.json({ valid: false, discount: 0, message: priced.error });
+  res.json({ valid: !!priced.coupon?.valid, code: priced.coupon?.code, discount: priced.discount, lines: priced.coupon?.lines || [], message: priced.coupon?.message || '' });
+});
+
 // order_items.product_id is a uuid column, but store product ids are text
 // ("prod_glucolow", pack lines "prod_cardiol__pack3"). Map each to a stable
 // uuid; the readable name (with the pack) is kept in product_name.
@@ -2054,12 +2130,20 @@ function productIdToUuid(id: string): string {
 
 app.post('/api/orders', requireUser(async (req, res, user) => {
   try {
-    const { items = [], shippingAddress, subtotal, total, transactionId, receiptImageUrl } = req.body;
+    const { items = [], shippingAddress, total, couponCode, transactionId, receiptImageUrl } = req.body;
     if (!isValidReceiptImage(receiptImageUrl)) {
       return res.status(400).json({ error: 'Please upload a screenshot of your payment to place the order.' });
     }
     const supabase = getSupabaseAdmin();
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+
+    // Price the order on the server — this is the amount the customer must pay.
+    const priced = await priceStoreCart(supabase, items, couponCode);
+    if ('error' in priced) return res.status(400).json({ error: priced.error });
+    if (couponCode && !priced.coupon?.valid) return res.status(400).json({ error: priced.coupon?.message || 'This coupon could not be applied.' });
+    if (Number(total) !== priced.total) {
+      return res.status(409).json({ error: `Prices in your cart have changed — the correct total is ${formatInr(priced.total)}. Please go back to your cart and check out again.` });
+    }
 
     const { data: profileRow } = await supabase.from('profiles').select('full_name, email').eq('user_id', user.id).maybeSingle();
 
@@ -2067,8 +2151,10 @@ app.post('/api/orders', requireUser(async (req, res, user) => {
       user_id: user.id,
       customer_name: profileRow?.full_name || shippingAddress?.fullName || 'Member',
       customer_email: profileRow?.email || user.email,
-      total_amount: total ?? subtotal ?? 0,
-      shipping_address: shippingAddress || null,
+      total_amount: priced.total,
+      // The orders table has no pricing columns, so the breakdown (and any
+      // coupon) is kept alongside the address.
+      shipping_address: { ...(shippingAddress || {}), pricing: { subtotal: priced.subtotal, discount: priced.discount, deliveryFee: priced.deliveryFee, couponCode: priced.coupon?.valid ? priced.coupon.code : null } },
       payment_status: ORDER_PAYMENT.pending,
       razorpay_payment_id: typeof transactionId === 'string' && transactionId.trim() ? transactionId.trim().slice(0, 64) : null,
       receipt_image_url: receiptImageUrl,
@@ -2077,21 +2163,21 @@ app.post('/api/orders', requireUser(async (req, res, user) => {
     }).select().single();
     if (orderErr) throw orderErr;
 
-    if (Array.isArray(items) && items.length) {
-      const orderItems = items.map((it: any) => ({
+    {
+      const orderItems = priced.lines.map((l) => ({
         order_id: order.id,
-        product_id: productIdToUuid(String(it.product?.id || it.productId || '')),
-        quantity: it.quantity || 1,
-        price: it.product?.discountPrice ?? it.product?.price ?? it.price ?? 0,
-        product_name: it.product?.name,
-        product_image: it.product?.image,
+        product_id: productIdToUuid(l.id),
+        quantity: l.quantity,
+        price: l.unitPrice,
+        product_name: l.name,
+        product_image: l.image,
       }));
       const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
       if (itemsErr) console.warn('orders: could not save order items:', itemsErr.message);
     }
 
     await createNotification(supabase, user.id, 'order', 'Order received — verifying your payment', `Order #${order.id} will be confirmed once our team checks your payment screenshot.`, { orderId: order.id });
-    await createActivityLog(supabase, user.id, 'created', 'order', `Placed an order — ₹${total ?? subtotal ?? 0}`, 'Payment screenshot uploaded, awaiting verification', { orderId: order.id });
+    await createActivityLog(supabase, user.id, 'created', 'order', `Placed an order — ${formatInr(priced.total)}`, 'Payment screenshot uploaded, awaiting verification', { orderId: order.id });
     res.json({ success: true, order, message: 'Order received! It will be confirmed after we verify your payment.' });
   } catch (e: any) {
     console.error('Order creation failed:', e);
@@ -3128,7 +3214,7 @@ app.post('/api/admin/products', requireAdmin(async (req, res) => {
   // existing nutrition_info jsonb under `listing`, so no schema change is
   // needed. Nutrition facts are only kept when actually given.
   const packs = (Array.isArray(packOptions) ? packOptions : [])
-    .map((p: any) => ({ months: Number(p.months) || 0, price: Number(p.price) || 0, mrp: Number(p.mrp) || undefined, inStock: p.inStock !== false }))
+    .map((p: any) => ({ months: Number(p.months) || 0, price: Number(p.price) || 0, mrp: Number(p.mrp) || undefined, inStock: p.inStock !== false, couponOff: Number(p.couponOff) || undefined, isDefault: p.isDefault ? true : undefined }))
     .filter((p: any) => p.months > 0 && p.price > 0)
     .sort((a: any, b: any) => a.months - b.months);
   const hasNutrition = nutritionInfo && (Number(nutritionInfo.calories) || Number(nutritionInfo.protein) || Number(nutritionInfo.carbs) || Number(nutritionInfo.fats));

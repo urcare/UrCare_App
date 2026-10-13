@@ -1757,6 +1757,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
 
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       <span className="text-sm font-black text-zinc-900">₹{order.total}</span>
+                      {order.couponCode && (
+                        <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold border bg-amber-50 text-amber-800 border-amber-200">
+                          {order.couponCode} −₹{order.discount}
+                        </span>
+                      )}
                       <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
                         order.paymentStatus === 'verified'
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -3241,10 +3246,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                     + Add pack
                   </button>
                 </div>
-                <p className="text-[10px] text-zinc-500">Customers pick one of these (e.g. 1 Month ₹3,000 · 2 Months ₹6,000 · 3 Months ₹9,000). Leave empty for a single-price product.</p>
+                <p className="text-[10px] text-zinc-500">Customers pick one of these (e.g. 1 Month ₹3,000 · 2 Months ₹6,000 · 3 Months ₹9,000). Leave empty for a single-price product. "Coupon ₹ off" is how much the URCARE4U coupon takes off that pack (leave empty for no coupon). "Show first" picks the pack the store card shows.</p>
                 {productForm.packs.map((pk, idx) => (
-                  <div key={idx} className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-2 items-end">
-                    {([['months', 'Months'], ['price', 'Price ₹'], ['mrp', 'MRP ₹ (optional)']] as const).map(([field, label]) => (
+                  <div key={idx} className="p-2.5 rounded-xl bg-white border border-zinc-200 space-y-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+                    {([['months', 'Months'], ['price', 'Price ₹'], ['mrp', 'MRP ₹ (optional)'], ['couponOff', 'Coupon ₹ off']] as const).map(([field, label]) => (
                       <label key={field} className="block">
                         <span className="block text-[10px] font-bold text-zinc-500 mb-0.5">{label}</span>
                         <input
@@ -3259,7 +3265,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                         />
                       </label>
                     ))}
-                    <label className="flex items-center gap-1 text-[10px] font-bold text-zinc-700 pb-2 cursor-pointer">
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-1 text-[10px] font-bold text-zinc-700 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={pk.inStock}
@@ -3272,14 +3280,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                       />
                       In stock
                     </label>
+                    <label className="flex items-center gap-1 text-[10px] font-bold text-zinc-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="default-pack"
+                        checked={!!pk.isDefault}
+                        onChange={() => setProductForm({ ...productForm, packs: productForm.packs.map((x, i) => ({ ...x, isDefault: i === idx ? true : undefined })) })}
+                        className="accent-emerald-600"
+                      />
+                      Show first
+                    </label>
                     <button
                       type="button"
                       onClick={() => setProductForm({ ...productForm, packs: productForm.packs.filter((_, i) => i !== idx) })}
-                      className="pb-1.5 text-rose-600 cursor-pointer"
+                      className="ml-auto text-rose-600 cursor-pointer"
                       title="Remove pack"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
+                  </div>
                   </div>
                 ))}
               </div>

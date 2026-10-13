@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShoppingBag, Star, Plus, Minus, Check, ArrowRight, ShieldCheck,
   Truck, QrCode, CreditCard, Sparkles, MapPin, X, Copy, Zap,
-  Package, ChevronRight, CheckCircle2, Lock, RefreshCw, Upload, Clock
+  Package, ChevronRight, CheckCircle2, Lock, RefreshCw, Upload, Clock, Ticket
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Product, PackOption, CartItem, ShippingAddress, Order, UserAccount } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { saveOrderAndReceiptToSupabase, getProducts, getPaymentQrSettings, getMyOrders } from '../utils/supabase';
+import { saveOrderAndReceiptToSupabase, getProducts, getPaymentQrSettings, getMyOrders, checkStoreCoupon } from '../utils/supabase';
 import { getCachedAccountState, saveAccountState } from '../utils/accountState';
 import { compressImageToDataUrl } from '../utils/compressImage';
 
@@ -31,11 +31,15 @@ function packVariant(product: Product, pack: PackOption): Product {
     packOptions: undefined,
   };
 }
-/** The pack shown by default: the longest one that's in stock. */
+/** The pack shown by default: the one marked default, else the longest in stock. */
 function defaultPack(product: Product): PackOption | null {
   const available = (product.packOptions || []).filter((p) => p.inStock);
-  return available[available.length - 1] || null;
+  return available.find((p) => p.isDefault) || available[available.length - 1] || null;
 }
+/** The store coupon — the same code as urcare.org. The server decides the discount. */
+const STORE_COUPON = 'URCARE4U';
+const maxCouponOff = (product: Product) => Math.max(0, ...(product.packOptions || []).filter((p) => p.inStock).map((p) => p.couponOff || 0));
+const COUPON_STORAGE_KEY = 'urcare_store_coupon';
 const discountPercent = (mrp: number, price: number) => (mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0);
 
 export const ProductsModule: React.FC<ProductsModuleProps> = ({
@@ -98,7 +102,9 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
         const [baseId, months] = item.productId.split(PACK_SEP);
         const base = products.find((p) => p.id === baseId);
         const pack = months ? base?.packOptions?.find((pk) => pk.months === Number(months) && pk.inStock) : undefined;
-        const product = months ? (base && pack ? packVariant(base, pack) : undefined) : base;
+        // A cart saved before the product got packs moves to its default pack.
+        const fallback = !months && base?.packOptions?.length ? defaultPack(base) : null;
+        const product = months ? (base && pack ? packVariant(base, pack) : undefined) : base && fallback ? packVariant(base, fallback) : base?.packOptions?.length ? undefined : base;
         return product && item.quantity > 0 ? { product, quantity: item.quantity } : null;
       })
       .filter(Boolean) as CartItem[];
@@ -181,11 +187,37 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
   const [copiedUpi, setCopiedUpi] = useState(false);
 
+  // Store coupon (URCARE4U). The code the shopper applied is remembered on
+  // this device; the discount is always re-checked by the server whenever
+  // the cart changes, so it can never go stale.
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<string>(() => { try { return localStorage.getItem(COUPON_STORAGE_KEY) || ''; } catch { return ''; } });
+  const [couponResult, setCouponResult] = useState<{ valid: boolean; discount: number; message: string } | null>(null);
+  const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
+  useEffect(() => { try { appliedCoupon ? localStorage.setItem(COUPON_STORAGE_KEY, appliedCoupon) : localStorage.removeItem(COUPON_STORAGE_KEY); } catch {} }, [appliedCoupon]);
+  const cartKey = cart.map((it) => `${it.product.id}x${it.quantity}`).join('|');
+  useEffect(() => {
+    if (!appliedCoupon || !cart.length) { setCouponResult(null); return; }
+    let cancelled = false;
+    setIsCheckingCoupon(true);
+    checkStoreCoupon(appliedCoupon, cart).then((r) => { if (!cancelled) { setCouponResult(r); setIsCheckingCoupon(false); } });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedCoupon, cartKey]);
+  const applyCoupon = (code: string) => {
+    const c = code.trim().toUpperCase();
+    if (!c) { setCouponResult({ valid: false, discount: 0, message: tr('Please enter a coupon code.', 'कृपया कूपन कोड डालें।') }); return; }
+    setCouponInput(c);
+    setAppliedCoupon(c);
+  };
+  const removeCoupon = () => { setAppliedCoupon(''); setCouponInput(''); setCouponResult(null); };
+
   // Cart calculations
   const totalCartItems = cart.reduce((acc, item) => acc + item.quantity, 0);
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.discountPrice || item.product.price) * item.quantity, 0);
+  const couponDiscount = couponResult?.valid ? couponResult.discount : 0;
   const deliveryFee = cartSubtotal > 1500 || cartSubtotal === 0 ? 0 : 99;
-  const cartTotal = cartSubtotal + deliveryFee;
+  const cartTotal = cartSubtotal - couponDiscount + deliveryFee;
 
   // UPI details come from Admin → Products & QR. With a UPI ID set, the QR
   // carries the exact cart amount; otherwise the admin's uploaded QR image is
@@ -298,7 +330,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
       items: [...cart],
       shippingAddress,
       subtotal: cartSubtotal,
-      discount: 0,
+      discount: couponDiscount,
+      couponCode: couponDiscount > 0 ? appliedCoupon : undefined,
       total: cartTotal,
       paymentMethod: 'qr_upi',
       paymentStatus: 'pending',
@@ -330,6 +363,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     } catch (e) {}
 
     setCart([]);
+    removeCoupon();
     setTransactionId('');
     setPaymentScreenshot(null);
     setIsCartOpen(false);
@@ -410,6 +444,27 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
         </div>
       </div>
 
+      {/* Coupon banner — same offer as urcare.org */}
+      <div className="rounded-2xl bg-white border border-amber-200 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+            <Ticket className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[10px] font-black uppercase tracking-wider text-amber-700">{tr('Limited offer', 'सीमित ऑफ़र')}</div>
+            <div className="text-sm font-black text-zinc-900">{tr('Unlock an exclusive discount', 'खास छूट पाएं')}</div>
+            <div className="text-xs text-zinc-500">{tr('Use code', 'कोड लगाएं')} <span className="font-black text-emerald-700">{STORE_COUPON}</span> {tr('on reversal kits and 2–3 month packs.', 'रिवर्सल किट्स और 2–3 महीने के पैक पर।')}</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => { applyCoupon(STORE_COUPON); setIsCartOpen(true); }}
+          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black cursor-pointer shrink-0"
+        >
+          {appliedCoupon === STORE_COUPON ? tr('Applied ✓ — view cart', 'लगा दिया ✓ — कार्ट देखें') : tr('Apply to cart', 'कार्ट में लगाएं')}
+        </button>
+      </div>
+
       {/* Categories & Cart Toggle */}
       <div className="flex flex-wrap items-center justify-between gap-3 sticky top-0 z-10 py-1.5 -mx-1 px-1 backdrop-blur-sm">
         <div className="flex items-center gap-2 overflow-x-auto py-1 max-w-full">
@@ -487,11 +542,15 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                       {product.badge ? tr(product.badge, product.badge === 'Bestseller' ? 'बेस्टसेलर' : product.badge === 'Fast Selling' ? 'तेज़ी से बिक रहा' : product.badge) : tr('Top Choice', 'सर्वश्रेष्ठ पसंद')}
                     </span>
                   )}
-                  {!product.packOptions?.length && discountPercent(product.price, product.discountPrice) > 0 && (
-                    <span className="absolute top-2 right-2 px-2 py-1 rounded-full bg-rose-500 text-white text-[10px] font-black shadow-sm">
-                      {discountPercent(product.price, product.discountPrice)}% {tr('OFF', 'छूट')}
-                    </span>
-                  )}
+                  {(() => {
+                    const pack = product.packOptions?.length ? defaultPack(product) : null;
+                    const off = product.packOptions?.length ? (pack ? discountPercent(pack.mrp || pack.price, pack.price) : 0) : discountPercent(product.price, product.discountPrice);
+                    return off > 0 ? (
+                      <span className="absolute top-2 right-2 px-2 py-1 rounded-full bg-rose-500 text-white text-[10px] font-black shadow-sm">
+                        {off}% {tr('OFF', 'छूट')}
+                      </span>
+                    ) : null;
+                  })()}
                   <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md border border-zinc-200 text-[11px] font-bold text-amber-600 shadow-sm">
                     <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                     <span>{product.rating}</span>
@@ -522,8 +581,14 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                   if (product.packOptions?.length) {
                     return pack ? (
                       <div>
-                        <div className="text-base font-black text-emerald-600 dark:text-emerald-400">₹{pack.price.toLocaleString('en-IN')}</div>
-                        <div className="text-[11px] opacity-60">{pack.months} {tr(pack.months > 1 ? 'months' : 'month', 'महीने')} · ₹{Math.round(pack.price / pack.months).toLocaleString('en-IN')}/{tr('month', 'महीना')}</div>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-base font-black text-emerald-600 dark:text-emerald-400">₹{pack.price.toLocaleString('en-IN')}</span>
+                          {pack.mrp && pack.mrp > pack.price && <span className="text-[11px] opacity-50 line-through">₹{pack.mrp.toLocaleString('en-IN')}</span>}
+                        </div>
+                        <div className="text-[11px] opacity-60">{pack.months > 1 ? `${pack.months} ${tr('months', 'महीने')} · ₹${Math.round(pack.price / pack.months).toLocaleString('en-IN')}/${tr('month', 'महीना')}` : tr('1 month', '1 महीना')}</div>
+                        {maxCouponOff(product) > 0 && (
+                          <div className="text-[11px] font-bold text-amber-700">{tr(`Save up to ₹${maxCouponOff(product).toLocaleString('en-IN')} with ${STORE_COUPON}`, `${STORE_COUPON} से ₹${maxCouponOff(product).toLocaleString('en-IN')} तक बचाएं`)}</div>
+                        )}
                       </div>
                     ) : <div className="text-xs font-bold text-rose-500">{tr('Out of stock', 'स्टॉक में नहीं')}</div>;
                   }
@@ -639,6 +704,11 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                       {off > 0 && <span className={`text-xs line-through ${textMuted}`}>₹{mrp.toLocaleString('en-IN')}</span>}
                       {off > 0 && <span className="text-xs font-bold text-rose-500">{off}% {tr('OFF', 'छूट')}</span>}
                       {pack && pack.months > 1 && <span className={`text-xs ${textMuted}`}>(₹{Math.round(pack.price / pack.months).toLocaleString('en-IN')}/{tr('month', 'महीना')})</span>}
+                      {pack?.couponOff ? (
+                        <span className="basis-full text-xs font-bold text-amber-700">
+                          {tr(`Use ${STORE_COUPON} to save ₹${pack.couponOff.toLocaleString('en-IN')} more → pay ₹${(pack.price - pack.couponOff).toLocaleString('en-IN')}`, `${STORE_COUPON} लगाकर ₹${pack.couponOff.toLocaleString('en-IN')} और बचाएं → ₹${(pack.price - pack.couponOff).toLocaleString('en-IN')} दें`)}
+                        </span>
+                      ) : null}
                     </div>
                   );
                 })()}
@@ -811,11 +881,50 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             {/* Footer */}
             {cart.length > 0 && (
               <div className="pt-4 border-t border-zinc-800/40 space-y-3">
+                <div className="space-y-1.5">
+                  {appliedCoupon && couponResult?.valid ? (
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
+                      <span className="font-bold text-emerald-800 flex items-center gap-1.5"><Ticket className="w-3.5 h-3.5" />{appliedCoupon} {tr('applied', 'लगा')}</span>
+                      <button type="button" onClick={removeCoupon} className="font-bold text-rose-600 cursor-pointer">{tr('Remove', 'हटाएं')}</button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => { if (e.key === 'Enter') applyCoupon(couponInput); }}
+                        placeholder={tr('Coupon code', 'कूपन कोड')}
+                        className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white border border-zinc-200 text-zinc-900 text-xs font-bold uppercase outline-none focus:border-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => applyCoupon(couponInput)}
+                        disabled={isCheckingCoupon}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black cursor-pointer disabled:opacity-60"
+                      >
+                        {isCheckingCoupon ? '…' : tr('Apply', 'लगाएं')}
+                      </button>
+                    </div>
+                  )}
+                  {couponResult && !couponResult.valid ? (
+                    <p className="text-[11px] text-rose-600 px-1">{couponResult.message}</p>
+                  ) : couponResult?.valid ? (
+                    <p className="text-[11px] text-emerald-700 px-1">{couponResult.message}</p>
+                  ) : (
+                    <p className="text-[11px] text-zinc-500 px-1">{tr('Use', 'कोड')} <span className="font-black text-emerald-700">{STORE_COUPON}</span> {tr('for an exclusive discount', 'लगाकर खास छूट पाएं')}</p>
+                  )}
+                </div>
                 <div className="space-y-1 text-xs opacity-80">
                   <div className="flex justify-between">
                     <span>{tr('Subtotal', 'उप-योग')}</span>
                     <span className="font-bold">₹{cartSubtotal}</span>
                   </div>
+                  {couponDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-700 font-bold">
+                      <span>{tr('Coupon discount', 'कूपन छूट')}</span>
+                      <span>−₹{couponDiscount}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>{tr('Delivery', 'डिलीवरी')}</span>
                     <span className={deliveryFee === 0 ? 'text-emerald-500 font-bold' : ''}>

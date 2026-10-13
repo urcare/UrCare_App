@@ -750,6 +750,10 @@ export interface PackOption {
   price: number;
   mrp?: number;
   inStock: boolean;
+  /** Flat ₹ off this pack with the store coupon (URCARE4U). */
+  couponOff?: number;
+  /** The pack shown first on the card. */
+  isDefault?: boolean;
 }
 
 export interface CartItem {
@@ -775,6 +779,7 @@ export interface Order {
   shippingAddress: ShippingAddress;
   subtotal: number;
   discount: number;
+  couponCode?: string;
   total: number;
   paymentMethod: 'qr_upi' | 'razorpay' | 'autopay' | 'trial_checkout' | 'card_netbanking';
   /** 'pending' until an admin checks the uploaded payment screenshot. */
