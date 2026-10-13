@@ -476,11 +476,11 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             >
               <div>
                 {/* Product Image */}
-                <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-black/5 mb-3">
+                <div className="relative w-full aspect-[5/4] rounded-2xl overflow-hidden bg-white border border-zinc-100 mb-3">
                   <img
                     src={product.image}
                     alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-contain group-hover:scale-[1.03] transition-transform duration-300"
                   />
                   {(product.badge || product.featured) && (
                     <span className={`absolute top-2 left-2 px-2.5 py-1 rounded-full text-white text-[10px] font-black uppercase tracking-wider shadow-sm ${product.badge === 'Fast Selling' ? 'bg-orange-500' : 'bg-emerald-600'}`}>
@@ -580,13 +580,13 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               <button
                 type="button"
                 onClick={() => setIsImageZoomed(true)}
-                className="w-full sm:w-44 h-40 sm:h-48 rounded-2xl overflow-hidden bg-black/10 shrink-0 cursor-zoom-in relative group"
+                className="w-full sm:w-56 aspect-[5/4] rounded-2xl overflow-hidden bg-white border border-zinc-100 shrink-0 cursor-zoom-in relative group"
                 aria-label={tr('View full-size photo', 'पूरी फोटो देखें')}
               >
                 <img
                   src={selectedProductDetails.image}
                   alt={selectedProductDetails.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-contain group-hover:scale-[1.03] transition-transform duration-300"
                 />
               </button>
 
@@ -779,7 +779,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     <img
                       src={item.product.image}
                       alt={item.product.name}
-                      className="w-12 h-12 rounded-lg object-cover bg-black/10 shrink-0"
+                      className="w-12 h-12 rounded-lg object-contain bg-white border border-zinc-100 shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <h4 className="text-xs font-bold truncate">{item.product.name}</h4>
