@@ -498,11 +498,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
           isOpen={isEditProfileOpen}
           onClose={() => setIsEditProfileOpen(false)}
           profile={profile}
-          onUpdateProfile={(updated) => {
-            onUpdateProfile(updated);
-            // Conditions may have changed — let an open Plan tab refetch.
-            window.dispatchEvent(new Event('urcare:daily-plan-changed'));
-          }}
+          onUpdateProfile={onUpdateProfile}
         />
       )}
     </div>

@@ -232,6 +232,9 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   // Weekly Updates label each 4-week block with the real month it actually
   // falls in, instead of a generic "Month 1/2/3".
   const [builtInStartedAt, setBuiltInStartedAt] = useState<string | null>(null);
+  // The wake / meal / sleep times the UrCare plan was timed to (server-side,
+  // from the Detailed Health Assessment, then onboarding) — null = default day.
+  const [planRoutine, setPlanRoutine] = useState<{ wake: string; breakfast: string; lunch: string; dinner: string; sleep: string; given: Record<string, 'assessment' | 'onboarding'> } | null>(null);
   // TWO separate plans: the built-in UrCare plan (never changed by an upload)
   // and the user's own uploaded plan (editable, deletable). `planSource` is
   // the one currently shown — the user picks it in the plan switcher below,
@@ -348,6 +351,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         setProgramDay(result.plan?.programDay ?? null);
         setProgramTotalDays(result.plan?.totalDays ?? null);
         setBuiltInStartedAt(result.plan?.startedAt ?? null);
+        setPlanRoutine(result.plan?.routine ?? null);
         setBuiltInSections(result.plan?.sections || []);
         setUploadedPlan(result.customPlan || null);
         setPlanSource(getPlanChoice(effectiveUserId, !!result.customPlan));
@@ -675,6 +679,45 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           )}
         </AnimatePresence>
       </div>
+
+      {/* 1.1 YOUR ROUTINE — which times the UrCare plan was built around. */}
+      {!showingUploaded && !planLoading && (
+        <div className={`p-4 rounded-2xl sm:rounded-3xl border ${planRoutine ? (isDark ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-200 bg-emerald-50') : (isDark ? 'border-amber-500/30 bg-amber-500/5' : 'border-amber-200 bg-amber-50')}`}>
+          <div className={`flex items-center gap-2 text-sm font-black ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+            <Clock className={`w-4 h-4 ${planRoutine ? 'text-emerald-600' : 'text-amber-600'}`} />
+            {planRoutine
+              ? tr('Your plan is timed to your daily routine', 'आपका प्लान आपकी दिनचर्या के समय के हिसाब से है')
+              : tr('Your plan uses standard timings', 'आपका प्लान सामान्य समय पर है')}
+          </div>
+          {planRoutine ? (
+            <>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {([
+                  ['wake', tr('Wake up', 'उठना')], ['breakfast', tr('Breakfast', 'नाश्ता')], ['lunch', tr('Lunch', 'लंच')],
+                  ['dinner', tr('Dinner', 'डिनर')], ['sleep', tr('Sleep', 'सोना')],
+                ] as const).map(([key, label]) => (
+                  <span key={key} className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${planRoutine.given[key] ? 'bg-white text-emerald-800 border border-emerald-200' : 'bg-white/60 text-zinc-500 border border-zinc-200'}`}>
+                    {label} <strong>{planRoutine[key]}</strong>
+                  </span>
+                ))}
+              </div>
+              <p className={`text-[11px] mt-2 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                {tr(
+                  `Taken from your ${Object.values(planRoutine.given).includes('assessment') ? 'Detailed Health Assessment' : 'onboarding answers'}. Every step below moves with these times. To change them, update Profile → Detailed Health Assessment → Daily Routine.`,
+                  `${Object.values(planRoutine.given).includes('assessment') ? 'विस्तृत स्वास्थ्य आकलन' : 'ऑनबोर्डिंग जवाबों'} से लिया गया। नीचे का हर step इन्हीं समयों के हिसाब से है। बदलने के लिए Profile → विस्तृत स्वास्थ्य आकलन → Daily Routine अपडेट करें।`
+                )}
+              </p>
+            </>
+          ) : (
+            <p className={`text-[11px] mt-1.5 ${isDark ? 'text-zinc-400' : 'text-zinc-600'}`}>
+              {tr(
+                'Add your wake-up, meal and sleep times in Profile → Detailed Health Assessment → Daily Routine, and every step will be re-timed to your day.',
+                'Profile → विस्तृत स्वास्थ्य आकलन → Daily Routine में अपने उठने, खाने और सोने का समय डालें — हर step आपके दिन के हिसाब से हो जाएगा।'
+              )}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* 1.2 WHICH PLAN — two clearly separate plans. The UrCare plan is
           never changed by an upload; the user's own uploaded plan lives in

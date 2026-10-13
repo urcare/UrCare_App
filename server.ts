@@ -962,6 +962,149 @@ async function saveHealthProfileFields(supabase: SupabaseClient, userId: string,
   if (error) console.error(`Could not save health profile for ${userId}:`, error.message);
 }
 
+// ============================================================================
+// PERSONAL ROUTINE → PLAN TIMES. The built-in reversal plan is written around
+// one default day (wake 5:00 AM, breakfast 8:35, lunch 1:05 PM, dinner 7:35
+// PM, sleep 10:00 PM). Each user's real routine — from the Detailed Health
+// Assessment first (newest, most deliberate), then onboarding — re-times
+// every step: the day is mapped piece by piece between those five anchors,
+// so "after waking" steps follow the user's wake time, pre-lunch steps sit
+// before THEIR lunch, and so on, with the original order always preserved.
+// ============================================================================
+type RoutineAnchor = 'wake' | 'breakfast' | 'lunch' | 'dinner' | 'sleep';
+const ROUTINE_ANCHORS: RoutineAnchor[] = ['wake', 'breakfast', 'lunch', 'dinner', 'sleep'];
+const DEFAULT_ROUTINE_MINUTES: Record<RoutineAnchor, number> = { wake: 300, breakfast: 515, lunch: 785, dinner: 1175, sleep: 1320 };
+
+/** Reads a free-text time the user typed ("6:30 AM", "6.30am", "18:30",
+ *  "7", "subah 6", "raat 11 baje") into minutes after midnight. Without an
+ *  AM/PM hint, the anchor decides (dinner "8" is 8 PM, sleep "1" is 1 AM —
+ *  returned as 25:00 so it still sorts after the evening). */
+function parseRoutineTime(raw: unknown, anchor: RoutineAnchor): number | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const text = raw.trim().toLowerCase();
+  const m = /(\d{1,2})(?:\s*[:.]\s*(\d{2}))?/.exec(text);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = m[2] ? parseInt(m[2], 10) : 0;
+  if (h > 23 || min > 59) return null;
+  const pm = /\bp\.?\s?m\b|pm|shaam|sham|raat|night|evening|eve\b/.test(text);
+  const am = /\ba\.?\s?m\b|am\b|subah|morning|savere|sawere/.test(text);
+  if (pm && h < 12) h += 12;
+  else if (am && h === 12) h = 0;
+  else if (!pm && !am && h <= 12) {
+    if (anchor === 'lunch' && h >= 1 && h <= 5) h += 12;
+    if (anchor === 'dinner' && h < 12) h += 12;
+    if (anchor === 'sleep' && h >= 6 && h < 12) h += 12;
+    if (anchor === 'sleep' && h === 12) h = 0;
+  }
+  let total = h * 60 + min;
+  if (anchor === 'sleep' && total < 6 * 60) total += 24 * 60; // after midnight
+  return total;
+}
+
+type RoutineSource = 'assessment' | 'onboarding';
+type UserRoutine = { minutes: Record<RoutineAnchor, number>; given: Partial<Record<RoutineAnchor, RoutineSource>> };
+
+/** The user's routine anchors, assessment first, then onboarding; any
+ *  anchor they never gave follows the nearest one they did (so a later wake
+ *  time moves the whole morning). Out-of-order answers are ignored. */
+function buildUserRoutine(extra: any): UserRoutine | null {
+  const a = extra?.assessmentData || {};
+  const dd = extra?.healthDeepDive || {};
+  const sources: Record<RoutineAnchor, [unknown, RoutineSource][]> = {
+    wake: [[a.dailyRoutine?.wakeUpTime, 'assessment'], [a.sleep?.wakeUpTime, 'assessment'], [dd.wakeUpTime, 'onboarding'], [dd.wakeTime, 'onboarding']],
+    breakfast: [[a.dailyRoutine?.breakfastTime, 'assessment'], [dd.breakfastTime, 'onboarding']],
+    lunch: [[a.dailyRoutine?.lunchTime, 'assessment'], [dd.lunchTime, 'onboarding']],
+    dinner: [[a.dailyRoutine?.dinnerTime, 'assessment'], [dd.dinnerTime, 'onboarding']],
+    sleep: [[a.dailyRoutine?.sleepTime, 'assessment'], [a.sleep?.sleepTime, 'assessment'], [dd.sleepTime, 'onboarding']],
+  };
+  const found: Partial<Record<RoutineAnchor, number>> = {};
+  const given: Partial<Record<RoutineAnchor, RoutineSource>> = {};
+  for (const anchor of ROUTINE_ANCHORS) {
+    for (const [value, source] of sources[anchor]) {
+      const minutes = parseRoutineTime(value, anchor);
+      if (minutes != null) { found[anchor] = minutes; given[anchor] = source; break; }
+    }
+  }
+  // Keep only answers that are in a sensible order (wake < breakfast < … < sleep).
+  let last = -1;
+  for (const anchor of ROUTINE_ANCHORS) {
+    const v = found[anchor];
+    if (v == null) continue;
+    if (v <= last) { delete found[anchor]; delete given[anchor]; continue; }
+    last = v;
+  }
+  const known = ROUTINE_ANCHORS.filter((x) => found[x] != null);
+  if (known.length === 0) return null;
+  const minutes = {} as Record<RoutineAnchor, number>;
+  ROUTINE_ANCHORS.forEach((anchor, i) => {
+    if (found[anchor] != null) { minutes[anchor] = found[anchor]!; return; }
+    // Follow the nearest anchor they did give (earlier one preferred).
+    let ref: RoutineAnchor | undefined;
+    for (let d = 1; d < ROUTINE_ANCHORS.length && !ref; d++) {
+      const before = ROUTINE_ANCHORS[i - d];
+      const after = ROUTINE_ANCHORS[i + d];
+      if (before && found[before] != null) ref = before;
+      else if (after && found[after] != null) ref = after;
+    }
+    minutes[anchor] = DEFAULT_ROUTINE_MINUTES[anchor] + (found[ref!]! - DEFAULT_ROUTINE_MINUTES[ref!]);
+  });
+  // Filling can still cross a given anchor — fall back to defaults if so.
+  for (let i = 1; i < ROUTINE_ANCHORS.length; i++) {
+    if (minutes[ROUTINE_ANCHORS[i]] <= minutes[ROUTINE_ANCHORS[i - 1]] + 30) return null;
+  }
+  return { minutes, given };
+}
+
+/** Maps a default-day minute onto the user's day (piecewise-linear between anchors). */
+function warpPlanMinute(t: number, r: UserRoutine): number {
+  const D = ROUTINE_ANCHORS.map((x) => DEFAULT_ROUTINE_MINUTES[x]);
+  const U = ROUTINE_ANCHORS.map((x) => r.minutes[x]);
+  let out: number;
+  if (t <= D[0]) out = U[0] + (t - D[0]);
+  else if (t >= D[D.length - 1]) out = U[U.length - 1] + (t - D[D.length - 1]);
+  else {
+    let i = 0;
+    while (t > D[i + 1]) i++;
+    out = U[i] + ((t - D[i]) * (U[i + 1] - U[i])) / (D[i + 1] - D[i]);
+  }
+  return Math.round(out / 5) * 5;
+}
+
+/** Re-times one plan label: "5:30 AM", or a range like "2:15 – 2:45 PM". */
+function retimePlanLabel(label: string | null, r: UserRoutine | null): string | null {
+  if (!label || !r) return label;
+  const parts = label.split(/\s*[–-]\s*/);
+  if (parts.length === 1) {
+    const t = parseClockTimeToMinutes(label);
+    return t > 24 * 60 ? label : minutesToClockLabel(((warpPlanMinute(t, r) % 1440) + 1440) % 1440);
+  }
+  if (parts.length !== 2) return label;
+  const suffix = /\b(AM|PM)$/i.exec(parts[1].trim())?.[1] || '';
+  const first = /\b(AM|PM)$/i.test(parts[0].trim()) ? parts[0].trim() : `${parts[0].trim()} ${suffix}`;
+  const a = parseClockTimeToMinutes(first);
+  const b = parseClockTimeToMinutes(parts[1].trim());
+  if (a > 24 * 60 || b > 24 * 60) return label;
+  const fmt = (m: number) => minutesToClockLabel(((m % 1440) + 1440) % 1440);
+  return `${fmt(warpPlanMinute(a, r))} – ${fmt(warpPlanMinute(b, r))}`;
+}
+
+/** Condition tags from the Detailed Health Assessment's diagnosed
+ *  conditions (free text) — they widen the plan just like profile ones. */
+function assessmentConditionTags(extra: any): Set<string> {
+  const tags = new Set<string>();
+  const a = extra?.assessmentData || {};
+  const texts: string[] = [
+    ...((a.diagnosedConditions || []).map((c: any) => c?.conditionName).filter(Boolean)),
+    ...((a.gutHealth?.diagnosedConditions || []) as string[]),
+  ];
+  for (const text of texts) {
+    if (typeof text !== 'string') continue;
+    for (const rule of RISK_TEXT_TO_TAG) if (rule.pattern.test(text)) tags.add(rule.tag);
+  }
+  return tags;
+}
+
 // 1. Medical & Health Report AI Analysis — persists to `lab_reports`
 // Max lab reports a user can have on file — every upload (including a
 // "Re-upload" from an existing report's card) inserts a brand new row, so
@@ -1582,7 +1725,7 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
     // the very first time right after onboarding.
     const [{ data: customPlan }, { data: hp }, { data: sections, error: sectionsError }] = await Promise.all([
       supabase.from('custom_daily_plans').select('sections, uploaded_at, expires_at').eq('user_id', actingUserId).maybeSingle(),
-      supabase.from('health_profiles').select('existing_concerns, program_started_at').eq('user_id', actingUserId).maybeSingle(),
+      supabase.from('health_profiles').select('existing_concerns, program_started_at, extra_data').eq('user_id', actingUserId).maybeSingle(),
       supabase.from('reversal_plan_sections').select('*').order('order_index', { ascending: true }),
     ]);
     if (sectionsError) throw sectionsError;
@@ -1616,7 +1759,11 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
 
     const programDay = computeProgramDay(startedAt, date);
     const totalDays = daysInMonth(startedAt);
+    // Conditions from the profile AND the Detailed Health Assessment.
     const userTags = conditionLabelsToTags(hp?.existing_concerns);
+    for (const tag of assessmentConditionTags(hp?.extra_data)) userTags.add(tag);
+    // The user's own routine re-times every step (see buildUserRoutine).
+    const routine = buildUserRoutine(hp?.extra_data);
 
     const matched = (sections || []).filter((s: any) => {
       const inDayRange = (s.day_start == null || programDay >= s.day_start) && (s.day_end == null || programDay <= s.day_end);
@@ -1632,9 +1779,14 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
         programDay,
         totalDays,
         startedAt,
+        // Shown above the plan: the times it was built around, and where they came from.
+        routine: routine ? {
+          ...Object.fromEntries(ROUTINE_ANCHORS.map((x) => [x, minutesToClockLabel(routine.minutes[x] % 1440)])),
+          given: routine.given,
+        } : null,
         sections: matched.map((s: any) => ({
           id: s.id,
-          timeLabel: s.time_label,
+          timeLabel: retimePlanLabel(s.time_label, routine),
           title: s.title,
           body: s.body,
         })),

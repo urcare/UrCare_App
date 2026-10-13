@@ -135,7 +135,12 @@ function MainApp() {
     if (error) {
       console.error('Could not save profile:', error);
       window.alert('Your changes could not be saved. Please check your internet connection and try again.');
+      return;
     }
+    // Every saved change (Edit Profile, Detailed Health Assessment, settings,
+    // targets…) can change the plan — its conditions or its timings — so any
+    // open Plan / Home screen refetches it now that the save has landed.
+    window.dispatchEvent(new Event('urcare:daily-plan-changed'));
   };
 
   const handleUpdateAccount = (updatedAccount: UserAccount) => {
