@@ -408,6 +408,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
   return (
     <div id="urcare-profile-page" className="urcare-home min-h-screen text-foreground pb-16 relative overflow-hidden">
+      {/* Home background photo (Pexels, free licence), faded so cards stay readable. */}
+      <div className="urcare-home-photo" aria-hidden="true" />
 
 
       {/* Header — the '⋮' module menu now sits on the left (the URCARE

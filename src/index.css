@@ -122,6 +122,19 @@
   background-size: 42px 42px;
 }
 
+/* Home page photo backdrop — fixed behind the home content and faded to white
+   from top to bottom so the photo shows at the top and the cards stay readable. */
+.urcare-home { isolation: isolate; }
+.urcare-home-photo {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.45) 0%, rgba(248, 250, 252, 0.72) 30%, rgba(248, 250, 252, 0.86) 60%, rgba(248, 250, 252, 0.92) 100%),
+    url('/home-bg.jpg') 72% center / cover no-repeat;
+}
+
 .urcare-home-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
