@@ -1,35 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Dumbbell, Play, Clock, CheckCircle2 } from 'lucide-react';
 import { PlanSection } from './ReversalLibraryPanel';
 import { ExerciseVideoModal } from './ExerciseVideoModal';
 import exerciseImage from '../assets/urcare-exercise.jpg';
 import { resolveYoutubeVideoId } from '../utils/youtube';
-
-// Photos per kind of exercise (Pexels, free licence) in public/exercise/.
-const EXERCISE_PHOTOS: Record<string, string[]> = {
-  walk: ['walk-1', 'walk-2', 'walk-3'],
-  yoga: ['yoga-1', 'yoga-2', 'yoga-3', 'yoga-4'],
-  stretch: ['stretch-1', 'stretch-2', 'stretch-3'],
-  strength: ['strength-1', 'strength-2', 'strength-3', 'strength-4'],
-  cardio: ['cardio-1', 'cardio-2', 'cardio-3'],
-};
-const EXERCISE_KINDS: [keyof typeof EXERCISE_PHOTOS, RegExp][] = [
-  ['yoga', /yoga|pranayam|breath|meditat|anulom|kapal|bhramari|surya|asana|vajrasana|योग|प्राणायाम|आसन|ध्यान|सांस/i],
-  ['strength', /squat|push.?up|strength|resist|dumbbell|weight|band|plank|lunge|calf|chair|wall sit|bridge|ताकत|स्क्वाट/i],
-  ['cardio', /cycl|bike|jog|run|cardio|skip|danc|hiit|aerobic|swim|stairs|साइकिल|दौड़/i],
-  ['stretch', /stretch|mobility|flexib|warm.?up|cool.?down|neck|shoulder|स्ट्रेच/i],
-  ['walk', /walk|steps|stroll|टहल|पैदल|चल/i],
-];
-/** Photos matching this exercise, started at a different one each day. */
-function exercisePhotosFor(title: string, body?: string | null): string[] {
-  const text = `${title} ${body || ''}`;
-  const kind = EXERCISE_KINDS.find(([, re]) => re.test(text))?.[0];
-  const names = kind ? EXERCISE_PHOTOS[kind] : [...EXERCISE_PHOTOS.walk.slice(0, 1), ...EXERCISE_PHOTOS.stretch.slice(0, 1), ...EXERCISE_PHOTOS.yoga.slice(0, 1)];
-  const day = Math.floor(Date.now() / 86_400_000);
-  return names.map((_, i) => `/exercise/${names[(i + day) % names.length]}.jpg`);
-}
-const SLIDE_MS = 5000;
 
 interface TodaysExerciseCardProps {
   step: PlanSection;
@@ -49,8 +24,8 @@ interface TodaysExerciseCardProps {
 export const TodaysExerciseCard: React.FC<TodaysExerciseCardProps> = ({ step, isDone, onMarkDone, tr }) => {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
-  // Slides: the exercise's own YouTube video thumbnail (when found) first,
-  // then photos for this kind of exercise — cross-fading every few seconds.
+  // The card shows this exercise's own YouTube video thumbnail; the stock
+  // image is only a placeholder until (or if) no video is found.
   const [videoId, setVideoId] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -58,17 +33,7 @@ export const TodaysExerciseCard: React.FC<TodaysExerciseCardProps> = ({ step, is
     resolveYoutubeVideoId(step.title).then((id) => { if (!cancelled) setVideoId(id); });
     return () => { cancelled = true; };
   }, [step.title]);
-  const slides = useMemo(() => {
-    const photos = exercisePhotosFor(step.title, step.body);
-    return videoId ? [`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`, ...photos] : photos;
-  }, [step.title, step.body, videoId]);
-  const [slide, setSlide] = useState(0);
-  useEffect(() => { setSlide(0); }, [slides]);
-  useEffect(() => {
-    if (slides.length < 2) return;
-    const id = setInterval(() => setSlide((n) => (n + 1) % slides.length), SLIDE_MS);
-    return () => clearInterval(id);
-  }, [slides]);
+  const thumbnail = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : exerciseImage;
 
   return (
     <>
@@ -98,23 +63,13 @@ export const TodaysExerciseCard: React.FC<TodaysExerciseCardProps> = ({ step, is
             className="exercise-visual group relative block w-full overflow-hidden cursor-pointer"
             aria-label={tr('Play exercise guide', 'व्यायाम गाइड चलाएं')}
           >
-            {slides.map((src, i) => (
-              <img
-                key={src}
-                src={src}
-                alt=""
-                loading={i === 0 ? 'eager' : 'lazy'}
-                onError={(e) => { (e.currentTarget as HTMLImageElement).src = exerciseImage; }}
-                className={`absolute inset-0 h-full w-full object-cover transition-all duration-1000 group-hover:scale-[1.03] ${i === slide ? 'opacity-100' : 'opacity-0'}`}
-              />
-            ))}
-            {slides.length > 1 && (
-              <span className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-[1]">
-                {slides.map((src, i) => (
-                  <span key={src} className={`h-1.5 rounded-full transition-all duration-500 ${i === slide ? 'w-4 bg-white' : 'w-1.5 bg-white/60'}`} />
-                ))}
-              </span>
-            )}
+            <img
+              key={thumbnail}
+              src={thumbnail}
+              alt=""
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = exerciseImage; }}
+              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03] animate-in fade-in"
+            />
             <span className="exercise-visual-shade" />
             <span className="exercise-duration"><Clock className="w-3.5 h-3.5" />{step.timeLabel || tr('Guided session', 'निर्देशित सत्र')}</span>
             <span className="exercise-play"><Play className="w-5 h-5" fill="currentColor" /></span>

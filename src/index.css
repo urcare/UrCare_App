@@ -122,18 +122,6 @@
   background-size: 42px 42px;
 }
 
-/* Home page photo backdrop — fixed behind the home content and faded to white
-   from top to bottom so the photo shows at the top and the cards stay readable. */
-.urcare-home { isolation: isolate; }
-.urcare-home-photo {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(248, 250, 252, 0.45) 0%, rgba(248, 250, 252, 0.72) 30%, rgba(248, 250, 252, 0.86) 60%, rgba(248, 250, 252, 0.92) 100%),
-    url('/home-bg.jpg') 72% center / cover no-repeat;
-}
 
 .urcare-home-grid {
   display: grid;
@@ -266,4 +254,49 @@
 }
 .typing-dot {
   animation: typing-wave 1.3s infinite ease-in-out;
+}
+
+/* ---- Home: Food Scan slideshow + scanning animation ---- */
+.food-scan-photo {
+  opacity: 0;
+  transform: scale(1.04);
+  transition: opacity 1.2s ease, transform 6s ease-out;
+}
+.food-scan-photo.is-active { opacity: 1; transform: scale(1.12); }
+.food-scan-frame { position: absolute; inset: 14% 14% 34% 14%; pointer-events: none; z-index: 1; }
+.food-scan-frame span { position: absolute; width: 26px; height: 26px; border-color: rgba(255, 255, 255, 0.95); border-style: solid; border-width: 0; filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.8)); }
+.food-scan-frame span:nth-child(1) { top: 0; left: 0; border-top-width: 3px; border-left-width: 3px; border-top-left-radius: 10px; }
+.food-scan-frame span:nth-child(2) { top: 0; right: 0; border-top-width: 3px; border-right-width: 3px; border-top-right-radius: 10px; }
+.food-scan-frame span:nth-child(3) { bottom: 0; left: 0; border-bottom-width: 3px; border-left-width: 3px; border-bottom-left-radius: 10px; }
+.food-scan-frame span:nth-child(4) { bottom: 0; right: 0; border-bottom-width: 3px; border-right-width: 3px; border-bottom-right-radius: 10px; }
+.food-scan-line {
+  position: absolute; left: 14%; right: 14%; top: 14%; height: 3px; z-index: 1; pointer-events: none;
+  background: linear-gradient(90deg, transparent, #34d399, #ffffff, #34d399, transparent);
+  box-shadow: 0 0 14px 4px rgba(52, 211, 153, 0.55);
+  border-radius: 999px;
+  animation: food-scan-sweep 2.6s ease-in-out 0.3s 1 both;
+}
+@keyframes food-scan-sweep {
+  0% { top: 14%; opacity: 0; }
+  10% { opacity: 1; }
+  50% { top: 66%; }
+  90% { opacity: 1; }
+  100% { top: 14%; opacity: 0; }
+}
+.food-scan-chip {
+  position: absolute; top: 1rem; right: 1rem; z-index: 2;
+  display: inline-grid; padding: 0.3rem 0.7rem; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92); color: #047857;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.04em;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+/* Both labels sit in the same grid cell; "Scanning…" hands over to "Analysed". */
+.food-scan-chip > span { grid-area: 1 / 1; text-align: center; }
+.food-scan-chip-scanning { animation: food-scan-fade-out 0.3s ease 2.9s 1 both; }
+.food-scan-chip-done { animation: food-scan-fade-in 0.3s ease 2.9s 1 both; }
+@keyframes food-scan-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes food-scan-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .food-scan-photo, .food-scan-photo.is-active { transition: opacity 0.4s; transform: none; }
+  .food-scan-line { display: none; }
 }

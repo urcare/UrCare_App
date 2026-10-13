@@ -19,6 +19,48 @@ import { StatusViewer } from './StatusViewer';
 import { getDailyPlan, activePlanSections, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog, getMyChatThread, toggleDailyTask, getActiveStatuses } from '../utils/supabase';
 import { toDateKey } from './DailyCalendar';
 
+// Food Scan card: people scanning meals (Pexels, free licence) in
+// public/food-scan/, cross-fading every 5 seconds under a scanning overlay.
+const FOOD_SCAN_PHOTOS = Array.from({ length: 14 }, (_, i) => `/food-scan/scan-${i + 1}.jpg`);
+const FOOD_SCAN_SLIDE_MS = 5000;
+
+function FoodScanSlideshow({ tr }: { tr: (en: string, hi: string) => string }) {
+  // Start on a different photo each visit.
+  const [slide, setSlide] = useState(() => Math.floor(Math.random() * FOOD_SCAN_PHOTOS.length));
+  useEffect(() => {
+    const id = setInterval(() => setSlide((n) => (n + 1) % FOOD_SCAN_PHOTOS.length), FOOD_SCAN_SLIDE_MS);
+    return () => clearInterval(id);
+  }, []);
+  const count = FOOD_SCAN_PHOTOS.length;
+  const prev = (slide - 1 + count) % count;
+  const next = (slide + 1) % count;
+  return (
+    <>
+      {FOOD_SCAN_PHOTOS.map((src, i) => (
+        // Only the previous (fading out), current and next (preloading)
+        // photos are mounted, so the rest load only when their turn comes.
+        (i === prev || i === slide || i === next) && (
+          <img
+            key={src}
+            src={src}
+            alt=""
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = mealImage; }}
+            className={`food-scan-photo absolute inset-0 h-full w-full object-cover ${i === slide ? 'is-active' : ''}`}
+          />
+        )
+      ))}
+      <span className="food-scan-frame" aria-hidden="true">
+        <span /><span /><span /><span />
+      </span>
+      <span key={slide} className="food-scan-line" aria-hidden="true" />
+      <span key={`chip-${slide}`} className="food-scan-chip">
+        <span className="food-scan-chip-scanning">{tr('Scanning…', 'स्कैन हो रहा है…')}</span>
+        <span className="food-scan-chip-done">✓ {tr('Analysed', 'विश्लेषण पूरा')}</span>
+      </span>
+    </>
+  );
+}
+
 // Hindi for the primary reversal-goal label used in the greeting subtitle —
 // same English keys/values as REVERSAL_GOALS (see AccountPage's own copy).
 const GOAL_LABEL_HI: Record<string, string> = {
@@ -408,8 +450,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
   return (
     <div id="urcare-profile-page" className="urcare-home min-h-screen text-foreground pb-16 relative overflow-hidden">
-      {/* Home background photo (Pexels, free licence), faded so cards stay readable. */}
-      <div className="urcare-home-photo" aria-hidden="true" />
 
 
       {/* Header — the '⋮' module menu now sits on the left (the URCARE
@@ -672,7 +712,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           whileHover={{ y: -3 }} whileTap={{ scale: 0.99 }}
           className="home-food group relative overflow-hidden rounded-2xl bg-card border border-border shadow-depth text-left cursor-pointer"
         >
-          <img src={mealImage} alt="" width={768} height={768} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.035]" />
+          <FoodScanSlideshow tr={tr} />
           <span className="food-visual-shade" />
           <span className="absolute left-5 right-5 bottom-5 text-primary-foreground">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"><Sparkles className="w-3.5 h-3.5" />{tr('UrCare Food Scan', 'UrCare फूड स्कैन')}</span>
