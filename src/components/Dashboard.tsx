@@ -17,7 +17,7 @@ import { HealthReportModal } from './HealthReportModal';
 import { SettingsModal } from './SettingsModal';
 import { ProductsModule } from './ProductsModule';
 import { FoodScannerModal } from './FoodScannerModal';
-import { AIHealthBots } from './AIHealthBots';
+import { AIHealthBots, IS_LOCAL_DEMO } from './AIHealthBots';
 import { MyOrdersModal } from './MyOrdersModal';
 import { DoctorConsultModal } from './DoctorConsultModal';
 import { ClinicalFeedbackModal } from './ClinicalFeedbackModal';
@@ -82,14 +82,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
     { id: 'tracker' as const, label: tr('Tracker', 'ट्रैकर'), icon: Activity },
     { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
     { id: 'assessment' as const, label: tr('Root Cause Analysis', 'रूट कॉज़ एनालिसिस'), icon: ClipboardCheck },
-    { id: 'store' as const, label: tr('Store', 'स्टोर'), icon: ShoppingBag },
+    { id: 'store' as const, label: tr('UrCare Medical Pharmacy', 'UrCare मेडिकल फार्मेसी'), icon: ShoppingBag },
     // Not a tab — opens the Doctor Consult modal directly (see the drawer's
     // onClick). Used to be its own persistent sidebar card; moved in here to
     // declutter the sidebar.
     { id: 'doctor_hotline' as const, label: tr('Doctor Hotline', 'डॉक्टर हॉटलाइन'), icon: Stethoscope },
     // Not a tab — opens the AI chat (six AI assistants). "(AI)" stays in the
     // name so nobody mistakes it for real doctors chatting.
-    { id: 'ai_bots' as const, label: tr('UrCare Medical Team (AI)', 'UrCare मेडिकल टीम (AI)'), icon: Bot },
+    { id: 'ai_bots' as const, label: IS_LOCAL_DEMO ? tr('UrCare Medical Team', 'UrCare मेडिकल टीम') : tr('UrCare Medical Team (AI)', 'UrCare मेडिकल टीम (AI)'), icon: Bot },
     // Not a tab — opens the app-feedback form (what helps / what is missing).
     { id: 'app_feedback' as const, label: tr('Give Feedback', 'प्रतिक्रिया दें'), icon: MessageSquareHeart },
     // Not a tab — opens the Settings modal directly (see the drawer's onClick).

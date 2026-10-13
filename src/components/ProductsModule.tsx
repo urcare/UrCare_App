@@ -346,7 +346,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             <span>{tr('Doctor-Led • Root-Cause Diabetes Reversal', 'डॉक्टर-नेतृत्व वाला • रूट-कॉज़ डायबिटीज रिवर्सल')}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            {tr('UrCare Diabetes Reversal Store', 'UrCare डायबिटीज रिवर्सल स्टोर')}
+            {tr('UrCare Medical Pharmacy', 'UrCare मेडिकल फार्मेसी')}
           </h2>
           <p className="text-xs sm:text-sm text-emerald-50/90 leading-relaxed">
             {tr('Personalised, clinically formulated polyherbal reversal kits and doctor-led nutrition support — for Type 1, Type 1.5 (LADA), Type 2 and pre-diabetes. Built to reverse, not just manage.', 'व्यक्तिगत, क्लीनिकली फॉर्मूलेटेड पॉलीहर्बल रिवर्सल किट्स व डॉक्टर-नेतृत्व वाला पोषण सहयोग — टाइप 1, टाइप 1.5 (LADA), टाइप 2 व प्री-डायबिटीज के लिए। सिर्फ प्रबंधन नहीं, रिवर्सल के लिए बनाया गया।')}
@@ -385,7 +385,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 selectedCategory === cat.id
-                  ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20'
+                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
                   : subCardClass + ' opacity-70 hover:opacity-100'
               }`}
             >
@@ -399,19 +399,19 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
           id="cart-trigger-btn"
           type="button"
           onClick={() => setIsCartOpen(true)}
-          className="relative px-4 py-2.5 rounded-2xl bg-zinc-950 hover:bg-zinc-900 border border-emerald-500/40 text-white text-xs font-black flex items-center gap-2.5 shadow-lg shadow-emerald-950/20 transition-all hover:scale-102 active:scale-98 cursor-pointer group"
+          className="relative px-4 py-2.5 rounded-2xl bg-white hover:bg-emerald-50 border border-emerald-300 text-zinc-900 text-xs font-black flex items-center gap-2.5 shadow-md shadow-emerald-600/10 transition-all hover:scale-102 active:scale-98 cursor-pointer group"
         >
           <div className="relative flex items-center justify-center">
-            <ShoppingBag className="w-4 h-4 text-emerald-400 stroke-[2.2] group-hover:scale-110 transition-transform" />
+            <ShoppingBag className="w-4 h-4 text-emerald-600 stroke-[2.2] group-hover:scale-110 transition-transform" />
             {totalCartItems > 0 && (
-              <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-emerald-500 text-black text-[9px] font-black flex items-center justify-center shadow-xs">
+              <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center shadow-xs">
                 {totalCartItems}
               </span>
             )}
           </div>
           <span className="tracking-wide">{tr('Cart', 'कार्ट')}</span>
           {totalCartItems > 0 && (
-            <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-lg font-mono font-bold">
+            <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-lg font-mono font-bold">
               ₹{cartSubtotal.toLocaleString('en-IN')}
             </span>
           )}
@@ -448,14 +448,14 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   {product.featured && (
-                    <span className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-emerald-500 text-black text-[10px] font-black uppercase tracking-wider shadow-sm">
+                    <span className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider shadow-sm">
                       {tr('Top Choice', 'सर्वश्रेष्ठ पसंद')}
                     </span>
                   )}
-                  <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/80 backdrop-blur-md text-[11px] font-bold text-amber-300 shadow-sm">
-                    <Star className="w-3 h-3 fill-amber-300" />
+                  <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md border border-zinc-200 text-[11px] font-bold text-amber-600 shadow-sm">
+                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                     <span>{product.rating}</span>
-                    <span className="text-[10px] text-zinc-400 font-normal">({product.reviewsCount})</span>
+                    <span className="text-[10px] text-zinc-500 font-normal">({product.reviewsCount})</span>
                   </div>
                 </div>
 
@@ -488,8 +488,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                   onClick={(e) => handleAddToCart(e, product)}
                   className={`px-3.5 py-2 rounded-xl font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer ${
                     isAdded
-                      ? 'bg-zinc-950 text-white dark:bg-white dark:text-black'
-                      : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'
+                      ? 'bg-white text-emerald-700 border border-emerald-300'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'
                   }`}
                 >
                   {isAdded ? (
@@ -513,7 +513,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
       {/* PRODUCT DETAILS MODAL (CLICK TO READ & EXPLORE FULL DETAILS) */}
       {selectedProductDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-zinc-900/30 backdrop-blur-sm overflow-y-auto">
           <div className={`relative w-full max-w-xl ${cardClass} rounded-3xl p-5 sm:p-7 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 text-left max-h-[92vh] overflow-y-auto`}>
             <button
               type="button"
@@ -632,7 +632,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                   setSelectedProductDetails(null);
                   setIsCartOpen(true);
                 }}
-                className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
+                className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
               >
                 <ShoppingBag className="w-4 h-4 shrink-0" />
                 <span className="truncate">{tr('Add to Cart & Checkout', 'कार्ट में जोड़ें व चेकआउट करें')} (₹{selectedProductDetails.discountPrice})</span>
@@ -645,7 +645,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
       {/* FULL-SCREEN PHOTO VIEWER — same image, just zoomed; tap anywhere to close */}
       {isImageZoomed && selectedProductDetails && (
         <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/95 animate-in fade-in cursor-zoom-out"
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-white/95 animate-in fade-in cursor-zoom-out"
           onClick={() => setIsImageZoomed(false)}
         >
           <button
@@ -667,7 +667,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
       {/* CART DRAWER / MODAL */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex justify-end bg-zinc-900/30 backdrop-blur-sm">
           <div className={`w-full max-w-md ${cardClass} h-full flex flex-col p-6 shadow-2xl overflow-y-auto`}>
             
             {/* Header */}
@@ -755,7 +755,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     setIsCartOpen(false);
                     setCheckoutStep('address');
                   }}
-                  className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95"
+                  className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95"
                 >
                   <span>{tr('Proceed to Delivery Address', 'डिलीवरी पते पर आगे बढ़ें')}</span>
                   <ArrowRight className="w-4 h-4" />
@@ -768,7 +768,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
       {/* ADDRESS FORM MODAL */}
       {checkoutStep === 'address' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/30 backdrop-blur-sm overflow-y-auto">
           <div className={`relative w-full max-w-lg ${cardClass} rounded-3xl p-6 sm:p-7 shadow-2xl my-6 space-y-4`}>
             <button
               type="button"
@@ -888,7 +888,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 mt-2"
+                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 mt-2"
               >
                 <span>{tr('Continue to Payment', 'भुगतान हेतु आगे बढ़ें')} (₹{cartTotal})</span>
                 <ArrowRight className="w-4 h-4" />
@@ -900,7 +900,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
       {/* PAYMENT MODAL */}
       {checkoutStep === 'payment' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/30 backdrop-blur-sm overflow-y-auto">
           <div className={`relative w-full max-w-lg ${cardClass} rounded-3xl p-6 sm:p-7 shadow-2xl my-6 space-y-4`}>
             <button
               type="button"
@@ -919,7 +919,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 netbanking via Razorpay is shown as "coming soon" and can't be
                 selected yet. */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border bg-emerald-500 text-black border-emerald-400 shadow-md">
+              <div className="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border bg-emerald-500 text-white border-emerald-400 shadow-md">
                 <QrCode className="w-4 h-4" />
                 <span>{tr('UPI QR / App', 'UPI QR / ऐप')}</span>
               </div>
@@ -936,10 +936,10 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               {canOpenUpiApp && (
                 <a
                   href={upiPayUrl}
-                  className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex flex-col items-center justify-center shadow-lg shadow-emerald-500/20 active:scale-95"
+                  className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex flex-col items-center justify-center shadow-lg shadow-emerald-500/20 active:scale-95"
                 >
                   <span className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 fill-black" />
+                    <Zap className="w-4 h-4 fill-white" />
                     {tr(`Step 1: Pay ₹${cartTotal} with UPI app`, `चरण 1: UPI ऐप से ₹${cartTotal} भुगतान करें`)}
                   </span>
                   <span className="text-[10px] font-bold opacity-70">{tr('Opens GPay, PhonePe, Paytm or BHIM with the amount filled in', 'GPay, PhonePe, Paytm या BHIM राशि भरी हुई के साथ खुलेगा')}</span>
@@ -1035,10 +1035,10 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 type="button"
                 onClick={handleFinalizePayment}
                 disabled={isProcessingOrder || isReadingScreenshot || !paymentScreenshot}
-                className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
               >
                 {isProcessingOrder ? (
-                  <div className="w-5 h-5 rounded-full border-2 border-black border-t-transparent animate-spin" />
+                  <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
                 ) : (
                   <>
                     <span>{tr('Submit Payment for Verification', 'भुगतान सत्यापन हेतु भेजें')}</span>
@@ -1056,7 +1056,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
       {/* CONFIRMATION MODAL */}
       {checkoutStep === 'order_confirmed' && confirmedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/30 backdrop-blur-sm overflow-y-auto">
           <div className={`relative w-full max-w-md ${cardClass} rounded-3xl p-6 sm:p-7 shadow-2xl text-center space-y-4`}>
             <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/30 flex items-center justify-center mx-auto">
               <Clock className="w-8 h-8 stroke-[2.5]" />
@@ -1086,7 +1086,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             <button
               type="button"
               onClick={() => setCheckoutStep('none')}
-              className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm"
+              className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm"
             >
               {tr('Back to Store', 'स्टोर पर वापस जाएं')}
             </button>

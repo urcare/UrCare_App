@@ -11,6 +11,9 @@ import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AIConsentGate } from './components/AIConsentGate';
 import { AttachmentViewer } from './components/AttachmentViewer';
+
+/** The post-onboarding organs / body-map screen — off for now, kept for later. */
+const ENABLE_BODY_MAP_AFTER_ONBOARDING = false;
 import { loadAccountState } from './utils/accountState';
 import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn } from './utils/supabase';
 
@@ -120,10 +123,11 @@ function MainApp() {
     await upsertProfile(registeredAccount.uid, completedProfile);
     setProfile(completedProfile);
     setAccount(registeredAccount);
-    // The personalized body map is its own screen, shown immediately after
-    // onboarding — the celebration/plan-ready screen follows once the user
-    // taps "Next" there.
-    setShowBodyMap(true);
+    // The organs / body-map screen (BodyMapScreen) is switched off for now —
+    // onboarding goes straight to the celebration/plan-ready screen. To bring
+    // it back, set ENABLE_BODY_MAP_AFTER_ONBOARDING to true.
+    if (ENABLE_BODY_MAP_AFTER_ONBOARDING) setShowBodyMap(true);
+    else setShowWowCelebration(true);
   };
 
   const handleUpdateProfile = async (updatedProfile: UserHealthProfile) => {

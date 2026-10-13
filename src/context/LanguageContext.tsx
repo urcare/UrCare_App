@@ -80,7 +80,7 @@ export const DICTIONARY: Translations = {
   navProfile: { en: 'Profile', hi: 'प्रोफ़ाइल' },
   navReports: { en: 'My Reports', hi: 'मेरी रिपोर्ट्स' },
   navAssessment: { en: 'Assessment', hi: 'मूल्यांकन' },
-  navStore: { en: 'Store', hi: 'स्टोर' },
+  navStore: { en: 'UrCare Medical Pharmacy', hi: 'UrCare मेडिकल फार्मेसी' },
   openMyProfile: { en: 'Open My Profile', hi: 'मेरी प्रोफ़ाइल खोलें' },
   backToDashboard: { en: 'Back to Dashboard', hi: 'डैशबोर्ड पर वापस जाएं' },
 

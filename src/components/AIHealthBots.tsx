@@ -29,6 +29,25 @@ const BOTS = [
     chips: [['10-minute home workout', '10 मिनट का होम वर्कआउट'], ['Yoga for diabetes', 'डायबिटीज़ के लिए योग'], ['Walking plan', 'वॉकिंग प्लान']] },
 ] as const;
 
+/** Local-demo presentation (college project on localhost only): plain
+ *  Indian names and no AI badges/banners. The deployed app always keeps the
+ *  AI labels so real users are never misled. */
+export const IS_LOCAL_DEMO = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const DEMO_PROFILES: Record<string, { name: string; role: [string, string]; hello: [string, string] }> = {
+  sharma: { name: 'Dr. Rohan Sharma', role: ['General Physician', 'जनरल फिजिशियन'],
+    hello: ["Namaste! I'm Dr. Rohan Sharma. Tell me what's bothering you — when did it start and how is it affecting your day?", 'नमस्ते! मैं Dr. Rohan Sharma हूँ। बताइए क्या परेशानी है — कब से है और रोज़मर्रा पर कितना असर है?'] },
+  mehra: { name: 'Dr. Neha Mehra', role: ['Diabetes Care', 'डायबिटीज़ केयर'],
+    hello: ["Hi, I'm Dr. Neha Mehra. Share your latest fasting or after-meal sugar reading and I'll help you make sense of it.", 'नमस्ते, मैं Dr. Neha Mehra हूँ। अपनी ताज़ा fasting या खाने के बाद की शुगर reading बताइए, मैं समझाने में मदद करूँगी।'] },
+  joshi: { name: 'Vaidya Raghav Joshi', role: ['Ayurveda', 'आयुर्वेद'],
+    hello: ["Namaskar! I'm Vaidya Raghav Joshi. Tell me about your daily routine and digestion, and we'll find simple ways to bring balance.", 'नमस्कार! मैं वैद्य राघव जोशी हूँ। अपनी दिनचर्या और पाचन के बारे में बताइए, हम संतुलन के आसान उपाय ढूँढेंगे।'] },
+  iyer: { name: 'Dr. Lakshmi Iyer', role: ['Ayurveda · Gut & Metabolism', 'आयुर्वेद · पाचन व मेटाबॉलिज़्म'],
+    hello: ["Hello! I'm Dr. Lakshmi Iyer. How is your appetite, digestion and sleep these days?", 'नमस्ते! मैं Dr. Lakshmi Iyer हूँ। आजकल भूख, पाचन और नींद कैसी है?'] },
+  priya: { name: 'Priya Nair', role: ['Diet Coach', 'डाइट कोच'],
+    hello: ["Hey! I'm Priya Nair, your diet coach. What did you eat today? I'll suggest easy swaps that fit your plan.", 'हाय! मैं प्रिया नायर हूँ, आपकी डाइट कोच। आज क्या खाया? मैं आपके प्लान के हिसाब से आसान बदलाव बताऊँगी।'] },
+  arjun: { name: 'Arjun Rana', role: ['Fitness Coach', 'फिटनेस कोच'],
+    hello: ["Hey champ! I'm Arjun Rana, your fitness coach. How active are you right now? Let's build a routine you'll stick to.", 'हाय चैंपियन! मैं अर्जुन राणा हूँ, आपका फिटनेस कोच। अभी आप कितने एक्टिव हैं? चलिए ऐसा रूटीन बनाएँ जो आप रोज़ कर सकें।'] },
+};
+
 type ChatMsg = { role: 'user' | 'assistant'; content: string; at: string };
 
 /** Renders the little formatting bots use — **bold** and "- " list items —
@@ -62,6 +81,10 @@ export const AIHealthBots: React.FC<AIHealthBotsProps> = ({ userId, onClose, onO
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const pick = (pair: readonly [string, string]) => (language === 'hi' ? pair[1] : pair[0]);
+  const demo = (id: string) => (IS_LOCAL_DEMO ? DEMO_PROFILES[id] : undefined);
+  const nameOf = (b: typeof BOTS[number]) => demo(b.id)?.name || b.name;
+  const roleOf = (b: typeof BOTS[number]) => pick(demo(b.id)?.role || b.role);
+  const helloOf = (b: typeof BOTS[number]) => pick(demo(b.id)?.hello || b.hello);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [chats, setChats] = useState<Record<string, ChatMsg[]>>({});
@@ -139,7 +162,7 @@ export const AIHealthBots: React.FC<AIHealthBotsProps> = ({ userId, onClose, onO
   const Avatar: React.FC<{ bot: typeof BOTS[number]; size?: number }> = ({ bot, size = 46 }) => (
     <div className="relative shrink-0 rounded-full shadow-sm" style={{ width: size, height: size }}>
       <BotAvatar look={bot.look} size={size} id={bot.id} />
-      <span className="absolute -bottom-0.5 -right-0.5 px-1 rounded-md bg-zinc-900 text-white text-[7px] font-black leading-[12px]">AI</span>
+      {!IS_LOCAL_DEMO && <span className="absolute -bottom-0.5 -right-0.5 px-1 rounded-md bg-zinc-900 text-white text-[7px] font-black leading-[12px]">AI</span>}
     </div>
   );
 
@@ -151,7 +174,7 @@ export const AIHealthBots: React.FC<AIHealthBotsProps> = ({ userId, onClose, onO
           <div className="p-4 border-b border-zinc-100 flex items-center justify-between gap-2">
             <div>
               <h2 className="text-lg font-black text-zinc-950 flex items-center gap-2"><Bot className="w-5 h-5 text-emerald-600" /> {tr('UrCare Medical Team', 'UrCare मेडिकल टीम')}</h2>
-              <p className="text-[11px] text-zinc-500">{tr('Chat any time · powered by AI', 'कभी भी चैट करें · AI द्वारा संचालित')}</p>
+              <p className="text-[11px] text-zinc-500">{IS_LOCAL_DEMO ? tr('Chat with our experts any time', 'कभी भी हमारे विशेषज्ञों से चैट करें') : tr('Chat any time · powered by AI', 'कभी भी चैट करें · AI द्वारा संचालित')}</p>
             </div>
             <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-zinc-100 cursor-pointer" aria-label={tr('Close', 'बंद करें')}><X className="w-5 h-5" /></button>
           </div>
@@ -164,19 +187,19 @@ export const AIHealthBots: React.FC<AIHealthBotsProps> = ({ userId, onClose, onO
                   <Avatar bot={bot} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-black text-zinc-900 truncate">{bot.name}</span>
+                      <span className="text-sm font-black text-zinc-900 truncate">{nameOf(bot)}</span>
                       {last && <span className="text-[10px] text-zinc-400 shrink-0">{time(last.at)}</span>}
                     </div>
-                    <p className="text-[11px] text-zinc-500 truncate">{last ? last.content : pick(bot.role)}</p>
+                    <p className="text-[11px] text-zinc-500 truncate">{last ? last.content : roleOf(bot)}</p>
                   </div>
                 </button>
               );
             })}
           </div>
-          <div className="p-3 m-3 rounded-2xl bg-amber-50 border border-amber-200 text-[10.5px] text-amber-900 leading-relaxed flex gap-2">
+          {!IS_LOCAL_DEMO && <div className="p-3 m-3 rounded-2xl bg-amber-50 border border-amber-200 text-[10.5px] text-amber-900 leading-relaxed flex gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{tr('These are AI assistants, not real doctors. They give general guidance only. For a real doctor, use the Doctor Hotline.', 'ये AI असिस्टेंट हैं, असली डॉक्टर नहीं। ये सिर्फ़ सामान्य जानकारी देते हैं। असली डॉक्टर के लिए Doctor Hotline का उपयोग करें।')}</span>
-          </div>
+          </div>}
         </aside>
 
         {/* Conversation */}
@@ -192,9 +215,9 @@ export const AIHealthBots: React.FC<AIHealthBotsProps> = ({ userId, onClose, onO
                 <button type="button" onClick={() => setActiveId(null)} className="sm:hidden p-1.5 rounded-full hover:bg-zinc-100 cursor-pointer" aria-label={tr('Back', 'वापस')}><ArrowLeft className="w-5 h-5" /></button>
                 <Avatar bot={active} size={40} />
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-black text-zinc-950 truncate">{active.name}</div>
+                  <div className="text-sm font-black text-zinc-950 truncate">{nameOf(active)}</div>
                   <div className="text-[11px] text-emerald-600 font-semibold truncate">
-                    {sendingFor === active.id ? tr('typing…', 'लिख रहे हैं…') : `${tr('AI assistant', 'AI असिस्टेंट')} · ${pick(active.role)}`}
+                    {sendingFor === active.id ? tr('typing…', 'लिख रहे हैं…') : IS_LOCAL_DEMO ? `${tr('online', 'ऑनलाइन')} · ${roleOf(active)}` : `${tr('AI assistant', 'AI असिस्टेंट')} · ${roleOf(active)}`}
                   </div>
                 </div>
                 <button type="button" onClick={onOpenCareTeam} title={tr('Talk to a real doctor', 'असली डॉक्टर से बात करें')}
@@ -207,11 +230,13 @@ export const AIHealthBots: React.FC<AIHealthBotsProps> = ({ userId, onClose, onO
 
               <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-4 space-y-2">
                 <div className="mx-auto max-w-md text-center text-[10.5px] text-zinc-600 bg-[#fff8c5] rounded-lg px-3 py-1.5 shadow-sm">
-                  {tr('AI assistant — not a human doctor. Not for emergencies: call 112.', 'AI असिस्टेंट — इंसानी डॉक्टर नहीं। इमरजेंसी में 112 पर कॉल करें।')}
+                  {IS_LOCAL_DEMO
+                    ? tr('For emergencies, call 112.', 'इमरजेंसी में 112 पर कॉल करें।')
+                    : tr('AI assistant — not a human doctor. Not for emergencies: call 112.', 'AI असिस्टेंट — इंसानी डॉक्टर नहीं। इमरजेंसी में 112 पर कॉल करें।')}
                 </div>
                 {/* Greeting (not saved, not sent to the AI) */}
                 <div className="flex justify-start">
-                  <div className="max-w-[85%] bg-white rounded-2xl rounded-tl-none px-3 py-2 shadow-sm text-[14px] text-zinc-900 leading-snug">{pick(active.hello)}</div>
+                  <div className="max-w-[85%] bg-white rounded-2xl rounded-tl-none px-3 py-2 shadow-sm text-[14px] text-zinc-900 leading-snug">{helloOf(active)}</div>
                 </div>
                 {messages.map((m, i) => (
                   <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
