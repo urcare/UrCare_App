@@ -1254,7 +1254,11 @@ export async function getProducts(): Promise<Product[]> {
       image: p.image,
       description: p.description,
       benefits: p.benefits || [],
-      nutritionInfo: p.nutrition_info,
+      // nutrition_info holds real nutrition facts (when given) and, under
+      // `listing`, the store badge + pack options (see /api/admin/products).
+      nutritionInfo: p.nutrition_info && p.nutrition_info.calories != null ? p.nutrition_info : undefined,
+      badge: p.nutrition_info?.listing?.badge || undefined,
+      packOptions: p.nutrition_info?.listing?.packs?.length ? p.nutrition_info.listing.packs : undefined,
       inStock: p.in_stock,
       featured: p.featured,
     };

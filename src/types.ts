@@ -739,6 +739,17 @@ export interface Product {
   };
   inStock: boolean;
   featured?: boolean;
+  /** Store badge, e.g. "Bestseller", "Fast Selling". */
+  badge?: string;
+  /** Duration packs (1/2/3 months…), each with its own price and stock. */
+  packOptions?: PackOption[];
+}
+
+export interface PackOption {
+  months: number;
+  price: number;
+  mrp?: number;
+  inStock: boolean;
 }
 
 export interface CartItem {

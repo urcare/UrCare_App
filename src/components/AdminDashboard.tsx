@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import {
   AdminStats, MedicalReportAnalysis, Order, Prescription,
-  UserReview, Product, Biomarker, UserHealthProfile, UserAccount, GenderType, ActivityLevel, GoalType, GoalPace
+  UserReview, Product, PackOption, Biomarker, UserHealthProfile, UserAccount, GenderType, ActivityLevel, GoalType, GoalPace
 } from '../types';
 import { Logo } from './Logo';
 import { AdminDoctorsPanel } from './AdminDoctorsPanel';
@@ -96,6 +96,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     fats: 1.5,
     inStock: true,
     featured: false,
+    badge: '',
+    packs: [] as PackOption[],
+    hasNutrition: false,
   });
 
   const reloadProducts = () => {
@@ -112,14 +115,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
       discountPrice: 1499,
       image: PRESET_PRODUCT_PHOTOS[0].url,
       description: '',
-      benefitsText: '100% Ultra-Filtered, Zero Added Sugar, Lab Tested for Purity',
-      servingSize: '1 Scoop (33g)',
-      calories: 120,
-      protein: 25,
-      carbs: 2,
-      fats: 1.5,
+      benefitsText: '',
+      servingSize: '',
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fats: 0,
       inStock: true,
       featured: false,
+      badge: '',
+      packs: [],
+      hasNutrition: false,
     });
     setIsProductModalOpen(true);
   };
@@ -135,13 +141,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
       image: p.image,
       description: p.description || '',
       benefitsText: (p.benefits || []).join(', '),
-      servingSize: p.nutritionInfo?.servingSize || '1 Serving',
-      calories: p.nutritionInfo?.calories || 100,
-      protein: p.nutritionInfo?.protein || 20,
-      carbs: p.nutritionInfo?.carbs || 5,
-      fats: p.nutritionInfo?.fats || 1,
+      servingSize: p.nutritionInfo?.servingSize || '',
+      calories: p.nutritionInfo?.calories || 0,
+      protein: p.nutritionInfo?.protein || 0,
+      carbs: p.nutritionInfo?.carbs || 0,
+      fats: p.nutritionInfo?.fats || 0,
       inStock: p.inStock !== false,
       featured: !!p.featured,
+      badge: p.badge || '',
+      packs: p.packOptions ? p.packOptions.map((x) => ({ ...x })) : [],
+      hasNutrition: !!p.nutritionInfo,
     });
     setIsProductModalOpen(true);
   };
@@ -176,15 +185,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
       image: productForm.image || PRESET_PRODUCT_PHOTOS[0].url,
       description: productForm.description.trim() || 'Clinical grade nutrition formulated for optimal bioavailability and metabolic health.',
       benefits: benefitsArray.length > 0 ? benefitsArray : ['Clinical Grade Bioavailability', 'Doctor Formulated', '100% Pure & Lab Tested'],
-      nutritionInfo: {
+      // Only real nutrition facts — never default numbers on a herbal product.
+      nutritionInfo: productForm.hasNutrition ? {
         servingSize: productForm.servingSize || '1 Serving',
         calories: Number(productForm.calories) || 0,
         protein: Number(productForm.protein) || 0,
         carbs: Number(productForm.carbs) || 0,
         fats: Number(productForm.fats) || 0,
-      },
+      } : null,
       inStock: productForm.inStock,
       featured: productForm.featured,
+      badge: productForm.badge || undefined,
+      packOptions: productForm.packs.filter((p) => p.months > 0 && p.price > 0),
     };
 
     adminFetch(adminToken, '/api/admin/products', { method: 'POST', body: JSON.stringify(payload) })
@@ -210,7 +222,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     if (!p) return;
     adminFetch(adminToken, '/api/admin/products', {
       method: 'POST',
-      body: JSON.stringify({ id: p.id, name: p.name, category: p.category, price: p.price, discountPrice: p.discountPrice, image: p.image, description: p.description, benefits: p.benefits, nutritionInfo: p.nutritionInfo, inStock: !p.inStock, featured: p.featured }),
+      body: JSON.stringify({ id: p.id, name: p.name, category: p.category, price: p.price, discountPrice: p.discountPrice, image: p.image, description: p.description, benefits: p.benefits, nutritionInfo: p.nutritionInfo, inStock: !p.inStock, featured: p.featured, badge: p.badge, packOptions: p.packOptions }),
     }).then(() => reloadProducts()).catch(() => {});
   };
 
@@ -3201,7 +3213,88 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 />
               </div>
 
-              {/* Nutritional Facts Grid */}
+              {/* Store badge */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 mb-1">Store Badge</label>
+                <select
+                  value={productForm.badge}
+                  onChange={(e) => setProductForm({ ...productForm, badge: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-900 text-xs font-bold focus:border-emerald-500 outline-none"
+                >
+                  <option value="">No badge</option>
+                  <option value="Bestseller">Bestseller</option>
+                  <option value="Fast Selling">Fast Selling</option>
+                  <option value="New">New</option>
+                  <option value="Limited Stock">Limited Stock</option>
+                </select>
+              </div>
+
+              {/* Duration packs (e.g. 1 / 2 / 3 months) */}
+              <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-zinc-900">Duration Packs (optional)</span>
+                  <button
+                    type="button"
+                    onClick={() => setProductForm({ ...productForm, packs: [...productForm.packs, { months: productForm.packs.length + 1, price: Number(productForm.discountPrice) * (productForm.packs.length + 1) || 0, mrp: undefined, inStock: true }] })}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-black cursor-pointer"
+                  >
+                    + Add pack
+                  </button>
+                </div>
+                <p className="text-[10px] text-zinc-500">Customers pick one of these (e.g. 1 Month ₹3,000 · 2 Months ₹6,000 · 3 Months ₹9,000). Leave empty for a single-price product.</p>
+                {productForm.packs.map((pk, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-2 items-end">
+                    {([['months', 'Months'], ['price', 'Price ₹'], ['mrp', 'MRP ₹ (optional)']] as const).map(([field, label]) => (
+                      <label key={field} className="block">
+                        <span className="block text-[10px] font-bold text-zinc-500 mb-0.5">{label}</span>
+                        <input
+                          type="number"
+                          value={pk[field] ?? ''}
+                          onChange={(e) => {
+                            const packs = [...productForm.packs];
+                            packs[idx] = { ...packs[idx], [field]: e.target.value === '' ? undefined : Number(e.target.value) } as PackOption;
+                            setProductForm({ ...productForm, packs });
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-zinc-200 text-zinc-900 text-xs font-bold font-mono"
+                        />
+                      </label>
+                    ))}
+                    <label className="flex items-center gap-1 text-[10px] font-bold text-zinc-700 pb-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={pk.inStock}
+                        onChange={(e) => {
+                          const packs = [...productForm.packs];
+                          packs[idx] = { ...packs[idx], inStock: e.target.checked };
+                          setProductForm({ ...productForm, packs });
+                        }}
+                        className="accent-emerald-600"
+                      />
+                      In stock
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setProductForm({ ...productForm, packs: productForm.packs.filter((_, i) => i !== idx) })}
+                      className="pb-1.5 text-rose-600 cursor-pointer"
+                      title="Remove pack"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Nutritional Facts Grid — only for food products */}
+              <label className="flex items-center gap-2 text-xs font-bold text-zinc-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={productForm.hasNutrition}
+                  onChange={(e) => setProductForm({ ...productForm, hasNutrition: e.target.checked })}
+                  className="w-4 h-4 accent-emerald-600"
+                />
+                <span>This is a food product — show nutrition facts</span>
+              </label>
+              {productForm.hasNutrition && (
               <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 space-y-2">
                 <span className="text-xs font-black uppercase tracking-wider text-zinc-900 block">
                   Nutritional Facts & Macro Profile
@@ -3254,6 +3347,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Toggles */}
               <div className="flex flex-wrap items-center gap-6 pt-1">

@@ -1057,7 +1057,7 @@ function buildUserRoutine(extra: any): UserRoutine | null {
 }
 
 /** Maps a default-day minute onto the user's day (piecewise-linear between anchors). */
-function warpPlanMinute(t: number, r: UserRoutine): number {
+function warpPlanMinute(t: number, r: UserRoutine, roundTo = 5): number {
   const D = ROUTINE_ANCHORS.map((x) => DEFAULT_ROUTINE_MINUTES[x]);
   const U = ROUTINE_ANCHORS.map((x) => r.minutes[x]);
   let out: number;
@@ -1068,7 +1068,7 @@ function warpPlanMinute(t: number, r: UserRoutine): number {
     while (t > D[i + 1]) i++;
     out = U[i] + ((t - D[i]) * (U[i + 1] - U[i])) / (D[i + 1] - D[i]);
   }
-  return Math.round(out / 5) * 5;
+  return Math.round(out / roundTo) * roundTo;
 }
 
 /** Re-times one plan label: "5:30 AM", or a range like "2:15 – 2:45 PM". */
@@ -1087,6 +1087,18 @@ function retimePlanLabel(label: string | null, r: UserRoutine | null): string | 
   if (a > 24 * 60 || b > 24 * 60) return label;
   const fmt = (m: number) => minutesToClockLabel(((m % 1440) + 1440) % 1440);
   return `${fmt(warpPlanMinute(a, r))} – ${fmt(warpPlanMinute(b, r))}`;
+}
+
+/** Re-times every clock time written INSIDE a step's text ("5:00 AM — Wake
+ *  up gently", "drink by 7:30 PM") the same way as its heading, so the
+ *  heading and the instructions under it always agree. */
+function retimeTimesInText(text: string | null, r: UserRoutine | null): string | null {
+  if (!text || !r) return text;
+  return text.replace(/\b(\d{1,2}):(\d{2})\s?(AM|PM)\b/gi, (match, h, m, ap) => {
+    const t = parseClockTimeToMinutes(`${parseInt(h, 10)}:${m} ${String(ap).toUpperCase()}`);
+    if (t > 24 * 60) return match;
+    return minutesToClockLabel(((warpPlanMinute(t, r, 1) % 1440) + 1440) % 1440);
+  });
 }
 
 /** Condition tags from the Detailed Health Assessment's diagnosed
@@ -1787,8 +1799,8 @@ app.post('/api/daily-plan', requireUser(async (req, res, user) => {
         sections: matched.map((s: any) => ({
           id: s.id,
           timeLabel: retimePlanLabel(s.time_label, routine),
-          title: s.title,
-          body: s.body,
+          title: retimeTimesInText(s.title, routine),
+          body: retimeTimesInText(s.body, routine),
         })),
       },
     });
@@ -2031,6 +2043,15 @@ function isValidReceiptImage(value: unknown): value is string {
     && value.length <= MAX_RECEIPT_DATA_URL_LENGTH;
 }
 
+// order_items.product_id is a uuid column, but store product ids are text
+// ("prod_glucolow", pack lines "prod_cardiol__pack3"). Map each to a stable
+// uuid; the readable name (with the pack) is kept in product_name.
+function productIdToUuid(id: string): string {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return id;
+  const h = crypto.createHash('md5').update(`urcare-product:${id}`).digest('hex');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
 app.post('/api/orders', requireUser(async (req, res, user) => {
   try {
     const { items = [], shippingAddress, subtotal, total, transactionId, receiptImageUrl } = req.body;
@@ -2059,13 +2080,14 @@ app.post('/api/orders', requireUser(async (req, res, user) => {
     if (Array.isArray(items) && items.length) {
       const orderItems = items.map((it: any) => ({
         order_id: order.id,
-        product_id: it.product?.id || it.productId,
+        product_id: productIdToUuid(String(it.product?.id || it.productId || '')),
         quantity: it.quantity || 1,
         price: it.product?.discountPrice ?? it.product?.price ?? it.price ?? 0,
         product_name: it.product?.name,
         product_image: it.product?.image,
       }));
-      await supabase.from('order_items').insert(orderItems);
+      const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
+      if (itemsErr) console.warn('orders: could not save order items:', itemsErr.message);
     }
 
     await createNotification(supabase, user.id, 'order', 'Order received — verifying your payment', `Order #${order.id} will be confirmed once our team checks your payment screenshot.`, { orderId: order.id });
@@ -3099,11 +3121,22 @@ app.get('/api/products', async (req, res) => {
 app.post('/api/admin/products', requireAdmin(async (req, res) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
-  const { id, name, category, price, discountPrice, image, description, benefits, nutritionInfo, inStock, featured } = req.body;
+  const { id, name, category, price, discountPrice, image, description, benefits, nutritionInfo, inStock, featured, badge, packOptions } = req.body;
   if (!id || !name) return res.status(400).json({ error: 'Product id and name are required.' });
+  // Store listing extras — a badge ("Bestseller", "Fast Selling") and 1/2/3-
+  // month pack options, each with its own price, MRP and stock — live in the
+  // existing nutrition_info jsonb under `listing`, so no schema change is
+  // needed. Nutrition facts are only kept when actually given.
+  const packs = (Array.isArray(packOptions) ? packOptions : [])
+    .map((p: any) => ({ months: Number(p.months) || 0, price: Number(p.price) || 0, mrp: Number(p.mrp) || undefined, inStock: p.inStock !== false }))
+    .filter((p: any) => p.months > 0 && p.price > 0)
+    .sort((a: any, b: any) => a.months - b.months);
+  const hasNutrition = nutritionInfo && (Number(nutritionInfo.calories) || Number(nutritionInfo.protein) || Number(nutritionInfo.carbs) || Number(nutritionInfo.fats));
+  const listing = (badge || packs.length) ? { badge: badge || null, packs } : undefined;
+  const nutrition_info = hasNutrition || listing ? { ...(hasNutrition ? nutritionInfo : {}), ...(listing ? { listing } : {}) } : null;
   const { data, error } = await supabase.from('products').upsert({
     id, name, category, price, discount_price: discountPrice, image, description,
-    benefits: benefits || [], nutrition_info: nutritionInfo || null,
+    benefits: benefits || [], nutrition_info,
     in_stock: inStock !== false, featured: !!featured,
   }).select().single();
   if (error) return res.status(500).json({ error: error.message });

@@ -5,7 +5,7 @@ import {
   Package, ChevronRight, CheckCircle2, Lock, RefreshCw, Upload, Clock
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Product, CartItem, ShippingAddress, Order, UserAccount } from '../types';
+import { Product, PackOption, CartItem, ShippingAddress, Order, UserAccount } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { saveOrderAndReceiptToSupabase, getProducts, getPaymentQrSettings, getMyOrders } from '../utils/supabase';
@@ -17,6 +17,26 @@ interface ProductsModuleProps {
   onOrderPlaced?: (newOrder: Order) => void;
   onOpenMyOrders?: () => void;
 }
+
+// Duration packs (1/2/3 months…): each pack is added to the cart as its own
+// line item — id "<product>__pack<months>" — priced at that pack's price.
+const PACK_SEP = '__pack';
+function packVariant(product: Product, pack: PackOption): Product {
+  return {
+    ...product,
+    id: `${product.id}${PACK_SEP}${pack.months}`,
+    name: `${product.name} — ${pack.months} Month${pack.months > 1 ? 's' : ''}`,
+    price: pack.mrp && pack.mrp > pack.price ? pack.mrp : pack.price,
+    discountPrice: pack.price,
+    packOptions: undefined,
+  };
+}
+/** The pack shown by default: the longest one that's in stock. */
+function defaultPack(product: Product): PackOption | null {
+  const available = (product.packOptions || []).filter((p) => p.inStock);
+  return available[available.length - 1] || null;
+}
+const discountPercent = (mrp: number, price: number) => (mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0);
 
 export const ProductsModule: React.FC<ProductsModuleProps> = ({
   account,
@@ -46,6 +66,9 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [addedAnimationId, setAddedAnimationId] = useState<string | null>(null);
   const [selectedProductDetails, setSelectedProductDetails] = useState<Product | null>(null);
+  // The pack picked in the details popup — starts at the default pack.
+  const [selectedPackMonths, setSelectedPackMonths] = useState<number | null>(null);
+  useEffect(() => { setSelectedPackMonths(selectedProductDetails ? defaultPack(selectedProductDetails)?.months ?? null : null); }, [selectedProductDetails]);
   // Tapping the product photo in the details modal opens it full-screen —
   // just the same image, zoomed, nothing invented.
   const [isImageZoomed, setIsImageZoomed] = useState(false);
@@ -72,7 +95,10 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     const saved = getCachedAccountState().cart || [];
     const restored: CartItem[] = saved
       .map((item) => {
-        const product = products.find((p) => p.id === item.productId);
+        const [baseId, months] = item.productId.split(PACK_SEP);
+        const base = products.find((p) => p.id === baseId);
+        const pack = months ? base?.packOptions?.find((pk) => pk.months === Number(months) && pk.inStock) : undefined;
+        const product = months ? (base && pack ? packVariant(base, pack) : undefined) : base;
         return product && item.quantity > 0 ? { product, quantity: item.quantity } : null;
       })
       .filter(Boolean) as CartItem[];
@@ -181,7 +207,16 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   // Instant Reliable Add to Cart
   const handleAddToCart = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
-    
+    if (product.packOptions?.length) {
+      const pack = defaultPack(product);
+      if (!pack) return; // every pack is out of stock
+      addLineToCart(packVariant(product, pack), product.id);
+      return;
+    }
+    addLineToCart(product, product.id);
+  };
+
+  const addLineToCart = (product: Product, animateId: string) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
@@ -193,7 +228,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     });
 
     // Animate button state
-    setAddedAnimationId(product.id);
+    setAddedAnimationId(animateId);
     setTimeout(() => {
       setAddedAnimationId(null);
     }, 1200);
@@ -447,9 +482,14 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  {product.featured && (
-                    <span className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider shadow-sm">
-                      {tr('Top Choice', 'सर्वश्रेष्ठ पसंद')}
+                  {(product.badge || product.featured) && (
+                    <span className={`absolute top-2 left-2 px-2.5 py-1 rounded-full text-white text-[10px] font-black uppercase tracking-wider shadow-sm ${product.badge === 'Fast Selling' ? 'bg-orange-500' : 'bg-emerald-600'}`}>
+                      {product.badge ? tr(product.badge, product.badge === 'Bestseller' ? 'बेस्टसेलर' : product.badge === 'Fast Selling' ? 'तेज़ी से बिक रहा' : product.badge) : tr('Top Choice', 'सर्वश्रेष्ठ पसंद')}
+                    </span>
+                  )}
+                  {!product.packOptions?.length && discountPercent(product.price, product.discountPrice) > 0 && (
+                    <span className="absolute top-2 right-2 px-2 py-1 rounded-full bg-rose-500 text-white text-[10px] font-black shadow-sm">
+                      {discountPercent(product.price, product.discountPrice)}% {tr('OFF', 'छूट')}
                     </span>
                   )}
                   <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md border border-zinc-200 text-[11px] font-bold text-amber-600 shadow-sm">
@@ -477,10 +517,23 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
               {/* Price & Add to Cart Button */}
               <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800/60 flex items-center justify-between mt-2">
-                <div>
-                  <div className="text-base font-black text-emerald-600 dark:text-emerald-400">₹{product.discountPrice}</div>
-                  <div className="text-[11px] opacity-50 line-through">₹{product.price}</div>
-                </div>
+                {(() => {
+                  const pack = product.packOptions?.length ? defaultPack(product) : null;
+                  if (product.packOptions?.length) {
+                    return pack ? (
+                      <div>
+                        <div className="text-base font-black text-emerald-600 dark:text-emerald-400">₹{pack.price.toLocaleString('en-IN')}</div>
+                        <div className="text-[11px] opacity-60">{pack.months} {tr(pack.months > 1 ? 'months' : 'month', 'महीने')} · ₹{Math.round(pack.price / pack.months).toLocaleString('en-IN')}/{tr('month', 'महीना')}</div>
+                      </div>
+                    ) : <div className="text-xs font-bold text-rose-500">{tr('Out of stock', 'स्टॉक में नहीं')}</div>;
+                  }
+                  return (
+                    <div>
+                      <div className="text-base font-black text-emerald-600 dark:text-emerald-400">₹{product.discountPrice.toLocaleString('en-IN')}</div>
+                      {product.price > product.discountPrice && <div className="text-[11px] opacity-50 line-through">₹{product.price.toLocaleString('en-IN')}</div>}
+                    </div>
+                  );
+                })()}
 
                 <button
                   id={`add-btn-${product.id}`}
@@ -554,17 +607,41 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                   <span className={`text-xs ${textMuted}`}>({selectedProductDetails.reviewsCount} {tr('verified reviews', 'सत्यापित समीक्षाएं')})</span>
                 </div>
 
-                <div className="flex items-baseline gap-2 pt-1 flex-wrap">
-                  <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                    ₹{selectedProductDetails.discountPrice}
-                  </span>
-                  <span className={`text-xs line-through ${textMuted}`}>
-                    ₹{selectedProductDetails.price}
-                  </span>
-                  <span className="text-xs font-bold text-rose-500">
-                    {Math.round(((selectedProductDetails.price - selectedProductDetails.discountPrice) / selectedProductDetails.price) * 100)}% {tr('OFF', 'छूट')}
-                  </span>
-                </div>
+                {selectedProductDetails.packOptions?.length ? (
+                  <div className="pt-1 space-y-1.5">
+                    <div className={`text-[11px] font-black uppercase tracking-wider ${textMuted}`}>{tr('Choose duration', 'अवधि चुनें')}</div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProductDetails.packOptions.map((pk) => (
+                        <button
+                          key={pk.months}
+                          type="button"
+                          disabled={!pk.inStock}
+                          onClick={() => setSelectedPackMonths(pk.months)}
+                          className={`px-3 py-2 rounded-xl border text-xs font-bold text-left ${
+                            !pk.inStock ? 'opacity-40 cursor-not-allowed border-zinc-200' : selectedPackMonths === pk.months ? 'border-emerald-500 bg-emerald-50 text-emerald-800 cursor-pointer' : 'border-zinc-200 hover:border-emerald-300 cursor-pointer'
+                          }`}
+                        >
+                          <div>{pk.months} {tr(pk.months > 1 ? 'Months' : 'Month', 'महीने')}</div>
+                          <div className="text-[10px] font-semibold opacity-70">{pk.inStock ? `₹${pk.price.toLocaleString('en-IN')}` : tr('Out of stock', 'स्टॉक में नहीं')}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {(() => {
+                  const pack = selectedProductDetails.packOptions?.find((pk) => pk.months === selectedPackMonths && pk.inStock);
+                  const price = pack ? pack.price : selectedProductDetails.discountPrice;
+                  const mrp = pack ? (pack.mrp || pack.price) : selectedProductDetails.price;
+                  const off = discountPercent(mrp, price);
+                  return (
+                    <div className="flex items-baseline gap-2 pt-1 flex-wrap">
+                      <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">₹{price.toLocaleString('en-IN')}</span>
+                      {off > 0 && <span className={`text-xs line-through ${textMuted}`}>₹{mrp.toLocaleString('en-IN')}</span>}
+                      {off > 0 && <span className="text-xs font-bold text-rose-500">{off}% {tr('OFF', 'छूट')}</span>}
+                      {pack && pack.months > 1 && <span className={`text-xs ${textMuted}`}>(₹{Math.round(pack.price / pack.months).toLocaleString('en-IN')}/{tr('month', 'महीना')})</span>}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -628,14 +705,17 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               <button
                 type="button"
                 onClick={(e) => {
-                  handleAddToCart(e, selectedProductDetails);
+                  e.stopPropagation();
+                  const pack = selectedProductDetails.packOptions?.find((pk) => pk.months === selectedPackMonths && pk.inStock);
+                  if (selectedProductDetails.packOptions?.length && !pack) return;
+                  addLineToCart(pack ? packVariant(selectedProductDetails, pack) : selectedProductDetails, selectedProductDetails.id);
                   setSelectedProductDetails(null);
                   setIsCartOpen(true);
                 }}
                 className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
               >
                 <ShoppingBag className="w-4 h-4 shrink-0" />
-                <span className="truncate">{tr('Add to Cart & Checkout', 'कार्ट में जोड़ें व चेकआउट करें')} (₹{selectedProductDetails.discountPrice})</span>
+                <span className="truncate">{tr('Add to Cart & Checkout', 'कार्ट में जोड़ें व चेकआउट करें')} (₹{(selectedProductDetails.packOptions?.find((pk) => pk.months === selectedPackMonths)?.price ?? selectedProductDetails.discountPrice).toLocaleString('en-IN')})</span>
               </button>
             </div>
           </div>
