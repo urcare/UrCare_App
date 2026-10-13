@@ -115,11 +115,13 @@
 }
 
 .urcare-home {
+  /* Soft emerald mesh instead of grid lines. */
   background:
-    linear-gradient(color-mix(in oklab, var(--primary) 4%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in oklab, var(--primary) 4%, transparent) 1px, transparent 1px),
+    radial-gradient(60rem 30rem at 10% -10%, color-mix(in oklab, #34d399 16%, transparent), transparent 60%),
+    radial-gradient(50rem 28rem at 100% 0%, color-mix(in oklab, #22d3ee 12%, transparent), transparent 60%),
+    radial-gradient(40rem 30rem at 50% 110%, color-mix(in oklab, #a7f3d0 18%, transparent), transparent 60%),
     var(--background);
-  background-size: 42px 42px;
+  background-attachment: fixed;
 }
 
 
@@ -228,7 +230,6 @@
 @media (max-width: 767px) {
   .urcare-home-grid { display: flex; flex-direction: column; gap: 1rem; }
   .urcare-home-grid > * { width: 100%; }
-  .home-welcome > div:last-child { max-width: 66%; }
   .health-orbit { width: 84px; height: 84px; right: -6px; top: 50%; opacity: .9; }
   .health-orbit-ring { inset: 11px; }
   .health-orbit-ring-c { inset: 19px; }
@@ -299,4 +300,59 @@
 @media (prefers-reduced-motion: reduce) {
   .food-scan-photo, .food-scan-photo.is-active { transition: opacity 0.4s; transform: none; }
   .food-scan-line { display: none; }
+}
+
+/* ---- Home: premium refresh (with Magic UI components) ---- */
+.home-header {
+  background: color-mix(in oklab, var(--background) 72%, transparent);
+  backdrop-filter: saturate(1.6) blur(18px);
+  -webkit-backdrop-filter: saturate(1.6) blur(18px);
+  border-bottom: 1px solid color-mix(in oklab, var(--primary) 10%, transparent);
+  box-shadow: 0 8px 24px -20px rgba(6, 78, 59, 0.35);
+}
+.home-hero {
+  --hero-x: 80%;
+  --hero-y: 20%;
+  background: linear-gradient(135deg, #047857 0%, #059669 38%, #0d9488 72%, #0e7490 100%);
+  box-shadow: 0 30px 60px -30px rgba(4, 120, 87, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  isolation: isolate;
+}
+.home-hero-glow {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(22rem 22rem at var(--hero-x) var(--hero-y), rgba(255, 255, 255, 0.22), transparent 60%);
+}
+.home-hero-blob { position: absolute; z-index: -1; border-radius: 50%; filter: blur(40px); opacity: 0.55; pointer-events: none; }
+.home-hero-blob-a { width: 220px; height: 220px; left: -60px; bottom: -90px; background: #6ee7b7; animation: hero-blob 12s ease-in-out infinite; }
+.home-hero-blob-b { width: 260px; height: 260px; right: -70px; top: -110px; background: #67e8f9; animation: hero-blob 14s ease-in-out infinite reverse; }
+@keyframes hero-blob { 50% { transform: translate(30px, -20px) scale(1.12); } }
+.hero-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.35rem 0.7rem; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: background 0.2s ease;
+}
+.hero-ring { filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.18)); }
+
+/* Cards: one premium look across Home. */
+.urcare-home-grid .shadow-depth,
+.urcare-home-grid .shadow-sm {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px -18px rgba(6, 78, 59, 0.28);
+}
+.urcare-home-grid .rounded-2xl { border-radius: 1.35rem; }
+.urcare-home-grid .border-border,
+.urcare-home-grid .border-zinc-200 { border-color: color-mix(in oklab, var(--primary) 9%, #e4e4e7); }
+.urcare-home-grid h2 { letter-spacing: -0.01em; }
+@media (prefers-reduced-motion: reduce) {
+  .home-hero-blob { animation: none; }
+}
+/* Magic UI shine-border animation. */
+@theme {
+  --animate-shine: shine var(--duration) infinite linear;
+  @keyframes shine {
+    0% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+    to { background-position: 0% 0%; }
+  }
 }

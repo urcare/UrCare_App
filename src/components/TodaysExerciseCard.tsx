@@ -5,6 +5,7 @@ import { PlanSection } from './ReversalLibraryPanel';
 import { ExerciseVideoModal } from './ExerciseVideoModal';
 import exerciseImage from '../assets/urcare-exercise.jpg';
 import { resolveYoutubeVideoId } from '../utils/youtube';
+import { ShineBorder } from './magicui/shine-border';
 
 interface TodaysExerciseCardProps {
   step: PlanSection;
@@ -55,8 +56,9 @@ export const TodaysExerciseCard: React.FC<TodaysExerciseCardProps> = ({ step, is
 
         <motion.div
           whileHover={{ y: -2 }}
-          className="rounded-2xl bg-card border border-border shadow-depth overflow-hidden"
+          className="relative rounded-2xl bg-card border border-border shadow-depth overflow-hidden"
         >
+          <ShineBorder borderWidth={2} duration={12} shineColor={['#fb923c', '#fde68a', '#34d399']} className="z-[3]" />
           <button
             type="button"
             onClick={() => setIsPlayerOpen(true)}

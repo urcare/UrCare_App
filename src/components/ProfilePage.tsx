@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Bell, ChevronRight, FileText, BookOpen, Utensils, Sparkles, Leaf, MoreVertical,
-  Activity, Stethoscope, Droplets, Pill, GitCommit, MessageCircleMore,
+  Activity, Stethoscope, Droplets, Pill, GitCommit, MessageCircleMore, CalendarDays, Clock3, CheckCircle2,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, Prescription, MedicalReportAnalysis, DailyLog, ActivityLogEntry, CareTeamStatus } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -14,6 +14,12 @@ import { NotificationsPanel } from './NotificationsPanel';
 import { MyTimelinePanel, ACTION_META, CATEGORY_META, relativeTime } from './MyTimelinePanel';
 import { ChatPanel } from './ChatPanel';
 import { TodaysExerciseCard } from './TodaysExerciseCard';
+// Premium UI components from Magic UI (MIT) — see ./magicui/LICENSE.md.
+import { AnimatedCircularProgressBar } from './magicui/animated-circular-progress-bar';
+import { NumberTicker } from './magicui/number-ticker';
+import { BorderBeam } from './magicui/border-beam';
+import { MagicCard } from './magicui/magic-card';
+import { ShineBorder } from './magicui/shine-border';
 import mealImage from '../assets/urcare-meal.jpg';
 import { StatusViewer } from './StatusViewer';
 import { getDailyPlan, activePlanSections, getTaskCompletion, getDailyLog, getNotifications, getDailyQuote, getActivityLog, getMyChatThread, toggleDailyTask, getActiveStatuses } from '../utils/supabase';
@@ -58,6 +64,35 @@ function FoodScanSlideshow({ tr }: { tr: (en: string, hi: string) => string }) {
         <span className="food-scan-chip-done">✓ {tr('Analysed', 'विश्लेषण पूरा')}</span>
       </span>
     </>
+  );
+}
+
+/** Hero ring (Magic UI progress bar + number ticker) — today's real plan steps done out of total. */
+function TodayRing({ done, total, onClick, tr }: { done: number; total: number; onClick: () => void; tr: (en: string, hi: string) => string }) {
+  const pct = total > 0 ? Math.round(Math.min(1, done / total) * 100) : 0;
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.96 }}
+      className="hero-ring relative shrink-0 w-[96px] h-[96px] sm:w-[132px] sm:h-[132px] cursor-pointer"
+      title={tr("Open today's plan", 'आज की योजना खोलें')}
+    >
+      <AnimatedCircularProgressBar
+        value={pct}
+        gaugePrimaryColor="#fde68a"
+        gaugeSecondaryColor="rgba(255,255,255,0.22)"
+        className="absolute inset-0 size-full text-transparent [&>span]:hidden"
+      />
+      <span className="absolute inset-0 flex flex-col items-center justify-center text-white">
+        <span className="font-display text-xl sm:text-3xl font-bold leading-none">
+          <NumberTicker value={pct} className="text-white tracking-normal" />
+          <span className="text-sm">%</span>
+        </span>
+        <span className="mt-1 text-[9px] font-bold uppercase tracking-wider text-white/80">{total > 0 ? tr(`${done}/${total} done`, `${done}/${total} पूरे`) : tr('No plan yet', 'प्लान नहीं')}</span>
+      </span>
+    </motion.button>
   );
 }
 
@@ -445,6 +480,23 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     return () => clearInterval(id);
   }, [reversalGoals.length]);
 
+  // Today's real progress for the hero ring.
+  const stepsTotal = timelineSections.length;
+  const stepsDone = timelineSections.filter((sec) => completedToday[sec.id]).length;
+  const todayLabel = useMemo(
+    () => new Date().toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', { weekday: 'long', day: 'numeric', month: 'long' }),
+    [language],
+  );
+  // Pointer-following glow on the hero (CSS vars, no re-render).
+  const heroRef = useRef<HTMLDivElement>(null);
+  const handleHeroPointer = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = heroRef.current;
+    if (!el) return;
+    const box = el.getBoundingClientRect();
+    el.style.setProperty('--hero-x', `${((e.clientX - box.left) / box.width) * 100}%`);
+    el.style.setProperty('--hero-y', `${((e.clientY - box.top) / box.height) * 100}%`);
+  };
+
   const primaryGoal = reversalGoals[goalIndex % reversalGoals.length];
   const PlanIcon = primaryGoal.icon;
 
@@ -456,7 +508,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           logo/wordmark was dropped per the brief); the streak, a
           (decorative, for now) notification bell, and the account avatar
           on the right. */}
-      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-xl border-b border-border px-4 sm:px-8 py-3 sm:py-3.5">
+      <header className="home-header sticky top-0 z-30 px-4 sm:px-8 py-3 sm:py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           <button
             type="button"
@@ -527,33 +579,50 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             so Home opens with a real "front door" moment. The daily quote
             still lives right here as the subtitle. */}
         <motion.div
-          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="home-welcome relative overflow-hidden rounded-2xl p-4 sm:p-5 bg-primary text-primary-foreground shadow-hero"
+          ref={heroRef}
+          onPointerMove={handleHeroPointer}
+          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="home-welcome home-hero relative overflow-hidden rounded-[1.75rem] p-5 sm:p-7 text-white"
         >
-          <div className="health-orbit" aria-hidden="true">
-            <span className="health-orbit-ring health-orbit-ring-a" />
-            <span className="health-orbit-ring health-orbit-ring-b" />
-            <span className="health-orbit-ring health-orbit-ring-c" />
-            <span className="health-orbit-core"><Activity className="w-4 h-4" /></span>
-            <span className="health-orbit-node health-orbit-node-a" />
-            <span className="health-orbit-node health-orbit-node-b" />
+          <span className="home-hero-blob home-hero-blob-a" aria-hidden="true" />
+          <span className="home-hero-blob home-hero-blob-b" aria-hidden="true" />
+          <span className="home-hero-glow" aria-hidden="true" />
+          <BorderBeam size={120} duration={9} colorFrom="#fde68a" colorTo="#ffffff" borderWidth={2} />
+          <div className="relative w-full">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-6">
+            <div className="min-w-0 flex-1">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm text-[10px] sm:text-[11px] font-bold tracking-wide">
+                <CalendarDays className="w-3.5 h-3.5" />
+                {todayLabel}
+              </span>
+              <motion.h1
+                className="mt-3 font-display text-xl sm:text-3xl font-bold leading-tight"
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                {greeting}{firstName ? `, ${firstName}` : ''} <motion.span
+                  className="inline-block origin-[70%_70%]"
+                  animate={{ rotate: [0, 14, -8, 14, 0] }}
+                  transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 3, ease: 'easeInOut' }}
+                >👋</motion.span>
+              </motion.h1>
+              <p className="flex items-start gap-1.5 text-xs sm:text-sm text-white/85 font-medium mt-2 max-w-xl">
+                <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span className="italic line-clamp-3 sm:line-clamp-2">"{language === 'hi' ? dailyQuote.hi : dailyQuote.en}"</span>
+              </p>
+            </div>
+            <TodayRing done={stepsDone} total={stepsTotal} onClick={onOpenPlan} tr={tr} />
           </div>
-          <div className="relative">
-            <motion.h1
-              className="font-display text-lg sm:text-2xl font-bold leading-tight max-w-2xl"
-              animate={{ scale: [1, 1.015, 1] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              {greeting}{firstName ? `, ${firstName}` : ''} <motion.span
-                className="inline-block"
-                animate={{ rotate: [0, 14, -8, 14, 0] }}
-                transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 2, ease: 'easeInOut' }}
-              >👋</motion.span>
-            </motion.h1>
-            <p className="flex items-center gap-1.5 text-xs text-primary-foreground/80 font-medium mt-1.5 max-w-xl">
-              <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span className="italic truncate">"{language === 'hi' ? dailyQuote.hi : dailyQuote.en}"</span>
-            </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {programDay != null && (
+                  <span className="hero-chip"><Leaf className="w-3.5 h-3.5" />{tr(`Day ${programDay} of ${programTotalDays || 30}`, `दिन ${programDay} / ${programTotalDays || 30}`)}</span>
+                )}
+                {stepsTotal > 0 && (
+                  <span className="hero-chip"><CheckCircle2 className="w-3.5 h-3.5" />{tr(`${stepsDone} of ${stepsTotal} steps done`, `${stepsTotal} में से ${stepsDone} चरण पूरे`)}</span>
+                )}
+                {next?.timeLabel && (
+                  <button type="button" onClick={onOpenPlan} className="hero-chip cursor-pointer hover:bg-white/25"><Clock3 className="w-3.5 h-3.5" />{tr(`Next at ${next.timeLabel}`, `अगला ${next.timeLabel} पर`)}</button>
+                )}
+              </div>
           </div>
         </motion.div>
 
@@ -564,12 +633,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1, ease: 'easeOut' }}
           className="home-focus space-y-2"
         >
+          <MagicCard className="rounded-2xl shadow-depth" gradientSize={220} gradientColor="#d1fae5" gradientOpacity={0.55} gradientFrom="#10b981" gradientTo="#22d3ee">
           <motion.button
             type="button"
             onClick={onOpenPlan}
-            whileHover={{ y: -3, scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
-            className="relative w-full p-5 rounded-2xl bg-card border border-border shadow-depth overflow-hidden text-left cursor-pointer hover:border-primary/30 hover:shadow-float transition-[border-color,box-shadow]"
+            className="relative w-full p-5 rounded-2xl bg-transparent overflow-hidden text-left cursor-pointer"
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -591,6 +660,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               </motion.div>
             </AnimatePresence>
           </motion.button>
+          </MagicCard>
 
           {reversalGoals.length > 1 && (
             <div className="flex items-center justify-center gap-1.5">
@@ -627,10 +697,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
 
           {current ? (
-            <motion.div
-              whileHover={{ y: -2 }}
-              className="w-full rounded-2xl bg-card border border-border shadow-depth overflow-hidden transition-shadow hover:shadow-float"
-            >
+            <MagicCard className="rounded-2xl shadow-depth" gradientSize={220} gradientColor="#d1fae5" gradientOpacity={0.55} gradientFrom="#10b981" gradientTo="#22d3ee">
+            <div className="w-full rounded-2xl overflow-hidden">
               <button
                 type="button"
                 onClick={onOpenPlan}
@@ -682,7 +750,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   <span className="text-[11px] font-bold text-emerald-800">{tr("That's everything for today — see you tomorrow!", 'आज के लिए सब कुछ पूरा — कल मिलते हैं!')}</span>
                 </div>
               )}
-            </motion.div>
+            </div>
+            </MagicCard>
           ) : (
             <div className="p-3.5 rounded-2xl bg-white border border-zinc-200 shadow-sm text-xs font-semibold text-zinc-400 text-center">
               {tr('No plan available for today.', 'आज के लिए कोई योजना उपलब्ध नहीं है।')}
@@ -714,6 +783,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         >
           <FoodScanSlideshow tr={tr} />
           <span className="food-visual-shade" />
+          <ShineBorder borderWidth={2} duration={10} shineColor={['#34d399', '#fde68a', '#22d3ee']} className="z-[3]" />
           <span className="absolute left-5 right-5 bottom-5 text-primary-foreground">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"><Sparkles className="w-3.5 h-3.5" />{tr('UrCare Food Scan', 'UrCare फूड स्कैन')}</span>
             <span className="mt-1 block font-display text-xl font-bold">{tr('Know what is on your plate', 'जानें आपकी प्लेट में क्या है')}</span>
@@ -759,12 +829,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.22, ease: 'easeOut' }}
           className="home-library"
         >
+          <MagicCard className="rounded-2xl shadow-depth" gradientSize={220} gradientColor="#d1fae5" gradientOpacity={0.55} gradientFrom="#10b981" gradientTo="#22d3ee">
           <motion.button
             type="button"
             onClick={() => setIsLibraryOpen(true)}
-            whileHover={{ y: -3, scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/70 shadow-sm flex items-center gap-3 cursor-pointer hover:border-emerald-300 hover:shadow-lg transition-[border-color,box-shadow]"
+            className="w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-50/60 to-teal-50/60 flex items-center gap-3 cursor-pointer"
           >
             <motion.div whileHover={{ rotate: 8 }} className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-sm">
               <BookOpen className="w-5 h-5 text-white" />
@@ -775,6 +845,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
             <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
           </motion.button>
+          </MagicCard>
         </motion.div>
 
         {/* My Timeline — a compact preview of the real GitHub-commit-style
@@ -797,12 +868,12 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </button>
           </div>
 
+          <MagicCard className="rounded-2xl shadow-depth" gradientSize={220} gradientColor="#d1fae5" gradientOpacity={0.55} gradientFrom="#10b981" gradientTo="#22d3ee">
           <motion.button
             type="button"
             onClick={() => setIsTimelineOpen(true)}
-            whileHover={{ y: -2 }}
             whileTap={{ scale: 0.99 }}
-            className="w-full rounded-2xl bg-white border border-zinc-200 shadow-sm overflow-hidden text-left cursor-pointer hover:border-emerald-300 hover:shadow-lg transition-[border-color,box-shadow]"
+            className="w-full rounded-2xl bg-transparent overflow-hidden text-left cursor-pointer"
           >
             {recentActivity.length === 0 ? (
               <div className="p-4 text-center">
@@ -830,6 +901,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               </div>
             )}
           </motion.button>
+          </MagicCard>
         </motion.div>
 
       </main>
