@@ -424,3 +424,9 @@
     100% { transform: scale(2); opacity: 0; }
   }
 }
+
+/* Home after Today's Health + Library moved out: the timeline spans the full row. */
+.home-timeline { grid-column: 1 / -1; }
+@media (min-width: 1024px) {
+  .home-food { grid-row: span 2; align-self: stretch; }
+}

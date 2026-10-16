@@ -6,13 +6,13 @@ import {
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon, Edit3, AlertTriangle, Trash2,
   Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles, Utensils,
-  Pill, Dumbbell, Bath, BedDouble, Youtube, Upload, Stethoscope, Info, Lock,
+  Pill, Dumbbell, Bath, BedDouble, Youtube, Upload, Stethoscope, Info, Lock, BookOpen,
 } from 'lucide-react';
 import { UserHealthProfile, Prescription, CustomPlanStep, FamilyMember } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { DailyCalendar, toDateKey } from './DailyCalendar';
-import { PlanSection } from './ReversalLibraryPanel';
+import { PlanSection, ReversalLibraryPanel } from './ReversalLibraryPanel';
 import { WeeklyUpdatesPanel } from './WeeklyUpdatesPanel';
 import { FamilyViewSwitcher } from './FamilyViewSwitcher';
 import { unifiedProgramDay } from '../utils/programWeek';
@@ -501,6 +501,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     return [...builtIn, ...custom];
   }, [sections, customSteps, showingUploaded]);
   const referenceSections = useMemo(() => sections.filter((s) => !s.timeLabel), [sections]);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
   const taskIds = timelineSections.map((s) => s.id);
   const doneCount = taskIds.filter((id) => completedToday[id]).length;
@@ -1341,6 +1342,37 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                 {rx.notes && <p className={`text-[11px] leading-relaxed break-words ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>{rx.notes}</p>}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reversal Library — every reference (untimed) step of the plan,
+          moved here from Home so it lives next to the plan it belongs to. */}
+      {referenceSections.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setIsLibraryOpen(true)}
+          className="group w-full p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/70 shadow-sm flex items-center gap-3 text-left cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all active:scale-[0.99]"
+        >
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/25">
+            <BookOpen className="w-5 h-5 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-sm font-black text-zinc-900 block">{tr('Reversal Library', 'रिवर्सल लाइब्रेरी')}</span>
+            <span className="text-[11px] text-zinc-500 font-semibold">{tr(`Browse all ${referenceSections.length} reference steps`, `सभी ${referenceSections.length} संदर्भ चरण देखें`)}</span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0 transition-transform group-hover:translate-x-0.5" />
+        </button>
+      )}
+      {isLibraryOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIsLibraryOpen(false)}>
+          <div
+            className="w-full sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-3">
+              <ReversalLibraryPanel sections={referenceSections} />
+            </div>
           </div>
         </div>
       )}
