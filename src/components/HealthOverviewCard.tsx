@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, ChevronDown, ClipboardList } from 'lucide-react';
 import { UserHealthProfile } from '../types';
-import { Marquee } from './magicui/marquee';
 
 /** Score at or above this counts as the optimal (green) range. */
 const OPTIMAL_SCORE = 85;
@@ -98,6 +97,74 @@ export function computeHealthOverview(profile: UserHealthProfile) {
   };
 }
 
+/** A row that drifts sideways on its own and can also be swiped (touch) or
+ *  dragged (mouse). Any touch, drag, wheel or hover pauses the drift; it
+ *  resumes a moment after the user lets go. The content is rendered twice
+ *  so the drift loops without a jump. */
+function AutoScrollRow({ children, speed = 28 }: { children: React.ReactNode; speed?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const pos = useRef(0);
+  const pausedUntil = useRef(0);
+  const hovering = useRef(false);
+  const drag = useRef<{ x: number; left: number; moved: boolean } | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    let raf = 0;
+    let last = performance.now();
+    const step = (t: number) => {
+      const dt = Math.min(64, t - last);
+      last = t;
+      const half = el.scrollWidth / 2;
+      if (half > el.clientWidth && !hovering.current && !drag.current && t > pausedUntil.current) {
+        pos.current += (speed * dt) / 1000;
+        if (pos.current >= half) pos.current -= half;
+        el.scrollLeft = pos.current;
+      } else {
+        // Follow wherever the user scrolled to, wrapping at either end.
+        if (el.scrollLeft >= half) el.scrollLeft -= half;
+        else if (el.scrollLeft <= 0 && half > 0) el.scrollLeft += half;
+        pos.current = el.scrollLeft;
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [speed]);
+
+  const pause = () => { pausedUntil.current = performance.now() + 2500; };
+
+  return (
+    <div
+      ref={ref}
+      className="no-scrollbar flex gap-2 overflow-x-auto select-none touch-pan-x cursor-grab active:cursor-grabbing"
+      onTouchStart={pause}
+      onTouchMove={pause}
+      onWheel={pause}
+      onPointerEnter={(e) => { if (e.pointerType === 'mouse') hovering.current = true; }}
+      onPointerLeave={() => { hovering.current = false; drag.current = null; pause(); }}
+      onPointerDown={(e) => {
+        pause();
+        if (e.pointerType === 'mouse' && ref.current) drag.current = { x: e.clientX, left: ref.current.scrollLeft, moved: false };
+      }}
+      onPointerMove={(e) => {
+        const d = drag.current;
+        if (!d || !ref.current) return;
+        const dx = e.clientX - d.x;
+        if (Math.abs(dx) > 4) d.moved = true;
+        ref.current.scrollLeft = d.left - dx;
+      }}
+      onPointerUp={() => { pause(); window.setTimeout(() => { drag.current = null; }, 0); }}
+      onClickCapture={(e) => { if (drag.current?.moved) { e.preventDefault(); e.stopPropagation(); } }}
+    >
+      {children}
+      <div className="contents" aria-hidden="true">{children}</div>
+    </div>
+  );
+}
+
 interface HealthOverviewCardProps {
   profile: UserHealthProfile;
   tr: (en: string, hi: string) => string;
@@ -187,7 +254,8 @@ export const HealthOverviewCard: React.FC<HealthOverviewCardProps> = ({ profile,
           <Sparkles className="w-4 h-4 text-emerald-600" />
           {tr('Ask UrCare', 'UrCare से पूछें')}
         </div>
-        <Marquee pauseOnHover repeat={3} className="mt-2 -mx-1 p-1 [--duration:28s] [--gap:0.5rem]">
+        <div className="mt-2 -mx-1 p-1">
+        <AutoScrollRow>
           {prompts.map(([en, hi]) => (
             <button
               key={en}
@@ -198,7 +266,8 @@ export const HealthOverviewCard: React.FC<HealthOverviewCardProps> = ({ profile,
               {tr(en, hi)}
             </button>
           ))}
-        </Marquee>
+        </AutoScrollRow>
+        </div>
       </div>
 
       {/* Biological age */}
