@@ -11,6 +11,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AIConsentGate } from './components/AIConsentGate';
 import { AttachmentViewer } from './components/AttachmentViewer';
+import { SplashIntro } from './components/SplashIntro';
 
 /** The post-onboarding organs / body-map screen — off for now, kept for later. */
 const ENABLE_BODY_MAP_AFTER_ONBOARDING = false;
@@ -250,6 +251,7 @@ export default function App() {
         <MainApp />
         <AIConsentGate />
         <AttachmentViewer />
+        <SplashIntro />
       </ThemeProvider>
     </LanguageProvider>
   );
