@@ -72,6 +72,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // it never jumps position when the tab changes or the page scrolls.
   const [isModuleMenuOpen, setIsModuleMenuOpen] = useState(false);
   const [isHealthBotsOpen, setIsHealthBotsOpen] = useState(false);
+  // A question from Home's "Ask UrCare" chips, pre-filled in the chat.
+  const [healthBotsPrompt, setHealthBotsPrompt] = useState<string | null>(null);
   // 'Daily Plan', 'UrCare Camera' and 'Profile' are deliberately left out
   // here — they already have their own permanent spot in the bottom/side
   // nav bar, so listing them again in this drawer was pure duplication.
@@ -834,6 +836,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onOpenReports={() => setActiveTab('reports')}
             onOpenAssessment={() => setIsAssessmentModalOpen(true)}
             onOpenMoreMenu={() => setIsModuleMenuOpen(true)}
+            onAskUrCare={(prompt) => { setHealthBotsPrompt(prompt); setIsHealthBotsOpen(true); }}
           />
         ) : activeTab === 'plan' ? (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
@@ -1102,7 +1105,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {isHealthBotsOpen && (
         <AIHealthBots
           userId={account.uid}
-          onClose={() => setIsHealthBotsOpen(false)}
+          initialBotId={healthBotsPrompt ? 'sharma' : undefined}
+          initialPrompt={healthBotsPrompt || undefined}
+          onClose={() => { setIsHealthBotsOpen(false); setHealthBotsPrompt(null); }}
           onOpenCareTeam={() => { setIsHealthBotsOpen(false); handleOpenDoctorConsult(); }}
         />
       )}

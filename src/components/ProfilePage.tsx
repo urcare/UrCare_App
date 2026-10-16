@@ -13,6 +13,7 @@ import { NotificationsPanel } from './NotificationsPanel';
 import { MyTimelinePanel, ACTION_META, CATEGORY_META, relativeTime } from './MyTimelinePanel';
 import { ChatPanel } from './ChatPanel';
 import { TodaysExerciseCard } from './TodaysExerciseCard';
+import { HealthOverviewCard } from './HealthOverviewCard';
 // Premium UI components from Magic UI (MIT) — see ./magicui/LICENSE.md.
 import { AnimatedCircularProgressBar } from './magicui/animated-circular-progress-bar';
 import { NumberTicker } from './magicui/number-ticker';
@@ -161,6 +162,8 @@ interface ProfilePageProps {
    *  Home has its own full header instead of the shared one every other tab
    *  uses, so it needs its own trigger for the same drawer. */
   onOpenMoreMenu: () => void;
+  /** Opens the AI chat with this question ready to send. */
+  onAskUrCare?: (prompt: string) => void;
 }
 
 /** "Home" — a calm, focused landing summary: today's next step, this
@@ -177,6 +180,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onOpenReports,
   onOpenAssessment,
   onOpenMoreMenu,
+  onAskUrCare,
 }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
@@ -641,6 +645,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               {tr('No plan available for today.', 'आज के लिए कोई योजना उपलब्ध नहीं है।')}
             </div>
           )}
+        </motion.div>
+
+        {/* Your Health Overview — score, Ask UrCare and biological age from the Root Cause Analysis. */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.16, ease: 'easeOut' }}
+          className="home-overview"
+        >
+          <HealthOverviewCard profile={profile} tr={tr} onAsk={(q) => onAskUrCare?.(q)} onOpenAssessment={onOpenAssessment} />
         </motion.div>
 
         {/* Today's Exercise — a featured video-led card for the day's one

@@ -73,11 +73,15 @@ interface AIHealthBotsProps {
   onClose: () => void;
   /** Opens the real care team (Doctor Hotline) — for anything that needs a person. */
   onOpenCareTeam: () => void;
+  /** Open straight into this bot's chat. */
+  initialBotId?: string;
+  /** Pre-fill the message box (the user still taps send). */
+  initialPrompt?: string;
 }
 
 /** Chats with the six AI Health Bots. Conversations are kept per account and
  *  per bot on this device. */
-export const AIHealthBots: React.FC<AIHealthBotsProps> = ({ userId, onClose, onOpenCareTeam }) => {
+export const AIHealthBots: React.FC<AIHealthBotsProps> = ({ userId, onClose, onOpenCareTeam, initialBotId, initialPrompt }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const pick = (pair: readonly [string, string]) => (language === 'hi' ? pair[1] : pair[0]);
@@ -86,9 +90,9 @@ export const AIHealthBots: React.FC<AIHealthBotsProps> = ({ userId, onClose, onO
   const roleOf = (b: typeof BOTS[number]) => pick(demo(b.id)?.role || b.role);
   const helloOf = (b: typeof BOTS[number]) => pick(demo(b.id)?.hello || b.hello);
 
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(initialBotId || null);
   const [chats, setChats] = useState<Record<string, ChatMsg[]>>({});
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(initialPrompt || '');
   const [sendingFor, setSendingFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
