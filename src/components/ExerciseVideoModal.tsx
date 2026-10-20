@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ExerciseAnimationPlayer, movesForExercise } from './ExerciseAnimationPlayer';
 import { motion, AnimatePresence } from 'motion/react';
 import { Youtube, X, ExternalLink, CheckCircle2, RefreshCw, Play } from 'lucide-react';
 import { youtubeSearchUrl, youtubeEmbedUrl, resolveYoutubeVideoId } from '../utils/youtube';
@@ -28,6 +29,10 @@ interface ExerciseVideoModalProps {
  *  app, so opening a video looks and behaves the same everywhere. */
 export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ title, isOpen, onClose, tr, isDone, onMarkDone }) => {
   const [videoId, setVideoId] = useState<string | null | undefined>(undefined);
+  // Animated how-to for the exercise (when one matches) — the video is one tab away.
+  const moves = useMemo(() => movesForExercise(title), [title]);
+  const [view, setView] = useState<'animation' | 'video'>('animation');
+  useEffect(() => { if (isOpen) setView(moves.length ? 'animation' : 'video'); }, [isOpen, moves.length]);
 
   useEffect(() => {
     if (!isOpen || !title) return;
@@ -67,6 +72,21 @@ export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ title, i
               </button>
             </div>
 
+            {moves.length > 0 && (
+              <div className="px-4 pt-3 shrink-0">
+                <div className="relative grid grid-cols-2 p-1 rounded-xl bg-zinc-100">
+                  <span className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-lg bg-white shadow-sm transition-transform duration-300" style={{ transform: view === 'video' ? 'translateX(100%)' : 'none' }} />
+                  <button type="button" onClick={() => setView('animation')} className={`relative z-10 py-2 text-xs font-black cursor-pointer ${view === 'animation' ? 'text-orange-700' : 'text-zinc-500'}`}>{tr('🏃 How to do it', '🏃 कैसे करें')}</button>
+                  <button type="button" onClick={() => setView('video')} className={`relative z-10 py-2 text-xs font-black cursor-pointer ${view === 'video' ? 'text-red-600' : 'text-zinc-500'}`}>{tr('▶ Video', '▶ वीडियो')}</button>
+                </div>
+              </div>
+            )}
+
+            {view === 'animation' && moves.length > 0 ? (
+              <div className="overflow-y-auto">
+                <ExerciseAnimationPlayer moves={moves} tr={tr} />
+              </div>
+            ) : (
             <div className="relative w-full aspect-video bg-black shrink-0">
               {videoId === undefined ? (
                 <div className="absolute inset-0 flex items-center justify-center text-white/60">
@@ -96,6 +116,7 @@ export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ title, i
                 </a>
               )}
             </div>
+            )}
 
             <div className="p-4 flex flex-col gap-2.5 bg-zinc-50 overflow-y-auto">
               <a

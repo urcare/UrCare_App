@@ -13,6 +13,7 @@ import { BiomarkerTracker } from './BiomarkerTracker';
 import { useDailyNutrition } from '../hooks/useDailyNutrition';
 import { REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL } from './RecommendationsView';
 import { FamilyMembersPanel } from './FamilyMembersPanel';
+import { HealthDevicesCard } from './HealthDevicesCard';
 import { EditHealthProfileModal } from './EditHealthProfileModal';
 
 function formatGoalLabel(goal?: string): string {
@@ -465,6 +466,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         </div>
 
         <FamilyMembersPanel tr={tr} />
+
+        <HealthDevicesCard tr={tr} />
 
         {/* LOG OUT */}
         <button

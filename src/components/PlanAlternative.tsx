@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { authedFetch } from '../utils/supabase';
 import { ensureAIConsent } from '../utils/aiConsent';
+import { getPlanSettings } from './PlanSettingsAndLogs';
 
 interface Option { title: string; body: string; why?: string; calories?: number | null }
 
@@ -52,6 +53,7 @@ export const PlanAlternative: React.FC<PlanAlternativeProps> = ({ stepId, dateKe
           title, body, kind, language,
           exclude: options.map((o) => o.title),
           profile: { age: profile.age, gender: profile.gender, dietaryPreference: profile.dietaryPreference, medicalConditions: profile.medicalConditions, goal: profile.goal, calculatedPlan: profile.calculatedPlan },
+          settings: getPlanSettings(),
         }),
       });
       const data = await res.json().catch(() => ({}));

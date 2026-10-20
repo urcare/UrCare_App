@@ -1414,7 +1414,7 @@ Call the record_food_analysis tool exactly once with the complete result.`;
 //     Only that one item changes; nothing is saved to the plan.
 app.post('/api/plan/alternative', requireUser(async (req, res) => {
   try {
-    const { title, body, kind, exclude = [], language, profile } = req.body || {};
+    const { title, body, kind, exclude = [], language, profile, settings } = req.body || {};
     if (!title || (kind !== 'meal' && kind !== 'exercise')) return res.status(400).json({ error: 'A meal or exercise step is required.' });
     if (!isAIConfigured()) return res.status(503).json({ error: 'AI is not available right now.' });
     const ctx = profile ? [
@@ -1425,13 +1425,19 @@ app.post('/api/plan/alternative', requireUser(async (req, res) => {
       profile.goal ? `Goal: ${profile.goal}` : '',
       profile.calculatedPlan?.targetCalories ? `Daily calories: ${profile.calculatedPlan.targetCalories}` : '',
     ].filter(Boolean).join('. ') : '';
+    // The member's plan settings (Plan → settings).
+    const prefs = settings ? [
+      settings.intensity ? `Preferred workout intensity: ${String(settings.intensity).slice(0, 20)}` : '',
+      settings.diet && settings.diet !== 'any' ? `Diet preference: ${String(settings.diet).slice(0, 30)}` : '',
+      Array.isArray(settings.exercises) && settings.exercises.length ? `Likes: ${settings.exercises.slice(0, 8).map((x: any) => String(x).slice(0, 20)).join(', ')}` : '',
+    ].filter(Boolean).join('. ') : '';
     const avoid = (Array.isArray(exclude) ? exclude : []).slice(0, 8).map((x: any) => String(x).slice(0, 120));
     const { data } = await callAIForJson({
       tier: 'light',
       system: `You are UrCare's clinical diet & exercise planner for metabolic health (diabetes, BP, cholesterol, weight). Suggest ONE alternative for the single plan step given — ${kind === 'meal'
         ? 'a different, commonly available Indian meal with similar calories and similar protein/fibre, no higher glycaemic load, matching the diet preference (veg/non-veg/vegan/Jain) and any conditions'
         : 'a different exercise with similar duration and effort, safe for the conditions and age, doable at home without equipment unless the original needed it'}. Keep the same purpose and timing. Never suggest medicines or changing any dose. Do not repeat any of the excluded options. Write in ${language === 'hi' ? 'simple Hindi (Devanagari)' : 'simple English'}. Call the record_alternative tool once.`,
-      text: `Plan step: "${title}". Details: ${String(body || '').slice(0, 1200)}${ctx ? `\nUser: ${ctx}.` : ''}${avoid.length ? `\nAlready suggested (don't repeat): ${avoid.join(' | ')}` : ''}`,
+      text: `Plan step: "${title}". Details: ${String(body || '').slice(0, 1200)}${ctx ? `\nUser: ${ctx}.` : ''}${prefs ? `\nPreferences: ${prefs}.` : ''}${avoid.length ? `\nAlready suggested (don't repeat): ${avoid.join(' | ')}` : ''}`,
       toolName: 'record_alternative',
       inputSchema: {
         type: 'object',

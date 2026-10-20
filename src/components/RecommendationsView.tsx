@@ -6,7 +6,7 @@ import {
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon, Edit3, AlertTriangle, Trash2,
   Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles, Utensils,
-  Pill, Dumbbell, Bath, BedDouble, Youtube, Upload, Stethoscope, Info, Lock, BookOpen,
+  Pill, Dumbbell, Bath, BedDouble, Youtube, Upload, Stethoscope, Info, Lock, BookOpen, CalendarCheck, SlidersHorizontal,
 } from 'lucide-react';
 import { UserHealthProfile, Prescription, CustomPlanStep, FamilyMember } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -19,6 +19,7 @@ import { unifiedProgramDay } from '../utils/programWeek';
 import { ExerciseVideoModal } from './ExerciseVideoModal';
 import { ProgressCelebration, progressMessage } from './ProgressCelebration';
 import { PlanAlternative } from './PlanAlternative';
+import { PlanSettingsSheet, DailyLogsSheet, getPlanSettings, PLAN_SETTINGS_EVENT } from './PlanSettingsAndLogs';
 import {
   getDailyPlan, getDailyLog, getTaskCompletion,
   toggleDailyTask, getActiveDates, reportTodayProgress,
@@ -498,6 +499,15 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     }
   };
   const [dayCelebration, setDayCelebration] = useState<{ pct: number; done: number; total: number } | null>(null);
+  // Plan settings (intensity, diet, exercise likes, full day vs meals & exercise) + 7-day log.
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
+  const [planSettings, setPlanSettings] = useState(getPlanSettings);
+  useEffect(() => {
+    const onChange = () => setPlanSettings(getPlanSettings());
+    window.addEventListener(PLAN_SETTINGS_EVENT, onChange);
+    return () => window.removeEventListener(PLAN_SETTINGS_EVENT, onChange);
+  }, []);
 
   const { calculatedPlan } = profile;
   const targetCalories = calculatedPlan?.targetCalories || 1850;
@@ -659,8 +669,16 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
               </p>
             </div>
           </div>
-
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button type="button" onClick={() => setIsLogsOpen(true)} title={tr('Daily health log', 'रोज़ का हेल्थ लॉग')} className="w-9 h-9 rounded-xl border border-zinc-200 bg-white text-zinc-600 hover:text-emerald-700 hover:border-emerald-300 flex items-center justify-center cursor-pointer"><CalendarCheck className="w-4 h-4" /></button>
+            <button type="button" onClick={() => setIsSettingsOpen(true)} title={tr('Plan settings', 'प्लान सेटिंग्स')} className="w-9 h-9 rounded-xl border border-zinc-200 bg-white text-zinc-600 hover:text-emerald-700 hover:border-emerald-300 flex items-center justify-center cursor-pointer"><SlidersHorizontal className="w-4 h-4" /></button>
+          </div>
         </div>
+        {planSettings.view === 'meals-exercise' && (
+          <button type="button" onClick={() => setIsSettingsOpen(true)} className="w-full text-left text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 cursor-pointer">
+            {tr('Showing meals & exercise only — tap to show the full day', 'सिर्फ़ खाना व एक्सरसाइज़ दिख रहे हैं — पूरा दिन देखने के लिए टैप करें')}
+          </button>
+        )}
 
         {/* "Viewing as" — only shows up once a family member has actually
             been added (see AccountPage → Family Members). */}
@@ -1214,7 +1232,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                     </div>
 
                     <div className="space-y-2">
-                      {items.filter((s) => s.id !== heroInfo?.item.id).map((section) => {
+                      {items
+                        .filter((s) => s.id !== heroInfo?.item.id)
+                        .filter((s) => planSettings.view !== 'meals-exercise' || ['meal', 'exercise'].includes(categoryFor(s.title)))
+                        .map((section) => {
                         const done = !!completedToday[section.id];
                         const open = expandedItems.has(section.id);
                         const isRisky = section.isCustom && section.verdict === 'red';
@@ -1442,6 +1463,9 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           onSave={handleSaveUploadedPlan}
         />
       )}
+
+      <PlanSettingsSheet open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} tr={tr} />
+      <DailyLogsSheet open={isLogsOpen} onClose={() => setIsLogsOpen(false)} userId={effectiveUserId} tr={tr} language={language} />
 
       {dayCelebration && (
         <ProgressCelebration

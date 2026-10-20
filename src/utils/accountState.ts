@@ -20,7 +20,18 @@ export type AccountAppState = {
    *  keyed by user id) has chosen to follow while they have an uploaded plan:
    *  'mine' (the uploaded one, the default) or 'urcare' (the built-in one). */
   planChoice?: Record<string, 'urcare' | 'mine'>;
+  /** Plan settings: how hard workouts should be, food and exercise likes,
+   *  and whether to show the full day or only meals & exercise. */
+  planSettings?: PlanSettings;
 };
+
+export type PlanSettings = {
+  intensity: 'light' | 'moderate' | 'intense';
+  diet: 'any' | 'vegetarian' | 'eggetarian' | 'vegan' | 'jain' | 'non-vegetarian';
+  exercises: string[];
+  view: 'full' | 'meals-exercise';
+};
+export const DEFAULT_PLAN_SETTINGS: PlanSettings = { intensity: 'moderate', diet: 'any', exercises: [], view: 'full' };
 
 let cache: AccountAppState = {};
 let pending: Partial<AccountAppState> = {};
