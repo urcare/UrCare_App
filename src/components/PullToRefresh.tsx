@@ -3,11 +3,15 @@ import { motion, useMotionValue, useTransform, animate } from 'motion/react';
 
 /** Asks every screen to reload its data now (plan, progress, family status,
  *  timeline, notifications, rewards). */
-export function refreshEverything() {
-  for (const name of ['urcare:refresh', 'urcare:daily-plan-changed', 'urcare:daily-log-changed', 'urcare:family-status-changed', 'urcare:activity-logged']) {
-    window.dispatchEvent(new Event(name));
-  }
+export function refreshEverything(stagger = 0) {
+  const names = ['urcare:refresh', 'urcare:daily-plan-changed', 'urcare:daily-log-changed', 'urcare:family-status-changed', 'urcare:activity-logged'];
+  if (!stagger) { names.forEach((n) => window.dispatchEvent(new Event(n))); return; }
+  // Spread the reloads out so the spinner keeps turning smoothly.
+  names.forEach((n, i) => window.setTimeout(() => window.dispatchEvent(new Event(n)), i * stagger));
 }
+
+/** Waits until the browser has painted the spinner (two frames) plus a beat. */
+const afterPaint = (extra = 120) => new Promise<void>((res) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(res, extra))));
 
 const TRIGGER = 72; // px of pull needed to refresh
 const MAX = 120;
@@ -55,16 +59,19 @@ export const PullToRefresh: React.FC<{ onRefresh?: () => Promise<unknown> | void
       if (!s?.active) return;
       if (pull.get() >= TRIGGER) {
         busy.current = true;
+        // Snap to the resting spot (CSS eases it) and spin on the GPU, so a
+        // busy JavaScript thread can't make the spinner stutter.
+        pull.set(TRIGGER);
         setRefreshing(true);
-        animate(pull, TRIGGER, { type: 'spring', stiffness: 300, damping: 30 });
         try { navigator.vibrate?.(12); } catch {}
-        const minSpin = new Promise((r) => setTimeout(r, 900));
-        refreshEverything();
+        const minSpin = new Promise((r) => setTimeout(r, 1100));
+        await afterPaint();
+        refreshEverything(90);
         try { await Promise.all([onRefresh?.(), minSpin]); } catch {}
         setRefreshing(false);
         busy.current = false;
       }
-      animate(pull, 0, { type: 'spring', stiffness: 260, damping: 26 });
+      animate(pull, 0, { type: 'spring', stiffness: 220, damping: 26 });
     };
     window.addEventListener('touchstart', onStart, { passive: true });
     window.addEventListener('touchmove', onMove, { passive: false });
@@ -81,14 +88,25 @@ export const PullToRefresh: React.FC<{ onRefresh?: () => Promise<unknown> | void
   return (
     <>
       {/* Rests just below the app header while spinning. */}
-      <motion.div aria-hidden={!refreshing} className="ptr-indicator" style={{ y: useTransform(pull, (v) => v * 1.8 - 56), opacity, scale }}>
-        <motion.span className="ptr-ring" style={{ rotate: refreshing ? undefined : rotate }} animate={refreshing ? { rotate: [0, 360] } : undefined} transition={refreshing ? { repeat: Infinity, duration: 0.8, ease: 'linear' } : undefined}>
-          <svg viewBox="0 0 36 36" className="w-full h-full">
-            <circle cx="18" cy="18" r="14" fill="none" stroke="#d1fae5" strokeWidth="3.5" />
-            <motion.circle cx="18" cy="18" r="14" fill="none" stroke="url(#ptrGrad)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={2 * Math.PI * 14} style={{ strokeDashoffset: refreshing ? 2 * Math.PI * 14 * 0.7 : dash }} />
-            <defs><linearGradient id="ptrGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#0ea5e9" /></linearGradient></defs>
-          </svg>
-        </motion.span>
+      <motion.div aria-hidden={!refreshing} className={`ptr-indicator ${refreshing ? 'is-refreshing' : ''}`} style={{ y: useTransform(pull, (v) => v * 1.8 - 56), opacity, scale }}>
+        {refreshing ? (
+          // CSS-only spinner: runs on the compositor, smooth even while data loads.
+          <span className="ptr-ring ptr-spin">
+            <svg viewBox="0 0 36 36" className="w-full h-full">
+              <circle cx="18" cy="18" r="14" fill="none" stroke="#d1fae5" strokeWidth="3.5" />
+              <circle cx="18" cy="18" r="14" fill="none" stroke="url(#ptrGrad)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 14 * 0.3} ${2 * Math.PI * 14}`} />
+              <defs><linearGradient id="ptrGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#0ea5e9" /></linearGradient></defs>
+            </svg>
+          </span>
+        ) : (
+          <motion.span className="ptr-ring" style={{ rotate }}>
+            <svg viewBox="0 0 36 36" className="w-full h-full">
+              <circle cx="18" cy="18" r="14" fill="none" stroke="#d1fae5" strokeWidth="3.5" />
+              <motion.circle cx="18" cy="18" r="14" fill="none" stroke="url(#ptrGrad2)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={2 * Math.PI * 14} style={{ strokeDashoffset: dash }} />
+              <defs><linearGradient id="ptrGrad2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#0ea5e9" /></linearGradient></defs>
+            </svg>
+          </motion.span>
+        )}
         <img src="/urcare-logo-mark.png" alt="" className="ptr-logo" />
       </motion.div>
       {/* The page itself isn't moved: a transform here would break every

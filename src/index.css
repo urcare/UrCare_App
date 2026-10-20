@@ -533,3 +533,9 @@
 }
 .ptr-ring { position: absolute; inset: 5px; display: block; }
 .ptr-logo { width: 20px; height: 20px; object-fit: contain; }
+/* Refresh spinner: pure CSS transform so it stays smooth while data reloads. */
+.ptr-indicator { will-change: transform, opacity; }
+.ptr-spin { animation: ptr-spin 0.75s linear infinite; will-change: transform; transform: translateZ(0); }
+@keyframes ptr-spin { to { transform: rotate(360deg) translateZ(0); } }
+.ptr-indicator.is-refreshing .ptr-logo { animation: ptr-pulse 1.1s ease-in-out infinite; }
+@keyframes ptr-pulse { 50% { transform: scale(0.86); } }
