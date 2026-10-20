@@ -13,6 +13,7 @@ import { FamilyPage } from './FamilyPage';
 import { RewardUnlockWatcher } from './Rewards';
 import { PullToRefresh, refreshEverything } from './PullToRefresh';
 import { getCachedAccountState } from '../utils/accountState';
+import { ensurePhoneNotifications, showPhoneNotification, schedulePlanReminders, phoneNotificationsAreNative } from '../utils/phoneNotifications';
 import { 
   UserHealthProfile, MealItem, UserAccount, MedicalReportAnalysis, 
   Order, Prescription, BurnActivity, MedicationLogItem 
@@ -38,7 +39,7 @@ import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { MyCareFilesPanel } from './MyCareFilesPanel';
 import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
-import { signOutUser, activePlanSections, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity, getMyQueueEntry, takePendingAdd } from '../utils/supabase';
+import { signOutUser, activePlanSections, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity, getMyQueueEntry, takePendingAdd, getNotifications } from '../utils/supabase';
 import { calculateNutritionPlan } from '../utils/calculator';
 import { labelMinutes } from './RecommendationsView';
 import { useLanguage } from '../context/LanguageContext';
@@ -204,9 +205,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
     if (profile.preferences?.enableNotifications === false) return;
     let cancelled = false;
 
-    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-      Notification.requestPermission().catch(() => {});
-    }
+    // Phone notification bar (app) / browser notifications (web).
+    ensurePhoneNotifications();
+    let scheduledSignature = '';
 
     const check = async () => {
       const todayKey = toDateKey(new Date());
@@ -217,6 +218,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
       if (cancelled) return;
 
       const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+      // On the phone, schedule a reminder before every step still to come
+      // today, so they arrive in the notification bar even with the app closed.
+      const upcoming = activePlanSections(planResult, account.uid)
+        .filter((s: any) => !!s.timeLabel && !completedToday[s.id])
+        .map((s: any) => { const m = labelMinutes(s.timeLabel); const at = new Date(); at.setHours(Math.floor(m / 60), m % 60, 0, 0); return { id: s.id, title: s.title, timeLabel: s.timeLabel, at }; })
+        .filter((s: any) => s.at.getTime() > Date.now());
+      const signature = `${todayKey}|${upcoming.map((u: any) => u.id + u.timeLabel).join(',')}`;
+      if (signature !== scheduledSignature) { scheduledSignature = signature; schedulePlanReminders(upcoming, tr); }
+
       // Remind about whichever plan the user is actually following.
       const next = activePlanSections(planResult, account.uid)
         .filter((s: any) => !!s.timeLabel && !completedToday[s.id])
@@ -238,14 +248,45 @@ export const Dashboard: React.FC<DashboardProps> = ({
         `${todayKey}:${next.id}`,
       ).catch(() => {});
 
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        try { new Notification(next.title, { body: `Starting at ${next.timeLabel}`, icon: '/UrCare.png' }); } catch {}
-      }
+      // The phone already has this one scheduled; on the web show it now.
+      if (!phoneNotificationsAreNative()) showPhoneNotification(next.title, `Starting at ${next.timeLabel}`, remindedKey);
     };
 
     check();
     const interval = setInterval(check, 30000);
     return () => { cancelled = true; clearInterval(interval); };
+  }, [account?.uid, profile.preferences?.enableNotifications]);
+
+  // Every new in-app notification (family progress, orders, doctor replies…)
+  // also goes to the phone's notification bar. Checked every 30 s while the
+  // app is open or in the background; the first check only remembers what's
+  // already there, so old ones don't pop up again.
+  useEffect(() => {
+    if (!account?.uid) return;
+    if (profile.preferences?.enableNotifications === false) return;
+    const seenKey = `urcare_pushed_notifications_${account.uid}`;
+    let seen: Set<string> | null = null;
+    try { const raw = localStorage.getItem(seenKey); if (raw) seen = new Set(JSON.parse(raw)); } catch {}
+    let cancelled = false;
+    const check = async () => {
+      const list = await getNotifications().catch(() => []);
+      if (cancelled) return;
+      if (!seen) {
+        seen = new Set(list.map((n) => n.id));
+      } else {
+        for (const n of list) {
+          if (seen.has(n.id)) continue;
+          seen.add(n.id);
+          // Plan reminders are scheduled on the phone already.
+          if (!n.read && !(n.data as any)?.dedupeKey) showPhoneNotification(n.title, n.body || '', `notif:${n.id}`);
+        }
+      }
+      try { localStorage.setItem(seenKey, JSON.stringify([...seen].slice(-300))); } catch {}
+    };
+    check();
+    const interval = setInterval(check, 30000);
+    window.addEventListener('urcare:refresh', check);
+    return () => { cancelled = true; clearInterval(interval); window.removeEventListener('urcare:refresh', check); };
   }, [account?.uid, profile.preferences?.enableNotifications]);
 
   // Modals state
