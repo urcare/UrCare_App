@@ -2150,6 +2150,9 @@ app.post('/api/store/coupon', async (req, res) => {
 // ----------------------------------------------------------------------------
 const APP_ACCESS_PRODUCT_ID = 'prod_app_access';
 const APP_ACCESS_REQUIRED_SINCE = process.env.APP_ACCESS_REQUIRED_SINCE || '1970-01-01T00:00:00Z';
+// The paywall is switched off for now (until the family plan is ready). Set
+// APP_ACCESS_PAYWALL_ENABLED=true on the server to turn it back on.
+const APP_ACCESS_PAYWALL_ENABLED = process.env.APP_ACCESS_PAYWALL_ENABLED === 'true';
 
 app.get('/api/access-status', requireUser(async (req, res, user) => {
   const supabase = getSupabaseAdmin();
@@ -2159,6 +2162,7 @@ app.get('/api/access-status', requireUser(async (req, res, user) => {
     supabase.from('products').select('discount_price, price').eq('id', APP_ACCESS_PRODUCT_ID).maybeSingle(),
   ]);
   const price = Number(product?.discount_price ?? product?.price) || 499;
+  if (!APP_ACCESS_PAYWALL_ENABLED) return res.json({ required: false, hasAccess: true, price });
   const createdAt = profileRow?.created_at || (user as any).created_at || new Date().toISOString();
   if (new Date(createdAt) < new Date(APP_ACCESS_REQUIRED_SINCE)) return res.json({ required: false, hasAccess: true, price });
 
