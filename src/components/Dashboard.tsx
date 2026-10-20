@@ -6,12 +6,13 @@ import {
   ShoppingBag, Stethoscope, Camera, Lock, ClipboardCheck,
   Package, User, Check, FileText, CheckCircle2, HeartPulse,
   LogOut, MessageSquare, AlertCircle, MoreVertical, X, Bot,
-  Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash, MessageSquareHeart, Trophy,
+  Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash, MessageSquareHeart, Trophy, ShoppingCart,
 } from 'lucide-react';
 import { LeaderboardPage } from './LeaderboardPage';
 import { FamilyPage } from './FamilyPage';
 import { RewardUnlockWatcher } from './Rewards';
 import { PullToRefresh, refreshEverything } from './PullToRefresh';
+import { getCachedAccountState } from '../utils/accountState';
 import { 
   UserHealthProfile, MealItem, UserAccount, MedicalReportAnalysis, 
   Order, Prescription, BurnActivity, MedicationLogItem 
@@ -70,6 +71,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // always free — 'store' isn't in the primary nav (see navItems below) but
   // is still reachable from Home's quick-actions grid.
   const [activeTab, setActiveTab] = useState<'profile' | 'plan' | 'premium' | 'account' | 'reports' | 'assessment' | 'store' | 'tracker' | 'leaderboard' | 'family'>('profile');
+  // Pharmacy sub-sections (Shop / Cart / My Orders) opened from the menu or the
+  // header cart button; the cart count shown on that button.
+  const openPharmacy = (view: 'shop' | 'cart' | 'orders') => {
+    (window as any).__urcarePharmacyView = view;
+    setActiveTab('store');
+    window.dispatchEvent(new CustomEvent('urcare:pharmacy', { detail: view }));
+  };
+  const [cartCount, setCartCount] = useState<number>(() => (getCachedAccountState().cart || []).reduce((n, it) => n + (it.quantity || 0), 0));
+  useEffect(() => {
+    const onCount = (e: Event) => setCartCount(Number((e as CustomEvent).detail) || 0);
+    window.addEventListener('urcare:cart-count', onCount);
+    return () => window.removeEventListener('urcare:cart-count', onCount);
+  }, []);
+
   // The Home "+" opens Family & Friends straight into "add someone".
   const [familyStartAdding, setFamilyStartAdding] = useState(false);
   // Opened from a scanned profile QR (?add=@name): show that person with "Add".
@@ -600,11 +615,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             <button
               type="button"
-              onClick={() => setIsMyOrdersOpen(true)}
-              className="p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
-              title={tr('Orders & Receipts', 'ऑर्डर व रसीदें')}
+              onClick={() => openPharmacy('cart')}
+              className="relative p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
+              title={tr('Cart', 'कार्ट')}
             >
-              <Package className="w-4 h-4 text-emerald-600" />
+              <ShoppingCart className="w-4 h-4 text-emerald-600" />
+              {cartCount > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center">{cartCount}</span>}
             </button>
 
             <button
@@ -676,10 +692,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <button
             type="button"
-            onClick={() => setIsMyOrdersOpen(true)}
-            className="p-2 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 border border-zinc-200 shrink-0"
+            onClick={() => openPharmacy('cart')}
+            className="relative p-2 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 border border-zinc-200 shrink-0"
+            title={tr('Cart', 'कार्ट')}
           >
-            <Package className="w-4 h-4 text-emerald-600" />
+            <ShoppingCart className="w-4 h-4 text-emerald-600" />
+            {cartCount > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center">{cartCount}</span>}
           </button>
         </div>
       </header>
@@ -805,8 +823,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   const ItemIcon = item.icon;
                   const isActive = item.id !== 'settings' && item.id !== 'logout' && item.id !== 'doctor_hotline' && item.id !== 'app_feedback' && item.id !== 'ai_bots' && activeTab === (item.id as typeof activeTab);
                   return (
+                    <React.Fragment key={item.id}>
                     <button
-                      key={item.id}
                       type="button"
                       onClick={() => {
                         if (item.id === 'settings') {
@@ -845,6 +863,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <span className="flex-1 min-w-0 text-left">{item.label}</span>
                       <ChevronRight className="w-4 h-4 shrink-0 opacity-40 group-hover:opacity-70 group-hover:translate-x-0.5 transition-all" />
                     </button>
+                    {item.id === 'store' && (
+                      <div className="ml-7 pl-4 border-l-2 border-emerald-100 space-y-0.5 pb-1">
+                        {([
+                          ['shop', tr('Shop', 'शॉप'), ShoppingBag],
+                          ['cart', tr(cartCount ? `Cart (${cartCount})` : 'Cart', cartCount ? `कार्ट (${cartCount})` : 'कार्ट'), ShoppingCart],
+                          ['orders', tr('My Orders & history', 'मेरे ऑर्डर व हिस्ट्री'), Package],
+                        ] as const).map(([view, label, SubIcon]) => (
+                          <button
+                            key={view}
+                            type="button"
+                            onClick={() => { openPharmacy(view); setIsModuleMenuOpen(false); }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-[13px] font-semibold text-zinc-700 hover:bg-emerald-50 hover:text-emerald-700 cursor-pointer"
+                          >
+                            <SubIcon className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="flex-1 min-w-0">{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </nav>

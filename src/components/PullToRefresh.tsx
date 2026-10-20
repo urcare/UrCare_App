@@ -26,7 +26,6 @@ export const PullToRefresh: React.FC<{ onRefresh?: () => Promise<unknown> | void
 
   const opacity = useTransform(pull, [0, 24, TRIGGER], [0, 0.6, 1]);
   const scale = useTransform(pull, [0, TRIGGER], [0.5, 1]);
-  const rotate = useTransform(pull, [0, MAX], [0, 300]);
   const progress = useTransform(pull, [0, TRIGGER], [0, 1]);
   const dash = useTransform(progress, (p) => 2 * Math.PI * 14 * (1 - Math.min(1, p) * 0.8));
 
@@ -71,7 +70,8 @@ export const PullToRefresh: React.FC<{ onRefresh?: () => Promise<unknown> | void
         setRefreshing(false);
         busy.current = false;
       }
-      animate(pull, 0, { type: 'spring', stiffness: 220, damping: 26 });
+      // Glide back up smoothly (ease-out, no bounce) as it fades away.
+      animate(pull, 0, { duration: 0.45, ease: [0.22, 1, 0.36, 1] });
     };
     window.addEventListener('touchstart', onStart, { passive: true });
     window.addEventListener('touchmove', onMove, { passive: false });
@@ -89,24 +89,15 @@ export const PullToRefresh: React.FC<{ onRefresh?: () => Promise<unknown> | void
     <>
       {/* Rests just below the app header while spinning. */}
       <motion.div aria-hidden={!refreshing} className={`ptr-indicator ${refreshing ? 'is-refreshing' : ''}`} style={{ y: useTransform(pull, (v) => v * 1.8 - 56), opacity, scale }}>
-        {refreshing ? (
-          // CSS-only spinner: runs on the compositor, smooth even while data loads.
-          <span className="ptr-ring ptr-spin">
-            <svg viewBox="0 0 36 36" className="w-full h-full">
-              <circle cx="18" cy="18" r="14" fill="none" stroke="#d1fae5" strokeWidth="3.5" />
-              <circle cx="18" cy="18" r="14" fill="none" stroke="url(#ptrGrad)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 14 * 0.3} ${2 * Math.PI * 14}`} />
-              <defs><linearGradient id="ptrGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#16a34a" /></linearGradient></defs>
-            </svg>
-          </span>
-        ) : (
-          <motion.span className="ptr-ring" style={{ rotate }}>
-            <svg viewBox="0 0 36 36" className="w-full h-full">
-              <circle cx="18" cy="18" r="14" fill="none" stroke="#d1fae5" strokeWidth="3.5" />
-              <motion.circle cx="18" cy="18" r="14" fill="none" stroke="url(#ptrGrad2)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={2 * Math.PI * 14} style={{ strokeDashoffset: dash }} />
-              <defs><linearGradient id="ptrGrad2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#16a34a" /></linearGradient></defs>
-            </svg>
-          </motion.span>
-        )}
+        {/* One ring that keeps spinning (CSS, on the GPU) while you pull —
+            its arc grows with the pull — and while everything reloads. */}
+        <span className="ptr-ring ptr-spin">
+          <svg viewBox="0 0 36 36" className="w-full h-full">
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#d1fae5" strokeWidth="3.5" />
+            <motion.circle cx="18" cy="18" r="14" fill="none" stroke="url(#ptrGrad)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={2 * Math.PI * 14} style={{ strokeDashoffset: refreshing ? 2 * Math.PI * 14 * 0.7 : dash }} />
+            <defs><linearGradient id="ptrGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#15803d" /></linearGradient></defs>
+          </svg>
+        </span>
         <img src="/urcare-logo-mark.png" alt="" className="ptr-logo" />
       </motion.div>
       {/* The page itself isn't moved: a transform here would break every

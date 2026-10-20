@@ -76,6 +76,19 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const [isCartOpen, setIsCartOpen] = useState(false);
   // Pharmacy sections: the shop shelf or the member's own orders (the cart opens as a drawer).
   const [pharmacyView, setPharmacyView] = useState<'shop' | 'orders'>('shop');
+  // Opened from the menu's Pharmacy sub-items (Shop / Cart / My Orders) or the header cart button.
+  useEffect(() => {
+    const apply = (view: string | undefined) => {
+      if (view === 'orders') setPharmacyView('orders');
+      else if (view === 'cart') { setPharmacyView('shop'); setIsCartOpen(true); }
+      else if (view === 'shop') setPharmacyView('shop');
+    };
+    apply((window as any).__urcarePharmacyView);
+    (window as any).__urcarePharmacyView = undefined;
+    const onNav = (e: Event) => { apply(String((e as CustomEvent).detail)); (window as any).__urcarePharmacyView = undefined; };
+    window.addEventListener('urcare:pharmacy', onNav);
+    return () => window.removeEventListener('urcare:pharmacy', onNav);
+  }, []);
   const [addedAnimationId, setAddedAnimationId] = useState<string | null>(null);
   const [selectedProductDetails, setSelectedProductDetails] = useState<Product | null>(null);
   // The pack picked in the details popup — starts at the default pack.
@@ -222,6 +235,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
   // Cart calculations
   const totalCartItems = cart.reduce((acc, item) => acc + item.quantity, 0);
+  // The header cart button shows this count.
+  useEffect(() => { window.dispatchEvent(new CustomEvent('urcare:cart-count', { detail: totalCartItems })); }, [totalCartItems]);
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.discountPrice || item.product.price) * item.quantity, 0);
   const couponDiscount = couponResult?.valid ? couponResult.discount : 0;
   // Referral points: ₹1 each, spent in whole 50-point blocks (same rule as the server).
@@ -451,29 +466,14 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
         </div>
       </div>
 
-      {/* Pharmacy sections: Shop · Cart · My Orders */}
-      <div className="pharmacy-tabs sticky top-0 z-20 -mx-1 px-1 py-1.5">
-        <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl bg-white/90 backdrop-blur border border-emerald-100 shadow-sm">
-          <button type="button" onClick={() => setPharmacyView('shop')} className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-colors ${pharmacyView === 'shop' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-600 hover:bg-emerald-50'}`}>
-            <ShoppingBag className="w-4 h-4" />{tr('Shop', 'शॉप')}
-          </button>
-          <button id="cart-trigger-btn" type="button" onClick={() => setIsCartOpen(true)} className="relative flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black cursor-pointer text-zinc-700 hover:bg-emerald-50">
-            <span className="relative">
-              <ShoppingCart className="w-4 h-4 text-emerald-700" />
-              {totalCartItems > 0 && <span className="absolute -top-2 -right-2.5 min-w-4 h-4 px-1 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center">{totalCartItems}</span>}
-            </span>
-            <span>{tr('Cart', 'कार्ट')}</span>
-            {totalCartItems > 0 && <span className="hidden sm:inline text-[10px] font-mono text-emerald-700">₹{cartSubtotal.toLocaleString('en-IN')}</span>}
-          </button>
-          <button type="button" onClick={() => setPharmacyView('orders')} className={`relative flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-colors ${pharmacyView === 'orders' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-600 hover:bg-emerald-50'}`}>
-            <Package className="w-4 h-4" />{tr('My Orders', 'मेरे ऑर्डर')}
-            {orders.length > 0 && <span className={`min-w-4 h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center ${pharmacyView === 'orders' ? 'bg-white text-emerald-700' : 'bg-emerald-100 text-emerald-700'}`}>{orders.length}</span>}
-          </button>
-        </div>
-      </div>
-
       {pharmacyView === 'orders' ? (
-        <MyOrdersModal isOpen inline orders={orders} onClose={() => {}} onOpenStore={() => setPharmacyView('shop')} />
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="flex items-center gap-2 text-base font-black text-zinc-900"><Package className="w-5 h-5 text-emerald-600" />{tr('My Orders & history', 'मेरे ऑर्डर व हिस्ट्री')}</h3>
+            <button type="button" onClick={() => setPharmacyView('shop')} className="px-3 py-1.5 rounded-xl border border-emerald-200 text-emerald-700 text-xs font-black cursor-pointer hover:bg-emerald-50">{tr('← Back to shop', '← शॉप पर वापस')}</button>
+          </div>
+          <MyOrdersModal isOpen inline orders={orders} onClose={() => {}} onOpenStore={() => setPharmacyView('shop')} />
+        </section>
       ) : (
       <>
       {/* Coupon banner — same offer as urcare.org */}

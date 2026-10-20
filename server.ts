@@ -2250,27 +2250,32 @@ function referralCodeFor(userId: string): string {
   return 'UC' + userId.replace(/-/g, '').slice(0, 6).toUpperCase();
 }
 
-async function countReferrals(supabase: any, code: string): Promise<number> {
-  let count = 0;
+/** Ids of the accounts that joined with this referral code. */
+async function referredUserIds(supabase: any, code: string): Promise<string[]> {
+  const ids: string[] = [];
   for (let page = 1; page <= 20; page++) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
     if (error) break;
     const users = data?.users || [];
-    count += users.filter((u: any) => u.app_metadata?.referred_by === code).length;
+    for (const u of users) if (u.app_metadata?.referred_by === code) ids.push(u.id);
     if (users.length < 1000) break;
   }
-  return count;
+  return ids;
 }
 
 async function referralSummary(supabase: any, userId: string) {
   const code = referralCodeFor(userId);
-  const [joined, { data: orders }, { data: me }] = await Promise.all([
-    countReferrals(supabase, code),
+  const [referredIds, { data: orders }, { data: me }] = await Promise.all([
+    referredUserIds(supabase, code),
     supabase.from('orders').select('shipping_address, payment_status').eq('user_id', userId),
     supabase.auth.admin.getUserById(userId),
   ]);
-  // +100 for every person who accepted this member's family request.
-  const familyBonus = (Array.isArray(me?.user?.app_metadata?.family_bonus_ids) ? me.user.app_metadata.family_bonus_ids.length : 0) * FAMILY_BONUS_POINTS;
+  // +FAMILY_BONUS_POINTS for every person who accepted this member's family request.
+  const bonusIds: string[] = Array.isArray(me?.user?.app_metadata?.family_bonus_ids) ? me.user.app_metadata.family_bonus_ids : [];
+  const familyBonus = bonusIds.length * FAMILY_BONUS_POINTS;
+  // Everyone brought in counts towards "every 5 = +500": friends who joined
+  // with the link AND family/friends who accepted a request (each person once).
+  const joined = new Set([...referredIds, ...bonusIds]).size;
   const earned = Math.floor(joined / REFERRALS_PER_REWARD) * REFERRAL_REWARD_POINTS + familyBonus;
   const spent = (orders || [])
     .filter((o: any) => o.payment_status !== ORDER_PAYMENT.rejected)

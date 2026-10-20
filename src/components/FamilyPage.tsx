@@ -203,8 +203,8 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
               <div className="flex items-center gap-3">
                 <span className="w-9 h-9 rounded-xl bg-green-700 text-white flex items-center justify-center shrink-0"><Users className="w-4.5 h-4.5" /></span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-black text-zinc-900">{tr(`+₹${referral?.rewardPoints || 500} for every ${perReward} friends who join`, `हर ${perReward} नए दोस्त जुड़ने पर +₹${referral?.rewardPoints || 500}`)}</span>
-                  <span className="block text-[11px] text-zinc-500 font-semibold">{tr(`${towardsNext} of ${perReward} joined with your link`, `आपके लिंक से ${perReward} में से ${towardsNext} जुड़े`)}</span>
+                  <span className="block text-[13px] font-black text-zinc-900">{tr(`+₹${referral?.rewardPoints || 500} extra for every ${perReward} people`, `हर ${perReward} लोगों पर +₹${referral?.rewardPoints || 500} और`)}</span>
+                  <span className="block text-[11px] text-zinc-500 font-semibold">{tr(`${towardsNext} of ${perReward} — family you add and friends who join with your link both count`, `${perReward} में से ${towardsNext} — जोड़े गए परिवार व लिंक से जुड़े दोस्त, दोनों गिने जाते हैं`)}</span>
                 </span>
                 <span className="text-sm font-black text-emerald-700 shrink-0">{referral?.joined || 0}</span>
               </div>
