@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Users, Search, Check, X, Copy, Share2, Gift, Heart, UserPlus, Trash2, Eye, EyeOff, Loader2, QrCode, ScanLine } from 'lucide-react';
 import { UsernameSheet, MyQrSheet, QrScannerSheet } from './ProfileQr';
+import { StatusStrip } from './FamilyStatus';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import {
@@ -67,7 +68,15 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
   const relLabel = (r: string) => { const l = RELATION_LABELS[r] || RELATION_LABELS.other; return `${l[2]} ${tr(l[0], l[1])}`; };
 
   const refresh = useCallback(() => { getFamily().then((s) => { setState(s); setLoading(false); }); }, []);
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+    // Live: requests, members and their progress update every 15 s, and right
+    // away on pull-to-refresh or when a status changes.
+    const poll = window.setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 15000);
+    window.addEventListener('urcare:refresh', refresh);
+    window.addEventListener('urcare:family-status-changed', refresh);
+    return () => { window.clearInterval(poll); window.removeEventListener('urcare:refresh', refresh); window.removeEventListener('urcare:family-status-changed', refresh); };
+  }, [refresh]);
   const flash = (m: string) => { setNotice(m); window.setTimeout(() => setNotice(null), 2400); };
 
   const myId = state?.myId || '';
@@ -146,6 +155,9 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
           <button type="button" onClick={shareId} disabled={!myId} className="shrink-0 p-2 rounded-xl bg-white text-emerald-700 cursor-pointer" title={tr('Share', 'शेयर')}><Share2 className="w-4 h-4" /></button>
         </div>
       </motion.section>
+
+      {/* Today's status — mine + family & friends */}
+      <StatusStrip key={state?.shareProgress ? 'on' : 'off'} tr={tr} />
 
       {/* Bonus */}
       <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-violet-50 to-fuchsia-50 border border-violet-200">

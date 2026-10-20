@@ -518,3 +518,18 @@
   animation: qr-sweep 2.2s ease-in-out infinite;
 }
 @keyframes qr-sweep { 0%, 100% { top: 20%; } 50% { top: 78%; } }
+
+/* ---- In-app status (family & friends) ---- */
+.home-status { grid-column: 1 / -1; }
+.status-story { background: radial-gradient(40rem 30rem at 20% 10%, rgba(52, 211, 153, 0.35), transparent 60%), linear-gradient(160deg, #064e3b 0%, #047857 45%, #0e7490 100%); }
+
+/* ---- Pull-to-refresh indicator ---- */
+.ptr-indicator {
+  position: fixed; top: 0; left: 50%; z-index: 65; margin-left: -24px;
+  width: 48px; height: 48px; border-radius: 999px; pointer-events: none;
+  background: #ffffff; box-shadow: 0 10px 28px -10px rgba(6, 78, 59, 0.55), 0 0 0 1px rgba(16, 185, 129, 0.15);
+  display: flex; align-items: center; justify-content: center;
+  padding-top: env(safe-area-inset-top);
+}
+.ptr-ring { position: absolute; inset: 5px; display: block; }
+.ptr-logo { width: 20px; height: 20px; object-fit: contain; }

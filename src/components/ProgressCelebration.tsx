@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import confetti from 'canvas-confetti';
-import { Share2, X } from 'lucide-react';
+import { Share2, X, Check, Eye } from 'lucide-react';
+import { getFamily, setFamilyShareProgress } from '../utils/supabase';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -126,6 +127,9 @@ interface ProgressCelebrationProps {
 export const ProgressCelebration: React.FC<ProgressCelebrationProps> = ({ pct, done, total, name, onClose, tr }) => {
   const msg = useMemo(() => progressMessage(pct, tr), [pct, tr]);
   const [sharing, setSharing] = useState(false);
+  // Is this progress already showing on the member's in-app family status?
+  const [familyShare, setFamilyShare] = useState<boolean | null>(null);
+  React.useEffect(() => { getFamily().then((s) => setFamilyShare(s ? s.shareProgress : null)); }, []);
   React.useEffect(() => {
     if (pct >= 100) {
       try { confetti({ particleCount: 120, spread: 80, origin: { y: 0.55 }, colors: ['#10b981', '#fde68a', '#22d3ee', '#ffffff'] }); } catch {}
@@ -173,6 +177,15 @@ export const ProgressCelebration: React.FC<ProgressCelebrationProps> = ({ pct, d
               </button>
             </div>
             <p className="mt-2 text-[10px] font-semibold text-zinc-400">{tr('WhatsApp Status, Instagram Story or any app', 'WhatsApp स्टेटस, Instagram स्टोरी या कोई भी ऐप')}</p>
+            {familyShare !== null && (
+              familyShare ? (
+                <p className="mt-3 text-[11px] font-black text-emerald-700 flex items-center justify-center gap-1"><Check className="w-3.5 h-3.5" />{tr('Posted to your in-app status for your family', 'परिवार के लिए आपके ऐप स्टेटस पर लग गया')}</p>
+              ) : (
+                <button type="button" onClick={async () => { setFamilyShare(true); await setFamilyShareProgress(true); window.dispatchEvent(new Event('urcare:family-status-changed')); }} className="mt-3 w-full py-2.5 rounded-2xl border-2 border-dashed border-emerald-300 text-emerald-700 text-xs font-black cursor-pointer flex items-center justify-center gap-1.5">
+                  <Eye className="w-4 h-4" />{tr('Show my status to my family & friends', 'मेरा स्टेटस परिवार व दोस्तों को दिखाएं')}
+                </button>
+              )
+            )}
           </div>
         </motion.div>
       </div>

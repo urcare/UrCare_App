@@ -2405,8 +2405,10 @@ app.get('/api/family', requireUser(async (req, res, user) => {
       sharesProgress: shares,
       progress: shares && prog?.date === today ? { pct: prog.pct, done: prog.done, total: prog.total } : null,
       status: shares && theirMeta.daily_status?.date === today ? theirMeta.daily_status.text : null,
+      statusUpdates: shares && theirMeta.daily_status?.date === today ? (theirMeta.daily_status.updates || []) : [],
     };
   }));
+  const myStatus = meta.daily_status?.date === today ? meta.daily_status.updates || [] : [];
   const requestRows = await Promise.all(requests.map(async (r: any) => {
     const u = await getAuthUser(supabase, r.from);
     return u ? { ...(await publicPerson(supabase, u)), relation: r.relation, at: r.at } : null;
@@ -2414,6 +2416,7 @@ app.get('/api/family', requireUser(async (req, res, user) => {
   res.json({
     myId: referralCodeFor(user.id),
     username: meta.username || null,
+    me: { ...(await publicPerson(supabase, me)), statusUpdates: myStatus },
     shareProgress: !!meta.family_share_progress,
     bonusPerPerson: FAMILY_BONUS_POINTS,
     members: memberRows.filter(Boolean),
@@ -2515,9 +2518,15 @@ app.post('/api/progress/today', requireUser(async (req, res, user) => {
   const meta = await patchUserMeta(supabase, user.id, (m) => {
     const prev = m.progress_today?.date === date ? m.progress_today : { notified: [] };
     crossed = [50, 100].filter((t) => pct >= t && !(prev.notified || []).includes(t));
+    // The in-app status: a new update each time today's progress passes
+    // 25 / 50 / 75 / 90 / 100%. Only today's updates are kept.
+    const updates: any[] = m.daily_status?.date === date && Array.isArray(m.daily_status.updates) ? m.daily_status.updates : [];
+    const lastStep = updates.length ? updates[updates.length - 1].step : 0;
+    const step = [100, 90, 75, 50, 25].find((s) => pct >= s) || 0;
+    const nextUpdates = step > lastStep ? [...updates, { step, pct, done, total, text: status || '', at: new Date().toISOString() }].slice(-6) : updates;
     return {
       progress_today: { date, done, total, pct, notified: [...(prev.notified || []), ...crossed] },
-      ...(status ? { daily_status: { date, text: status } } : {}),
+      daily_status: { date, text: status || m.daily_status?.text || '', updates: nextUpdates },
     };
   });
   if (meta?.family_share_progress && crossed.length) {

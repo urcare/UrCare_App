@@ -16,6 +16,7 @@ import { TodaysExerciseCard } from './TodaysExerciseCard';
 import { HealthOverviewCard } from './HealthOverviewCard';
 import { ShareHealthModal } from './ShareHealthModal';
 import { UrCareBuddy, progressMessage } from './ProgressCelebration';
+import { StatusStrip } from './FamilyStatus';
 // Premium UI components from Magic UI (MIT) — see ./magicui/LICENSE.md.
 import { AnimatedCircularProgressBar } from './magicui/animated-circular-progress-bar';
 import { NumberTicker } from './magicui/number-ticker';
@@ -229,6 +230,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   // Daily Plan (see Dashboard's handleUpdateReport) — forces the plan fetch
   // below to re-run immediately instead of waiting for the next date change.
   const [planRefreshKey, setPlanRefreshKey] = useState(0);
+  // Live: the notification badge checks every 30 s while the app is open.
+  useEffect(() => {
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === 'visible') getNotifications().then((list) => setUnreadCount(list.filter((n) => !n.read).length)).catch(() => {});
+    }, 30000);
+    return () => window.clearInterval(poll);
+  }, []);
   useEffect(() => {
     const handler = () => setPlanRefreshKey((k) => k + 1);
     window.addEventListener('urcare:daily-plan-changed', handler);
@@ -669,6 +677,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               {tr('No plan available for today.', 'आज के लिए कोई योजना उपलब्ध नहीं है।')}
             </div>
           )}
+        </motion.div>
+
+        {/* Today's status — mine + family & friends (WhatsApp-style). */}
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.11 }} className="home-status">
+          <StatusStrip tr={tr} />
         </motion.div>
 
         {/* UrCare Buddy — its expression follows today's progress. */}

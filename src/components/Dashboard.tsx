@@ -11,6 +11,7 @@ import {
 import { LeaderboardPage } from './LeaderboardPage';
 import { FamilyPage } from './FamilyPage';
 import { RewardUnlockWatcher } from './Rewards';
+import { PullToRefresh, refreshEverything } from './PullToRefresh';
 import { 
   UserHealthProfile, MealItem, UserAccount, MedicalReportAnalysis, 
   Order, Prescription, BurnActivity, MedicationLogItem 
@@ -155,6 +156,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   useEffect(() => {
     refreshAccountData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.uid]);
+
+  // Coming back to the app (switching apps, unlocking the phone) reloads
+  // everything at once, so what you see is always current.
+  useEffect(() => {
+    let last = Date.now();
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < 10000) return;
+      last = Date.now();
+      refreshEverything();
+      refreshAccountData();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.uid]);
 
@@ -838,6 +854,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </AnimatePresence>
 
       {/* 4. MAIN CONTENT CONTAINER (Desktop pl-64) */}
+      <PullToRefresh onRefresh={() => refreshAccountData()}>
       <div className="md:pl-64 w-full">
 
         {activeTab === 'profile' ? (
@@ -1108,6 +1125,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </main>
         )}
       </div>
+      </PullToRefresh>
 
       {/* MODALS */}
       {isHealthReportOpen && (

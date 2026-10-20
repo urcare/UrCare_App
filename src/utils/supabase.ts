@@ -1368,10 +1368,14 @@ export interface FamilyLink extends FamilyPerson {
   sharesProgress: boolean;
   progress: { pct: number; done: number; total: number } | null;
   status: string | null;
+  statusUpdates: StatusUpdate[];
 }
+/** One automatic in-app status: posted when today's progress passes 25/50/75/90/100%. */
+export interface StatusUpdate { step: number; pct: number; done: number; total: number; text: string; at: string }
 export interface FamilyState {
   myId: string;
   username: string | null;
+  me: FamilyPerson & { statusUpdates: StatusUpdate[] };
   shareProgress: boolean;
   bonusPerPerson: number;
   members: FamilyLink[];
