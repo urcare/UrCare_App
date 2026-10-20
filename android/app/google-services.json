@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "354704452364",
+    "project_id": "urcare-health-1021",
+    "storage_bucket": "urcare-health-1021.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:354704452364:android:eb331b25cc12b6adab7729",
+        "android_client_info": {
+          "package_name": "org.urcare.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTAjwAwjqh23Ei56QlG6noj_xDFxBiYUM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
