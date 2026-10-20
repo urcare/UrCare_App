@@ -9,6 +9,8 @@ import {
   Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash, MessageSquareHeart, Trophy,
 } from 'lucide-react';
 import { LeaderboardPage } from './LeaderboardPage';
+import { FamilyPage } from './FamilyPage';
+import { RewardUnlockWatcher } from './Rewards';
 import { 
   UserHealthProfile, MealItem, UserAccount, MedicalReportAnalysis, 
   Order, Prescription, BurnActivity, MedicationLogItem 
@@ -66,7 +68,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // (identity, stats, quick actions). 'reports', 'assessment' + 'store' are
   // always free — 'store' isn't in the primary nav (see navItems below) but
   // is still reachable from Home's quick-actions grid.
-  const [activeTab, setActiveTab] = useState<'profile' | 'plan' | 'premium' | 'account' | 'reports' | 'assessment' | 'store' | 'tracker' | 'leaderboard'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'plan' | 'premium' | 'account' | 'reports' | 'assessment' | 'store' | 'tracker' | 'leaderboard' | 'family'>('profile');
+  // The Home "+" opens Family & Friends straight into "add someone".
+  const [familyStartAdding, setFamilyStartAdding] = useState(false);
 
   // '⋮' module switcher — a single drawer, opened from one fixed spot in the
   // persistent header/sidebar (never inline in a tab's scrolling content), so
@@ -86,6 +90,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
     { id: 'assessment' as const, label: tr('Root Cause Analysis', 'रूट कॉज़ एनालिसिस'), icon: ClipboardCheck },
     { id: 'store' as const, label: tr('UrCare Medical Pharmacy', 'UrCare मेडिकल फार्मेसी'), icon: ShoppingBag },
+    { id: 'family' as const, label: tr('Family & Friends', 'परिवार व दोस्त'), icon: Heart },
     { id: 'leaderboard' as const, label: tr('Leaderboard & Rewards', 'लीडरबोर्ड व रिवॉर्ड्स'), icon: Trophy },
     // Not a tab — opens the Doctor Consult modal directly (see the drawer's
     // onClick). Used to be its own persistent sidebar card; moved in here to
@@ -413,6 +418,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           ProfilePage/AccountPage) scrolls over this one same still backdrop
           instead of each tab carrying its own flat page color. */}
       <AppBackground />
+      {/* Pops up whenever a new badge / milestone is unlocked. */}
+      <RewardUnlockWatcher userId={account.uid} tr={tr} />
 
       {/* QUEUE ALERT POPUP — shows on top of whatever tab is open the
           instant this patient's turn comes up (or their position changes),
@@ -791,6 +798,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         } else if (item.id === 'ai_bots') {
                           setIsHealthBotsOpen(true);
                         } else {
+                          setFamilyStartAdding(false);
                           setActiveTab(item.id);
                         }
                         setIsModuleMenuOpen(false);
@@ -839,9 +847,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onOpenAssessment={() => setIsAssessmentModalOpen(true)}
             onOpenMoreMenu={() => setIsModuleMenuOpen(true)}
             onAskUrCare={(prompt) => { setHealthBotsPrompt(prompt); setIsHealthBotsOpen(true); }}
+            onAddFamily={() => { setFamilyStartAdding(true); setActiveTab('family'); }}
           />
+        ) : activeTab === 'family' ? (
+          <FamilyPage key={familyStartAdding ? 'adding' : 'view'} tr={tr} startAdding={familyStartAdding} />
         ) : activeTab === 'leaderboard' ? (
-          <LeaderboardPage tr={tr} onOpenStore={() => setActiveTab('store')} />
+          <LeaderboardPage tr={tr} userId={account.uid} onOpenStore={() => setActiveTab('store')} />
         ) : activeTab === 'plan' ? (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
             {/* Leaderboard & referral teaser, right above the plan */}

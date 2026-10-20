@@ -1321,6 +1321,51 @@ export async function saveOrderAndReceiptToSupabase(order: Order): Promise<{ suc
   return { success: true, orderId: data.order?.id || order.id };
 }
 
+// ---------------------------------------------------------------- family
+
+export interface FamilyPerson { id: string; name: string; avatar: string | null }
+export interface FamilyLink extends FamilyPerson {
+  relation: string;
+  group: 'family' | 'friends';
+  addedAt?: string;
+  sharesProgress: boolean;
+  progress: { pct: number; done: number; total: number } | null;
+  status: string | null;
+}
+export interface FamilyState {
+  myId: string;
+  shareProgress: boolean;
+  bonusPerPerson: number;
+  members: FamilyLink[];
+  requests: (FamilyPerson & { relation: string; at?: string })[];
+  relations: string[];
+}
+
+const jsonOrNull = async (res: Response) => { try { return await res.json(); } catch { return null; } };
+
+export async function getFamily(): Promise<FamilyState | null> {
+  try { const res = await authedFetch('/api/family', { method: 'GET' }); return res.ok ? await res.json() : null; } catch { return null; }
+}
+export async function searchFamilyMember(id: string): Promise<{ found: boolean; already?: boolean; person?: FamilyPerson; message?: string }> {
+  try { const res = await authedFetch('/api/family/search', { method: 'POST', body: JSON.stringify({ id }) }); return (await jsonOrNull(res)) || { found: false }; } catch { return { found: false, message: 'Could not search right now.' }; }
+}
+export async function sendFamilyRequest(id: string, relation: string): Promise<boolean> {
+  try { const res = await authedFetch('/api/family/request', { method: 'POST', body: JSON.stringify({ id, relation }) }); return res.ok; } catch { return false; }
+}
+export async function respondFamilyRequest(id: string, accept: boolean, relation: string): Promise<boolean> {
+  try { const res = await authedFetch('/api/family/respond', { method: 'POST', body: JSON.stringify({ id, accept, relation }) }); return res.ok; } catch { return false; }
+}
+export async function removeFamilyMember(id: string): Promise<boolean> {
+  try { const res = await authedFetch('/api/family/remove', { method: 'POST', body: JSON.stringify({ id }) }); return res.ok; } catch { return false; }
+}
+export async function setFamilyShareProgress(shareProgress: boolean): Promise<boolean> {
+  try { const res = await authedFetch('/api/family/settings', { method: 'POST', body: JSON.stringify({ shareProgress }) }); return res.ok; } catch { return false; }
+}
+/** Tells the server today's plan progress (family is notified at 50% / 100% if sharing is on). */
+export async function reportTodayProgress(done: number, total: number, status?: string): Promise<void> {
+  try { await authedFetch('/api/progress/today', { method: 'POST', body: JSON.stringify({ done, total, status }) }); } catch {}
+}
+
 export interface ReferralStatus {
   code: string;
   joined: number;

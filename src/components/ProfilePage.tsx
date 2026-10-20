@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Bell, ChevronRight, Utensils, Sparkles, Leaf, MoreVertical,
-  Stethoscope, GitCommit, MessageCircleMore, CalendarDays, Clock3, CheckCircle2, Share2,
+  Stethoscope, GitCommit, MessageCircleMore, CalendarDays, Clock3, CheckCircle2, Share2, Plus,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, Prescription, MedicalReportAnalysis, ActivityLogEntry, CareTeamStatus } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -15,6 +15,7 @@ import { ChatPanel } from './ChatPanel';
 import { TodaysExerciseCard } from './TodaysExerciseCard';
 import { HealthOverviewCard } from './HealthOverviewCard';
 import { ShareHealthModal } from './ShareHealthModal';
+import { UrCareBuddy, progressMessage } from './ProgressCelebration';
 // Premium UI components from Magic UI (MIT) — see ./magicui/LICENSE.md.
 import { AnimatedCircularProgressBar } from './magicui/animated-circular-progress-bar';
 import { NumberTicker } from './magicui/number-ticker';
@@ -165,6 +166,8 @@ interface ProfilePageProps {
   onOpenMoreMenu: () => void;
   /** Opens the AI chat with this question ready to send. */
   onAskUrCare?: (prompt: string) => void;
+  /** Opens Family & Friends with the "add someone" sheet. */
+  onAddFamily?: () => void;
 }
 
 /** "Home" — a calm, focused landing summary: today's next step, this
@@ -182,6 +185,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onOpenAssessment,
   onOpenMoreMenu,
   onAskUrCare,
+  onAddFamily,
 }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
@@ -436,6 +440,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
             <RippleButton
               type="button"
+              onClick={() => onAddFamily?.()}
+              rippleColor="#10b981"
+              className="header-icon-btn header-add-btn shrink-0"
+              title={tr('Add family & friends', 'परिवार व दोस्त जोड़ें')}
+            >
+              <Plus className="w-4 h-4" />
+            </RippleButton>
+            <RippleButton
+              type="button"
               onClick={() => setIsShareOpen(true)}
               rippleColor="#10b981"
               className="header-icon-btn shrink-0"
@@ -657,6 +670,28 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
           )}
         </motion.div>
+
+        {/* UrCare Buddy — its expression follows today's progress. */}
+        {stepsTotal > 0 && (() => {
+          const pct = Math.round((stepsDone / stepsTotal) * 100);
+          const msg = progressMessage(pct, tr);
+          return (
+            <motion.button
+              type="button"
+              onClick={onOpenPlan}
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.12 }}
+              whileTap={{ scale: 0.99 }}
+              className="home-buddy w-full flex items-center gap-3 p-3 rounded-2xl bg-white border border-zinc-200 shadow-depth text-left cursor-pointer"
+            >
+              <UrCareBuddy pct={pct} size={72} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-black uppercase tracking-wider text-emerald-700">{tr('UrCare Buddy', 'UrCare बडी')}</span>
+                <span className="block text-sm font-black text-zinc-900 leading-snug">{msg.title}</span>
+                <span className="block text-[11px] text-zinc-500 font-semibold leading-snug">{msg.body}</span>
+              </span>
+            </motion.button>
+          );
+        })()}
 
         {/* Your Health Overview — score, Ask UrCare and biological age from the Root Cause Analysis. */}
         <motion.div

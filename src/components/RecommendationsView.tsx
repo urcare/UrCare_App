@@ -17,9 +17,11 @@ import { WeeklyUpdatesPanel } from './WeeklyUpdatesPanel';
 import { FamilyViewSwitcher } from './FamilyViewSwitcher';
 import { unifiedProgramDay } from '../utils/programWeek';
 import { ExerciseVideoModal } from './ExerciseVideoModal';
+import { ProgressCelebration, progressMessage } from './ProgressCelebration';
+import { PlanAlternative } from './PlanAlternative';
 import {
   getDailyPlan, getDailyLog, getTaskCompletion,
-  toggleDailyTask, getActiveDates,
+  toggleDailyTask, getActiveDates, reportTodayProgress,
   addCustomPlanStep, getCustomPlanSteps, deleteCustomPlanStep,
   getFamilyMembers, getPlanChoice, savePlanChoice, updateUploadedPlan, deleteUploadedPlan,
   UploadedPlan,
@@ -475,7 +477,27 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
       setCelebration(celebrationMessages[Math.floor(Math.random() * celebrationMessages.length)]);
       window.setTimeout(() => setCelebration(null), 1600);
     }
+    // Today's own plan: report progress (family sees it if sharing is on) and
+    // pop up a celebration the first time the day crosses 50%, 90% and 100%.
+    if (isToday && !activeDependentId) {
+      const next = { ...completedToday, [taskId]: willBeDone };
+      const total = sortedToday.length;
+      const done = sortedToday.filter((s) => next[s.id]).length;
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      reportTodayProgress(done, total, progressMessage(pct, tr).body);
+      if (willBeDone) {
+        const key = `urcare_celebrated_${dateKey}`;
+        let shown: number[] = [];
+        try { shown = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+        const hit = [100, 90, 50].find((t) => pct >= t && !shown.includes(t));
+        if (hit) {
+          try { localStorage.setItem(key, JSON.stringify([...shown, ...[50, 90, 100].filter((t) => t <= hit)])); } catch {}
+          window.setTimeout(() => setDayCelebration({ pct, done, total }), 900);
+        }
+      }
+    }
   };
+  const [dayCelebration, setDayCelebration] = useState<{ pct: number; done: number; total: number } | null>(null);
 
   const { calculatedPlan } = profile;
   const targetCalories = calculatedPlan?.targetCalories || 1850;
@@ -1274,11 +1296,29 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                             </div>
                             {open && (
                               <div className={`px-3 sm:px-4 pb-3.5 space-y-1.5 ${done ? 'opacity-60' : ''}`}>
-                                {section.body && (
-                                  <p className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
-                                    {section.body}
-                                  </p>
-                                )}
+                                {(() => {
+                                  const altKind = categoryFor(section.title);
+                                  if (!section.isCustom && (altKind === 'meal' || altKind === 'exercise')) {
+                                    return (
+                                      <PlanAlternative
+                                        stepId={section.id}
+                                        dateKey={dateKey}
+                                        title={section.title}
+                                        body={section.body || ''}
+                                        kind={altKind}
+                                        profile={profile}
+                                        language={language}
+                                        isDark={isDark}
+                                        tr={tr}
+                                      />
+                                    );
+                                  }
+                                  return section.body ? (
+                                    <p className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                                      {section.body}
+                                    </p>
+                                  ) : null;
+                                })()}
                                 {section.isCustom && section.verdictReason && (
                                   <p className={`text-xs font-semibold flex items-start gap-1.5 ${isRisky ? 'text-rose-500' : 'text-amber-600'}`}>
                                     {isRisky ? <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
@@ -1400,6 +1440,17 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           tr={tr}
           onClose={() => setIsPlanEditorOpen(false)}
           onSave={handleSaveUploadedPlan}
+        />
+      )}
+
+      {dayCelebration && (
+        <ProgressCelebration
+          pct={dayCelebration.pct}
+          done={dayCelebration.done}
+          total={dayCelebration.total}
+          name={(profile.name || '').split(' ')[0]}
+          tr={tr}
+          onClose={() => setDayCelebration(null)}
         />
       )}
 

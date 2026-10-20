@@ -9,6 +9,7 @@ import { NumberTicker } from './magicui/number-ticker';
 import { BorderBeam } from './magicui/border-beam';
 import { ShineBorder } from './magicui/shine-border';
 import { MagicCard } from './magicui/magic-card';
+import { BadgeGrid, useBadges } from './Rewards';
 
 // Sample players from around the world (illustrated avatars, not real people).
 const PLAYERS: [string, string][] = [
@@ -52,10 +53,12 @@ const fmt = (n: number) => n.toLocaleString('en-IN');
 
 interface LeaderboardPageProps {
   tr: (en: string, hi: string) => string;
+  userId: string;
   onOpenStore: () => void;
 }
 
-export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, onOpenStore }) => {
+export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, userId, onOpenStore }) => {
+  const badges = useBadges(userId);
   const board = useMemo(buildBoard, []);
   const [top3, rest] = [board.slice(0, 3), board.slice(3)];
   const [referral, setReferral] = useState<ReferralStatus | null>(null);
@@ -171,7 +174,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, onOpenStor
               <Share2 className="w-4 h-4" />{tr('More apps', 'और ऐप्स')}
             </button>
           </div>
-          {(referral?.balance || 0) >= 500 && (
+          {(referral?.balance || 0) >= (referral?.block || 100) && (
             <button type="button" onClick={onOpenStore} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-violet-300 text-violet-700 text-xs font-black cursor-pointer hover:bg-violet-50">
               <ShoppingBag className="w-4 h-4" />{tr('Use my points in the Pharmacy', 'फ़ार्मेसी में पॉइंट्स इस्तेमाल करें')}
             </button>
@@ -189,6 +192,15 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, onOpenStor
             ))}
           </ol>
         </div>
+      </section>
+
+      {/* Monthly rewards & badges */}
+      <section>
+        <div className="flex items-center justify-between px-0.5 mb-2">
+          <h2 className="flex items-center gap-2 text-sm font-black text-zinc-900"><Crown className="w-4 h-4 text-amber-500" />{tr('Monthly rewards & badges', 'मासिक रिवॉर्ड व बैज')}</h2>
+          {badges && <span className="text-[11px] font-black text-amber-700">{badges.filter((b) => b.unlocked).length}/{badges.length} {tr('unlocked', 'मिले')}</span>}
+        </div>
+        {badges ? <BadgeGrid badges={badges} tr={tr} /> : <div className="h-40 rounded-2xl bg-zinc-100 animate-pulse" />}
       </section>
 
       {/* Ranks 4–100 */}

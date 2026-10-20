@@ -218,11 +218,11 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const totalCartItems = cart.reduce((acc, item) => acc + item.quantity, 0);
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.discountPrice || item.product.price) * item.quantity, 0);
   const couponDiscount = couponResult?.valid ? couponResult.discount : 0;
-  // Referral points: ₹1 each, spent in whole 500-point blocks (same rule as the server).
+  // Referral points: ₹1 each, spent in whole 100-point blocks (same rule as the server).
   const [referral, setReferral] = useState<ReferralStatus | null>(null);
   const [usePoints, setUsePoints] = useState(false);
   useEffect(() => { getReferralStatus().then(setReferral); }, []);
-  const pointsBlock = referral?.block || 500;
+  const pointsBlock = referral?.block || 100;
   const payableBeforePoints = cartSubtotal - couponDiscount;
   const pointsAvailable = referral ? Math.max(0, Math.min(Math.floor(referral.balance / pointsBlock) * pointsBlock, Math.floor(payableBeforePoints / pointsBlock) * pointsBlock)) : 0;
   const pointsDiscount = usePoints ? pointsAvailable : 0;

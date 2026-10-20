@@ -1409,6 +1409,49 @@ Call the record_food_analysis tool exactly once with the complete result.`;
   }
 }));
 
+// 2b. AI alternative for ONE plan step (a meal or an exercise) — same calories /
+//     effort and the same purpose, suited to this user's conditions and diet.
+//     Only that one item changes; nothing is saved to the plan.
+app.post('/api/plan/alternative', requireUser(async (req, res) => {
+  try {
+    const { title, body, kind, exclude = [], language, profile } = req.body || {};
+    if (!title || (kind !== 'meal' && kind !== 'exercise')) return res.status(400).json({ error: 'A meal or exercise step is required.' });
+    if (!isAIConfigured()) return res.status(503).json({ error: 'AI is not available right now.' });
+    const ctx = profile ? [
+      profile.age ? `Age ${profile.age}` : '',
+      profile.gender ? `Gender ${profile.gender}` : '',
+      profile.dietaryPreference ? `Diet: ${profile.dietaryPreference}` : '',
+      Array.isArray(profile.medicalConditions) && profile.medicalConditions.length ? `Conditions: ${profile.medicalConditions.join(', ')}` : '',
+      profile.goal ? `Goal: ${profile.goal}` : '',
+      profile.calculatedPlan?.targetCalories ? `Daily calories: ${profile.calculatedPlan.targetCalories}` : '',
+    ].filter(Boolean).join('. ') : '';
+    const avoid = (Array.isArray(exclude) ? exclude : []).slice(0, 8).map((x: any) => String(x).slice(0, 120));
+    const { data } = await callAIForJson({
+      tier: 'light',
+      system: `You are UrCare's clinical diet & exercise planner for metabolic health (diabetes, BP, cholesterol, weight). Suggest ONE alternative for the single plan step given — ${kind === 'meal'
+        ? 'a different, commonly available Indian meal with similar calories and similar protein/fibre, no higher glycaemic load, matching the diet preference (veg/non-veg/vegan/Jain) and any conditions'
+        : 'a different exercise with similar duration and effort, safe for the conditions and age, doable at home without equipment unless the original needed it'}. Keep the same purpose and timing. Never suggest medicines or changing any dose. Do not repeat any of the excluded options. Write in ${language === 'hi' ? 'simple Hindi (Devanagari)' : 'simple English'}. Call the record_alternative tool once.`,
+      text: `Plan step: "${title}". Details: ${String(body || '').slice(0, 1200)}${ctx ? `\nUser: ${ctx}.` : ''}${avoid.length ? `\nAlready suggested (don't repeat): ${avoid.join(' | ')}` : ''}`,
+      toolName: 'record_alternative',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Short name of the alternative, e.g. "Rajma & brown rice bowl".' },
+          body: { type: 'string', description: 'How to do / make it, 2-5 short lines with quantities or reps.' },
+          why: { type: 'string', description: 'One line: why it is an equal or better swap for this user.' },
+          calories: { type: ['number', 'null'], description: 'Approx kcal for a meal; kcal burned for an exercise.' },
+        },
+        required: ['title', 'body', 'why', 'calories'],
+        additionalProperties: false,
+      },
+    });
+    res.json({ title: data.title, body: data.body, why: data.why, calories: data.calories ?? null });
+  } catch (error: any) {
+    console.error('plan alternative failed:', error);
+    res.status(200).json({ error: 'Could not get an alternative right now. Please try again.' });
+  }
+}));
+
 // 3. Daily Plan — NOT AI-generated. Deterministically assembled from the
 //    static `reversal_plan_sections` table (the UrCare reversal protocol),
 //    filtered to this user's own selected conditions and how many days
@@ -2187,14 +2230,15 @@ app.get('/api/access-status', requireUser(async (req, res, user) => {
 // ----------------------------------------------------------------------------
 // REFERRALS & POINTS — every member has a referral code; a new account that
 // opens the app through someone's link is credited to them (stored by the
-// server in the new user's auth metadata, so it can't be faked from a device).
+// server in the new user's app_metadata, which a device can't edit).
 // Every 5 people who join = 500 points, and 1 point = ₹1 off in the pharmacy,
-// spent in blocks of 500. Points spent are kept on the order itself, so the
+// spent in blocks of 100. Points spent are kept on the order itself, so the
 // balance is always earned − spent (rejected orders give points back).
 // ----------------------------------------------------------------------------
 const REFERRALS_PER_REWARD = 5;
 const REFERRAL_REWARD_POINTS = 500;
-const POINTS_BLOCK = 500;
+// Points are spent in blocks of 100 so each ₹100 family bonus is usable on its own.
+const POINTS_BLOCK = 100;
 
 function referralCodeFor(userId: string): string {
   return 'UC' + userId.replace(/-/g, '').slice(0, 6).toUpperCase();
@@ -2206,7 +2250,7 @@ async function countReferrals(supabase: any, code: string): Promise<number> {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
     if (error) break;
     const users = data?.users || [];
-    count += users.filter((u: any) => u.user_metadata?.referred_by === code).length;
+    count += users.filter((u: any) => u.app_metadata?.referred_by === code).length;
     if (users.length < 1000) break;
   }
   return count;
@@ -2214,18 +2258,228 @@ async function countReferrals(supabase: any, code: string): Promise<number> {
 
 async function referralSummary(supabase: any, userId: string) {
   const code = referralCodeFor(userId);
-  const [joined, { data: orders }] = await Promise.all([
+  const [joined, { data: orders }, { data: me }] = await Promise.all([
     countReferrals(supabase, code),
     supabase.from('orders').select('shipping_address, payment_status').eq('user_id', userId),
+    supabase.auth.admin.getUserById(userId),
   ]);
-  const earned = Math.floor(joined / REFERRALS_PER_REWARD) * REFERRAL_REWARD_POINTS;
+  // +100 for every person who accepted this member's family request.
+  const familyBonus = (Array.isArray(me?.user?.app_metadata?.family_bonus_ids) ? me.user.app_metadata.family_bonus_ids.length : 0) * FAMILY_BONUS_POINTS;
+  const earned = Math.floor(joined / REFERRALS_PER_REWARD) * REFERRAL_REWARD_POINTS + familyBonus;
   const spent = (orders || [])
     .filter((o: any) => o.payment_status !== ORDER_PAYMENT.rejected)
     .reduce((sum: number, o: any) => sum + (Number(o.shipping_address?.pricing?.pointsUsed) || 0), 0);
-  return { code, joined, earned, spent, balance: Math.max(0, earned - spent), perReward: REFERRALS_PER_REWARD, rewardPoints: REFERRAL_REWARD_POINTS, block: POINTS_BLOCK };
+  return { code, joined, earned, familyBonus, spent, balance: Math.max(0, earned - spent), perReward: REFERRALS_PER_REWARD, rewardPoints: REFERRAL_REWARD_POINTS, block: POINTS_BLOCK };
 }
 
-/** Points that can go on this cart: whole 500-point blocks, never more than what's left to pay. */
+// ----------------------------------------------------------------------------
+// FAMILY & FRIENDS — members find each other by UrCare ID (the same "UC…"
+// code as their referral code), send a request with a relation, and the other
+// person accepts. Links, requests and progress-sharing choices live in each
+// user's auth metadata (written only here, in app_metadata, which users can't edit). Accepting gives the sender
+// FAMILY_BONUS_POINTS (₹100), once per person. A member's daily progress is
+// visible to their family — and sent to them as a notification — only when
+// that member has turned sharing ON (off by default).
+// ----------------------------------------------------------------------------
+const FAMILY_BONUS_POINTS = 100;
+const FAMILY_RELATIONS = ['mother', 'father', 'brother', 'sister', 'son', 'daughter', 'spouse', 'grandparent', 'friend', 'other'];
+const FAMILY_GROUP: Record<string, 'family' | 'friends'> = { friend: 'friends' };
+
+let userIndexCache: { at: number; byCode: Map<string, any> } | null = null;
+async function userByCode(supabase: any, code: string): Promise<any | null> {
+  const wanted = code.trim().toUpperCase();
+  if (!userIndexCache || Date.now() - userIndexCache.at > 60_000 || !userIndexCache.byCode.has(wanted)) {
+    const byCode = new Map<string, any>();
+    for (let page = 1; page <= 20; page++) {
+      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error) break;
+      for (const u of data?.users || []) byCode.set(referralCodeFor(u.id), u);
+      if ((data?.users || []).length < 1000) break;
+    }
+    userIndexCache = { at: Date.now(), byCode };
+  }
+  return userIndexCache.byCode.get(wanted) || null;
+}
+
+async function getAuthUser(supabase: any, id: string): Promise<any | null> {
+  const { data } = await supabase.auth.admin.getUserById(id);
+  return data?.user || null;
+}
+
+/** Merges fields into a user's auth metadata (re-reading it first). */
+async function patchUserMeta(supabase: any, id: string, patch: (meta: any) => Record<string, any>) {
+  const u = await getAuthUser(supabase, id);
+  if (!u) return null;
+  const meta = u.app_metadata || {};
+  const next = { ...meta, ...patch(meta) };
+  await supabase.auth.admin.updateUserById(id, { app_metadata: next });
+  return next;
+}
+
+async function publicPerson(supabase: any, u: any) {
+  const { data: p } = await supabase.from('profiles').select('full_name').eq('user_id', u.id).maybeSingle();
+  const meta = u.user_metadata || {};
+  return {
+    id: referralCodeFor(u.id),
+    name: p?.full_name || meta.full_name || meta.name || (u.email ? String(u.email).split('@')[0] : 'UrCare member'),
+    avatar: meta.avatar_url || meta.picture || null,
+  };
+}
+
+const todayKeyIST = () => new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+
+app.get('/api/family', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const me = await getAuthUser(supabase, user.id);
+  const meta = me?.app_metadata || {};
+  const members = Array.isArray(meta.family_members) ? meta.family_members : [];
+  const requests = Array.isArray(meta.family_requests) ? meta.family_requests : [];
+  const today = todayKeyIST();
+  const memberRows = await Promise.all(members.map(async (m: any) => {
+    const u = await getAuthUser(supabase, m.uid);
+    if (!u) return null;
+    const person = await publicPerson(supabase, u);
+    const theirMeta = u.app_metadata || {};
+    const shares = !!theirMeta.family_share_progress;
+    const prog = theirMeta.progress_today;
+    return {
+      ...person,
+      relation: m.relation,
+      group: FAMILY_GROUP[m.relation] || 'family',
+      addedAt: m.addedAt,
+      sharesProgress: shares,
+      progress: shares && prog?.date === today ? { pct: prog.pct, done: prog.done, total: prog.total } : null,
+      status: shares && theirMeta.daily_status?.date === today ? theirMeta.daily_status.text : null,
+    };
+  }));
+  const requestRows = await Promise.all(requests.map(async (r: any) => {
+    const u = await getAuthUser(supabase, r.from);
+    return u ? { ...(await publicPerson(supabase, u)), relation: r.relation, at: r.at } : null;
+  }));
+  res.json({
+    myId: referralCodeFor(user.id),
+    shareProgress: !!meta.family_share_progress,
+    bonusPerPerson: FAMILY_BONUS_POINTS,
+    members: memberRows.filter(Boolean),
+    requests: requestRows.filter(Boolean),
+    relations: FAMILY_RELATIONS,
+  });
+}));
+
+app.post('/api/family/search', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const code = String(req.body?.id || '').trim().toUpperCase();
+  if (!/^UC[0-9A-F]{6}$/.test(code)) return res.json({ found: false, message: 'Enter a UrCare ID like UC1A2B3C.' });
+  if (code === referralCodeFor(user.id)) return res.json({ found: false, message: 'That is your own UrCare ID.' });
+  const target = await userByCode(supabase, code);
+  if (!target) return res.json({ found: false, message: 'No member found with that UrCare ID.' });
+  const me = await getAuthUser(supabase, user.id);
+  const already = (me?.app_metadata?.family_members || []).some((m: any) => m.uid === target.id);
+  res.json({ found: true, already, person: await publicPerson(supabase, target) });
+}));
+
+app.post('/api/family/request', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const code = String(req.body?.id || '').trim().toUpperCase();
+  const relation = FAMILY_RELATIONS.includes(req.body?.relation) ? req.body.relation : 'other';
+  const target = /^UC[0-9A-F]{6}$/.test(code) ? await userByCode(supabase, code) : null;
+  if (!target || target.id === user.id) return res.status(400).json({ error: 'Member not found.' });
+  const me = await getAuthUser(supabase, user.id);
+  if ((me?.app_metadata?.family_members || []).some((m: any) => m.uid === target.id)) return res.json({ ok: true, already: true });
+  await patchUserMeta(supabase, target.id, (meta) => {
+    const list = (Array.isArray(meta.family_requests) ? meta.family_requests : []).filter((r: any) => r.from !== user.id);
+    return { family_requests: [...list, { from: user.id, relation, at: new Date().toISOString() }].slice(-30) };
+  });
+  const sender = await publicPerson(supabase, me);
+  await createNotification(supabase, target.id, 'system', `${sender.name} wants to add you to their UrCare family`, 'Open Family & Friends to accept the request.', { kind: 'family_request', from: sender.id });
+  res.json({ ok: true });
+}));
+
+app.post('/api/family/respond', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const fromCode = String(req.body?.id || '').trim().toUpperCase();
+  const accept = !!req.body?.accept;
+  const myRelation = FAMILY_RELATIONS.includes(req.body?.relation) ? req.body.relation : 'other';
+  const sender = await userByCode(supabase, fromCode);
+  const me = await getAuthUser(supabase, user.id);
+  const request = (me?.app_metadata?.family_requests || []).find((r: any) => sender && r.from === sender.id);
+  if (!sender || !request) return res.status(400).json({ error: 'That request is no longer there.' });
+  const now = new Date().toISOString();
+  await patchUserMeta(supabase, user.id, (meta) => ({
+    family_requests: (meta.family_requests || []).filter((r: any) => r.from !== sender.id),
+    family_members: accept
+      ? [...(meta.family_members || []).filter((m: any) => m.uid !== sender.id), { uid: sender.id, relation: myRelation, addedAt: now }]
+      : meta.family_members || [],
+  }));
+  if (accept) {
+    await patchUserMeta(supabase, sender.id, (meta) => {
+      const bonus: string[] = Array.isArray(meta.family_bonus_ids) ? meta.family_bonus_ids : [];
+      return {
+        family_members: [...(meta.family_members || []).filter((m: any) => m.uid !== user.id), { uid: user.id, relation: request.relation, addedAt: now }],
+        family_bonus_ids: bonus.includes(user.id) ? bonus : [...bonus, user.id],
+      };
+    });
+    const accepter = await publicPerson(supabase, me);
+    await createNotification(supabase, sender.id, 'system', `${accepter.name} joined your UrCare family`, `You earned ${FAMILY_BONUS_POINTS} points (₹${FAMILY_BONUS_POINTS} off in the pharmacy).`, { kind: 'family_accept', from: accepter.id });
+  }
+  res.json({ ok: true });
+}));
+
+app.post('/api/family/remove', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const other = await userByCode(supabase, String(req.body?.id || ''));
+  if (!other) return res.status(400).json({ error: 'Member not found.' });
+  await patchUserMeta(supabase, user.id, (meta) => ({ family_members: (meta.family_members || []).filter((m: any) => m.uid !== other.id) }));
+  await patchUserMeta(supabase, other.id, (meta) => ({ family_members: (meta.family_members || []).filter((m: any) => m.uid !== user.id) }));
+  res.json({ ok: true });
+}));
+
+app.post('/api/family/settings', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  await patchUserMeta(supabase, user.id, () => ({ family_share_progress: !!req.body?.shareProgress }));
+  res.json({ ok: true, shareProgress: !!req.body?.shareProgress });
+}));
+
+// Today's plan progress (sent by the app whenever a step is ticked). When the
+// member shares progress, their family is notified at 50% and at 100%.
+app.post('/api/progress/today', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const done = Math.max(0, Math.floor(Number(req.body?.done) || 0));
+  const total = Math.max(0, Math.floor(Number(req.body?.total) || 0));
+  const pct = total ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  const date = todayKeyIST();
+  const status = typeof req.body?.status === 'string' ? req.body.status.slice(0, 200) : null;
+  let crossed: number[] = [];
+  const meta = await patchUserMeta(supabase, user.id, (m) => {
+    const prev = m.progress_today?.date === date ? m.progress_today : { notified: [] };
+    crossed = [50, 100].filter((t) => pct >= t && !(prev.notified || []).includes(t));
+    return {
+      progress_today: { date, done, total, pct, notified: [...(prev.notified || []), ...crossed] },
+      ...(status ? { daily_status: { date, text: status } } : {}),
+    };
+  });
+  if (meta?.family_share_progress && crossed.length) {
+    const me = await getAuthUser(supabase, user.id);
+    const person = await publicPerson(supabase, me);
+    const top = Math.max(...crossed);
+    for (const m of meta.family_members || []) {
+      await createNotification(supabase, m.uid, 'system',
+        top === 100 ? `🎉 ${person.name} completed today's health plan!` : `💪 ${person.name} is halfway through today's plan`,
+        top === 100 ? 'Send them a cheer — 1% better every day.' : `${pct}% done so far today.`,
+        { kind: 'family_progress', from: person.id, pct });
+    }
+  }
+  res.json({ ok: true, pct });
+}));
+
+/** Points that can go on this cart: whole 100-point blocks, never more than what's left to pay. */
 function pointsForCart(balance: number, payable: number): number {
   return Math.max(0, Math.min(Math.floor(balance / POINTS_BLOCK) * POINTS_BLOCK, Math.floor(payable / POINTS_BLOCK) * POINTS_BLOCK));
 }
@@ -2246,10 +2500,10 @@ app.post('/api/referral/claim', requireUser(async (req, res, user) => {
   const { data: got } = await supabase.auth.admin.getUserById(user.id);
   const authUser: any = got?.user;
   if (!authUser) return res.json({ ok: false });
-  if (authUser.user_metadata?.referred_by) return res.json({ ok: false, reason: 'already' });
+  if (authUser.app_metadata?.referred_by) return res.json({ ok: false, reason: 'already' });
   if (code === referralCodeFor(user.id)) return res.json({ ok: false, reason: 'self' });
   if (Date.now() - new Date(authUser.created_at).getTime() > 7 * 24 * 3600 * 1000) return res.json({ ok: false, reason: 'too-old' });
-  const { error } = await supabase.auth.admin.updateUserById(user.id, { user_metadata: { ...(authUser.user_metadata || {}), referred_by: code } });
+  const { error } = await supabase.auth.admin.updateUserById(user.id, { app_metadata: { ...(authUser.app_metadata || {}), referred_by: code } });
   res.json({ ok: !error });
 }));
 
@@ -2275,7 +2529,7 @@ app.post('/api/orders', requireUser(async (req, res, user) => {
     const priced = await priceStoreCart(supabase, items, couponCode);
     if ('error' in priced) return res.status(400).json({ error: priced.error });
     if (couponCode && !priced.coupon?.valid) return res.status(400).json({ error: priced.coupon?.message || 'This coupon could not be applied.' });
-    // Referral points (₹1 each, in 500-point blocks) come off what's left to pay.
+    // Referral points (₹1 each, in 100-point blocks) come off what's left to pay.
     let pointsUsed = 0;
     if (usePoints) {
       const { balance } = await referralSummary(supabase, user.id);
