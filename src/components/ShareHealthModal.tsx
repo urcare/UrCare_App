@@ -252,6 +252,9 @@ export const ShareHealthModal: React.FC<ShareHealthModalProps> = ({ isOpen, onCl
   // The message that goes with the image points people at the QR code.
   const shareText = `${text}\n\n${QR_HINT}.`;
   const isNative = Capacitor.isNativePlatform();
+  // An older installed APK may not have the Share/Filesystem plugins yet.
+  const nativeShareReady = isNative && Capacitor.isPluginAvailable('Share') && Capacitor.isPluginAvailable('Filesystem');
+  const needsAppUpdate = isNative && !nativeShareReady;
 
   /** Writes the card PNG into the app's cache and returns its file:// uri (Android/iOS app). */
   const cardFileUri = async (dir: Directory, path: string): Promise<string | null> => {
@@ -269,6 +272,12 @@ export const ShareHealthModal: React.FC<ShareHealthModalProps> = ({ isOpen, onCl
 
   /** The phone's own share sheet with the QR card image + text — every installed app. */
   const shareWithImage = async () => {
+    if (needsAppUpdate) {
+      // No native share in this build — send the text (with the QR hint) to WhatsApp.
+      flash(tr('Update the UrCare app to share the QR image — sending the text now', 'QR इमेज शेयर के लिए UrCare ऐप अपडेट करें — अभी टेक्स्ट भेज रहे हैं'));
+      open(`https://wa.me/?text=${encodeURIComponent(shareText)}`);
+      return;
+    }
     try {
       if (isNative) {
         const uri = await cardFileUri(Directory.Cache, 'urcare-health-summary.png');
@@ -290,6 +299,10 @@ export const ShareHealthModal: React.FC<ShareHealthModalProps> = ({ isOpen, onCl
 
   /** Saves the QR card image — to Documents/UrCare in the app, a download on the web. */
   const saveImage = async () => {
+    if (needsAppUpdate) {
+      flash(tr('Update the UrCare app to save the image', 'इमेज सेव करने के लिए UrCare ऐप अपडेट करें'));
+      return;
+    }
     try {
       if (isNative) {
         await cardFileUri(Directory.Documents, `UrCare/urcare-health-summary-${Date.now()}.png`);
@@ -312,7 +325,7 @@ export const ShareHealthModal: React.FC<ShareHealthModalProps> = ({ isOpen, onCl
   };
 
   // Image sharing works in the app and in phone browsers with a share sheet.
-  const canShareImage = isNative || (typeof navigator !== 'undefined' && !!navigator.canShare && /Android|iPhone|iPad/i.test(navigator.userAgent));
+  const canShareImage = nativeShareReady || (!isNative && typeof navigator !== 'undefined' && !!navigator.canShare && /Android|iPhone|iPad/i.test(navigator.userAgent));
 
   const channels: { key: string; label: string; bg: string; icon: React.ReactNode; onClick: () => void }[] = [
     // In the app (and phone browsers) these open the share sheet with the QR

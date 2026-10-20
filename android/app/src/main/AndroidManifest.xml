@@ -45,6 +45,10 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Saving the share card image to Documents/UrCare (@capacitor/filesystem)
+         needs these only on Android 10 and older; newer Android allows it. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <!-- Required for the in-app food-scanner/report-photo camera capture
          (navigator.mediaDevices.getUserMedia in FoodScannerModal.tsx etc.) —
          Capacitor's WebChromeClient explicitly checks for this declaration

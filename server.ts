@@ -2141,14 +2141,15 @@ app.post('/api/store/coupon', async (req, res) => {
 });
 
 // ----------------------------------------------------------------------------
-// APP ACCESS (paywall) — accounts created on/after APP_ACCESS_REQUIRED_SINCE
-// unlock the app with a one-time UPI payment for the APP_ACCESS_PRODUCT_ID
-// product. It goes through the normal order + payment-screenshot flow, so an
-// admin approves it in Admin → Orders like any other order. Older accounts
-// keep full access. The decision is made here, never on the device.
+// APP ACCESS (paywall) — every account unlocks the app with a one-time UPI
+// payment for the APP_ACCESS_PRODUCT_ID product. It goes through the normal
+// order + payment-screenshot flow, so an admin approves it in Admin → Orders
+// like any other order. Set APP_ACCESS_REQUIRED_SINCE to an ISO date to keep
+// accounts created before it free. The decision is made here, never on the
+// device.
 // ----------------------------------------------------------------------------
 const APP_ACCESS_PRODUCT_ID = 'prod_app_access';
-const APP_ACCESS_REQUIRED_SINCE = process.env.APP_ACCESS_REQUIRED_SINCE || '2026-10-21T00:00:00Z';
+const APP_ACCESS_REQUIRED_SINCE = process.env.APP_ACCESS_REQUIRED_SINCE || '1970-01-01T00:00:00Z';
 
 app.get('/api/access-status', requireUser(async (req, res, user) => {
   const supabase = getSupabaseAdmin();
