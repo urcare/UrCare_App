@@ -210,7 +210,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <h1 className="text-xl font-black text-zinc-950 break-words">
               {profile.name || account.displayName || tr('UrCare Member', 'UrCare सदस्य')}
             </h1>
-            <BadgeCheck className="w-4 h-4 text-blue-500 fill-blue-500/15 shrink-0" strokeWidth={2.5} />
+            <BadgeCheck className="w-4 h-4 text-green-500 fill-green-500/15 shrink-0" strokeWidth={2.5} />
           </div>
           <p className="text-xs text-zinc-500 font-medium mt-0.5 break-all">
             {profile.email || account.email}
@@ -398,7 +398,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ y: -2, boxShadow: '0 8px 20px -10px rgba(13,148,136,0.35)' }}
             transition={{ duration: 0.35, ease: 'easeOut' }}
-            className="p-3.5 rounded-2xl bg-gradient-to-br from-teal-50 via-sky-50/60 to-white border border-teal-100"
+            className="p-3.5 rounded-2xl bg-gradient-to-br from-teal-50 via-emerald-50/60 to-white border border-teal-100"
           >
             <div className="flex items-center justify-between mb-2.5">
               <span className="flex items-center gap-1.5 text-[10px] font-bold text-teal-700 uppercase tracking-wide">

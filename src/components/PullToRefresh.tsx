@@ -95,7 +95,7 @@ export const PullToRefresh: React.FC<{ onRefresh?: () => Promise<unknown> | void
             <svg viewBox="0 0 36 36" className="w-full h-full">
               <circle cx="18" cy="18" r="14" fill="none" stroke="#d1fae5" strokeWidth="3.5" />
               <circle cx="18" cy="18" r="14" fill="none" stroke="url(#ptrGrad)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 14 * 0.3} ${2 * Math.PI * 14}`} />
-              <defs><linearGradient id="ptrGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#0ea5e9" /></linearGradient></defs>
+              <defs><linearGradient id="ptrGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#16a34a" /></linearGradient></defs>
             </svg>
           </span>
         ) : (
@@ -103,7 +103,7 @@ export const PullToRefresh: React.FC<{ onRefresh?: () => Promise<unknown> | void
             <svg viewBox="0 0 36 36" className="w-full h-full">
               <circle cx="18" cy="18" r="14" fill="none" stroke="#d1fae5" strokeWidth="3.5" />
               <motion.circle cx="18" cy="18" r="14" fill="none" stroke="url(#ptrGrad2)" strokeWidth="3.5" strokeLinecap="round" strokeDasharray={2 * Math.PI * 14} style={{ strokeDashoffset: dash }} />
-              <defs><linearGradient id="ptrGrad2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#0ea5e9" /></linearGradient></defs>
+              <defs><linearGradient id="ptrGrad2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#16a34a" /></linearGradient></defs>
             </svg>
           </motion.span>
         )}

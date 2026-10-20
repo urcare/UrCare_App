@@ -870,7 +870,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onOpenAssessment={() => setIsAssessmentModalOpen(true)}
             onOpenMoreMenu={() => setIsModuleMenuOpen(true)}
             onAskUrCare={(prompt) => { setHealthBotsPrompt(prompt); setIsHealthBotsOpen(true); }}
-            onAddFamily={() => { setFamilyStartAdding(true); setActiveTab('family'); }}
           />
         ) : activeTab === 'family' ? (
           <FamilyPage
@@ -880,9 +879,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             initialQuery={familyQuery || undefined}
             selfName={profile.name || account.displayName || ''}
             selfAvatar={account.avatarUrl || null}
+            onOpenStore={() => setActiveTab('store')}
           />
         ) : activeTab === 'leaderboard' ? (
-          <LeaderboardPage tr={tr} userId={account.uid} onOpenStore={() => setActiveTab('store')} />
+          <LeaderboardPage tr={tr} userId={account.uid} />
         ) : activeTab === 'plan' ? (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
             {/* Leaderboard & referral teaser, right above the plan */}
@@ -894,7 +894,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span className="w-11 h-11 rounded-2xl bg-white/20 border border-white/25 flex items-center justify-center shrink-0"><Trophy className="w-5 h-5" /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-black">{tr('Leaderboard & Rewards', 'लीडरबोर्ड व रिवॉर्ड्स')}</span>
-                <span className="block text-[11px] font-semibold text-white/85">{tr('See the top 100 · invite 5 friends, get ₹500 off', 'टॉप 100 देखें · 5 दोस्तों को बुलाएं, ₹500 की छूट पाएं')}</span>
+                <span className="block text-[11px] font-semibold text-white/85">{tr('See the top 100 and your monthly badges', 'टॉप 100 और अपने मासिक बैज देखें')}</span>
               </span>
               <ChevronRight className="w-5 h-5 shrink-0 opacity-80" />
             </button>
@@ -963,6 +963,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               account={account}
               onOrderPlaced={handleOrderPlaced}
               onOpenMyOrders={() => setIsMyOrdersOpen(true)}
+              orders={userOrders}
             />
           )}
 

@@ -1412,6 +1412,8 @@ export interface ReferralStatus {
   code: string;
   joined: number;
   earned: number;
+  /** Points from family & friends who accepted this member's requests. */
+  familyBonus?: number;
   spent: number;
   balance: number;
   perReward: number;

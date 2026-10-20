@@ -228,7 +228,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
                     {m.body && <p className="text-[14.5px] leading-snug whitespace-pre-wrap break-words">{m.body}</p>}
                     <div className="flex items-center justify-end gap-1 mt-0.5">
                       <span className="text-[10px] text-zinc-500">{formatTime(m.createdAt)}</span>
-                      {isUser && <CheckCheck className="w-3.5 h-3.5 text-sky-500" />}
+                      {isUser && <CheckCheck className="w-3.5 h-3.5 text-emerald-500" />}
                     </div>
                   </div>
                 </div>

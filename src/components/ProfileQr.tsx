@@ -86,7 +86,7 @@ async function renderQrCard(qrUrl: string, name: string, handle: string, avatar:
   const ctx = c.getContext('2d'); if (!ctx) return null;
   const font = (w: number, s: number) => `${w} ${s}px Inter, "Segoe UI", Roboto, system-ui, sans-serif`;
   const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, '#047857'); bg.addColorStop(0.55, '#0d9488'); bg.addColorStop(1, '#0e7490');
+  bg.addColorStop(0, '#047857'); bg.addColorStop(0.55, '#0d9488'); bg.addColorStop(1, '#047857');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(255,255,255,0.08)';
   [[140, 160, 220], [960, 260, 180], [900, 1240, 260]].forEach(([x, y, r]) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); });
@@ -167,7 +167,7 @@ export const MyQrSheet: React.FC<{ open: boolean; onClose: () => void; name: str
 
   return (
     <Sheet open={open} onClose={onClose} icon={<QrCode className="w-5 h-5" />} title={tr('My QR code', 'मेरा QR कोड')} subtitle={tr('Anyone can scan it to add you', 'कोई भी स्कैन करके आपको जोड़ सकता है')}>
-      <div className="relative rounded-[1.5rem] p-5 pt-20 bg-gradient-to-br from-emerald-700 via-teal-600 to-cyan-700 text-center overflow-hidden">
+      <div className="relative rounded-[1.5rem] p-5 pt-20 bg-gradient-to-br from-emerald-700 via-teal-600 to-teal-700 text-center overflow-hidden">
         <div className="absolute top-3.5 left-0 right-0 text-white text-lg font-black tracking-tight">UrCare</div>
         <div className="relative bg-white rounded-3xl px-4 pt-12 pb-4 shadow-xl">
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 w-[72px] h-[72px] rounded-full bg-white p-1 shadow-md">

@@ -57,7 +57,7 @@ async function renderProgressStory(pct: number, name: string, message: string): 
   if (!ctx) return null;
   const font = (w: number, s: number) => `${w} ${s}px Inter, "Segoe UI", Roboto, system-ui, sans-serif`;
   const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, '#064e3b'); bg.addColorStop(0.5, '#047857'); bg.addColorStop(1, '#0e7490');
+  bg.addColorStop(0, '#064e3b'); bg.addColorStop(0.5, '#047857'); bg.addColorStop(1, '#047857');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = 'rgba(255,255,255,0.08)';
   [[150, 260, 260], [950, 420, 220], [880, 1600, 320], [120, 1500, 180]].forEach(([x, y, r]) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); });
@@ -132,7 +132,7 @@ export const ProgressCelebration: React.FC<ProgressCelebrationProps> = ({ pct, d
   React.useEffect(() => { getFamily().then((s) => setFamilyShare(s ? s.shareProgress : null)); }, []);
   React.useEffect(() => {
     if (pct >= 100) {
-      try { confetti({ particleCount: 120, spread: 80, origin: { y: 0.55 }, colors: ['#10b981', '#fde68a', '#22d3ee', '#ffffff'] }); } catch {}
+      try { confetti({ particleCount: 120, spread: 80, origin: { y: 0.55 }, colors: ['#10b981', '#fde68a', '#4ade80', '#ffffff'] }); } catch {}
     }
   }, [pct]);
   const r = 34, c = 2 * Math.PI * r;
@@ -155,7 +155,7 @@ export const ProgressCelebration: React.FC<ProgressCelebrationProps> = ({ pct, d
                 <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
                   <circle cx="40" cy="40" r={r} fill="none" stroke="#e4e4e7" strokeWidth="8" />
                   <motion.circle cx="40" cy="40" r={r} fill="none" stroke="url(#celebGrad)" strokeWidth="8" strokeLinecap="round" strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - pct / 100) }} transition={{ duration: 1.1, ease: 'easeOut' }} />
-                  <defs><linearGradient id="celebGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#0ea5e9" /></linearGradient></defs>
+                  <defs><linearGradient id="celebGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stopColor="#10b981" /><stop offset="100%" stopColor="#16a34a" /></linearGradient></defs>
                 </svg>
                 <span className="absolute inset-0 flex items-center justify-center text-xl font-black text-emerald-700">{pct}%</span>
               </span>

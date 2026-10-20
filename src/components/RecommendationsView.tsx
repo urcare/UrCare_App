@@ -66,20 +66,20 @@ interface RecommendationsViewProps {
  *  premium-looking "reversal focus" tile shown on today's goals card,
  *  instead of generic macro numbers. */
 export const REVERSAL_GOALS: Record<string, { label: string; note: string; icon: typeof Droplet; gradient: string }> = {
-  'Diabetes / Pre-Diabetes': { label: 'Diabetes Reversal', note: 'Low-GI meals, steady blood sugar', icon: Droplet, gradient: 'from-sky-500 to-blue-600' },
+  'Diabetes / Pre-Diabetes': { label: 'Diabetes Reversal', note: 'Low-GI meals, steady blood sugar', icon: Droplet, gradient: 'from-emerald-500 to-green-600' },
   'Obesity': { label: 'Weight Reversal', note: 'Calorie deficit, high protein', icon: Scale, gradient: 'from-amber-500 to-orange-600' },
   'High Blood Pressure': { label: 'Blood Pressure Control', note: 'Low sodium, potassium-rich foods', icon: HeartPulse, gradient: 'from-rose-500 to-red-600' },
   'High Cholesterol / Fatty Liver': { label: 'Liver & Lipid Reversal', note: 'Low saturated fat, more fiber', icon: Activity, gradient: 'from-yellow-500 to-amber-600' },
-  'Thyroid (Hypo/Hyper)': { label: 'Thyroid Balance', note: 'Iodine-mindful, anti-inflammatory', icon: Zap, gradient: 'from-purple-500 to-indigo-600' },
-  'PCOS / PCOD': { label: 'Hormonal Reversal', note: 'Low-GI, anti-inflammatory diet', icon: Sparkles, gradient: 'from-pink-500 to-rose-600' },
-  'Neuropathy (Nerve Pain/Tingling)': { label: 'Nerve Health', note: 'B-vitamin rich, blood sugar control', icon: Zap, gradient: 'from-violet-500 to-purple-600' },
-  'Diabetic Retinopathy': { label: 'Eye Health Support', note: 'Antioxidant-rich, sugar control', icon: Eye, gradient: 'from-cyan-500 to-sky-600' },
+  'Thyroid (Hypo/Hyper)': { label: 'Thyroid Balance', note: 'Iodine-mindful, anti-inflammatory', icon: Zap, gradient: 'from-green-500 to-emerald-600' },
+  'PCOS / PCOD': { label: 'Hormonal Reversal', note: 'Low-GI, anti-inflammatory diet', icon: Sparkles, gradient: 'from-lime-500 to-rose-600' },
+  'Neuropathy (Nerve Pain/Tingling)': { label: 'Nerve Health', note: 'B-vitamin rich, blood sugar control', icon: Zap, gradient: 'from-emerald-500 to-green-600' },
+  'Diabetic Retinopathy': { label: 'Eye Health Support', note: 'Antioxidant-rich, sugar control', icon: Eye, gradient: 'from-teal-500 to-emerald-600' },
   'Heart Disease': { label: 'Heart Reversal', note: 'Low sodium, omega-3 rich', icon: HeartPulse, gradient: 'from-red-500 to-rose-600' },
   'Kidney Disease': { label: 'Kidney Reversal', note: 'Controlled protein & sodium', icon: Droplet, gradient: 'from-teal-500 to-emerald-600' },
   'Joint Pain / Arthritis': { label: 'Joint & Mobility Support', note: 'Anti-inflammatory foods', icon: Bone, gradient: 'from-orange-500 to-amber-600' },
   'Chronic Fatigue': { label: 'Energy Restoration', note: 'Iron & B12 rich, steady meals', icon: Zap, gradient: 'from-lime-500 to-green-600' },
-  'Sleep Apnea / Sleep Issues': { label: 'Sleep Quality Support', note: 'Light dinner, no late caffeine', icon: Moon, gradient: 'from-indigo-500 to-blue-600' },
-  'Erectile Dysfunction': { label: 'Vascular Health', note: 'Heart-healthy, circulation support', icon: HeartPulse, gradient: 'from-rose-500 to-pink-600' },
+  'Sleep Apnea / Sleep Issues': { label: 'Sleep Quality Support', note: 'Light dinner, no late caffeine', icon: Moon, gradient: 'from-emerald-500 to-green-600' },
+  'Erectile Dysfunction': { label: 'Vascular Health', note: 'Heart-healthy, circulation support', icon: HeartPulse, gradient: 'from-rose-500 to-lime-600' },
   'Uric Acid / Gout': { label: 'Uric Acid Reversal', note: 'Low purine, more water', icon: Flame, gradient: 'from-amber-500 to-yellow-600' },
   'Digestive / IBS': { label: 'Gut Health Reversal', note: 'Fiber-balanced, gut-friendly', icon: Leaf, gradient: 'from-emerald-500 to-lime-600' },
 };
@@ -104,9 +104,9 @@ export const STEP_CATEGORY_META: Record<StepCategory, { Icon: typeof Pill; color
   herbal: { Icon: Pill, color: '#10b981', label: ['Herbal / Supplement', 'हर्बल / सप्लीमेंट'] },
   exercise: { Icon: Dumbbell, color: '#f97316', label: ['Exercise / Movement', 'व्यायाम / गतिविधि'] },
   meal: { Icon: Utensils, color: '#eab308', label: ['Meal', 'भोजन'] },
-  hygiene: { Icon: Bath, color: '#0ea5e9', label: ['Hygiene', 'स्वच्छता'] },
-  rest: { Icon: BedDouble, color: '#8b5cf6', label: ['Rest / Sleep', 'आराम / नींद'] },
-  hydration: { Icon: Droplet, color: '#06b6d4', label: ['Hydration', 'जलयोजन'] },
+  hygiene: { Icon: Bath, color: '#16a34a', label: ['Hygiene', 'स्वच्छता'] },
+  rest: { Icon: BedDouble, color: '#16a34a', label: ['Rest / Sleep', 'आराम / नींद'] },
+  hydration: { Icon: Droplet, color: '#10b981', label: ['Hydration', 'जलयोजन'] },
   other: { Icon: Clock, color: '#71717a', label: ['Step', 'कदम'] },
 };
 
@@ -119,9 +119,9 @@ export const CATEGORY_GRADIENT: Record<StepCategory, string> = {
   herbal: 'from-emerald-500 to-teal-600',
   exercise: 'from-orange-500 to-red-600',
   meal: 'from-amber-400 to-yellow-600',
-  hygiene: 'from-sky-500 to-blue-600',
-  rest: 'from-violet-500 to-indigo-600',
-  hydration: 'from-cyan-500 to-sky-600',
+  hygiene: 'from-emerald-500 to-green-600',
+  rest: 'from-emerald-500 to-emerald-600',
+  hydration: 'from-teal-500 to-emerald-600',
   other: 'from-zinc-400 to-zinc-600',
 };
 

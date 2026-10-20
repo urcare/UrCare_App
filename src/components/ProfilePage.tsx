@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Bell, ChevronRight, Utensils, Sparkles, Leaf, MoreVertical,
-  Stethoscope, GitCommit, MessageCircleMore, CalendarDays, Clock3, CheckCircle2, Share2, Plus,
+  Stethoscope, GitCommit, MessageCircleMore, CalendarDays, Clock3, CheckCircle2, Share2,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, Prescription, MedicalReportAnalysis, ActivityLogEntry, CareTeamStatus } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -167,8 +167,6 @@ interface ProfilePageProps {
   onOpenMoreMenu: () => void;
   /** Opens the AI chat with this question ready to send. */
   onAskUrCare?: (prompt: string) => void;
-  /** Opens Family & Friends with the "add someone" sheet. */
-  onAddFamily?: () => void;
 }
 
 /** "Home" — a calm, focused landing summary: today's next step, this
@@ -186,7 +184,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onOpenAssessment,
   onOpenMoreMenu,
   onAskUrCare,
-  onAddFamily,
 }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
@@ -448,15 +445,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </div>
             <RippleButton
               type="button"
-              onClick={() => onAddFamily?.()}
-              rippleColor="#10b981"
-              className="header-icon-btn header-add-btn shrink-0"
-              title={tr('Add family & friends', 'परिवार व दोस्त जोड़ें')}
-            >
-              <Plus className="w-4 h-4" />
-            </RippleButton>
-            <RippleButton
-              type="button"
               onClick={() => setIsShareOpen(true)}
               rippleColor="#10b981"
               className="header-icon-btn shrink-0"
@@ -553,7 +541,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1, ease: 'easeOut' }}
           className="home-focus space-y-2"
         >
-          <MagicCard className="rounded-2xl shadow-depth" gradientSize={220} gradientColor="#d1fae5" gradientOpacity={0.55} gradientFrom="#10b981" gradientTo="#22d3ee">
+          <MagicCard className="rounded-2xl shadow-depth" gradientSize={220} gradientColor="#d1fae5" gradientOpacity={0.55} gradientFrom="#10b981" gradientTo="#4ade80">
           <motion.button
             type="button"
             onClick={onOpenPlan}
@@ -617,7 +605,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
 
           {current ? (
-            <MagicCard className="rounded-2xl shadow-depth" gradientSize={220} gradientColor="#d1fae5" gradientOpacity={0.55} gradientFrom="#10b981" gradientTo="#22d3ee">
+            <MagicCard className="rounded-2xl shadow-depth" gradientSize={220} gradientColor="#d1fae5" gradientOpacity={0.55} gradientFrom="#10b981" gradientTo="#4ade80">
             <div className="w-full rounded-2xl overflow-hidden">
               <button
                 type="button"
@@ -738,7 +726,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         >
           <FoodScanSlideshow tr={tr} />
           <span className="food-visual-shade" />
-          <ShineBorder borderWidth={2} duration={10} shineColor={['#34d399', '#fde68a', '#22d3ee']} className="z-[3]" />
+          <ShineBorder borderWidth={2} duration={10} shineColor={['#34d399', '#fde68a', '#4ade80']} className="z-[3]" />
           <span className="absolute left-5 right-5 bottom-5 text-primary-foreground">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"><Sparkles className="w-3.5 h-3.5" />{tr('UrCare Food Scan', 'UrCare फूड स्कैन')}</span>
             <span className="mt-1 block font-display text-xl font-bold">{tr('Know what is on your plate', 'जानें आपकी प्लेट में क्या है')}</span>
@@ -754,7 +742,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.24, ease: 'easeOut' }}
           className="home-timeline"
         >
-          <MagicCard className="rounded-2xl shadow-depth" gradientSize={240} gradientColor="#ede9fe" gradientOpacity={0.6} gradientFrom="#8b5cf6" gradientTo="#10b981">
+          <MagicCard className="rounded-2xl shadow-depth" gradientSize={240} gradientColor="#ede9fe" gradientOpacity={0.6} gradientFrom="#16a34a" gradientTo="#10b981">
           <motion.button
             type="button"
             onClick={() => setIsTimelineOpen(true)}
@@ -762,14 +750,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             className="group w-full p-4 sm:p-5 rounded-2xl bg-transparent text-left cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-violet-500/25">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/25">
                 <GitCommit className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <h2 className="text-sm font-black text-zinc-950">{tr('My Timeline', 'मेरी टाइमलाइन')}</h2>
                 <p className="text-[11px] text-zinc-500 font-semibold">{tr('Everything you have added or changed', 'आपने जो कुछ जोड़ा या बदला')}</p>
               </div>
-              <span className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-violet-50 text-violet-700 text-[11px] font-black group-hover:bg-violet-100 transition-colors">
+              <span className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-black group-hover:bg-emerald-100 transition-colors">
                 {tr('View all', 'सभी देखें')}
                 <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
               </span>

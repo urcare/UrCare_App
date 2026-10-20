@@ -29,7 +29,7 @@ export const HealthDevicesCard: React.FC<{ tr: (en: string, hi: string) => strin
   return (
     <section className="rounded-2xl bg-white border border-zinc-200 shadow-depth overflow-hidden text-left">
       <div className="p-4 flex items-center gap-3 border-b border-zinc-100">
-        <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center shrink-0"><Watch className="w-5 h-5" /></span>
+        <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white flex items-center justify-center shrink-0"><Watch className="w-5 h-5" /></span>
         <div className="min-w-0">
           <h3 className="text-sm font-black text-zinc-900">{tr('Connect health devices', 'हेल्थ डिवाइस जोड़ें')}</h3>
           <p className="text-[11px] text-zinc-500 font-semibold">{tr('Steps, heart rate, sleep and sugar from your watch — coming soon', 'वॉच से स्टेप्स, हार्ट रेट, नींद व शुगर — जल्द आ रहा है')}</p>

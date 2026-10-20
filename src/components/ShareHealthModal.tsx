@@ -395,7 +395,7 @@ export const ShareHealthModal: React.FC<ShareHealthModalProps> = ({ isOpen, onCl
 
                 {/* Preview: the QR and the very text it contains */}
                 <div className="relative rounded-2xl border border-emerald-100 bg-gradient-to-b from-emerald-50/70 to-white p-4 overflow-hidden">
-                  <ShineBorder borderWidth={2} duration={12} shineColor={['#34d399', '#22d3ee', '#a7f3d0']} />
+                  <ShineBorder borderWidth={2} duration={12} shineColor={['#34d399', '#4ade80', '#a7f3d0']} />
                   <div className="flex justify-center">
                     {qr ? <img src={qr} alt={tr('Health summary QR code', 'हेल्थ सारांश QR कोड')} className="w-48 h-48 rounded-xl bg-white p-2 shadow-sm" /> : <div className="w-48 h-48 rounded-xl bg-zinc-100 animate-pulse" />}
                   </div>

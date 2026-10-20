@@ -17,8 +17,8 @@ const ICONS: Record<AppNotification['type'], React.ComponentType<{ className?: s
 
 // Colour per notification type (icon tile).
 const TONES: Record<AppNotification['type'], string> = {
-  prescription: 'from-violet-500 to-fuchsia-500',
-  report: 'from-sky-500 to-cyan-500',
+  prescription: 'from-emerald-500 to-green-500',
+  report: 'from-emerald-500 to-teal-500',
   order: 'from-amber-500 to-orange-500',
   plan: 'from-emerald-500 to-teal-500',
   system: 'from-zinc-500 to-zinc-600',

@@ -14,7 +14,7 @@ import { useLanguage } from '../context/LanguageContext';
  *  ("mostly green edits, one purple upload") without reading every line. */
 export const ACTION_META: Record<ActivityLogEntry['action'], { dot: string; chip: string; label: [string, string] }> = {
   created: { dot: 'bg-emerald-500', chip: 'bg-emerald-50 text-emerald-700', label: ['Created', 'बनाया'] },
-  uploaded: { dot: 'bg-violet-500', chip: 'bg-violet-50 text-violet-700', label: ['Uploaded', 'अपलोड'] },
+  uploaded: { dot: 'bg-emerald-500', chip: 'bg-emerald-50 text-emerald-700', label: ['Uploaded', 'अपलोड'] },
   updated: { dot: 'bg-amber-500', chip: 'bg-amber-50 text-amber-700', label: ['Updated', 'अपडेट'] },
   deleted: { dot: 'bg-rose-500', chip: 'bg-rose-50 text-rose-700', label: ['Deleted', 'हटाया'] },
 };

@@ -75,24 +75,24 @@ export const PlanAlternative: React.FC<PlanAlternativeProps> = ({ stepId, dateKe
       <div className="flex items-center gap-2">
         <button type="button" onClick={(e) => { e.stopPropagation(); prev(); }} disabled={index === 0} aria-label={tr('Previous option', 'पिछला विकल्प')} className="w-8 h-8 rounded-full border border-zinc-200 bg-white flex items-center justify-center text-zinc-600 disabled:opacity-30 cursor-pointer shrink-0"><ChevronLeft className="w-4 h-4" /></button>
         <div className="min-w-0 flex-1 text-center">
-          <div className={`text-[10px] font-black uppercase tracking-wider ${index === 0 ? 'text-zinc-400' : 'text-violet-600'}`}>
+          <div className={`text-[10px] font-black uppercase tracking-wider ${index === 0 ? 'text-zinc-400' : 'text-emerald-600'}`}>
             {index === 0 ? tr('Your plan', 'आपका प्लान') : tr(`AI alternative ${index}`, `AI विकल्प ${index}`)}
             {options.length > 1 && <span className="text-zinc-300"> · {index + 1}/{options.length}</span>}
           </div>
           {index > 0 && <div className="text-xs sm:text-sm font-black text-zinc-900 leading-snug">{current.title}</div>}
         </div>
-        <button type="button" onClick={(e) => { e.stopPropagation(); next(); }} disabled={loading} aria-label={tr('Show an alternative', 'विकल्प दिखाएं')} className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white flex items-center justify-center shadow-md shadow-violet-500/30 cursor-pointer shrink-0 disabled:opacity-60">
+        <button type="button" onClick={(e) => { e.stopPropagation(); next(); }} disabled={loading} aria-label={tr('Show an alternative', 'विकल्प दिखाएं')} className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-green-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/30 cursor-pointer shrink-0 disabled:opacity-60">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronRight className="w-4 h-4" />}
         </button>
       </div>
       {index === 0 && !alts.length && (
-        <p className="text-center text-[10px] font-semibold text-violet-600 flex items-center justify-center gap-1"><Sparkles className="w-3 h-3" />{kind === 'meal' ? tr("Don't like this? Tap → for a similar meal", 'पसंद नहीं? मिलते-जुलते खाने के लिए → दबाएं') : tr("Can't do this? Tap → for a similar exercise", 'नहीं कर सकते? मिलती-जुलती एक्सरसाइज़ के लिए → दबाएं')}</p>
+        <p className="text-center text-[10px] font-semibold text-emerald-600 flex items-center justify-center gap-1"><Sparkles className="w-3 h-3" />{kind === 'meal' ? tr("Don't like this? Tap → for a similar meal", 'पसंद नहीं? मिलते-जुलते खाने के लिए → दबाएं') : tr("Can't do this? Tap → for a similar exercise", 'नहीं कर सकते? मिलती-जुलती एक्सरसाइज़ के लिए → दबाएं')}</p>
       )}
       <AnimatePresence mode="wait">
-        <motion.div key={index} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }} className={index > 0 ? 'p-3 rounded-xl bg-violet-50/70 border border-violet-100' : ''}>
+        <motion.div key={index} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }} className={index > 0 ? 'p-3 rounded-xl bg-emerald-50/70 border border-emerald-100' : ''}>
           {current.body && <p className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>{current.body}</p>}
           {index > 0 && (current.why || current.calories) && (
-            <p className="mt-1.5 text-[11px] font-semibold text-violet-700">
+            <p className="mt-1.5 text-[11px] font-semibold text-emerald-700">
               {current.calories ? `≈ ${Math.round(current.calories)} kcal · ` : ''}{current.why}
             </p>
           )}

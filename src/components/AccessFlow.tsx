@@ -147,7 +147,7 @@ const ReportStep: React.FC<{
         </div>
 
         <div className="relative rounded-2xl bg-white border border-zinc-200 shadow-depth p-4 sm:p-5 overflow-hidden">
-          <ShineBorder borderWidth={2} duration={12} shineColor={['#34d399', '#22d3ee', '#a7f3d0']} />
+          <ShineBorder borderWidth={2} duration={12} shineColor={['#34d399', '#4ade80', '#a7f3d0']} />
           <ReportUploader
             standalone
             userAccount={account}
@@ -283,7 +283,7 @@ const Paywall: React.FC<{
 
         {/* Unlock */}
         <div className="relative rounded-[1.5rem] bg-white border border-emerald-200 shadow-depth overflow-hidden">
-          <ShineBorder borderWidth={2} duration={10} shineColor={['#34d399', '#fde68a', '#22d3ee']} />
+          <ShineBorder borderWidth={2} duration={10} shineColor={['#34d399', '#fde68a', '#4ade80']} />
           <div className="p-5 bg-gradient-to-br from-emerald-50 to-teal-50 border-b border-emerald-100">
             <div className="flex items-center gap-2 text-emerald-800"><Lock className="w-4 h-4" /><span className="text-xs font-black uppercase tracking-wider">{tr('Unlock the full UrCare app', 'पूरी UrCare ऐप खोलें')}</span></div>
             <div className="mt-2 flex items-end gap-2">
@@ -356,7 +356,7 @@ const Paywall: React.FC<{
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <a href={`https://wa.me/${DOCTOR.whatsapp}?text=${waText}`} target="_blank" rel="noreferrer" className="contact-tile"><span className="contact-icon bg-[#25D366]"><BrandIcon path={siWhatsapp.path} className="w-4 h-4" /></span><span><b>WhatsApp</b><small>{DOCTOR.phoneLabel}</small></span></a>
-            <a href={`tel:+${DOCTOR.whatsapp}`} className="contact-tile"><span className="contact-icon bg-sky-600"><Phone className="w-4 h-4" /></span><span><b>{tr('Call', 'कॉल')}</b><small>{DOCTOR.phoneLabel}</small></span></a>
+            <a href={`tel:+${DOCTOR.whatsapp}`} className="contact-tile"><span className="contact-icon bg-emerald-600"><Phone className="w-4 h-4" /></span><span><b>{tr('Call', 'कॉल')}</b><small>{DOCTOR.phoneLabel}</small></span></a>
             <a href={`mailto:${DOCTOR.email}?subject=${encodeURIComponent('UrCare')}`} className="contact-tile"><span className="contact-icon bg-rose-500"><Mail className="w-4 h-4" /></span><span><b>Email</b><small>{DOCTOR.email}</small></span></a>
             <a href={DOCTOR.website} target="_blank" rel="noreferrer" className="contact-tile"><span className="contact-icon bg-zinc-800"><Globe className="w-4 h-4" /></span><span><b>{tr('Website', 'वेबसाइट')}</b><small>urcare.org</small></span></a>
           </div>
@@ -385,7 +385,7 @@ const SummaryBlock: React.FC<{ tone: 'good' | 'bad' | 'need'; title: string; ite
   const meta = {
     good: { icon: CheckCircle2, ring: 'border-emerald-200', head: 'text-emerald-800', dot: 'text-emerald-600', bg: 'from-emerald-50/80' },
     bad: { icon: AlertTriangle, ring: 'border-amber-200', head: 'text-amber-800', dot: 'text-amber-600', bg: 'from-amber-50/80' },
-    need: { icon: ArrowRight, ring: 'border-sky-200', head: 'text-sky-800', dot: 'text-sky-600', bg: 'from-sky-50/80' },
+    need: { icon: ArrowRight, ring: 'border-emerald-200', head: 'text-emerald-800', dot: 'text-emerald-600', bg: 'from-emerald-50/80' },
   }[tone];
   const Icon = meta.icon;
   return (

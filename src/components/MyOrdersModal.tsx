@@ -21,6 +21,8 @@ interface MyOrdersModalProps {
   onClose: () => void;
   orders: Order[];
   onOpenStore?: () => void;
+  /** Render just the list (inside the Pharmacy's "My Orders" tab), no pop-up. */
+  inline?: boolean;
 }
 
 export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
@@ -28,6 +30,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
   onClose,
   orders,
   onOpenStore,
+  inline,
 }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
@@ -36,7 +39,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
   const [reuploaded, setReuploaded] = useState<Record<string, string>>({});
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<{ id: string; message: string } | null>(null);
-  if (!isOpen) return null;
+  if (!isOpen && !inline) return null;
 
   const handleReupload = async (orderId: string, file: File) => {
     setUploadError(null);
@@ -53,33 +56,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-      <div 
-        id="my-orders-modal-container"
-        className="relative w-full max-w-2xl bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 shadow-2xl my-8 max-h-[90vh] flex flex-col"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-zinc-200 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center">
-              <ShoppingBag className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-black text-zinc-900">{tr('My Orders', 'मेरे ऑर्डर')}</h2>
-              <p className="text-xs text-zinc-500">{tr('Track and manage your nutrition & supplement orders', 'अपने पोषण व सप्लीमेंट ऑर्डर ट्रैक व प्रबंधित करें')}</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Content */}
+  const list = (
         <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1">
           {orders.length === 0 ? (
             <div className="text-center py-12">
@@ -92,7 +69,7 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    onClose();
+                    if (!inline) onClose();
                     onOpenStore();
                   }}
                   className="mt-4 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs transition-all"
@@ -173,6 +150,8 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                   </div>
                 )}
 
+                <OrderTracker order={order} tr={tr} />
+
                 {/* Items in this order */}
                 <div className="space-y-2">
                   {order.items.map((item, idx) => (
@@ -195,6 +174,8 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
                   ))}
                 </div>
 
+                <OrderSummary order={order} tr={tr} />
+
                 {/* Shipping & Delivery Estimate */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-zinc-200 text-xs">
                   <div className="flex items-start gap-2 text-zinc-500">
@@ -214,7 +195,82 @@ export const MyOrdersModal: React.FC<MyOrdersModalProps> = ({
             })
           )}
         </div>
+  );
+
+  if (inline) return <div className="space-y-4 text-left">{list}</div>;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+      <div 
+        id="my-orders-modal-container"
+        className="relative w-full max-w-2xl bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 shadow-2xl my-8 max-h-[90vh] flex flex-col"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-zinc-200 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center">
+              <ShoppingBag className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-zinc-900">{tr('My Orders', 'मेरे ऑर्डर')}</h2>
+              <p className="text-xs text-zinc-500">{tr('Track and manage your nutrition & supplement orders', 'अपने पोषण व सप्लीमेंट ऑर्डर ट्रैक व प्रबंधित करें')}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {list}
       </div>
+    </div>
+  );
+};
+
+/** Placed → Payment verified → Shipped → Delivered. */
+const OrderTracker: React.FC<{ order: Order; tr: (en: string, hi: string) => string }> = ({ order, tr }) => {
+  const steps: [string, string][] = [['Placed', 'ऑर्डर हुआ'], ['Payment verified', 'भुगतान सत्यापित'], ['Shipped', 'भेजा गया'], ['Delivered', 'डिलीवर']];
+  const reached = order.paymentStatus === 'rejected' ? 0
+    : order.orderStatus === 'delivered' ? 3
+    : order.orderStatus === 'shipped' ? 2
+    : order.paymentStatus === 'verified' ? 1 : 0;
+  return (
+    <div className="flex items-center">
+      {steps.map(([en, hi], i) => (
+        <React.Fragment key={en}>
+          <div className="flex flex-col items-center gap-1 w-16 shrink-0">
+            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${i <= reached ? 'bg-emerald-600 text-white' : 'bg-zinc-200 text-zinc-500'}`}>{i <= reached ? '✓' : i + 1}</span>
+            <span className={`text-[9px] font-bold text-center leading-tight ${i <= reached ? 'text-emerald-700' : 'text-zinc-400'}`}>{tr(en, hi)}</span>
+          </div>
+          {i < steps.length - 1 && <span className={`flex-1 h-0.5 -mt-4 rounded-full ${i < reached ? 'bg-emerald-500' : 'bg-zinc-200'}`} />}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
+/** Subtotal, coupon, referral points, delivery and the total paid. */
+const OrderSummary: React.FC<{ order: Order; tr: (en: string, hi: string) => string }> = ({ order, tr }) => {
+  const itemsTotal = order.items.reduce((s, it) => s + (it.product.discountPrice || it.product.price) * it.quantity, 0);
+  const subtotal = order.subtotal || itemsTotal;
+  const coupon = order.couponCode ? order.discount || 0 : 0;
+  const points = order.pointsUsed || 0;
+  const delivery = Math.max(0, order.total - subtotal + coupon + points);
+  const row = (label: string, value: string, cls = 'text-zinc-700') => (
+    <div className="flex justify-between"><span className="text-zinc-500">{label}</span><span className={`font-bold ${cls}`}>{value}</span></div>
+  );
+  return (
+    <div className="p-3 rounded-xl bg-white border border-zinc-200 text-xs space-y-1">
+      <div className="text-[10px] font-black uppercase tracking-wider text-zinc-400 mb-1">{tr('Order summary', 'ऑर्डर सारांश')}</div>
+      {row(tr('Items', 'सामान'), `₹${subtotal.toLocaleString('en-IN')}`)}
+      {coupon > 0 && row(tr(`Coupon ${order.couponCode}`, `कूपन ${order.couponCode}`), `−₹${coupon.toLocaleString('en-IN')}`, 'text-emerald-700')}
+      {points > 0 && row(tr('Referral points', 'रेफ़रल पॉइंट्स'), `−₹${points.toLocaleString('en-IN')}`, 'text-emerald-700')}
+      {row(tr('Delivery', 'डिलीवरी'), delivery > 0 ? `₹${delivery}` : tr('Free', 'मुफ़्त'), delivery > 0 ? 'text-zinc-700' : 'text-emerald-700')}
+      <div className="flex justify-between pt-1.5 mt-1 border-t border-zinc-100 text-sm"><span className="font-black text-zinc-900">{tr('Total paid', 'कुल भुगतान')}</span><span className="font-black text-emerald-700">₹{order.total.toLocaleString('en-IN')}</span></div>
     </div>
   );
 };

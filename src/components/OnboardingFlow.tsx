@@ -1446,7 +1446,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onOp
 
                   {/* Visual BMI Bar */}
                   <div className="w-full h-2 rounded-full bg-zinc-200 flex overflow-hidden">
-                    <div className="h-full bg-blue-500" style={{ width: '18.5%' }} title={tr('Underweight (< 18.5)', 'कम वज़न (< 18.5)')} />
+                    <div className="h-full bg-green-500" style={{ width: '18.5%' }} title={tr('Underweight (< 18.5)', 'कम वज़न (< 18.5)')} />
                     <div className="h-full bg-emerald-500" style={{ width: '25%' }} title={tr('Normal (18.5 - 24.9)', 'सामान्य (18.5 - 24.9)')} />
                     <div className="h-full bg-amber-500" style={{ width: '25%' }} title={tr('Overweight (25.0 - 29.9)', 'अधिक वज़न (25.0 - 29.9)')} />
                     <div className="h-full bg-rose-500" style={{ width: '31.5%' }} title={tr('Obese (30.0+)', 'मोटापा (30.0+)')} />

@@ -3,8 +3,9 @@ import {
   ShoppingBag, Star, Plus, Minus, Check, ArrowRight, ShieldCheck,
   Truck, QrCode, CreditCard, Sparkles, MapPin, X, Copy, Zap,
   Package, ChevronRight, CheckCircle2, Lock, RefreshCw, Upload, Clock, Ticket
-} from 'lucide-react';
+, ShoppingCart } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { MyOrdersModal } from './MyOrdersModal';
 import { Product, PackOption, CartItem, ShippingAddress, Order, UserAccount } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -16,6 +17,8 @@ interface ProductsModuleProps {
   account: UserAccount;
   onOrderPlaced?: (newOrder: Order) => void;
   onOpenMyOrders?: () => void;
+  /** This member's orders — shown in the Pharmacy's "My Orders" tab. */
+  orders?: Order[];
 }
 
 // Duration packs (1/2/3 months…): each pack is added to the cart as its own
@@ -46,6 +49,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   account,
   onOrderPlaced,
   onOpenMyOrders,
+  orders = [],
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -70,6 +74,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  // Pharmacy sections: the shop shelf or the member's own orders (the cart opens as a drawer).
+  const [pharmacyView, setPharmacyView] = useState<'shop' | 'orders'>('shop');
   const [addedAnimationId, setAddedAnimationId] = useState<string | null>(null);
   const [selectedProductDetails, setSelectedProductDetails] = useState<Product | null>(null);
   // The pack picked in the details popup — starts at the default pack.
@@ -218,11 +224,11 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const totalCartItems = cart.reduce((acc, item) => acc + item.quantity, 0);
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.discountPrice || item.product.price) * item.quantity, 0);
   const couponDiscount = couponResult?.valid ? couponResult.discount : 0;
-  // Referral points: ₹1 each, spent in whole 100-point blocks (same rule as the server).
+  // Referral points: ₹1 each, spent in whole 50-point blocks (same rule as the server).
   const [referral, setReferral] = useState<ReferralStatus | null>(null);
   const [usePoints, setUsePoints] = useState(false);
   useEffect(() => { getReferralStatus().then(setReferral); }, []);
-  const pointsBlock = referral?.block || 100;
+  const pointsBlock = referral?.block || 50;
   const payableBeforePoints = cartSubtotal - couponDiscount;
   const pointsAvailable = referral ? Math.max(0, Math.min(Math.floor(referral.balance / pointsBlock) * pointsBlock, Math.floor(payableBeforePoints / pointsBlock) * pointsBlock)) : 0;
   const pointsDiscount = usePoints ? pointsAvailable : 0;
@@ -441,20 +447,35 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               <ShieldCheck className="w-4 h-4" />
               <span>{tr('Clinically Formulated & Doctor-Led', 'क्लीनिकली फॉर्मूलेटेड व डॉक्टर-नेतृत्व वाला')}</span>
             </span>
-            {onOpenMyOrders && (
-              <button
-                type="button"
-                onClick={onOpenMyOrders}
-                className="px-3 py-1 rounded-lg bg-white text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1"
-              >
-                <Package className="w-3.5 h-3.5" />
-                <span>{tr('My Orders', 'मेरे ऑर्डर')}</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
 
+      {/* Pharmacy sections: Shop · Cart · My Orders */}
+      <div className="pharmacy-tabs sticky top-0 z-20 -mx-1 px-1 py-1.5">
+        <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-2xl bg-white/90 backdrop-blur border border-emerald-100 shadow-sm">
+          <button type="button" onClick={() => setPharmacyView('shop')} className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-colors ${pharmacyView === 'shop' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-600 hover:bg-emerald-50'}`}>
+            <ShoppingBag className="w-4 h-4" />{tr('Shop', 'शॉप')}
+          </button>
+          <button id="cart-trigger-btn" type="button" onClick={() => setIsCartOpen(true)} className="relative flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black cursor-pointer text-zinc-700 hover:bg-emerald-50">
+            <span className="relative">
+              <ShoppingCart className="w-4 h-4 text-emerald-700" />
+              {totalCartItems > 0 && <span className="absolute -top-2 -right-2.5 min-w-4 h-4 px-1 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center">{totalCartItems}</span>}
+            </span>
+            <span>{tr('Cart', 'कार्ट')}</span>
+            {totalCartItems > 0 && <span className="hidden sm:inline text-[10px] font-mono text-emerald-700">₹{cartSubtotal.toLocaleString('en-IN')}</span>}
+          </button>
+          <button type="button" onClick={() => setPharmacyView('orders')} className={`relative flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black cursor-pointer transition-colors ${pharmacyView === 'orders' ? 'bg-emerald-600 text-white shadow' : 'text-zinc-600 hover:bg-emerald-50'}`}>
+            <Package className="w-4 h-4" />{tr('My Orders', 'मेरे ऑर्डर')}
+            {orders.length > 0 && <span className={`min-w-4 h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center ${pharmacyView === 'orders' ? 'bg-white text-emerald-700' : 'bg-emerald-100 text-emerald-700'}`}>{orders.length}</span>}
+          </button>
+        </div>
+      </div>
+
+      {pharmacyView === 'orders' ? (
+        <MyOrdersModal isOpen inline orders={orders} onClose={() => {}} onOpenStore={() => setPharmacyView('shop')} />
+      ) : (
+      <>
       {/* Coupon banner — same offer as urcare.org */}
       <div className="rounded-2xl bg-white border border-amber-200 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -495,28 +516,6 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
           ))}
         </div>
 
-        {/* Aesthetic Floating / Sticky Cart Trigger */}
-        <button
-          id="cart-trigger-btn"
-          type="button"
-          onClick={() => setIsCartOpen(true)}
-          className="relative px-4 py-2.5 rounded-2xl bg-white hover:bg-emerald-50 border border-emerald-300 text-zinc-900 text-xs font-black flex items-center gap-2.5 shadow-md shadow-emerald-600/10 transition-all hover:scale-102 active:scale-98 cursor-pointer group"
-        >
-          <div className="relative flex items-center justify-center">
-            <ShoppingBag className="w-4 h-4 text-emerald-600 stroke-[2.2] group-hover:scale-110 transition-transform" />
-            {totalCartItems > 0 && (
-              <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center shadow-xs">
-                {totalCartItems}
-              </span>
-            )}
-          </div>
-          <span className="tracking-wide">{tr('Cart', 'कार्ट')}</span>
-          {totalCartItems > 0 && (
-            <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-lg font-mono font-bold">
-              ₹{cartSubtotal.toLocaleString('en-IN')}
-            </span>
-          )}
-        </button>
       </div>
 
       {/* Product Cards Grid */}
@@ -638,6 +637,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
           );
         })}
       </div>
+      )}
+      </>
       )}
 
       {/* PRODUCT DETAILS MODAL (CLICK TO READ & EXPLORE FULL DETAILS) */}
@@ -925,11 +926,11 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     <p className="text-[11px] text-zinc-500 px-1">{tr('Use', 'कोड')} <span className="font-black text-emerald-700">{STORE_COUPON}</span> {tr('for an exclusive discount', 'लगाकर खास छूट पाएं')}</p>
                   )}
                   {referral && referral.balance > 0 && (
-                    <label className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-xs cursor-pointer ${pointsAvailable ? 'bg-violet-50 border-violet-200' : 'bg-zinc-50 border-zinc-200 opacity-70 cursor-not-allowed'}`}>
-                      <input type="checkbox" checked={usePoints && !!pointsAvailable} disabled={!pointsAvailable} onChange={(e) => setUsePoints(e.target.checked)} className="w-4 h-4 accent-violet-600" />
+                    <label className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-xs cursor-pointer ${pointsAvailable ? 'bg-emerald-50 border-emerald-200' : 'bg-zinc-50 border-zinc-200 opacity-70 cursor-not-allowed'}`}>
+                      <input type="checkbox" checked={usePoints && !!pointsAvailable} disabled={!pointsAvailable} onChange={(e) => setUsePoints(e.target.checked)} className="w-4 h-4 accent-emerald-600" />
                       <span className="flex-1 min-w-0">
-                        <span className="block font-black text-violet-800">{tr(`Use ${pointsAvailable || pointsBlock} points (₹${pointsAvailable || pointsBlock} off)`, `${pointsAvailable || pointsBlock} पॉइंट्स लगाएं (₹${pointsAvailable || pointsBlock} छूट)`)}</span>
-                        <span className="block text-[10px] font-semibold text-violet-600/80">{pointsAvailable ? tr(`You have ${referral.balance} points`, `आपके पास ${referral.balance} पॉइंट्स हैं`) : tr(`Add ₹${pointsBlock}+ to your cart to use points`, `पॉइंट्स के लिए कार्ट ₹${pointsBlock}+ का करें`)}</span>
+                        <span className="block font-black text-emerald-800">{tr(`Use ${pointsAvailable || pointsBlock} points (₹${pointsAvailable || pointsBlock} off)`, `${pointsAvailable || pointsBlock} पॉइंट्स लगाएं (₹${pointsAvailable || pointsBlock} छूट)`)}</span>
+                        <span className="block text-[10px] font-semibold text-emerald-600/80">{pointsAvailable ? tr(`You have ${referral.balance} points`, `आपके पास ${referral.balance} पॉइंट्स हैं`) : tr(`Add ₹${pointsBlock}+ to your cart to use points`, `पॉइंट्स के लिए कार्ट ₹${pointsBlock}+ का करें`)}</span>
                       </span>
                     </label>
                   )}
@@ -946,7 +947,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     </div>
                   )}
                   {pointsDiscount > 0 && (
-                    <div className="flex justify-between text-violet-700 font-bold">
+                    <div className="flex justify-between text-emerald-700 font-bold">
                       <span>{tr('Referral points', 'रेफ़रल पॉइंट्स')}</span>
                       <span>−₹{pointsDiscount}</span>
                     </div>

@@ -2238,13 +2238,13 @@ app.get('/api/access-status', requireUser(async (req, res, user) => {
 // opens the app through someone's link is credited to them (stored by the
 // server in the new user's app_metadata, which a device can't edit).
 // Every 5 people who join = 500 points, and 1 point = ₹1 off in the pharmacy,
-// spent in blocks of 100. Points spent are kept on the order itself, so the
+// spent in blocks of 50. Points spent are kept on the order itself, so the
 // balance is always earned − spent (rejected orders give points back).
 // ----------------------------------------------------------------------------
 const REFERRALS_PER_REWARD = 5;
 const REFERRAL_REWARD_POINTS = 500;
-// Points are spent in blocks of 100 so each ₹100 family bonus is usable on its own.
-const POINTS_BLOCK = 100;
+// Points are spent in blocks of 50 so each ₹150 family bonus is usable in full.
+const POINTS_BLOCK = 50;
 
 function referralCodeFor(userId: string): string {
   return 'UC' + userId.replace(/-/g, '').slice(0, 6).toUpperCase();
@@ -2287,7 +2287,7 @@ async function referralSummary(supabase: any, userId: string) {
 // visible to their family — and sent to them as a notification — only when
 // that member has turned sharing ON (off by default).
 // ----------------------------------------------------------------------------
-const FAMILY_BONUS_POINTS = 100;
+const FAMILY_BONUS_POINTS = 150;
 const FAMILY_RELATIONS = ['mother', 'father', 'brother', 'sister', 'son', 'daughter', 'spouse', 'grandparent', 'friend', 'other'];
 const FAMILY_GROUP: Record<string, 'family' | 'friends'> = { friend: 'friends' };
 
@@ -2543,7 +2543,7 @@ app.post('/api/progress/today', requireUser(async (req, res, user) => {
   res.json({ ok: true, pct });
 }));
 
-/** Points that can go on this cart: whole 100-point blocks, never more than what's left to pay. */
+/** Points that can go on this cart: whole 50-point blocks, never more than what's left to pay. */
 function pointsForCart(balance: number, payable: number): number {
   return Math.max(0, Math.min(Math.floor(balance / POINTS_BLOCK) * POINTS_BLOCK, Math.floor(payable / POINTS_BLOCK) * POINTS_BLOCK));
 }
@@ -2593,7 +2593,7 @@ app.post('/api/orders', requireUser(async (req, res, user) => {
     const priced = await priceStoreCart(supabase, items, couponCode);
     if ('error' in priced) return res.status(400).json({ error: priced.error });
     if (couponCode && !priced.coupon?.valid) return res.status(400).json({ error: priced.coupon?.message || 'This coupon could not be applied.' });
-    // Referral points (₹1 each, in 100-point blocks) come off what's left to pay.
+    // Referral points (₹1 each, in 50-point blocks) come off what's left to pay.
     let pointsUsed = 0;
     if (usePoints) {
       const { balance } = await referralSummary(supabase, user.id);

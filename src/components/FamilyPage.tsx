@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Users, Search, Check, X, Copy, Share2, Gift, Heart, UserPlus, Trash2, Eye, EyeOff, Loader2, QrCode, ScanLine } from 'lucide-react';
+import { Plus, Users, Search, Check, X, Copy, Share2, Gift, Heart, UserPlus, Trash2, Eye, EyeOff, Loader2, QrCode, ScanLine, ShoppingBag } from 'lucide-react';
 import { UsernameSheet, MyQrSheet, QrScannerSheet } from './ProfileQr';
 import { StatusStrip } from './FamilyStatus';
+import { NumberTicker } from './magicui/number-ticker';
+import { siWhatsapp } from 'simple-icons';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import {
   getFamily, searchFamilyMember, sendFamilyRequest, respondFamilyRequest, removeFamilyMember, setFamilyShareProgress,
-  FamilyState, FamilyPerson, FamilyLink, profileLink,
+  FamilyState, FamilyPerson, FamilyLink, profileLink, getReferralStatus, ReferralStatus,
 } from '../utils/supabase';
 import { BorderBeam } from './magicui/border-beam';
 import { MagicCard } from './magicui/magic-card';
@@ -30,7 +32,7 @@ const Avatar: React.FC<{ person: FamilyPerson; size?: number }> = ({ person, siz
 
 const ProgressRing: React.FC<{ pct: number }> = ({ pct }) => {
   const r = 18, c = 2 * Math.PI * r;
-  const tone = pct >= 100 ? '#059669' : pct >= 50 ? '#0ea5e9' : '#f59e0b';
+  const tone = pct >= 100 ? '#059669' : pct >= 50 ? '#16a34a' : '#f59e0b';
   return (
     <span className="relative w-12 h-12 shrink-0">
       <svg viewBox="0 0 44 44" className="w-full h-full -rotate-90">
@@ -51,9 +53,11 @@ interface FamilyPageProps {
   /** The signed-in member's own name and photo, for their QR card. */
   selfName?: string;
   selfAvatar?: string | null;
+  /** Opens the Pharmacy (to spend points). */
+  onOpenStore?: () => void;
 }
 
-export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initialQuery, selfName, selfAvatar }) => {
+export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initialQuery, selfName, selfAvatar, onOpenStore }) => {
   const [state, setState] = useState<FamilyState | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'family' | 'friends'>('family');
@@ -62,6 +66,17 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
   const [isUsernameOpen, setIsUsernameOpen] = useState(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isScanOpen, setIsScanOpen] = useState(false);
+  // Points from family bonuses + friends who joined with this member's link.
+  const [referral, setReferral] = useState<ReferralStatus | null>(null);
+  useEffect(() => {
+    const load = () => getReferralStatus().then(setReferral);
+    load();
+    window.addEventListener('urcare:refresh', load);
+    window.addEventListener('urcare:family-status-changed', load);
+    return () => { window.removeEventListener('urcare:refresh', load); window.removeEventListener('urcare:family-status-changed', load); };
+  }, []);
+  const perReward = referral?.perReward || 5;
+  const towardsNext = referral ? referral.joined % perReward : 0;
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -159,14 +174,64 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
       {/* Today's status — mine + family & friends */}
       <StatusStrip key={state?.shareProgress ? 'on' : 'off'} tr={tr} />
 
-      {/* Bonus */}
-      <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-violet-50 to-fuchsia-50 border border-violet-200">
-        <span className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0"><Gift className="w-5 h-5" /></span>
-        <p className="text-xs font-semibold text-violet-900 leading-snug">
-          <b className="font-black">{tr(`₹${state?.bonusPerPerson || 100} off for every person who joins your family.`, `परिवार में जुड़ने वाले हर व्यक्ति पर ₹${state?.bonusPerPerson || 100} की छूट।`)}</b>{' '}
-          {tr('Points are added when they accept your request and can be used in the Pharmacy.', 'जब वो आपकी रिक्वेस्ट मानेंगे तब पॉइंट्स जुड़ेंगे, जो फ़ार्मेसी में इस्तेमाल होंगे।')}
-        </p>
-      </div>
+      {/* Invite & earn — family bonus and referrals in one place */}
+      <section className="relative rounded-[1.5rem] bg-white border border-emerald-200 shadow-depth overflow-hidden">
+        <div className="p-4 sm:p-5 bg-gradient-to-br from-emerald-50 via-white to-green-50">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider"><Gift className="w-3.5 h-3.5" />{tr('Invite & earn', 'बुलाएं और कमाएं')}</span>
+              <h2 className="mt-2 text-base font-black text-zinc-900 leading-snug">{tr('Bring your family & friends to UrCare', 'अपने परिवार व दोस्तों को UrCare पर लाएं')}</h2>
+              <p className="text-[11px] text-zinc-500 font-semibold">{tr('1 point = ₹1 off in UrCare Medical Pharmacy', '1 पॉइंट = UrCare मेडिकल फ़ार्मेसी में ₹1 की छूट')}</p>
+            </div>
+            <div className="text-right shrink-0">
+              <div className="text-[10px] font-black uppercase tracking-wider text-emerald-700">{tr('Your points', 'आपके पॉइंट्स')}</div>
+              <div className="font-display text-3xl font-bold text-emerald-700 leading-none mt-1"><NumberTicker value={referral?.balance || 0} className="text-emerald-700 tracking-normal" /></div>
+              <div className="text-[10px] font-bold text-zinc-400 mt-1">≈ ₹{(referral?.balance || 0).toLocaleString('en-IN')}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-emerald-100">
+              <span className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0"><Heart className="w-4.5 h-4.5" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-black text-zinc-900">{tr(`+₹${state?.bonusPerPerson || 150} for each person you add`, `हर जोड़े गए व्यक्ति पर +₹${state?.bonusPerPerson || 150}`)}</span>
+                <span className="block text-[11px] text-zinc-500 font-semibold">{tr('Added when they accept your request', 'जब वो आपकी रिक्वेस्ट मानें')}</span>
+              </span>
+              <span className="text-sm font-black text-emerald-700 shrink-0">+{referral?.familyBonus || 0}</span>
+            </div>
+            <div className="p-3 rounded-2xl bg-white border border-emerald-100">
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-xl bg-green-700 text-white flex items-center justify-center shrink-0"><Users className="w-4.5 h-4.5" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-black text-zinc-900">{tr(`+₹${referral?.rewardPoints || 500} for every ${perReward} friends who join`, `हर ${perReward} नए दोस्त जुड़ने पर +₹${referral?.rewardPoints || 500}`)}</span>
+                  <span className="block text-[11px] text-zinc-500 font-semibold">{tr(`${towardsNext} of ${perReward} joined with your link`, `आपके लिंक से ${perReward} में से ${towardsNext} जुड़े`)}</span>
+                </span>
+                <span className="text-sm font-black text-emerald-700 shrink-0">{referral?.joined || 0}</span>
+              </div>
+              <div className="mt-2.5 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${perReward}, minmax(0, 1fr))` }}>
+                {Array.from({ length: perReward }, (_, i) => (
+                  <motion.span key={i} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.08 * i }} className={`h-2 rounded-full origin-left ${i < towardsNext ? 'bg-gradient-to-r from-emerald-500 to-green-600' : 'bg-emerald-100'}`} />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(inviteText)}`, '_blank', 'noopener')} disabled={!myId} className="inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#25D366] text-white text-xs font-black cursor-pointer disabled:opacity-50">
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden="true"><path d={siWhatsapp.path} /></svg>{tr('Invite on WhatsApp', 'WhatsApp पर बुलाएं')}
+            </button>
+            <button type="button" onClick={shareId} disabled={!myId} className="inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-700 text-white text-xs font-black cursor-pointer disabled:opacity-50">
+              <Share2 className="w-4 h-4" />{tr('More apps', 'और ऐप्स')}
+            </button>
+          </div>
+          <p className="mt-2 text-center text-[10px] font-semibold text-zinc-400">{tr('Your link, QR and UrCare ID all count as your invite.', 'आपका लिंक, QR और UrCare ID — सब आपके इनवाइट गिने जाते हैं।')}</p>
+          {(referral?.balance || 0) >= (referral?.block || 50) && onOpenStore && (
+            <button type="button" onClick={onOpenStore} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-emerald-300 text-emerald-800 text-xs font-black cursor-pointer hover:bg-emerald-50">
+              <ShoppingBag className="w-4 h-4" />{tr('Use my points in the Pharmacy', 'फ़ार्मेसी में पॉइंट्स इस्तेमाल करें')}
+            </button>
+          )}
+        </div>
+      </section>
 
       {/* Share-progress switch */}
       <button type="button" onClick={toggleShare} disabled={!state} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-zinc-200 shadow-depth text-left cursor-pointer">
@@ -208,7 +273,7 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
             <span className="block text-[11px] text-zinc-500 font-semibold">{tr('Tap + and enter their UrCare ID', '+ दबाएं और उनकी UrCare ID डालें')}</span>
           </button>
         ) : (
-          <MagicCard className="rounded-2xl shadow-depth" gradientSize={220} gradientColor="#d1fae5" gradientOpacity={0.5} gradientFrom="#10b981" gradientTo="#22d3ee">
+          <MagicCard className="rounded-2xl shadow-depth" gradientSize={220} gradientColor="#d1fae5" gradientOpacity={0.5} gradientFrom="#10b981" gradientTo="#4ade80">
             <ul className="divide-y divide-zinc-100">
               {members.map((m) => (
                 <AnimatedListItem key={m.id}>

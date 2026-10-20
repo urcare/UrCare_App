@@ -277,7 +277,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               ) : (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <h4 className="text-base font-black text-zinc-950 truncate">{profile.name || account.displayName || tr('UrCare Member', 'UrCare सदस्य')}</h4>
-                  <BadgeCheck className="w-3.5 h-3.5 text-blue-500 fill-blue-500/15 shrink-0" strokeWidth={2.5} />
+                  <BadgeCheck className="w-3.5 h-3.5 text-green-500 fill-green-500/15 shrink-0" strokeWidth={2.5} />
                 </div>
               )}
               <p className="text-xs text-zinc-500 flex items-center gap-1 truncate mt-0.5">

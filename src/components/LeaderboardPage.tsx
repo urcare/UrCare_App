@@ -1,43 +1,37 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Trophy, Crown, Medal, Gift, Copy, Check, Share2, Users, Sparkles, ShoppingBag, Link2 } from 'lucide-react';
-import { siWhatsapp } from 'simple-icons';
-import { Capacitor } from '@capacitor/core';
-import { Share } from '@capacitor/share';
-import { getReferralStatus, referralLink, ReferralStatus } from '../utils/supabase';
-import { NumberTicker } from './magicui/number-ticker';
+import { Trophy, Crown, Medal, Sparkles } from 'lucide-react';
 import { BorderBeam } from './magicui/border-beam';
-import { ShineBorder } from './magicui/shine-border';
 import { MagicCard } from './magicui/magic-card';
 import { BadgeGrid, useBadges } from './Rewards';
 
-// Sample players from around the world (illustrated avatars, not real people).
+// Sample players — mostly India, then the USA and the Gulf (illustrated avatars, not real people).
 const PLAYERS: [string, string][] = [
-  ['Aarav Mehta', '🇮🇳'], ['Sofia Rossi', '🇮🇹'], ['Liam Walker', '🇬🇧'], ['Yuki Tanaka', '🇯🇵'], ['Amara Okafor', '🇳🇬'],
-  ['Lucas Silva', '🇧🇷'], ['Fatima Al-Sayed', '🇦🇪'], ['Noah Müller', '🇩🇪'], ['Chloé Dubois', '🇫🇷'], ['Mateo García', '🇪🇸'],
-  ['Priya Nair', '🇮🇳'], ['Ethan Brooks', '🇺🇸'], ['Mei Lin', '🇨🇳'], ['Omar Haddad', '🇯🇴'], ['Isabella Costa', '🇵🇹'],
-  ['Arjun Reddy', '🇮🇳'], ['Hana Kim', '🇰🇷'], ['Oliver Smith', '🇦🇺'], ['Zara Khan', '🇵🇰'], ['Elijah Johnson', '🇨🇦'],
-  ['Ana Popescu', '🇷🇴'], ['Kofi Mensah', '🇬🇭'], ['Emma Jansen', '🇳🇱'], ['Diego Hernández', '🇲🇽'], ['Aisha Rahman', '🇧🇩'],
-  ['Rohan Gupta', '🇮🇳'], ['Freya Larsen', '🇩🇰'], ['Mohammed Ali', '🇸🇦'], ['Valentina López', '🇦🇷'], ['Kenji Sato', '🇯🇵'],
-  ['Ishita Sharma', '🇮🇳'], ['William Chen', '🇸🇬'], ['Nadia Petrova', '🇧🇬'], ['Samuel Adeyemi', '🇳🇬'], ['Lea Schmidt', '🇦🇹'],
-  ['Vikram Singh', '🇮🇳'], ['Mia Andersson', '🇸🇪'], ['Hamza Yilmaz', '🇹🇷'], ['Camila Rojas', '🇨🇱'], ['Daniel Cohen', '🇮🇱'],
-  ['Ananya Iyer', '🇮🇳'], ['Lukas Novák', '🇨🇿'], ['Grace Wanjiru', '🇰🇪'], ['Thiago Pereira', '🇧🇷'], ['Sara Lindqvist', '🇫🇮'],
-  ['Kabir Malhotra', '🇮🇳'], ['Nora Hansen', '🇳🇴'], ['Ali Hosseini', '🇮🇷'], ['Lucía Fernández', '🇺🇾'], ['Jack Murphy', '🇮🇪'],
-  ['Diya Patel', '🇮🇳'], ['Minh Nguyen', '🇻🇳'], ['Olga Ivanova', '🇺🇦'], ['Tunde Bakare', '🇳🇬'], ['Julia Kowalska', '🇵🇱'],
-  ['Aditya Verma', '🇮🇳'], ['Siti Rahmah', '🇲🇾'], ['George Papadopoulos', '🇬🇷'], ['Carlos Mendoza', '🇵🇪'], ['Amelia Wilson', '🇳🇿'],
-  ['Neha Joshi', '🇮🇳'], ['Arif Hakim', '🇮🇩'], ['Elena Morales', '🇨🇴'], ['Youssef Benali', '🇲🇦'], ['Ingrid Berg', '🇳🇴'],
-  ['Rahul Kapoor', '🇮🇳'], ['Chen Wei', '🇹🇼'], ['Ava Thompson', '🇺🇸'], ['Kwame Asante', '🇬🇭'], ['Marta Nowak', '🇵🇱'],
-  ['Sneha Kulkarni', '🇮🇳'], ['Takeshi Mori', '🇯🇵'], ['Layla Hassan', '🇪🇬'], ['Felipe Souza', '🇧🇷'], ['Hannah Weber', '🇨🇭'],
-  ['Manish Yadav', '🇮🇳'], ['Anjali Desai', '🇮🇳'], ['Ravi Shankar', '🇳🇵'], ['Tariq Aziz', '🇶🇦'], ['Sophie Martin', '🇧🇪'],
-  ['Kavya Menon', '🇮🇳'], ['Juan Pablo Ruiz', '🇪🇨'], ['Ngozi Eze', '🇳🇬'], ['Erik Johansson', '🇸🇪'], ['Leila Farah', '🇱🇧'],
-  ['Siddharth Rao', '🇮🇳'], ['Maya Goldberg', '🇺🇸'], ['Joon-ho Park', '🇰🇷'], ['Paula Gómez', '🇪🇸'], ['Benjamin Lee', '🇨🇦'],
-  ['Pooja Agarwal', '🇮🇳'], ['Abdul Karim', '🇧🇩'], ['Chiara Bianchi', '🇮🇹'], ['Daniel Osei', '🇬🇭'], ['Lina Svensson', '🇸🇪'],
-  ['Harsh Vardhan', '🇮🇳'], ['Mariam Siddiqui', '🇵🇰'], ['Tomás Navarro', '🇦🇷'], ['Ella Fischer', '🇩🇪'], ['Sanjay Pillai', '🇱🇰'],
+  ['Aarav Mehta', '🇮🇳'], ['Priya Nair', '🇮🇳'], ['Arjun Reddy', '🇮🇳'], ['Ethan Brooks', '🇺🇸'], ['Ananya Iyer', '🇮🇳'],
+  ['Fatima Al-Sayed', '🇦🇪'], ['Rohan Gupta', '🇮🇳'], ['Ishita Sharma', '🇮🇳'], ['Ava Thompson', '🇺🇸'], ['Vikram Singh', '🇮🇳'],
+  ['Kabir Malhotra', '🇮🇳'], ['Mohammed Al-Harbi', '🇸🇦'], ['Diya Patel', '🇮🇳'], ['Maya Goldberg', '🇺🇸'], ['Aditya Verma', '🇮🇳'],
+  ['Neha Joshi', '🇮🇳'], ['Rahul Kapoor', '🇮🇳'], ['Tariq Al-Thani', '🇶🇦'], ['Liam Carter', '🇺🇸'], ['Sneha Kulkarni', '🇮🇳'],
+  ['Manish Yadav', '🇮🇳'], ['Anjali Desai', '🇮🇳'], ['Olivia Martinez', '🇺🇸'], ['Layla Al-Mansoori', '🇦🇪'], ['Kavya Menon', '🇮🇳'],
+  ['Siddharth Rao', '🇮🇳'], ['Pooja Agarwal', '🇮🇳'], ['Noah Bennett', '🇺🇸'], ['Harsh Vardhan', '🇮🇳'], ['Omar Al-Rashid', '🇰🇼'],
+  ['Sanjay Pillai', '🇮🇳'], ['Meera Krishnan', '🇮🇳'], ['Emma Rodriguez', '🇺🇸'], ['Arnav Chopra', '🇮🇳'], ['Riya Banerjee', '🇮🇳'],
+  ['Noura Al-Qahtani', '🇸🇦'], ['Karan Bhatia', '🇮🇳'], ['James Walker', '🇺🇸'], ['Tanvi Shah', '🇮🇳'], ['Nikhil Saxena', '🇮🇳'],
+  ['Shreya Ghosh', '🇮🇳'], ['Khalid Al-Balushi', '🇴🇲'], ['Sophia Turner', '🇺🇸'], ['Yash Thakur', '🇮🇳'], ['Aisha Qureshi', '🇮🇳'],
+  ['Dev Malhotra', '🇮🇳'], ['Benjamin Hayes', '🇺🇸'], ['Mariam Al-Khalifa', '🇧🇭'], ['Simran Kaur', '🇮🇳'], ['Varun Nair', '🇮🇳'],
+  ['Isha Mishra', '🇮🇳'], ['Isabella Morgan', '🇺🇸'], ['Aryan Tiwari', '🇮🇳'], ['Yousef Al-Otaibi', '🇸🇦'], ['Nandini Rao', '🇮🇳'],
+  ['Gaurav Sinha', '🇮🇳'], ['Lucas Reed', '🇺🇸'], ['Pallavi Deshmukh', '🇮🇳'], ['Rajat Arora', '🇮🇳'], ['Hessa Al-Kuwari', '🇶🇦'],
+  ['Kriti Jain', '🇮🇳'], ['Mia Collins', '🇺🇸'], ['Amit Chauhan', '🇮🇳'], ['Sakshi Pandey', '🇮🇳'], ['Rohit Shetty', '🇮🇳'],
+  ['Saeed Al-Maktoum', '🇦🇪'], ['Henry Foster', '🇺🇸'], ['Divya Menon', '🇮🇳'], ['Harpreet Gill', '🇮🇳'], ['Mohit Bansal', '🇮🇳'],
+  ['Charlotte Price', '🇺🇸'], ['Reem Al-Sabah', '🇰🇼'], ['Lakshmi Subramanian', '🇮🇳'], ['Abhishek Dubey', '🇮🇳'], ['Shruti Hegde', '🇮🇳'],
+  ['Daniel Russell', '🇺🇸'], ['Vivek Pillai', '🇮🇳'], ['Faisal Al-Shamsi', '🇦🇪'], ['Neelam Rathore', '🇮🇳'], ['Kunal Mehra', '🇮🇳'],
+  ['Amelia Ward', '🇺🇸'], ['Bhavna Joshi', '🇮🇳'], ['Suresh Iyer', '🇮🇳'], ['Aisha Al-Hinai', '🇴🇲'], ['Payal Agrawal', '🇮🇳'],
+  ['Jackson Hughes', '🇺🇸'], ['Tarun Goyal', '🇮🇳'], ['Ritu Bhardwaj', '🇮🇳'], ['Imran Sheikh', '🇮🇳'], ['Hamad Al-Zayani', '🇧🇭'],
+  ['Harper Cole', '🇺🇸'], ['Sonal Kapoor', '🇮🇳'], ['Ajay Rawat', '🇮🇳'], ['Megha Kulkarni', '🇮🇳'], ['Logan Perry', '🇺🇸'],
+  ['Evelyn Ross', '🇺🇸'], ['Mason Griffin', '🇺🇸'], ['Abigail Fisher', '🇺🇸'], ['Elijah Murphy', '🇺🇸'], ['Grace Patterson', '🇺🇸'],
 ];
 
 const PRIZES = [100000, 50000, 10000];
 const avatarUrl = (seed: string) =>
-  `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(seed)}&backgroundColor=d1fae5,ccfbf1,e0f2fe,fef3c7,fce7f3,ede9fe`;
+  `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(seed)}&backgroundColor=d1fae5,dcfce7,ecfccb,bbf7d0,a7f3d0,f0fdf4`;
 
 /** Deterministic points so the table doesn't reshuffle on every visit. */
 function buildBoard() {
@@ -54,35 +48,12 @@ const fmt = (n: number) => n.toLocaleString('en-IN');
 interface LeaderboardPageProps {
   tr: (en: string, hi: string) => string;
   userId: string;
-  onOpenStore: () => void;
 }
 
-export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, userId, onOpenStore }) => {
+export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, userId }) => {
   const badges = useBadges(userId);
   const board = useMemo(buildBoard, []);
   const [top3, rest] = [board.slice(0, 3), board.slice(3)];
-  const [referral, setReferral] = useState<ReferralStatus | null>(null);
-  const [copied, setCopied] = useState(false);
-  useEffect(() => { getReferralStatus().then(setReferral); }, []);
-
-  const link = referral ? referralLink(referral.code) : '';
-  const perReward = referral?.perReward || 5;
-  const towardsNext = referral ? referral.joined % perReward : 0;
-  const message = tr(
-    `I'm reversing my health with UrCare — doctor-guided plans, food scan and more. Join me with my link: ${link}`,
-    `मैं UrCare से अपनी सेहत सुधार रहा/रही हूँ — डॉक्टर-गाइडेड प्लान, फूड स्कैन और भी बहुत कुछ। मेरे लिंक से जुड़ें: ${link}`,
-  );
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(link); setCopied(true); window.setTimeout(() => setCopied(false), 1800); } catch {}
-  };
-  const shareLink = async () => {
-    try {
-      if (Capacitor.isNativePlatform()) { await Share.share({ title: 'UrCare', text: message, dialogTitle: tr('Invite friends', 'दोस्तों को बुलाएं') }); return; }
-      if (navigator.share) { await navigator.share({ title: 'UrCare', text: message }); return; }
-    } catch { return; }
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
-  };
-
   return (
     <main className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6 text-left">
       {/* Hero + podium */}
@@ -118,82 +89,6 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, userId, on
         </div>
       </motion.section>
 
-      {/* Referral & rewards */}
-      <section className="relative rounded-[1.5rem] bg-white border border-violet-200 shadow-depth overflow-hidden">
-        <ShineBorder borderWidth={2} duration={11} shineColor={['#a78bfa', '#f472b6', '#fde68a']} />
-        <div className="p-5 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 text-[10px] font-black uppercase tracking-wider"><Gift className="w-3.5 h-3.5" />{tr('Refer & earn', 'रेफ़र करें, कमाएं')}</span>
-              <h2 className="mt-2 text-lg font-black text-zinc-900 leading-snug">{tr(`Invite ${perReward} friends, get 500 points`, `${perReward} दोस्तों को बुलाएं, 500 पॉइंट्स पाएं`)}</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">{tr('500 points = ₹500 off in UrCare Medical Pharmacy', '500 पॉइंट्स = UrCare मेडिकल फ़ार्मेसी में ₹500 की छूट')}</p>
-            </div>
-            <div className="text-right shrink-0">
-              <div className="text-[10px] font-black uppercase tracking-wider text-violet-600">{tr('Your points', 'आपके पॉइंट्स')}</div>
-              <div className="font-display text-3xl font-bold text-violet-700 leading-none mt-1">
-                <NumberTicker value={referral?.balance || 0} className="text-violet-700 tracking-normal" />
-              </div>
-              <div className="text-[10px] font-bold text-zinc-400 mt-1">≈ ₹{fmt(referral?.balance || 0)}</div>
-            </div>
-          </div>
-
-          {/* progress to the next reward */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between text-[11px] font-bold text-zinc-600">
-              <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" />{tr(`${towardsNext} of ${perReward} friends joined`, `${perReward} में से ${towardsNext} दोस्त जुड़े`)}</span>
-              <span className="text-violet-700">{tr(`${perReward - towardsNext} more for +500`, `+500 के लिए ${perReward - towardsNext} और`)}</span>
-            </div>
-            <div className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${perReward}, minmax(0, 1fr))` }}>
-              {Array.from({ length: perReward }, (_, i) => (
-                <motion.span key={i} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.1 * i }} className={`h-2.5 rounded-full origin-left ${i < towardsNext ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500' : 'bg-violet-100'}`} />
-              ))}
-            </div>
-            {referral && (
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <Stat label={tr('Friends joined', 'जुड़े दोस्त')} value={referral.joined} />
-                <Stat label={tr('Points earned', 'कमाए पॉइंट्स')} value={referral.earned} />
-                <Stat label={tr('Points used', 'इस्तेमाल पॉइंट्स')} value={referral.spent} />
-              </div>
-            )}
-          </div>
-
-          {/* link */}
-          <div className="mt-4 flex items-center gap-2 p-1.5 pl-3 rounded-2xl bg-white border border-violet-200">
-            <Link2 className="w-4 h-4 text-violet-500 shrink-0" />
-            <span className="flex-1 min-w-0 truncate text-xs font-bold text-zinc-700">{link || tr('Loading your link…', 'आपका लिंक आ रहा है…')}</span>
-            <button type="button" onClick={copy} disabled={!link} className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-violet-600 text-white text-[11px] font-black cursor-pointer disabled:opacity-50">
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}{copied ? tr('Copied', 'कॉपी') : tr('Copy', 'कॉपी')}
-            </button>
-          </div>
-          {referral && <div className="mt-1.5 text-[10px] font-bold text-zinc-400">{tr('Your code', 'आपका कोड')}: <span className="font-mono text-violet-700">{referral.code}</span></div>}
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener')} disabled={!link} className="inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#25D366] text-white text-xs font-black cursor-pointer disabled:opacity-50">
-              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden="true"><path d={siWhatsapp.path} /></svg>WhatsApp
-            </button>
-            <button type="button" onClick={shareLink} disabled={!link} className="inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 text-white text-xs font-black cursor-pointer disabled:opacity-50">
-              <Share2 className="w-4 h-4" />{tr('More apps', 'और ऐप्स')}
-            </button>
-          </div>
-          {(referral?.balance || 0) >= (referral?.block || 100) && (
-            <button type="button" onClick={onOpenStore} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-violet-300 text-violet-700 text-xs font-black cursor-pointer hover:bg-violet-50">
-              <ShoppingBag className="w-4 h-4" />{tr('Use my points in the Pharmacy', 'फ़ार्मेसी में पॉइंट्स इस्तेमाल करें')}
-            </button>
-          )}
-          <ol className="mt-4 grid grid-cols-3 gap-2 text-center">
-            {[
-              [tr('Share your link', 'लिंक शेयर करें'), '1'],
-              [tr(`${perReward} friends join`, `${perReward} दोस्त जुड़ें`), '2'],
-              [tr('Get ₹500 off', '₹500 की छूट'), '3'],
-            ].map(([label, n]) => (
-              <li key={n} className="p-2 rounded-xl bg-white/80 border border-violet-100">
-                <span className="mx-auto w-6 h-6 rounded-full bg-violet-600 text-white text-[11px] font-black flex items-center justify-center">{n}</span>
-                <span className="mt-1 block text-[10px] font-bold text-zinc-600 leading-tight">{label}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
       {/* Monthly rewards & badges */}
       <section>
         <div className="flex items-center justify-between px-0.5 mb-2">
@@ -209,7 +104,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, userId, on
           <h2 className="flex items-center gap-2 text-sm font-black text-zinc-900"><Medal className="w-4 h-4 text-emerald-600" />{tr('Rankings', 'रैंकिंग')}</h2>
           <span className="text-[10px] font-bold text-zinc-400 flex items-center gap-1"><Sparkles className="w-3 h-3" />{tr('Sample players', 'नमूना खिलाड़ी')}</span>
         </div>
-        <MagicCard className="rounded-2xl shadow-depth" gradientSize={240} gradientColor="#d1fae5" gradientOpacity={0.5} gradientFrom="#10b981" gradientTo="#22d3ee">
+        <MagicCard className="rounded-2xl shadow-depth" gradientSize={240} gradientColor="#d1fae5" gradientOpacity={0.5} gradientFrom="#10b981" gradientTo="#4ade80">
           <ol className="divide-y divide-zinc-100">
             {rest.map((p) => (
               <li key={p.rank} className="flex items-center gap-3 px-3 sm:px-4 py-2.5">
@@ -230,7 +125,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, userId, on
 };
 
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
-  <div className="p-2 rounded-xl bg-white border border-violet-100">
+  <div className="p-2 rounded-xl bg-white border border-emerald-100">
     <div className="text-base font-black text-zinc-900 tabular-nums">{value.toLocaleString('en-IN')}</div>
     <div className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">{label}</div>
   </div>

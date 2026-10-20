@@ -133,7 +133,7 @@ export const DailyLogsSheet: React.FC<{ open: boolean; onClose: () => void; user
         <ul className="space-y-2">
           {logs.map((l, i) => {
             const pct = l.total ? Math.round((l.done / l.total) * 100) : 0;
-            const tone = pct >= 90 ? 'from-emerald-500 to-teal-500' : pct >= 50 ? 'from-sky-500 to-cyan-500' : pct > 0 ? 'from-amber-400 to-orange-500' : 'from-zinc-200 to-zinc-300';
+            const tone = pct >= 90 ? 'from-emerald-500 to-teal-500' : pct >= 50 ? 'from-emerald-500 to-teal-500' : pct > 0 ? 'from-amber-400 to-orange-500' : 'from-zinc-200 to-zinc-300';
             return (
               <motion.li key={l.dateKey} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="p-3 rounded-2xl border border-zinc-200 bg-white">
                 <div className="flex items-center justify-between">
