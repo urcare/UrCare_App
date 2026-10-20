@@ -516,6 +516,79 @@ async function createNotification(
   } catch (err) {
     console.warn('createNotification failed:', err);
   }
+  // Also to the phone's notification bar (Firebase push), even with the app
+  // closed. Plan reminders are already scheduled on the phone itself.
+  if (!data?.dedupeKey) sendPushToUser(supabase, userId, title, body || '', { type, ...(data || {}) }).catch(() => {});
+}
+
+// ----------------------------------------------------------------------------
+// FIREBASE CLOUD MESSAGING (push) — set FIREBASE_SERVICE_ACCOUNT to the
+// service-account JSON of the Firebase project (raw JSON or base64). Phones
+// register their FCM token via /api/push/register (kept in app_metadata).
+// Without the variable, push is simply off and nothing else changes.
+// ----------------------------------------------------------------------------
+function firebaseServiceAccount(): { project_id: string; client_email: string; private_key: string } | null {
+  const raw = (process.env.FIREBASE_SERVICE_ACCOUNT || '').trim();
+  if (!raw) return null;
+  try {
+    const json = JSON.parse(raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8'));
+    return json?.private_key && json?.client_email && json?.project_id ? json : null;
+  } catch {
+    return null;
+  }
+}
+
+let fcmToken: { value: string; expires: number } | null = null;
+async function fcmAccessToken(): Promise<string | null> {
+  const sa = firebaseServiceAccount();
+  if (!sa) return null;
+  if (fcmToken && fcmToken.expires > Date.now() + 60_000) return fcmToken.value;
+  const now = Math.floor(Date.now() / 1000);
+  const b64url = (o: any) => Buffer.from(typeof o === 'string' ? o : JSON.stringify(o)).toString('base64url');
+  const unsigned = `${b64url({ alg: 'RS256', typ: 'JWT' })}.${b64url({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 })}`;
+  const signature = crypto.createSign('RSA-SHA256').update(unsigned).sign(sa.private_key, 'base64url');
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${unsigned}.${signature}` }),
+  });
+  const json: any = await res.json().catch(() => null);
+  if (!res.ok || !json?.access_token) { console.warn('FCM auth failed:', json?.error || res.status); return null; }
+  fcmToken = { value: json.access_token, expires: Date.now() + (Number(json.expires_in) || 3600) * 1000 };
+  return fcmToken.value;
+}
+
+async function sendPushToUser(supabase: any, userId: string, title: string, body: string, data: Record<string, any> = {}) {
+  const sa = firebaseServiceAccount();
+  if (!sa) return;
+  const { data: got } = await supabase.auth.admin.getUserById(userId);
+  const tokens: string[] = Array.isArray(got?.user?.app_metadata?.push_tokens) ? got.user.app_metadata.push_tokens : [];
+  if (!tokens.length) return;
+  const access = await fcmAccessToken();
+  if (!access) return;
+  const stringData = Object.fromEntries(Object.entries(data).filter(([, v]) => v != null).map(([k, v]) => [k, typeof v === 'string' ? v : JSON.stringify(v)]));
+  const dead: string[] = [];
+  await Promise.all(tokens.map(async (token) => {
+    const r = await fetch(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${access}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: {
+          token,
+          notification: { title: title.slice(0, 120), body: body.slice(0, 300) },
+          data: stringData,
+          android: { priority: 'high', notification: { channel_id: 'urcare', icon: 'ic_stat_urcare', color: '#059669', sound: 'default' } },
+        },
+      }),
+    }).catch(() => null);
+    if (r && (r.status === 404 || r.status === 400)) {
+      const err: any = await r.json().catch(() => null);
+      if (r.status === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(JSON.stringify(err || ''))) dead.push(token);
+    }
+  }));
+  if (dead.length) {
+    await supabase.auth.admin.updateUserById(userId, { app_metadata: { ...(got.user.app_metadata || {}), push_tokens: tokens.filter((t) => !dead.includes(t)) } });
+  }
 }
 
 /** Writes one "My Timeline" row for a real server-side/admin-driven action
@@ -2734,6 +2807,23 @@ app.post('/api/notifications/read-all', requireUser(async (req, res, user) => {
 // client derives from the section + date; a second call with the same key
 // (a re-render, a second tab, whatever) is a no-op rather than a duplicate
 // notification.
+// Is Firebase push set up on this server? (the app only registers when it is)
+app.get('/api/push/config', (_req, res) => { res.json({ enabled: !!firebaseServiceAccount() }); });
+
+// A phone's FCM token, kept in the user's app_metadata (latest 5 devices).
+app.post('/api/push/register', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const token = String(req.body?.token || '').trim();
+  if (token.length < 20 || token.length > 4096) return res.status(400).json({ error: 'Invalid token.' });
+  const { data: got } = await supabase.auth.admin.getUserById(user.id);
+  const meta = got?.user?.app_metadata || {};
+  const tokens: string[] = Array.isArray(meta.push_tokens) ? meta.push_tokens : [];
+  const next = [...tokens.filter((t) => t !== token), token].slice(-5);
+  await supabase.auth.admin.updateUserById(user.id, { app_metadata: { ...meta, push_tokens: next } });
+  res.json({ ok: true });
+}));
+
 app.post('/api/notifications/reminder', requireUser(async (req, res, user) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });

@@ -14,6 +14,7 @@ import { RewardUnlockWatcher } from './Rewards';
 import { PullToRefresh, refreshEverything } from './PullToRefresh';
 import { getCachedAccountState } from '../utils/accountState';
 import { ensurePhoneNotifications, showPhoneNotification, schedulePlanReminders, phoneNotificationsAreNative } from '../utils/phoneNotifications';
+import { initPush, pushIsActive } from '../utils/pushNotifications';
 import { 
   UserHealthProfile, MealItem, UserAccount, MedicalReportAnalysis, 
   Order, Prescription, BurnActivity, MedicationLogItem 
@@ -268,9 +269,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
     let seen: Set<string> | null = null;
     try { const raw = localStorage.getItem(seenKey); if (raw) seen = new Set(JSON.parse(raw)); } catch {}
     let cancelled = false;
+    // With Firebase push on, the server sends these to the phone itself.
+    initPush();
     const check = async () => {
       const list = await getNotifications().catch(() => []);
       if (cancelled) return;
+      if (pushIsActive()) { seen = new Set(list.map((n) => n.id)); return; }
       if (!seen) {
         seen = new Set(list.map((n) => n.id));
       } else {
