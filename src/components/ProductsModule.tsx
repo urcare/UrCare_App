@@ -52,7 +52,9 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProductsRaw] = useState<Product[]>([]);
+  // The app-unlock "product" is paid on the paywall, never sold in the store.
+  const setProducts = (list: Product[]) => setProductsRaw(list.filter((p) => p.id !== 'prod_app_access'));
   const [productsLoading, setProductsLoading] = useState(true);
 
   // Real catalog, managed by admin — no hardcoded/mock products. Ratings/review

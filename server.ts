@@ -2104,7 +2104,8 @@ async function priceStoreCart(supabase: any, rawItems: any[], rawCode?: string):
         : { code, valid: false, message: 'This coupon is not applicable to the items in your cart.', lines: [] };
     }
   }
-  const deliveryFee = storeDeliveryFee(subtotal);
+  const onlyDigital = lines.every((l) => l.productId === APP_ACCESS_PRODUCT_ID);
+  const deliveryFee = onlyDigital ? 0 : storeDeliveryFee(subtotal);
   return { lines, subtotal, discount, deliveryFee, total: subtotal - discount + deliveryFee, coupon };
 }
 
@@ -2118,6 +2119,45 @@ app.post('/api/store/coupon', async (req, res) => {
   if ('error' in priced) return res.json({ valid: false, discount: 0, message: priced.error });
   res.json({ valid: !!priced.coupon?.valid, code: priced.coupon?.code, discount: priced.discount, lines: priced.coupon?.lines || [], message: priced.coupon?.message || '' });
 });
+
+// ----------------------------------------------------------------------------
+// APP ACCESS (paywall) — accounts created on/after APP_ACCESS_REQUIRED_SINCE
+// unlock the app with a one-time UPI payment for the APP_ACCESS_PRODUCT_ID
+// product. It goes through the normal order + payment-screenshot flow, so an
+// admin approves it in Admin → Orders like any other order. Older accounts
+// keep full access. The decision is made here, never on the device.
+// ----------------------------------------------------------------------------
+const APP_ACCESS_PRODUCT_ID = 'prod_app_access';
+const APP_ACCESS_REQUIRED_SINCE = process.env.APP_ACCESS_REQUIRED_SINCE || '2026-10-21T00:00:00Z';
+
+app.get('/api/access-status', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.json({ required: false, hasAccess: true });
+  const [{ data: profileRow }, { data: product }] = await Promise.all([
+    supabase.from('profiles').select('created_at').eq('user_id', user.id).maybeSingle(),
+    supabase.from('products').select('discount_price, price').eq('id', APP_ACCESS_PRODUCT_ID).maybeSingle(),
+  ]);
+  const price = Number(product?.discount_price ?? product?.price) || 499;
+  const createdAt = profileRow?.created_at || (user as any).created_at || new Date().toISOString();
+  if (new Date(createdAt) < new Date(APP_ACCESS_REQUIRED_SINCE)) return res.json({ required: false, hasAccess: true, price });
+
+  const { data: orders } = await supabase
+    .from('orders')
+    .select('id, payment_status, created_at, order_items(product_id)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  const accessUuid = productIdToUuid(APP_ACCESS_PRODUCT_ID);
+  const accessOrders = (orders || []).filter((o: any) => (o.order_items || []).some((it: any) => it.product_id === accessUuid));
+  const hasAccess = accessOrders.some((o: any) => o.payment_status === ORDER_PAYMENT.verified);
+  const latest = accessOrders[0];
+  res.json({
+    required: true,
+    hasAccess,
+    price,
+    status: hasAccess ? 'verified' : latest?.payment_status === ORDER_PAYMENT.pending ? 'pending' : latest?.payment_status === ORDER_PAYMENT.rejected ? 'rejected' : 'none',
+    orderId: latest?.id || null,
+  });
+}));
 
 // order_items.product_id is a uuid column, but store product ids are text
 // ("prod_glucolow", pack lines "prod_cardiol__pack3"). Map each to a stable

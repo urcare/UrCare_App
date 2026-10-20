@@ -465,3 +465,22 @@
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .splash-word > span { background: inherit; -webkit-background-clip: text; background-clip: text; }
+
+/* ---- Report + paywall (new accounts) ---- */
+.access-bg {
+  background:
+    radial-gradient(50rem 26rem at 0% -10%, rgba(52, 211, 153, 0.18), transparent 60%),
+    radial-gradient(40rem 24rem at 100% 0%, rgba(34, 211, 238, 0.12), transparent 60%),
+    #f8fafc;
+}
+.contact-tile {
+  display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem; border-radius: 1rem;
+  border: 1px solid #e4e4e7; background: #fff; text-align: left; min-width: 0;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+.contact-tile:hover { border-color: #6ee7b7; }
+.contact-tile:active { transform: scale(0.98); }
+.contact-tile b { display: block; font-size: 12px; font-weight: 900; color: #18181b; }
+.contact-tile small { display: block; font-size: 10px; font-weight: 600; color: #71717a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contact-tile > span:last-child { min-width: 0; }
+.contact-icon { width: 2rem; height: 2rem; border-radius: 0.7rem; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }

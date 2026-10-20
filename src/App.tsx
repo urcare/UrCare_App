@@ -12,11 +12,12 @@ import { LanguageProvider } from './context/LanguageContext';
 import { AIConsentGate } from './components/AIConsentGate';
 import { AttachmentViewer } from './components/AttachmentViewer';
 import { SplashIntro } from './components/SplashIntro';
+import { AccessFlow } from './components/AccessFlow';
 
 /** The post-onboarding organs / body-map screen — off for now, kept for later. */
 const ENABLE_BODY_MAP_AFTER_ONBOARDING = false;
 import { loadAccountState } from './utils/accountState';
-import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn } from './utils/supabase';
+import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn, getAccessStatus, AccessStatus } from './utils/supabase';
 
 // The 3D body map pulls in three.js + react-three-fiber/drei — a sizeable
 // chunk that only the post-onboarding screen needs, so it's loaded lazily
@@ -120,6 +121,15 @@ function MainApp() {
     return () => { listenerHandle?.remove(); };
   }, []);
 
+  // Paywall (new accounts): checked once a profile exists, re-checked on demand.
+  const [access, setAccess] = useState<AccessStatus | null>(null);
+  const refreshAccess = useCallback(() => { getAccessStatus().then(setAccess); }, []);
+  useEffect(() => {
+    if (account && profile) refreshAccess();
+    else setAccess(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.uid, !!profile]);
+
   const handleOnboardingComplete = async (completedProfile: UserHealthProfile, registeredAccount: UserAccount) => {
     await upsertProfile(registeredAccount.uid, completedProfile);
     setProfile(completedProfile);
@@ -220,7 +230,27 @@ function MainApp() {
     );
   }
 
-  // 5. User Authenticated with Active Health Profile -> Dashboard
+  // 5. New account that hasn't unlocked the app yet -> report + paywall
+  if (profile && account && !access) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] text-emerald-600 flex items-center justify-center">
+        <div className="w-9 h-9 rounded-full border-3 border-emerald-600 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+  if (profile && account && access && access.required && !access.hasAccess) {
+    return (
+      <AccessFlow
+        profile={profile}
+        account={account}
+        status={access}
+        onRefresh={refreshAccess}
+        onSignOut={async () => { await signOutUser(); setProfile(null); setAccount(null); }}
+      />
+    );
+  }
+
+  // 6. User Authenticated with Active Health Profile -> Dashboard
   if (profile && account) {
     return (
       <Dashboard

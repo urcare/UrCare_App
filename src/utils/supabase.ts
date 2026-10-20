@@ -1320,6 +1320,27 @@ export async function saveOrderAndReceiptToSupabase(order: Order): Promise<{ suc
   return { success: true, orderId: data.order?.id || order.id };
 }
 
+export interface AccessStatus {
+  /** Whether this account has to unlock the app (new accounts only). */
+  required: boolean;
+  hasAccess: boolean;
+  price?: number;
+  status?: 'none' | 'pending' | 'verified' | 'rejected';
+  orderId?: string | null;
+}
+
+/** Paywall state for the signed-in user — decided by the server. If the
+ *  check itself fails, the app stays open rather than locking anyone out. */
+export async function getAccessStatus(): Promise<AccessStatus> {
+  try {
+    const res = await authedFetch('/api/access-status', { method: 'GET' });
+    if (!res.ok) return { required: false, hasAccess: true };
+    return await res.json();
+  } catch {
+    return { required: false, hasAccess: true };
+  }
+}
+
 /** Checks the store coupon against the cart — the server works out the
  *  discount from each pack's coupon value (same as urcare.org). */
 export async function checkStoreCoupon(code: string, items: { product: { id: string }; quantity: number }[]): Promise<{ valid: boolean; discount: number; message: string; lines: { id: string; discount: number }[] }> {
