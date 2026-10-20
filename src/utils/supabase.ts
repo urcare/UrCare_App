@@ -1309,6 +1309,7 @@ export async function saveOrderAndReceiptToSupabase(order: Order): Promise<{ suc
       discount: order.discount,
       total: order.total,
       couponCode: order.couponCode,
+      usePoints: !!order.pointsUsed,
       // UPI reference/UTR (optional) + the payment screenshot (required —
       // the server rejects an order without one; an admin verifies it).
       transactionId: order.transactionId,
@@ -1318,6 +1319,53 @@ export async function saveOrderAndReceiptToSupabase(order: Order): Promise<{ suc
   const data = await res.json();
   if (!res.ok) return { success: false, orderId: order.id, error: data.error };
   return { success: true, orderId: data.order?.id || order.id };
+}
+
+export interface ReferralStatus {
+  code: string;
+  joined: number;
+  earned: number;
+  spent: number;
+  balance: number;
+  perReward: number;
+  rewardPoints: number;
+  block: number;
+}
+
+/** The signed-in member's referral code, friends joined and points. */
+export async function getReferralStatus(): Promise<ReferralStatus | null> {
+  try {
+    const res = await authedFetch('/api/referral/status', { method: 'GET' });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+const REFERRAL_STORAGE_KEY = 'urcare_ref';
+
+/** Remembers a ?ref=CODE from the link the app was opened with. */
+export function captureReferralFromUrl() {
+  try {
+    const code = new URLSearchParams(window.location.search).get('ref');
+    if (code && /^UC[0-9A-F]{6}$/i.test(code)) localStorage.setItem(REFERRAL_STORAGE_KEY, code.toUpperCase());
+  } catch {}
+}
+
+/** Credits the remembered referral to its owner (once, new accounts only). */
+export async function claimStoredReferral() {
+  let code: string | null = null;
+  try { code = localStorage.getItem(REFERRAL_STORAGE_KEY); } catch {}
+  if (!code) return;
+  try {
+    const res = await authedFetch('/api/referral/claim', { method: 'POST', body: JSON.stringify({ code }) });
+    if (res.ok) { try { localStorage.removeItem(REFERRAL_STORAGE_KEY); } catch {} }
+  } catch {}
+}
+
+/** The link a member shares — opening it remembers their code. */
+export function referralLink(code: string): string {
+  return `https://urcare-app.onrender.com/?ref=${encodeURIComponent(code)}`;
 }
 
 export interface AccessStatus {
@@ -1467,6 +1515,7 @@ export function mapOrderRow(o: any): Order {
     subtotal: o.shipping_address?.pricing?.subtotal ?? o.total_amount,
     discount: o.shipping_address?.pricing?.discount ?? 0,
     couponCode: o.shipping_address?.pricing?.couponCode || undefined,
+    pointsUsed: Number(o.shipping_address?.pricing?.pointsUsed) || undefined,
     total: o.total_amount,
     paymentMethod: 'qr_upi',
     // The orders table stores a verified payment as 'completed' and a

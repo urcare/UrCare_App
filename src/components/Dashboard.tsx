@@ -6,8 +6,9 @@ import {
   ShoppingBag, Stethoscope, Camera, Lock, ClipboardCheck,
   Package, User, Check, FileText, CheckCircle2, HeartPulse,
   LogOut, MessageSquare, AlertCircle, MoreVertical, X, Bot,
-  Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash, MessageSquareHeart,
+  Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash, MessageSquareHeart, Trophy,
 } from 'lucide-react';
+import { LeaderboardPage } from './LeaderboardPage';
 import { 
   UserHealthProfile, MealItem, UserAccount, MedicalReportAnalysis, 
   Order, Prescription, BurnActivity, MedicationLogItem 
@@ -65,7 +66,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // (identity, stats, quick actions). 'reports', 'assessment' + 'store' are
   // always free — 'store' isn't in the primary nav (see navItems below) but
   // is still reachable from Home's quick-actions grid.
-  const [activeTab, setActiveTab] = useState<'profile' | 'plan' | 'premium' | 'account' | 'reports' | 'assessment' | 'store' | 'tracker'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'plan' | 'premium' | 'account' | 'reports' | 'assessment' | 'store' | 'tracker' | 'leaderboard'>('profile');
 
   // '⋮' module switcher — a single drawer, opened from one fixed spot in the
   // persistent header/sidebar (never inline in a tab's scrolling content), so
@@ -85,6 +86,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
     { id: 'assessment' as const, label: tr('Root Cause Analysis', 'रूट कॉज़ एनालिसिस'), icon: ClipboardCheck },
     { id: 'store' as const, label: tr('UrCare Medical Pharmacy', 'UrCare मेडिकल फार्मेसी'), icon: ShoppingBag },
+    { id: 'leaderboard' as const, label: tr('Leaderboard & Rewards', 'लीडरबोर्ड व रिवॉर्ड्स'), icon: Trophy },
     // Not a tab — opens the Doctor Consult modal directly (see the drawer's
     // onClick). Used to be its own persistent sidebar card; moved in here to
     // declutter the sidebar.
@@ -769,7 +771,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <X className="w-4.5 h-4.5" />
                 </button>
               </div>
-              <nav className="flex-1 p-3 space-y-1">
+              <nav className="module-menu flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-1">
                 {moduleMenuItems.map((item) => {
                   const ItemIcon = item.icon;
                   const isActive = item.id !== 'settings' && item.id !== 'logout' && item.id !== 'doctor_hotline' && item.id !== 'app_feedback' && item.id !== 'ai_bots' && activeTab === (item.id as typeof activeTab);
@@ -793,7 +795,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         }
                         setIsModuleMenuOpen(false);
                       }}
-                      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all cursor-pointer group ${
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left text-[14px] font-semibold leading-snug tracking-[-0.01em] transition-all cursor-pointer group ${
                         isActive
                           ? 'bg-emerald-50 text-emerald-700'
                           : item.id === 'logout'
@@ -810,8 +812,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       }`}>
                         <ItemIcon className="w-4.5 h-4.5" />
                       </div>
-                      <span>{item.label}</span>
-                      <ChevronRight className="w-4 h-4 ml-auto opacity-40 group-hover:opacity-70 group-hover:translate-x-0.5 transition-all" />
+                      <span className="flex-1 min-w-0 text-left">{item.label}</span>
+                      <ChevronRight className="w-4 h-4 shrink-0 opacity-40 group-hover:opacity-70 group-hover:translate-x-0.5 transition-all" />
                     </button>
                   );
                 })}
@@ -838,8 +840,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onOpenMoreMenu={() => setIsModuleMenuOpen(true)}
             onAskUrCare={(prompt) => { setHealthBotsPrompt(prompt); setIsHealthBotsOpen(true); }}
           />
+        ) : activeTab === 'leaderboard' ? (
+          <LeaderboardPage tr={tr} onOpenStore={() => setActiveTab('store')} />
         ) : activeTab === 'plan' ? (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
+            {/* Leaderboard & referral teaser, right above the plan */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('leaderboard')}
+              className="lb-teaser w-full flex items-center gap-3 p-4 rounded-2xl text-left text-white cursor-pointer active:scale-[0.99] transition-transform"
+            >
+              <span className="w-11 h-11 rounded-2xl bg-white/20 border border-white/25 flex items-center justify-center shrink-0"><Trophy className="w-5 h-5" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black">{tr('Leaderboard & Rewards', 'लीडरबोर्ड व रिवॉर्ड्स')}</span>
+                <span className="block text-[11px] font-semibold text-white/85">{tr('See the top 100 · invite 5 friends, get ₹500 off', 'टॉप 100 देखें · 5 दोस्तों को बुलाएं, ₹500 की छूट पाएं')}</span>
+              </span>
+              <ChevronRight className="w-5 h-5 shrink-0 opacity-80" />
+            </button>
             <RecommendationsView profile={profile} prescriptions={prescriptions} />
           </main>
         ) : activeTab === 'account' ? (

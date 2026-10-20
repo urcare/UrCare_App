@@ -17,7 +17,10 @@ import { AccessFlow } from './components/AccessFlow';
 /** The post-onboarding organs / body-map screen — off for now, kept for later. */
 const ENABLE_BODY_MAP_AFTER_ONBOARDING = false;
 import { loadAccountState } from './utils/accountState';
-import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn, getAccessStatus, AccessStatus } from './utils/supabase';
+import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn, getAccessStatus, AccessStatus, captureReferralFromUrl, claimStoredReferral } from './utils/supabase';
+
+// A referral link (?ref=CODE) is remembered as soon as the app opens.
+captureReferralFromUrl();
 
 // The 3D body map pulls in three.js + react-three-fiber/drei — a sizeable
 // chunk that only the post-onboarding screen needs, so it's loaded lazily
@@ -124,6 +127,8 @@ function MainApp() {
   // Paywall (new accounts): checked once a profile exists, re-checked on demand.
   const [access, setAccess] = useState<AccessStatus | null>(null);
   const refreshAccess = useCallback(() => { getAccessStatus().then(setAccess); }, []);
+  // Credit whoever's link brought this (new) account here.
+  useEffect(() => { if (account?.uid) claimStoredReferral(); }, [account?.uid]);
   useEffect(() => {
     if (account && profile) refreshAccess();
     else setAccess(null);

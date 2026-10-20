@@ -154,6 +154,7 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
           description: description || 'Healthy food meal',
           imageBase64: selectedImage,
           mealCategory: category,
+          language,
           profile: profile
             ? {
                 goal: profile.goal,
@@ -478,6 +479,8 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
               );
             })()}
 
+            <FoodInsights result={scannedResult} tr={tr} />
+
             <div className="p-4 rounded-2xl bg-zinc-50 border border-emerald-200 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -543,3 +546,109 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
     </div>
   );
 };
+
+/** The scan's detailed breakdown in two tabs: "Decide" (score, what's good,
+ *  what's bad, blood-sugar effect, portion tip, eat more / avoid) and "Swap"
+ *  (healthier replacements for items in this meal). */
+const FoodInsights: React.FC<{ result: any; tr: (en: string, hi: string) => string }> = ({ result, tr }) => {
+  const [tab, setTab] = useState<'decide' | 'swap'>('decide');
+  const list = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()) : []);
+  const good = list(result.goodPoints);
+  const bad = list(result.badPoints);
+  const eatMore = list(result.eatMore);
+  const avoid = list(result.avoidFoods);
+  const swaps: { from: string; to: string; why: string }[] = Array.isArray(result.swaps) ? result.swaps.filter((s: any) => s?.from && s?.to) : [];
+  const score = Math.max(0, Math.min(10, Math.round(Number(result.score) || 0)));
+  if (!good.length && !bad.length && !swaps.length && !score) return null;
+
+  const scoreTone = score >= 7 ? '#059669' : score >= 4 ? '#d97706' : '#e11d48';
+  const sugar = result.bloodSugarImpact as 'low' | 'medium' | 'high' | null;
+  const sugarMeta = {
+    low: { label: tr('Low sugar spike', 'शुगर कम बढ़ेगी'), cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    medium: { label: tr('Medium sugar spike', 'शुगर मध्यम बढ़ेगी'), cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+    high: { label: tr('High sugar spike', 'शुगर ज़्यादा बढ़ेगी'), cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+  };
+  const ring = 2 * Math.PI * 22;
+
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+      {/* score + sugar */}
+      <div className="flex items-center gap-3 p-3.5 bg-gradient-to-r from-zinc-50 to-white">
+        {score > 0 && (
+          <div className="relative w-14 h-14 shrink-0">
+            <svg viewBox="0 0 50 50" className="w-full h-full -rotate-90">
+              <circle cx="25" cy="25" r="22" fill="none" stroke="#e4e4e7" strokeWidth="5" />
+              <circle cx="25" cy="25" r="22" fill="none" stroke={scoreTone} strokeWidth="5" strokeLinecap="round" strokeDasharray={ring} strokeDashoffset={ring * (1 - score / 10)} style={{ transition: 'stroke-dashoffset 0.8s ease' }} />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-base font-black" style={{ color: scoreTone }}>{score}<span className="text-[9px] text-zinc-400 font-bold">/10</span></span>
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-black text-zinc-900">{tr('Your meal score', 'आपके भोजन का स्कोर')}</div>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {sugar && sugarMeta[sugar] && <span className={`px-2 py-0.5 rounded-md border text-[10px] font-black ${sugarMeta[sugar].cls}`}>🩸 {sugarMeta[sugar].label}</span>}
+          </div>
+          {result.portionTip && <p className="mt-1 text-[11px] text-zinc-600 leading-snug">🍽️ {result.portionTip}</p>}
+        </div>
+      </div>
+
+      {/* tabs */}
+      <div className="px-3.5 pt-1">
+        <div className="relative grid grid-cols-2 p-1 rounded-xl bg-zinc-100">
+          <span className="absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg bg-white shadow-sm transition-transform duration-300" style={{ transform: tab === 'swap' ? 'translateX(calc(100% + 0px))' : 'translateX(0)', left: 4 }} />
+          {(['decide', 'swap'] as const).map((key) => (
+            <button key={key} type="button" onClick={() => setTab(key)} className={`relative z-10 py-2 text-xs font-black cursor-pointer transition-colors ${tab === key ? 'text-emerald-700' : 'text-zinc-500'}`}>
+              {key === 'decide' ? tr('✅ Decide', '✅ फ़ैसला') : tr(`🔄 Swap${swaps.length ? ` (${swaps.length})` : ''}`, `🔄 बदलें${swaps.length ? ` (${swaps.length})` : ''}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="p-3.5 space-y-3">
+        {tab === 'decide' ? (
+          <>
+            {good.length > 0 && <InsightList title={tr("What's good", 'क्या अच्छा है')} items={good} tone="good" />}
+            {bad.length > 0 && <InsightList title={tr("What's bad", 'क्या बुरा है')} items={bad} tone="bad" />}
+            {eatMore.length > 0 && <ChipRow title={tr('Eat more of', 'ये ज़्यादा खाएं')} items={eatMore} cls="bg-emerald-50 text-emerald-800 border-emerald-200" />}
+            {avoid.length > 0 && <ChipRow title={tr('Avoid', 'इनसे बचें')} items={avoid} cls="bg-rose-50 text-rose-700 border-rose-200" />}
+          </>
+        ) : swaps.length ? (
+          swaps.map((s, i) => (
+            <div key={i} className="p-3 rounded-xl border border-emerald-100 bg-gradient-to-r from-emerald-50/60 to-white">
+              <div className="flex items-center gap-2 text-[12px] font-bold">
+                <span className="px-2 py-1 rounded-lg bg-rose-50 text-rose-700 line-through decoration-rose-300 min-w-0 truncate">{s.from}</span>
+                <span className="text-emerald-600 shrink-0">→</span>
+                <span className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 min-w-0 truncate">{s.to}</span>
+              </div>
+              {s.why && <p className="mt-1.5 text-[11px] text-zinc-600 leading-snug">{s.why}</p>}
+            </div>
+          ))
+        ) : (
+          <p className="text-xs font-semibold text-emerald-700">{tr('This meal is already a good pick — no swaps needed.', 'यह भोजन पहले से अच्छा है — कुछ बदलने की ज़रूरत नहीं।')}</p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const InsightList: React.FC<{ title: string; items: string[]; tone: 'good' | 'bad' }> = ({ title, items, tone }) => (
+  <div>
+    <div className={`text-[11px] font-black uppercase tracking-wider ${tone === 'good' ? 'text-emerald-700' : 'text-rose-600'}`}>{title}</div>
+    <ul className="mt-1.5 space-y-1">
+      {items.map((t, i) => (
+        <li key={i} className="flex items-start gap-2 text-[12px] text-zinc-700 leading-snug">
+          <span className={`mt-0.5 shrink-0 ${tone === 'good' ? 'text-emerald-600' : 'text-rose-500'}`}>{tone === 'good' ? '✓' : '✕'}</span>{t}
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
+const ChipRow: React.FC<{ title: string; items: string[]; cls: string }> = ({ title, items, cls }) => (
+  <div>
+    <div className="text-[11px] font-black uppercase tracking-wider text-zinc-500">{title}</div>
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {items.map((t, i) => <span key={i} className={`px-2 py-1 rounded-lg border text-[11px] font-bold ${cls}`}>{t}</span>)}
+    </div>
+  </div>
+);

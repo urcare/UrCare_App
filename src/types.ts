@@ -780,6 +780,8 @@ export interface Order {
   subtotal: number;
   discount: number;
   couponCode?: string;
+  /** Referral points spent on this order (1 point = ₹1). */
+  pointsUsed?: number;
   total: number;
   paymentMethod: 'qr_upi' | 'razorpay' | 'autopay' | 'trial_checkout' | 'card_netbanking';
   /** 'pending' until an admin checks the uploaded payment screenshot. */

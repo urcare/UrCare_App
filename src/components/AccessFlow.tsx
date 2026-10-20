@@ -20,8 +20,8 @@ export const APP_ACCESS_PRODUCT_ID = 'prod_app_access';
 // The reviewing doctor's contact details shown on the paywall.
 const DOCTOR = {
   name: 'Dr. Aakarshak',
-  whatsapp: '918755960405',
-  phoneLabel: '+91 87559 60405',
+  whatsapp: '917983143151',
+  phoneLabel: '+91 79831 43151',
   email: 'urcarein@gmail.com',
   website: 'https://urcare.org',
 };

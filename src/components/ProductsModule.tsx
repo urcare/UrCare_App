@@ -8,7 +8,7 @@ import confetti from 'canvas-confetti';
 import { Product, PackOption, CartItem, ShippingAddress, Order, UserAccount } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { saveOrderAndReceiptToSupabase, getProducts, getPaymentQrSettings, getMyOrders, checkStoreCoupon } from '../utils/supabase';
+import { saveOrderAndReceiptToSupabase, getProducts, getPaymentQrSettings, getMyOrders, checkStoreCoupon, getReferralStatus, ReferralStatus } from '../utils/supabase';
 import { getCachedAccountState, saveAccountState } from '../utils/accountState';
 import { compressImageToDataUrl } from '../utils/compressImage';
 
@@ -218,8 +218,16 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const totalCartItems = cart.reduce((acc, item) => acc + item.quantity, 0);
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.discountPrice || item.product.price) * item.quantity, 0);
   const couponDiscount = couponResult?.valid ? couponResult.discount : 0;
+  // Referral points: ₹1 each, spent in whole 500-point blocks (same rule as the server).
+  const [referral, setReferral] = useState<ReferralStatus | null>(null);
+  const [usePoints, setUsePoints] = useState(false);
+  useEffect(() => { getReferralStatus().then(setReferral); }, []);
+  const pointsBlock = referral?.block || 500;
+  const payableBeforePoints = cartSubtotal - couponDiscount;
+  const pointsAvailable = referral ? Math.max(0, Math.min(Math.floor(referral.balance / pointsBlock) * pointsBlock, Math.floor(payableBeforePoints / pointsBlock) * pointsBlock)) : 0;
+  const pointsDiscount = usePoints ? pointsAvailable : 0;
   const deliveryFee = cartSubtotal > 1500 || cartSubtotal === 0 ? 0 : 99;
-  const cartTotal = cartSubtotal - couponDiscount + deliveryFee;
+  const cartTotal = cartSubtotal - couponDiscount - pointsDiscount + deliveryFee;
 
   // UPI details come from Admin → Products & QR. With a UPI ID set, the QR
   // carries the exact cart amount; otherwise the admin's uploaded QR image is
@@ -334,6 +342,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
       subtotal: cartSubtotal,
       discount: couponDiscount,
       couponCode: couponDiscount > 0 ? appliedCoupon : undefined,
+      pointsUsed: pointsDiscount || undefined,
       total: cartTotal,
       paymentMethod: 'qr_upi',
       paymentStatus: 'pending',
@@ -915,6 +924,15 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                   ) : (
                     <p className="text-[11px] text-zinc-500 px-1">{tr('Use', 'कोड')} <span className="font-black text-emerald-700">{STORE_COUPON}</span> {tr('for an exclusive discount', 'लगाकर खास छूट पाएं')}</p>
                   )}
+                  {referral && referral.balance > 0 && (
+                    <label className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border text-xs cursor-pointer ${pointsAvailable ? 'bg-violet-50 border-violet-200' : 'bg-zinc-50 border-zinc-200 opacity-70 cursor-not-allowed'}`}>
+                      <input type="checkbox" checked={usePoints && !!pointsAvailable} disabled={!pointsAvailable} onChange={(e) => setUsePoints(e.target.checked)} className="w-4 h-4 accent-violet-600" />
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-black text-violet-800">{tr(`Use ${pointsAvailable || pointsBlock} points (₹${pointsAvailable || pointsBlock} off)`, `${pointsAvailable || pointsBlock} पॉइंट्स लगाएं (₹${pointsAvailable || pointsBlock} छूट)`)}</span>
+                        <span className="block text-[10px] font-semibold text-violet-600/80">{pointsAvailable ? tr(`You have ${referral.balance} points`, `आपके पास ${referral.balance} पॉइंट्स हैं`) : tr(`Add ₹${pointsBlock}+ to your cart to use points`, `पॉइंट्स के लिए कार्ट ₹${pointsBlock}+ का करें`)}</span>
+                      </span>
+                    </label>
+                  )}
                 </div>
                 <div className="space-y-1 text-xs opacity-80">
                   <div className="flex justify-between">
@@ -925,6 +943,12 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                     <div className="flex justify-between text-emerald-700 font-bold">
                       <span>{tr('Coupon discount', 'कूपन छूट')}</span>
                       <span>−₹{couponDiscount}</span>
+                    </div>
+                  )}
+                  {pointsDiscount > 0 && (
+                    <div className="flex justify-between text-violet-700 font-bold">
+                      <span>{tr('Referral points', 'रेफ़रल पॉइंट्स')}</span>
+                      <span>−₹{pointsDiscount}</span>
                     </div>
                   )}
                   <div className="flex justify-between">

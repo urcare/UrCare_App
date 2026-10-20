@@ -1301,7 +1301,8 @@ MANDATORY OUTPUT SHAPE — your JSON MUST always contain ALL EIGHT top-level key
 // 2. AI Food Scanner & Meal Analyzer — persists to `food_scans`
 app.post('/api/analyze-food', requireUser(async (req, res, user) => {
   try {
-    const { imageBase64, description, mealCategory = 'lunch', profile } = req.body;
+    const { imageBase64, description, mealCategory = 'lunch', profile, language } = req.body;
+    const replyInHindi = language === 'hi';
 
     const profileContext = profile
       ? [
@@ -1325,6 +1326,8 @@ CRITICAL FIRST STEP: Decide whether the image (or, if no image, the text descrip
 - If it is NOT food or a drink (e.g. a person, an object, an animal, a document, a screenshot, blank/unclear image, or any other non-food item), you MUST set isFood to false, explain in rejectionReason what you actually see, and leave the nutrition fields at 0 / empty. Do NOT invent or guess nutrition numbers for a non-food item.
 - Only if it IS genuinely food/drink, set isFood to true, then identify the food items, estimate a realistic portion size, and calculate calories, protein (g), carbs (g), fats (g), fiber (g) as accurately as you can from what is visible/described — never fabricate implausible values.
 - When isFood is true, also use the user's health profile context provided to decide whether THIS SPECIFIC MEAL is a "good", "moderate" or "avoid" choice for THIS user, and briefly explain why (consider their goal, dietary preference, and any medical conditions).
+- Also give a detailed breakdown for THIS user: a 1-10 score, what is good in this meal, what is bad in it, its likely effect on blood sugar (low/medium/high), a portion tip, 2-4 practical healthier SWAPS (swap one specific item for a better, commonly available Indian option and say why), foods they should eat more of with this kind of meal, and foods they should avoid. Keep every point short, specific to the foods you see, and practical. Never suggest changing any medicine or insulin dose.
+- Write all text fields in ${replyInHindi ? 'simple Hindi (Devanagari)' : 'simple English'}.
 Call the record_food_analysis tool exactly once with the complete result.`;
 
     const { data: parsed, model: answeredBy } = await callAIForJson({
@@ -1351,8 +1354,25 @@ Call the record_food_analysis tool exactly once with the complete result.`;
           healthNote: { type: ['string', 'null'] },
           suitability: { type: ['string', 'null'], enum: ['good', 'moderate', 'avoid', null] },
           suitabilityReason: { type: ['string', 'null'] },
+          score: { type: ['number', 'null'], description: '1-10: how good this meal is for THIS user.' },
+          goodPoints: { type: 'array', items: { type: 'string' }, description: "What's good in this meal for the user (2-4 short points)." },
+          badPoints: { type: 'array', items: { type: 'string' }, description: "What's bad or risky in this meal for the user (0-4 short points)." },
+          bloodSugarImpact: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
+          portionTip: { type: ['string', 'null'] },
+          swaps: {
+            type: 'array',
+            description: '2-4 healthier swaps for specific items in this meal.',
+            items: {
+              type: 'object',
+              properties: { from: { type: 'string' }, to: { type: 'string' }, why: { type: 'string' } },
+              required: ['from', 'to', 'why'],
+              additionalProperties: false,
+            },
+          },
+          eatMore: { type: 'array', items: { type: 'string' }, description: 'Foods to eat more of with meals like this.' },
+          avoidFoods: { type: 'array', items: { type: 'string' }, description: 'Foods this user should avoid.' },
         },
-        required: ['isFood', 'rejectionReason', 'name', 'calories', 'protein', 'carbs', 'fats', 'fiber', 'servingSize', 'confidence', 'healthNote', 'suitability', 'suitabilityReason'],
+        required: ['isFood', 'rejectionReason', 'name', 'calories', 'protein', 'carbs', 'fats', 'fiber', 'servingSize', 'confidence', 'healthNote', 'suitability', 'suitabilityReason', 'score', 'goodPoints', 'badPoints', 'bloodSugarImpact', 'portionTip', 'swaps', 'eatMore', 'avoidFoods'],
         additionalProperties: false,
       },
     });
@@ -2159,6 +2179,75 @@ app.get('/api/access-status', requireUser(async (req, res, user) => {
   });
 }));
 
+// ----------------------------------------------------------------------------
+// REFERRALS & POINTS — every member has a referral code; a new account that
+// opens the app through someone's link is credited to them (stored by the
+// server in the new user's auth metadata, so it can't be faked from a device).
+// Every 5 people who join = 500 points, and 1 point = ₹1 off in the pharmacy,
+// spent in blocks of 500. Points spent are kept on the order itself, so the
+// balance is always earned − spent (rejected orders give points back).
+// ----------------------------------------------------------------------------
+const REFERRALS_PER_REWARD = 5;
+const REFERRAL_REWARD_POINTS = 500;
+const POINTS_BLOCK = 500;
+
+function referralCodeFor(userId: string): string {
+  return 'UC' + userId.replace(/-/g, '').slice(0, 6).toUpperCase();
+}
+
+async function countReferrals(supabase: any, code: string): Promise<number> {
+  let count = 0;
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) break;
+    const users = data?.users || [];
+    count += users.filter((u: any) => u.user_metadata?.referred_by === code).length;
+    if (users.length < 1000) break;
+  }
+  return count;
+}
+
+async function referralSummary(supabase: any, userId: string) {
+  const code = referralCodeFor(userId);
+  const [joined, { data: orders }] = await Promise.all([
+    countReferrals(supabase, code),
+    supabase.from('orders').select('shipping_address, payment_status').eq('user_id', userId),
+  ]);
+  const earned = Math.floor(joined / REFERRALS_PER_REWARD) * REFERRAL_REWARD_POINTS;
+  const spent = (orders || [])
+    .filter((o: any) => o.payment_status !== ORDER_PAYMENT.rejected)
+    .reduce((sum: number, o: any) => sum + (Number(o.shipping_address?.pricing?.pointsUsed) || 0), 0);
+  return { code, joined, earned, spent, balance: Math.max(0, earned - spent), perReward: REFERRALS_PER_REWARD, rewardPoints: REFERRAL_REWARD_POINTS, block: POINTS_BLOCK };
+}
+
+/** Points that can go on this cart: whole 500-point blocks, never more than what's left to pay. */
+function pointsForCart(balance: number, payable: number): number {
+  return Math.max(0, Math.min(Math.floor(balance / POINTS_BLOCK) * POINTS_BLOCK, Math.floor(payable / POINTS_BLOCK) * POINTS_BLOCK));
+}
+
+app.get('/api/referral/status', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  try { res.json(await referralSummary(supabase, user.id)); } catch { res.status(500).json({ error: 'Could not load your referrals.' }); }
+}));
+
+// A newly created account says whose link brought it here. Only accepted for
+// accounts under 7 days old, once, and never for your own code.
+app.post('/api/referral/claim', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ ok: false });
+  const code = String(req.body?.code || '').trim().toUpperCase();
+  if (!/^UC[0-9A-F]{6}$/.test(code)) return res.json({ ok: false, reason: 'invalid' });
+  const { data: got } = await supabase.auth.admin.getUserById(user.id);
+  const authUser: any = got?.user;
+  if (!authUser) return res.json({ ok: false });
+  if (authUser.user_metadata?.referred_by) return res.json({ ok: false, reason: 'already' });
+  if (code === referralCodeFor(user.id)) return res.json({ ok: false, reason: 'self' });
+  if (Date.now() - new Date(authUser.created_at).getTime() > 7 * 24 * 3600 * 1000) return res.json({ ok: false, reason: 'too-old' });
+  const { error } = await supabase.auth.admin.updateUserById(user.id, { user_metadata: { ...(authUser.user_metadata || {}), referred_by: code } });
+  res.json({ ok: !error });
+}));
+
 // order_items.product_id is a uuid column, but store product ids are text
 // ("prod_glucolow", pack lines "prod_cardiol__pack3"). Map each to a stable
 // uuid; the readable name (with the pack) is kept in product_name.
@@ -2170,7 +2259,7 @@ function productIdToUuid(id: string): string {
 
 app.post('/api/orders', requireUser(async (req, res, user) => {
   try {
-    const { items = [], shippingAddress, total, couponCode, transactionId, receiptImageUrl } = req.body;
+    const { items = [], shippingAddress, total, couponCode, usePoints, transactionId, receiptImageUrl } = req.body;
     if (!isValidReceiptImage(receiptImageUrl)) {
       return res.status(400).json({ error: 'Please upload a screenshot of your payment to place the order.' });
     }
@@ -2181,6 +2270,14 @@ app.post('/api/orders', requireUser(async (req, res, user) => {
     const priced = await priceStoreCart(supabase, items, couponCode);
     if ('error' in priced) return res.status(400).json({ error: priced.error });
     if (couponCode && !priced.coupon?.valid) return res.status(400).json({ error: priced.coupon?.message || 'This coupon could not be applied.' });
+    // Referral points (₹1 each, in 500-point blocks) come off what's left to pay.
+    let pointsUsed = 0;
+    if (usePoints) {
+      const { balance } = await referralSummary(supabase, user.id);
+      pointsUsed = pointsForCart(balance, priced.subtotal - priced.discount);
+      if (!pointsUsed) return res.status(400).json({ error: 'You do not have enough points to use on this order.' });
+      priced.total -= pointsUsed;
+    }
     if (Number(total) !== priced.total) {
       return res.status(409).json({ error: `Prices in your cart have changed — the correct total is ${formatInr(priced.total)}. Please go back to your cart and check out again.` });
     }
@@ -2194,7 +2291,7 @@ app.post('/api/orders', requireUser(async (req, res, user) => {
       total_amount: priced.total,
       // The orders table has no pricing columns, so the breakdown (and any
       // coupon) is kept alongside the address.
-      shipping_address: { ...(shippingAddress || {}), pricing: { subtotal: priced.subtotal, discount: priced.discount, deliveryFee: priced.deliveryFee, couponCode: priced.coupon?.valid ? priced.coupon.code : null } },
+      shipping_address: { ...(shippingAddress || {}), pricing: { subtotal: priced.subtotal, discount: priced.discount, deliveryFee: priced.deliveryFee, couponCode: priced.coupon?.valid ? priced.coupon.code : null, pointsUsed } },
       payment_status: ORDER_PAYMENT.pending,
       razorpay_payment_id: typeof transactionId === 'string' && transactionId.trim() ? transactionId.trim().slice(0, 64) : null,
       receipt_image_url: receiptImageUrl,
