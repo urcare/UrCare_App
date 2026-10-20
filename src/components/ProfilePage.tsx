@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Bell, ChevronRight, Utensils, Sparkles, Leaf, MoreVertical,
-  Stethoscope, GitCommit, MessageCircleMore, CalendarDays, Clock3, CheckCircle2,
+  Stethoscope, GitCommit, MessageCircleMore, CalendarDays, Clock3, CheckCircle2, Share2,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, Prescription, MedicalReportAnalysis, ActivityLogEntry, CareTeamStatus } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -14,6 +14,7 @@ import { MyTimelinePanel, ACTION_META, CATEGORY_META, relativeTime } from './MyT
 import { ChatPanel } from './ChatPanel';
 import { TodaysExerciseCard } from './TodaysExerciseCard';
 import { HealthOverviewCard } from './HealthOverviewCard';
+import { ShareHealthModal } from './ShareHealthModal';
 // Premium UI components from Magic UI (MIT) — see ./magicui/LICENSE.md.
 import { AnimatedCircularProgressBar } from './magicui/animated-circular-progress-bar';
 import { NumberTicker } from './magicui/number-ticker';
@@ -211,6 +212,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   // My Timeline — a real GitHub-commit-style audit trail of this user's own
   // actions (upload/edit/update/delete); see MyTimelinePanel/logActivity.
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [recentActivity, setRecentActivity] = useState<ActivityLogEntry[]>([]);
 
   const userId = profile.id || '';
@@ -432,6 +434,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </PulsatingButton>
             {chatUnread && <span className="absolute -top-0.5 -right-0.5 z-20 w-3 h-3 rounded-full bg-rose-500 border-2 border-white pointer-events-none" />}
             </div>
+            <RippleButton
+              type="button"
+              onClick={() => setIsShareOpen(true)}
+              rippleColor="#10b981"
+              className="header-icon-btn shrink-0"
+              title={tr('Share my health data', 'मेरा हेल्थ डेटा शेयर करें')}
+            >
+              <Share2 className="w-4 h-4" />
+            </RippleButton>
             <div className="relative shrink-0">
               <RippleButton
                 type="button"
@@ -754,6 +765,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </motion.div>
 
       </main>
+
+      <ShareHealthModal
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        profile={profile}
+        displayName={(profile.name || account.displayName || '').trim()}
+        prescriptions={prescriptions}
+        reports={reports}
+        tr={tr}
+      />
 
       <NotificationsPanel
         isOpen={isNotificationsOpen}
