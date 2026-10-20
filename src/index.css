@@ -503,3 +503,18 @@
 
 /* Home: UrCare Buddy card spans the full row. */
 .home-buddy { grid-column: 1 / -1; }
+
+/* ---- QR scanner overlay ---- */
+.qr-scan-frame { position: absolute; inset: 18%; pointer-events: none; }
+.qr-scan-frame span { position: absolute; width: 34px; height: 34px; border: 0 solid #34d399; filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.9)); }
+.qr-scan-frame span:nth-child(1) { top: 0; left: 0; border-top-width: 4px; border-left-width: 4px; border-top-left-radius: 14px; }
+.qr-scan-frame span:nth-child(2) { top: 0; right: 0; border-top-width: 4px; border-right-width: 4px; border-top-right-radius: 14px; }
+.qr-scan-frame span:nth-child(3) { bottom: 0; left: 0; border-bottom-width: 4px; border-left-width: 4px; border-bottom-left-radius: 14px; }
+.qr-scan-frame span:nth-child(4) { bottom: 0; right: 0; border-bottom-width: 4px; border-right-width: 4px; border-bottom-right-radius: 14px; }
+.qr-scan-line {
+  position: absolute; left: 20%; right: 20%; height: 3px; top: 20%; border-radius: 999px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, #34d399, #fff, #34d399, transparent);
+  box-shadow: 0 0 14px 4px rgba(52, 211, 153, 0.6);
+  animation: qr-sweep 2.2s ease-in-out infinite;
+}
+@keyframes qr-sweep { 0%, 100% { top: 20%; } 50% { top: 78%; } }

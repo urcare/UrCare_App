@@ -17,10 +17,12 @@ import { AccessFlow } from './components/AccessFlow';
 /** The post-onboarding organs / body-map screen — off for now, kept for later. */
 const ENABLE_BODY_MAP_AFTER_ONBOARDING = false;
 import { loadAccountState } from './utils/accountState';
-import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn, getAccessStatus, AccessStatus, captureReferralFromUrl, claimStoredReferral } from './utils/supabase';
+import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn, getAccessStatus, AccessStatus, captureReferralFromUrl, claimStoredReferral, captureAddFromUrl } from './utils/supabase';
 
-// A referral link (?ref=CODE) is remembered as soon as the app opens.
+// A referral link (?ref=CODE) and a scanned profile QR (?add=@name) are
+// remembered as soon as the app opens.
 captureReferralFromUrl();
+captureAddFromUrl();
 
 // The 3D body map pulls in three.js + react-three-fiber/drei — a sizeable
 // chunk that only the post-onboarding screen needs, so it's loaded lazily

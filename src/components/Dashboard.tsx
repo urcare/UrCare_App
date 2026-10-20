@@ -36,7 +36,7 @@ import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { MyCareFilesPanel } from './MyCareFilesPanel';
 import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
-import { signOutUser, activePlanSections, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity, getMyQueueEntry } from '../utils/supabase';
+import { signOutUser, activePlanSections, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity, getMyQueueEntry, takePendingAdd } from '../utils/supabase';
 import { calculateNutritionPlan } from '../utils/calculator';
 import { labelMinutes } from './RecommendationsView';
 import { useLanguage } from '../context/LanguageContext';
@@ -71,6 +71,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'profile' | 'plan' | 'premium' | 'account' | 'reports' | 'assessment' | 'store' | 'tracker' | 'leaderboard' | 'family'>('profile');
   // The Home "+" opens Family & Friends straight into "add someone".
   const [familyStartAdding, setFamilyStartAdding] = useState(false);
+  // Opened from a scanned profile QR (?add=@name): show that person with "Add".
+  const [familyQuery, setFamilyQuery] = useState('');
+  useEffect(() => {
+    const pending = takePendingAdd();
+    if (pending) { setFamilyQuery(pending); setFamilyStartAdding(true); setActiveTab('family'); }
+  }, []);
 
   // '⋮' module switcher — a single drawer, opened from one fixed spot in the
   // persistent header/sidebar (never inline in a tab's scrolling content), so
@@ -850,7 +856,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onAddFamily={() => { setFamilyStartAdding(true); setActiveTab('family'); }}
           />
         ) : activeTab === 'family' ? (
-          <FamilyPage key={familyStartAdding ? 'adding' : 'view'} tr={tr} startAdding={familyStartAdding} />
+          <FamilyPage
+            key={`${familyStartAdding ? 'adding' : 'view'}-${familyQuery}`}
+            tr={tr}
+            startAdding={familyStartAdding}
+            initialQuery={familyQuery || undefined}
+            selfName={profile.name || account.displayName || ''}
+            selfAvatar={account.avatarUrl || null}
+          />
         ) : activeTab === 'leaderboard' ? (
           <LeaderboardPage tr={tr} userId={account.uid} onOpenStore={() => setActiveTab('store')} />
         ) : activeTab === 'plan' ? (

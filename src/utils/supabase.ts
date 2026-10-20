@@ -1323,7 +1323,44 @@ export async function saveOrderAndReceiptToSupabase(order: Order): Promise<{ suc
 
 // ---------------------------------------------------------------- family
 
-export interface FamilyPerson { id: string; name: string; avatar: string | null }
+export interface FamilyPerson { id: string; name: string; avatar: string | null; username?: string | null }
+
+/** Is this @username free? (4–20 letters/numbers/_ starting with a letter) */
+export async function checkUsername(username: string): Promise<{ available: boolean; message?: string | null }> {
+  try { const res = await authedFetch('/api/username/check', { method: 'POST', body: JSON.stringify({ username }) }); return (await jsonOrNull(res)) || { available: false }; } catch { return { available: false, message: 'Could not check right now.' }; }
+}
+export async function setUsername(username: string): Promise<{ ok: boolean; username?: string; error?: string }> {
+  try { const res = await authedFetch('/api/username/set', { method: 'POST', body: JSON.stringify({ username }) }); const data = await jsonOrNull(res); return res.ok ? { ok: true, username: data?.username } : { ok: false, error: data?.error }; } catch { return { ok: false, error: 'Could not save right now.' }; }
+}
+
+/** The link inside a member's QR code: opens UrCare on their profile with
+ *  "Add" — and counts as their referral if a new person joins through it. */
+export function profileLink(handle: { username?: string | null; id: string }): string {
+  const add = handle.username ? `@${handle.username}` : handle.id;
+  return `https://urcare-app.onrender.com/?add=${encodeURIComponent(add)}&ref=${encodeURIComponent(handle.id)}`;
+}
+/** Pulls "@name" / "UC…" out of a scanned QR (a profile link or plain text). */
+export function handleFromScan(text: string): string | null {
+  const t = String(text || '').trim();
+  try {
+    const u = new URL(t);
+    const add = u.searchParams.get('add');
+    if (add) return add;
+  } catch { /* not a link */ }
+  if (/^@?[A-Za-z][A-Za-z0-9_]{3,19}$/.test(t) || /^UC[0-9A-F]{6}$/i.test(t)) return t;
+  return null;
+}
+const ADD_STORAGE_KEY = 'urcare_pending_add';
+/** Remembers ?add=… from the link the app was opened with (a scanned profile QR). */
+export function captureAddFromUrl() {
+  try {
+    const add = new URLSearchParams(window.location.search).get('add');
+    if (add && handleFromScan(add)) localStorage.setItem(ADD_STORAGE_KEY, add);
+  } catch {}
+}
+export function takePendingAdd(): string | null {
+  try { const v = localStorage.getItem(ADD_STORAGE_KEY); if (v) localStorage.removeItem(ADD_STORAGE_KEY); return v; } catch { return null; }
+}
 export interface FamilyLink extends FamilyPerson {
   relation: string;
   group: 'family' | 'friends';
@@ -1334,6 +1371,7 @@ export interface FamilyLink extends FamilyPerson {
 }
 export interface FamilyState {
   myId: string;
+  username: string | null;
   shareProgress: boolean;
   bonusPerPerson: number;
   members: FamilyLink[];

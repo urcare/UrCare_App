@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Users, Search, Check, X, Copy, Share2, Gift, Heart, UserPlus, Trash2, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Plus, Users, Search, Check, X, Copy, Share2, Gift, Heart, UserPlus, Trash2, Eye, EyeOff, Loader2, QrCode, ScanLine } from 'lucide-react';
+import { UsernameSheet, MyQrSheet, QrScannerSheet } from './ProfileQr';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import {
   getFamily, searchFamilyMember, sendFamilyRequest, respondFamilyRequest, removeFamilyMember, setFamilyShareProgress,
-  FamilyState, FamilyPerson, FamilyLink,
+  FamilyState, FamilyPerson, FamilyLink, profileLink,
 } from '../utils/supabase';
 import { BorderBeam } from './magicui/border-beam';
 import { MagicCard } from './magicui/magic-card';
@@ -44,13 +45,22 @@ interface FamilyPageProps {
   tr: (en: string, hi: string) => string;
   /** Opens the add-person sheet straight away (from the Home "+" button). */
   startAdding?: boolean;
+  /** A @username / UrCare ID to look up straight away (from a scanned QR link). */
+  initialQuery?: string;
+  /** The signed-in member's own name and photo, for their QR card. */
+  selfName?: string;
+  selfAvatar?: string | null;
 }
 
-export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding }) => {
+export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initialQuery, selfName, selfAvatar }) => {
   const [state, setState] = useState<FamilyState | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'family' | 'friends'>('family');
-  const [isAdding, setIsAdding] = useState(!!startAdding);
+  const [isAdding, setIsAdding] = useState(!!startAdding || !!initialQuery);
+  const [addQuery, setAddQuery] = useState(initialQuery || '');
+  const [isUsernameOpen, setIsUsernameOpen] = useState(false);
+  const [isQrOpen, setIsQrOpen] = useState(false);
+  const [isScanOpen, setIsScanOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -61,9 +71,10 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding }) => {
   const flash = (m: string) => { setNotice(m); window.setTimeout(() => setNotice(null), 2400); };
 
   const myId = state?.myId || '';
+  const handle = state?.username ? `@${state.username}` : myId;
   const inviteText = tr(
-    `Add me on UrCare so we can keep each other healthy! My UrCare ID: ${myId}`,
-    `UrCare पर मुझे जोड़ें ताकि हम एक-दूसरे को स्वस्थ रखें! मेरी UrCare ID: ${myId}`,
+    `Add me on UrCare so we can keep each other healthy! ${handle}\n${profileLink({ username: state?.username, id: myId })}`,
+    `UrCare पर मुझे जोड़ें ताकि हम एक-दूसरे को स्वस्थ रखें! ${handle}\n${profileLink({ username: state?.username, id: myId })}`,
   );
   const copyId = async () => { try { await navigator.clipboard.writeText(myId); setCopied(true); window.setTimeout(() => setCopied(false), 1600); } catch {} };
   const shareId = async () => {
@@ -116,7 +127,19 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding }) => {
             <Plus className="w-6 h-6" />
           </button>
         </div>
-        <div className="mt-4 flex items-center gap-2 p-1.5 pl-3 rounded-2xl bg-white/15 border border-white/25">
+        {/* @username + QR (Telegram-style) */}
+        <div className="mt-4 grid grid-cols-[1fr_auto_auto] gap-2">
+          <button type="button" onClick={() => setIsUsernameOpen(true)} disabled={!state} className="min-w-0 flex items-center gap-2 px-3 py-2.5 rounded-2xl bg-white/15 border border-white/25 text-left cursor-pointer hover:bg-white/20">
+            <span className="text-lg font-black opacity-80">@</span>
+            <span className="min-w-0">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/75">{tr('Username', 'यूज़रनेम')}</span>
+              <span className="block truncate text-sm font-black">{state?.username ? state.username : tr('Set your username', 'यूज़रनेम रखें')}</span>
+            </span>
+          </button>
+          <button type="button" onClick={() => setIsQrOpen(true)} disabled={!state} className="w-12 rounded-2xl bg-white text-emerald-700 flex flex-col items-center justify-center shadow cursor-pointer" title={tr('My QR code', 'मेरा QR कोड')}><QrCode className="w-5 h-5" /><span className="text-[8px] font-black mt-0.5">{tr('MY QR', 'मेरा QR')}</span></button>
+          <button type="button" onClick={() => setIsScanOpen(true)} className="w-12 rounded-2xl bg-white/15 border border-white/25 flex flex-col items-center justify-center cursor-pointer" title={tr('Scan QR', 'QR स्कैन')}><ScanLine className="w-5 h-5" /><span className="text-[8px] font-black mt-0.5">{tr('SCAN', 'स्कैन')}</span></button>
+        </div>
+        <div className="mt-2 flex items-center gap-2 p-1.5 pl-3 rounded-2xl bg-white/10 border border-white/20">
           <span className="text-[10px] font-bold uppercase tracking-wider text-white/75 shrink-0">{tr('Your UrCare ID', 'आपकी UrCare ID')}</span>
           <span className="flex-1 min-w-0 truncate font-mono text-base font-black tracking-wider">{myId || '…'}</span>
           <button type="button" onClick={copyId} disabled={!myId} className="shrink-0 p-2 rounded-xl bg-white/20 hover:bg-white/30 cursor-pointer" title={tr('Copy', 'कॉपी')}>{copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}</button>
@@ -199,7 +222,31 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding }) => {
         )}
       </section>
 
-      <AddPersonSheet open={isAdding} onClose={() => setIsAdding(false)} relations={state?.relations || Object.keys(RELATION_LABELS)} relLabel={relLabel} tr={tr} onSent={() => { flash(tr('Request sent! They will see it in their app.', 'रिक्वेस्ट भेज दी! उन्हें उनकी ऐप में दिखेगी।')); refresh(); }} />
+      <AddPersonSheet open={isAdding} onClose={() => { setIsAdding(false); setAddQuery(''); }} initialQuery={addQuery} onScan={() => setIsScanOpen(true)} relations={state?.relations || Object.keys(RELATION_LABELS)} relLabel={relLabel} tr={tr} onSent={() => { flash(tr('Request sent! They will see it in their app.', 'रिक्वेस्ट भेज दी! उन्हें उनकी ऐप में दिखेगी।')); refresh(); }} />
+      <UsernameSheet
+        open={isUsernameOpen}
+        onClose={() => setIsUsernameOpen(false)}
+        current={state?.username || null}
+        suggestion={(selfName || '').split(' ')[0].replace(/[^A-Za-z0-9_]/g, '').slice(0, 14) + (myId ? myId.slice(-2) : '')}
+        onSaved={(u) => { if (state) setState({ ...state, username: u }); flash(tr(`You're now @${u}`, `अब आप @${u} हैं`)); }}
+        tr={tr}
+      />
+      <MyQrSheet
+        open={isQrOpen}
+        onClose={() => setIsQrOpen(false)}
+        name={selfName || 'UrCare member'}
+        id={myId}
+        username={state?.username || null}
+        avatar={selfAvatar || null}
+        onSetUsername={() => { setIsQrOpen(false); setIsUsernameOpen(true); }}
+        tr={tr}
+      />
+      <QrScannerSheet
+        open={isScanOpen}
+        onClose={() => setIsScanOpen(false)}
+        onFound={(handle) => { setIsScanOpen(false); setAddQuery(handle); setIsAdding(true); }}
+        tr={tr}
+      />
 
       <AnimatePresence>
         {notice && (
@@ -240,18 +287,22 @@ const RequestCard: React.FC<{
 
 const AddPersonSheet: React.FC<{
   open: boolean; onClose: () => void; relations: string[]; relLabel: (r: string) => string;
-  tr: (en: string, hi: string) => string; onSent: () => void;
-}> = ({ open, onClose, relations, relLabel, tr, onSent }) => {
+  tr: (en: string, hi: string) => string; onSent: () => void; initialQuery?: string; onScan: () => void;
+}> = ({ open, onClose, relations, relLabel, tr, onSent, initialQuery, onScan }) => {
   const [id, setId] = useState('');
   const [found, setFound] = useState<{ person: FamilyPerson; already?: boolean } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [relation, setRelation] = useState('mother');
+  const [relation, setRelation] = useState('friend');
   const [working, setWorking] = useState(false);
-  useEffect(() => { if (!open) { setId(''); setFound(null); setMessage(null); setRelation('mother'); } }, [open]);
+  useEffect(() => { if (!open) { setId(''); setFound(null); setMessage(null); setRelation('friend'); } }, [open]);
+  // Opened from a scanned QR / profile link: look the person up right away.
+  useEffect(() => { if (open && initialQuery) { setId(initialQuery); search(initialQuery); } }, [open, initialQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const search = async () => {
+  const normalise = (q: string) => { const t = q.trim(); return /^UC[0-9A-F]{6}$/i.test(t) ? t.toUpperCase() : t.startsWith('@') ? t : /^UC/i.test(t) ? t.toUpperCase() : `@${t}`; };
+  const search = async (q?: string) => {
+    const query = normalise(q ?? id);
     setWorking(true); setMessage(null); setFound(null);
-    const r = await searchFamilyMember(id.trim().toUpperCase());
+    const r = await searchFamilyMember(query);
     setWorking(false);
     if (r.found && r.person) setFound({ person: r.person, already: r.already });
     else setMessage(r.message || tr('No member found.', 'कोई सदस्य नहीं मिला।'));
@@ -276,18 +327,21 @@ const AddPersonSheet: React.FC<{
                   <span className="w-10 h-10 rounded-2xl bg-white/20 border border-white/25 flex items-center justify-center"><UserPlus className="w-5 h-5" /></span>
                   <div>
                     <h2 className="text-lg font-black leading-tight">{tr('Add family or a friend', 'परिवार या दोस्त जोड़ें')}</h2>
-                    <p className="text-[11px] font-semibold text-white/80">{tr('Ask them for their UrCare ID (Family & Friends page)', 'उनसे उनकी UrCare ID पूछें (Family & Friends पेज पर)')}</p>
+                    <p className="text-[11px] font-semibold text-white/80">{tr('Search their @username or UrCare ID, or scan their QR', 'उनका @यूज़रनेम या UrCare ID खोजें, या QR स्कैन करें')}</p>
                   </div>
                 </div>
                 <button type="button" onClick={onClose} className="p-2 rounded-full bg-white/15 hover:bg-white/25 cursor-pointer"><X className="w-4 h-4" /></button>
               </div>
               <div className="p-5 space-y-4">
                 <div className="flex gap-2">
-                  <input value={id} onChange={(e) => setId(e.target.value.toUpperCase())} onKeyDown={(e) => { if (e.key === 'Enter') search(); }} placeholder="UC1A2B3C" maxLength={8} className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-zinc-200 font-mono text-base font-black tracking-wider uppercase outline-none focus:border-emerald-500" />
-                  <button type="button" onClick={search} disabled={working || id.trim().length < 8} className="px-4 rounded-xl bg-emerald-600 text-white cursor-pointer disabled:opacity-50 flex items-center gap-1.5 text-xs font-black">
+                  <input value={id} onChange={(e) => setId(e.target.value.replace(/\s/g, '').slice(0, 21))} onKeyDown={(e) => { if (e.key === 'Enter') search(); }} placeholder={tr('@username or UC1A2B3C', '@यूज़रनेम या UC1A2B3C')} autoCapitalize="none" autoCorrect="off" className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-zinc-200 text-base font-black outline-none focus:border-emerald-500" />
+                  <button type="button" onClick={() => search()} disabled={working || id.trim().replace(/^@/, '').length < 4} className="px-4 rounded-xl bg-emerald-600 text-white cursor-pointer disabled:opacity-50 flex items-center gap-1.5 text-xs font-black">
                     {working && !found ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}{tr('Find', 'खोजें')}
                   </button>
                 </div>
+                <button type="button" onClick={onScan} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-emerald-300 text-emerald-700 text-xs font-black cursor-pointer hover:bg-emerald-50">
+                  <ScanLine className="w-4 h-4" />{tr('Scan their QR code', 'उनका QR कोड स्कैन करें')}
+                </button>
                 {message && <p className="text-xs font-semibold text-rose-600">{message}</p>}
                 {found && (
                   <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
@@ -295,7 +349,7 @@ const AddPersonSheet: React.FC<{
                       <Avatar person={found.person} size={48} />
                       <div className="min-w-0">
                         <div className="text-sm font-black text-zinc-900 truncate">{found.person.name}</div>
-                        <div className="text-[11px] font-mono text-zinc-500">{found.person.id}</div>
+                        <div className="text-[11px] font-bold text-emerald-700">{found.person.username ? `@${found.person.username}` : ''} <span className="font-mono text-zinc-400">{found.person.id}</span></div>
                       </div>
                     </div>
                     {found.already ? (

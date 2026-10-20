@@ -2291,21 +2291,68 @@ const FAMILY_BONUS_POINTS = 100;
 const FAMILY_RELATIONS = ['mother', 'father', 'brother', 'sister', 'son', 'daughter', 'spouse', 'grandparent', 'friend', 'other'];
 const FAMILY_GROUP: Record<string, 'family' | 'friends'> = { friend: 'friends' };
 
-let userIndexCache: { at: number; byCode: Map<string, any> } | null = null;
-async function userByCode(supabase: any, code: string): Promise<any | null> {
-  const wanted = code.trim().toUpperCase();
-  if (!userIndexCache || Date.now() - userIndexCache.at > 60_000 || !userIndexCache.byCode.has(wanted)) {
-    const byCode = new Map<string, any>();
-    for (let page = 1; page <= 20; page++) {
-      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
-      if (error) break;
-      for (const u of data?.users || []) byCode.set(referralCodeFor(u.id), u);
-      if ((data?.users || []).length < 1000) break;
+// Index of members by UrCare ID ("UC…") and by @username (lower-cased).
+let userIndexCache: { at: number; byCode: Map<string, any>; byName: Map<string, any> } | null = null;
+async function buildUserIndex(supabase: any) {
+  const byCode = new Map<string, any>();
+  const byName = new Map<string, any>();
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) break;
+    for (const u of data?.users || []) {
+      byCode.set(referralCodeFor(u.id), u);
+      const name = u.app_metadata?.username;
+      if (name) byName.set(String(name).toLowerCase(), u);
     }
-    userIndexCache = { at: Date.now(), byCode };
+    if ((data?.users || []).length < 1000) break;
   }
-  return userIndexCache.byCode.get(wanted) || null;
+  userIndexCache = { at: Date.now(), byCode, byName };
+  return userIndexCache;
 }
+/** Finds a member by UrCare ID ("UC1A2B3C") or @username ("@aditya1" / "aditya1"). */
+async function userByCode(supabase: any, code: string): Promise<any | null> {
+  const raw = String(code || '').trim();
+  const isId = /^UC[0-9A-F]{6}$/i.test(raw);
+  const key = isId ? raw.toUpperCase() : raw.replace(/^@/, '').toLowerCase();
+  const look = (idx: NonNullable<typeof userIndexCache>) => (isId ? idx.byCode.get(key) : idx.byName.get(key)) || null;
+  if (userIndexCache && Date.now() - userIndexCache.at < 60_000) { const hit = look(userIndexCache); if (hit) return hit; }
+  return look(await buildUserIndex(supabase));
+}
+
+// ---- @usernames (Telegram-style): 4–20 letters, numbers or _, starting with
+// a letter; unique ignoring case. Stored in app_metadata.username.
+const USERNAME_RE = /^[A-Za-z][A-Za-z0-9_]{3,19}$/;
+const RESERVED_USERNAMES = new Set(['admin', 'urcare', 'support', 'doctor', 'help', 'official', 'team', 'root', 'system']);
+function usernameProblem(name: string): string | null {
+  if (!USERNAME_RE.test(name)) return 'Use 4–20 letters, numbers or _, starting with a letter.';
+  if (RESERVED_USERNAMES.has(name.toLowerCase()) || /^urcare/i.test(name)) return 'That username is reserved.';
+  return null;
+}
+
+app.post('/api/username/check', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const name = String(req.body?.username || '').trim().replace(/^@/, '');
+  const problem = usernameProblem(name);
+  if (problem) return res.json({ available: false, message: problem });
+  const idx = await buildUserIndex(supabase);
+  const owner = idx.byName.get(name.toLowerCase());
+  res.json({ available: !owner || owner.id === user.id, message: owner && owner.id !== user.id ? 'That username is taken.' : null });
+}));
+
+app.post('/api/username/set', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const name = String(req.body?.username || '').trim().replace(/^@/, '');
+  const problem = usernameProblem(name);
+  if (problem) return res.status(400).json({ error: problem });
+  const idx = await buildUserIndex(supabase);
+  const owner = idx.byName.get(name.toLowerCase());
+  if (owner && owner.id !== user.id) return res.status(409).json({ error: 'That username is taken.' });
+  await patchUserMeta(supabase, user.id, () => ({ username: name }));
+  userIndexCache = null;
+  res.json({ ok: true, username: name });
+}));
 
 async function getAuthUser(supabase: any, id: string): Promise<any | null> {
   const { data } = await supabase.auth.admin.getUserById(id);
@@ -2327,6 +2374,7 @@ async function publicPerson(supabase: any, u: any) {
   const meta = u.user_metadata || {};
   return {
     id: referralCodeFor(u.id),
+    username: u.app_metadata?.username || null,
     name: p?.full_name || meta.full_name || meta.name || (u.email ? String(u.email).split('@')[0] : 'UrCare member'),
     avatar: meta.avatar_url || meta.picture || null,
   };
@@ -2365,6 +2413,7 @@ app.get('/api/family', requireUser(async (req, res, user) => {
   }));
   res.json({
     myId: referralCodeFor(user.id),
+    username: meta.username || null,
     shareProgress: !!meta.family_share_progress,
     bonusPerPerson: FAMILY_BONUS_POINTS,
     members: memberRows.filter(Boolean),
@@ -2376,11 +2425,12 @@ app.get('/api/family', requireUser(async (req, res, user) => {
 app.post('/api/family/search', requireUser(async (req, res, user) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
-  const code = String(req.body?.id || '').trim().toUpperCase();
-  if (!/^UC[0-9A-F]{6}$/.test(code)) return res.json({ found: false, message: 'Enter a UrCare ID like UC1A2B3C.' });
-  if (code === referralCodeFor(user.id)) return res.json({ found: false, message: 'That is your own UrCare ID.' });
-  const target = await userByCode(supabase, code);
-  if (!target) return res.json({ found: false, message: 'No member found with that UrCare ID.' });
+  const query = String(req.body?.id || '').trim();
+  const isId = /^UC[0-9A-F]{6}$/i.test(query);
+  if (!isId && !/^@?[A-Za-z][A-Za-z0-9_]{3,19}$/.test(query)) return res.json({ found: false, message: 'Enter a @username or a UrCare ID like UC1A2B3C.' });
+  const target = await userByCode(supabase, query);
+  if (target?.id === user.id) return res.json({ found: false, message: 'That is you!' });
+  if (!target) return res.json({ found: false, message: isId ? 'No member found with that UrCare ID.' : 'No member found with that username.' });
   const me = await getAuthUser(supabase, user.id);
   const already = (me?.app_metadata?.family_members || []).some((m: any) => m.uid === target.id);
   res.json({ found: true, already, person: await publicPerson(supabase, target) });
@@ -2389,9 +2439,8 @@ app.post('/api/family/search', requireUser(async (req, res, user) => {
 app.post('/api/family/request', requireUser(async (req, res, user) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
-  const code = String(req.body?.id || '').trim().toUpperCase();
   const relation = FAMILY_RELATIONS.includes(req.body?.relation) ? req.body.relation : 'other';
-  const target = /^UC[0-9A-F]{6}$/.test(code) ? await userByCode(supabase, code) : null;
+  const target = await userByCode(supabase, String(req.body?.id || ''));
   if (!target || target.id === user.id) return res.status(400).json({ error: 'Member not found.' });
   const me = await getAuthUser(supabase, user.id);
   if ((me?.app_metadata?.family_members || []).some((m: any) => m.uid === target.id)) return res.json({ ok: true, already: true });
