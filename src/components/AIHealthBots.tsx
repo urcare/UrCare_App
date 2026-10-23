@@ -5,27 +5,26 @@ import { chatWithHealthBot, getHealthBotHistory, clearHealthBotHistory } from '.
 import { BotAvatar, BotLook } from './BotAvatar';
 import { ensureAIConsent, AI_CONSENT_DECLINED_MESSAGE } from '../utils/aiConsent';
 
-/** The six AI Health Bots. Names are made up and every one is labelled as an
- *  AI ("… Bot" + AI badge) — none of them is, or pretends to be, a real
- *  person. Their personalities live server-side (HEALTH_BOT_PERSONAS). */
+/** The six AI Health Bots. Named only by what they help with (no personal
+ *  names) and labelled as AI, so none of them looks like a real person. Their personalities live server-side (HEALTH_BOT_PERSONAS). */
 const BOTS = [
-  { id: 'sharma', name: 'Dr. Sharma Health Bot', role: ['General Health · MBBS track', 'सामान्य स्वास्थ्य · MBBS ट्रैक'], icon: Stethoscope, color: 'from-sky-500 to-blue-600', look: { gender: 'male', skin: '#e0ac69', hair: '#2b1b10', outfit: 'coat', outfitColor: '#0ea5e9', bg: ['#38bdf8', '#2563eb'] } as BotLook,
-    hello: ["Namaste! I'm Dr. Sharma Health Bot, an AI health assistant. Tell me what's bothering you — when did it start and how is it affecting your day?", 'नमस्ते! मैं Dr. Sharma Health Bot हूँ, एक AI हेल्थ असिस्टेंट। बताइए क्या परेशानी है — कब से है और रोज़मर्रा पर कितना असर है?'],
+  { id: 'sharma', name: 'MBBS Health Bot', role: ['General Health · MBBS', 'सामान्य स्वास्थ्य · MBBS'], icon: Stethoscope, color: 'from-sky-500 to-blue-600', look: { gender: 'male', skin: '#e0ac69', hair: '#2b1b10', outfit: 'coat', outfitColor: '#0ea5e9', bg: ['#38bdf8', '#2563eb'] } as BotLook,
+    hello: ["Namaste! I'm MBBS Health Bot, an AI health assistant. Tell me what's bothering you — when did it start and how is it affecting your day?", 'नमस्ते! मैं MBBS Health Bot हूँ, एक AI हेल्थ असिस्टेंट। बताइए क्या परेशानी है — कब से है और रोज़मर्रा पर कितना असर है?'],
     chips: [['Explain my report', 'मेरी रिपोर्ट समझाइए'], ['I feel tired all day', 'दिन भर थकान रहती है'], ['What should I check?', 'कौन से टेस्ट कराऊँ?']] },
-  { id: 'mehra', name: 'Dr. Mehra Sugar Bot', role: ['Diabetes & Sugar · MBBS track', 'डायबिटीज़ व शुगर · MBBS ट्रैक'], icon: HeartPulse, color: 'from-rose-500 to-red-600', look: { gender: 'female', skin: '#f1c27d', hair: '#3b2416', outfit: 'coat', outfitColor: '#e11d48', bg: ['#fb7185', '#dc2626'], extras: ['glasses'] } as BotLook,
-    hello: ["Hi, I'm Dr. Mehra Sugar Bot, an AI assistant for blood sugar. Share your latest fasting or after-meal reading and I'll help you make sense of it.", 'नमस्ते, मैं Dr. Mehra Sugar Bot हूँ, ब्लड शुगर के लिए AI असिस्टेंट। अपनी ताज़ा fasting या खाने के बाद की reading बताइए, मैं समझाने में मदद करूँगी।'],
+  { id: 'mehra', name: 'Diabetes & Sugar Bot', role: ['Diabetes & Sugar · MBBS', 'डायबिटीज़ व शुगर · MBBS'], icon: HeartPulse, color: 'from-rose-500 to-red-600', look: { gender: 'female', skin: '#f1c27d', hair: '#3b2416', outfit: 'coat', outfitColor: '#e11d48', bg: ['#fb7185', '#dc2626'], extras: ['glasses'] } as BotLook,
+    hello: ["Hi, I'm Diabetes & Sugar Bot, an AI assistant for blood sugar. Share your latest fasting or after-meal reading and I'll help you make sense of it.", 'नमस्ते, मैं Diabetes & Sugar Bot हूँ, ब्लड शुगर के लिए AI असिस्टेंट। अपनी ताज़ा fasting या खाने के बाद की reading बताइए, मैं समझाने में मदद करूँगी।'],
     chips: [['My fasting sugar is high', 'मेरी fasting शुगर ज़्यादा है'], ['What is a good HbA1c?', 'अच्छा HbA1c कितना होता है?'], ['Sugar drops at night', 'रात में शुगर गिर जाती है']] },
-  { id: 'joshi', name: 'Vaidya Joshi Ayur Bot', role: ['Ayurveda · BAMS track', 'आयुर्वेद · BAMS ट्रैक'], icon: Leaf, color: 'from-amber-500 to-orange-600', look: { gender: 'male', skin: '#c68642', hair: '#9ca3af', outfit: 'kurta', outfitColor: '#ea580c', bg: ['#fbbf24', '#ea580c'], extras: ['tilak', 'moustache'] } as BotLook,
-    hello: ["Namaskar! I'm Vaidya Joshi Ayur Bot, an AI Ayurveda assistant. Tell me about your daily routine and digestion, and we'll find simple ways to bring balance.", 'नमस्कार! मैं वैद्य जोशी आयुर बॉट हूँ, एक AI आयुर्वेद असिस्टेंट। अपनी दिनचर्या और पाचन के बारे में बताइए, हम संतुलन के आसान उपाय ढूँढेंगे।'],
+  { id: 'joshi', name: 'Ayurveda Bot', role: ['Ayurveda · BAMS', 'आयुर्वेद · BAMS'], icon: Leaf, color: 'from-amber-500 to-orange-600', look: { gender: 'male', skin: '#c68642', hair: '#9ca3af', outfit: 'kurta', outfitColor: '#ea580c', bg: ['#fbbf24', '#ea580c'], extras: ['tilak', 'moustache'] } as BotLook,
+    hello: ["Namaskar! I'm Ayurveda Bot, an AI Ayurveda assistant. Tell me about your daily routine and digestion, and we'll find simple ways to bring balance.", 'नमस्कार! मैं Ayurveda Bot हूँ, एक AI आयुर्वेद असिस्टेंट। अपनी दिनचर्या और पाचन के बारे में बताइए, हम संतुलन के आसान उपाय ढूँढेंगे।'],
     chips: [['Ayurvedic daily routine', 'आयुर्वेदिक दिनचर्या'], ['Herbs for sugar — safe?', 'शुगर के लिए जड़ी-बूटी — सुरक्षित?'], ['Seasonal diet', 'मौसम के हिसाब से आहार']] },
-  { id: 'iyer', name: 'Dr. Iyer Ayurveda Bot', role: ['Gut & Metabolism · BAMS track', 'पाचन व मेटाबॉलिज़्म · BAMS ट्रैक'], icon: Sprout, color: 'from-lime-500 to-green-600', look: { gender: 'female', skin: '#d29a63', hair: '#1f130b', outfit: 'kurta', outfitColor: '#16a34a', bg: ['#a3e635', '#16a34a'], extras: ['bindi'] } as BotLook,
-    hello: ["Hello! I'm Dr. Iyer Ayurveda Bot, an AI assistant for gut health and metabolism. How is your appetite, digestion and sleep these days?", 'नमस्ते! मैं Dr. Iyer Ayurveda Bot हूँ, पाचन और मेटाबॉलिज़्म के लिए AI असिस्टेंट। आजकल भूख, पाचन और नींद कैसी है?'],
+  { id: 'iyer', name: 'Gut & Metabolism Bot', role: ['Gut & Metabolism · BAMS', 'पाचन व मेटाबॉलिज़्म · BAMS'], icon: Sprout, color: 'from-lime-500 to-green-600', look: { gender: 'female', skin: '#d29a63', hair: '#1f130b', outfit: 'kurta', outfitColor: '#16a34a', bg: ['#a3e635', '#16a34a'], extras: ['bindi'] } as BotLook,
+    hello: ["Hello! I'm Gut & Metabolism Bot, an AI assistant for gut health and metabolism. How is your appetite, digestion and sleep these days?", 'नमस्ते! मैं Gut & Metabolism Bot हूँ, पाचन और मेटाबॉलिज़्म के लिए AI असिस्टेंट। आजकल भूख, पाचन और नींद कैसी है?'],
     chips: [['Bloating after meals', 'खाने के बाद पेट फूलता है'], ['Constipation', 'कब्ज़ की समस्या'], ['Improve metabolism', 'मेटाबॉलिज़्म कैसे बढ़ाएँ']] },
-  { id: 'priya', name: 'Coach Priya Diet Bot', role: ['Diet & Nutrition Coach', 'डाइट व पोषण कोच'], icon: Salad, color: 'from-emerald-500 to-teal-600', look: { gender: 'female', skin: '#c68642', hair: '#2b1b10', outfit: 'tee', outfitColor: '#0d9488', bg: ['#34d399', '#0d9488'], extras: ['ponytail'] } as BotLook,
-    hello: ["Hey! I'm Coach Priya Diet Bot, your AI diet coach. What did you eat today? I'll suggest easy swaps that fit your plan.", 'हाय! मैं Coach Priya Diet Bot हूँ, आपकी AI डाइट कोच। आज क्या खाया? मैं आपके प्लान के हिसाब से आसान बदलाव बताऊँगी।'],
+  { id: 'priya', name: 'Diet Bot', role: ['Diet & Nutrition Coach', 'डाइट व पोषण कोच'], icon: Salad, color: 'from-emerald-500 to-teal-600', look: { gender: 'female', skin: '#c68642', hair: '#2b1b10', outfit: 'tee', outfitColor: '#0d9488', bg: ['#34d399', '#0d9488'], extras: ['ponytail'] } as BotLook,
+    hello: ["Hey! I'm Diet Bot, your AI diet coach. What did you eat today? I'll suggest easy swaps that fit your plan.", 'हाय! मैं Diet Bot हूँ, आपकी AI डाइट कोच। आज क्या खाया? मैं आपके प्लान के हिसाब से आसान बदलाव बताऊँगी।'],
     chips: [['What should I eat today?', 'आज क्या खाऊँ?'], ['Healthy Indian breakfast', 'हेल्दी भारतीय नाश्ता'], ['Snacks for sugar control', 'शुगर कंट्रोल के लिए स्नैक्स']] },
-  { id: 'arjun', name: 'Coach Arjun Fitness Bot', role: ['Fitness, Yoga & Lifestyle', 'फिटनेस, योग व लाइफस्टाइल'], icon: Dumbbell, color: 'from-violet-500 to-purple-600', look: { gender: 'male', skin: '#d29a63', hair: '#111827', outfit: 'tee', outfitColor: '#7c3aed', bg: ['#a78bfa', '#7c3aed'] } as BotLook,
-    hello: ["Hey champ! I'm Coach Arjun Fitness Bot, your AI fitness coach. How active are you right now? Let's build a routine you'll actually stick to.", 'हाय चैंपियन! मैं Coach Arjun Fitness Bot हूँ, आपका AI फिटनेस कोच। अभी आप कितने एक्टिव हैं? चलिए ऐसा रूटीन बनाएँ जो आप रोज़ कर सकें।'],
+  { id: 'arjun', name: 'Fitness Bot', role: ['Fitness, Yoga & Lifestyle', 'फिटनेस, योग व लाइफस्टाइल'], icon: Dumbbell, color: 'from-violet-500 to-purple-600', look: { gender: 'male', skin: '#d29a63', hair: '#111827', outfit: 'tee', outfitColor: '#7c3aed', bg: ['#a78bfa', '#7c3aed'] } as BotLook,
+    hello: ["Hey champ! I'm Fitness Bot, your AI fitness coach. How active are you right now? Let's build a routine you'll actually stick to.", 'हाय चैंपियन! मैं Fitness Bot हूँ, आपका AI फिटनेस कोच। अभी आप कितने एक्टिव हैं? चलिए ऐसा रूटीन बनाएँ जो आप रोज़ कर सकें।'],
     chips: [['10-minute home workout', '10 मिनट का होम वर्कआउट'], ['Yoga for diabetes', 'डायबिटीज़ के लिए योग'], ['Walking plan', 'वॉकिंग प्लान']] },
 ] as const;
 
@@ -33,20 +32,8 @@ const BOTS = [
  *  Indian names and no AI badges/banners. The deployed app always keeps the
  *  AI labels so real users are never misled. */
 export const IS_LOCAL_DEMO = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
-const DEMO_PROFILES: Record<string, { name: string; role: [string, string]; hello: [string, string] }> = {
-  sharma: { name: 'Dr. Rohan Sharma', role: ['General Physician', 'जनरल फिजिशियन'],
-    hello: ["Namaste! I'm Dr. Rohan Sharma. Tell me what's bothering you — when did it start and how is it affecting your day?", 'नमस्ते! मैं Dr. Rohan Sharma हूँ। बताइए क्या परेशानी है — कब से है और रोज़मर्रा पर कितना असर है?'] },
-  mehra: { name: 'Dr. Neha Mehra', role: ['Diabetes Care', 'डायबिटीज़ केयर'],
-    hello: ["Hi, I'm Dr. Neha Mehra. Share your latest fasting or after-meal sugar reading and I'll help you make sense of it.", 'नमस्ते, मैं Dr. Neha Mehra हूँ। अपनी ताज़ा fasting या खाने के बाद की शुगर reading बताइए, मैं समझाने में मदद करूँगी।'] },
-  joshi: { name: 'Vaidya Raghav Joshi', role: ['Ayurveda', 'आयुर्वेद'],
-    hello: ["Namaskar! I'm Vaidya Raghav Joshi. Tell me about your daily routine and digestion, and we'll find simple ways to bring balance.", 'नमस्कार! मैं वैद्य राघव जोशी हूँ। अपनी दिनचर्या और पाचन के बारे में बताइए, हम संतुलन के आसान उपाय ढूँढेंगे।'] },
-  iyer: { name: 'Dr. Lakshmi Iyer', role: ['Ayurveda · Gut & Metabolism', 'आयुर्वेद · पाचन व मेटाबॉलिज़्म'],
-    hello: ["Hello! I'm Dr. Lakshmi Iyer. How is your appetite, digestion and sleep these days?", 'नमस्ते! मैं Dr. Lakshmi Iyer हूँ। आजकल भूख, पाचन और नींद कैसी है?'] },
-  priya: { name: 'Priya Nair', role: ['Diet Coach', 'डाइट कोच'],
-    hello: ["Hey! I'm Priya Nair, your diet coach. What did you eat today? I'll suggest easy swaps that fit your plan.", 'हाय! मैं प्रिया नायर हूँ, आपकी डाइट कोच। आज क्या खाया? मैं आपके प्लान के हिसाब से आसान बदलाव बताऊँगी।'] },
-  arjun: { name: 'Arjun Rana', role: ['Fitness Coach', 'फिटनेस कोच'],
-    hello: ["Hey champ! I'm Arjun Rana, your fitness coach. How active are you right now? Let's build a routine you'll stick to.", 'हाय चैंपियन! मैं अर्जुन राणा हूँ, आपका फिटनेस कोच। अभी आप कितने एक्टिव हैं? चलिए ऐसा रूटीन बनाएँ जो आप रोज़ कर सकें।'] },
-};
+// No personal names anywhere, the local demo uses the same bot names.
+const DEMO_PROFILES: Record<string, { name: string; role: [string, string]; hello: [string, string] }> = {};
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; at: string };
 
