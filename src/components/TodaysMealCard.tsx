@@ -59,6 +59,77 @@ function foodsFrom(body = ''): string[] {
   return (picks.length ? picks : body.split(',').map((x) => x.trim()).filter((x) => x.length > 2 && x.length < 40)).slice(0, 4);
 }
 
+/** The whole plan text for the meal, laid out: the rules first, then each
+ *  numbered option as its own card (name, what's in it, nutrition), then any
+ *  notes after the options. */
+function parseMeal(body: string) {
+  const intro: string[] = [];
+  const notes: string[] = [];
+  const options: { name: string; detail: string; macros: string[] }[] = [];
+  for (const raw of body.split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    const num = line.match(/^\d+[.)]\s*(.+)$/);
+    if (num) {
+      let text = num[1];
+      // nutrition in brackets: (P22g F12g C38g Fiber12g ~340kcal)
+      const macroMatch = text.match(/\(([^)]*\d+\s*k?cal[^)]*)\)\s*\.?$/i);
+      const macros = macroMatch ? macroMatch[1].split(/\s+/).filter(Boolean) : [];
+      if (macroMatch) text = text.slice(0, macroMatch.index).trim();
+      const parts = text.split(/\s[—–?-]\s/);
+      const name = parts.length > 1 && parts[0].length < 40 ? parts[0].trim() : '';
+      const detail = (name ? parts.slice(1).join(' — ') : text).trim().replace(/\.$/, '');
+      options.push({ name, detail, macros });
+    } else if (options.length) {
+      notes.push(line.replace(/^[-•]\s*/, ''));
+    } else {
+      intro.push(line.replace(/^[-•]\s*/, ''));
+    }
+  }
+  return { intro, options, notes };
+}
+
+const MealDetails: React.FC<{ body: string; tr: (en: string, hi: string) => string }> = ({ body, tr }) => {
+  const { intro, options, notes } = useMemo(() => parseMeal(body), [body]);
+  if (!intro.length && !options.length && !notes.length) return null;
+  return (
+    <div className="space-y-3 text-left">
+      {intro.length > 0 && (
+        <div className="rounded-xl bg-amber-50/70 border border-amber-100 p-3 space-y-1.5">
+          <div className="text-[10px] font-black uppercase tracking-wider text-amber-800">{tr('How to eat', 'कैसे खाएं')}</div>
+          {intro.map((t, i) => <p key={i} className="text-[12.5px] leading-relaxed text-zinc-700">{t}</p>)}
+        </div>
+      )}
+      {options.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-[10px] font-black uppercase tracking-wider text-emerald-700">
+            {options.length > 1 ? tr(`Choose one of ${options.length} options`, `${options.length} में से एक चुनें`) : tr('What to eat', 'क्या खाएं')}
+          </div>
+          {options.map((o, i) => (
+            <div key={i} className="flex gap-2.5 rounded-xl border border-emerald-100 bg-white p-3 shadow-sm">
+              <span className="w-6 h-6 shrink-0 rounded-full bg-emerald-600 text-white text-[11px] font-black flex items-center justify-center">{i + 1}</span>
+              <div className="min-w-0 space-y-1">
+                {o.name && <div className="text-[13px] font-black text-zinc-900 leading-snug">{o.name}</div>}
+                <p className="text-[12.5px] leading-relaxed text-zinc-600">{o.detail}</p>
+                {o.macros.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {o.macros.map((m, j) => <span key={j} className="px-1.5 py-0.5 rounded-md bg-zinc-100 text-[10px] font-bold text-zinc-600">{m}</span>)}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {notes.length > 0 && (
+        <div className="space-y-1">
+          {notes.map((t, i) => <p key={i} className="text-[12px] leading-relaxed text-zinc-500">• {t}</p>)}
+        </div>
+      )}
+    </div>
+  );
+};
+
 interface TodaysMealCardProps {
   step: PlanSection;
   isDone: boolean;
@@ -137,13 +208,14 @@ export const TodaysMealCard: React.FC<TodaysMealCardProps> = ({ step, isDone, on
             {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
           </div>
           <h3 className="text-lg font-bold font-display text-foreground leading-snug">{step.title}</h3>
-          {chips.length > 0 && (
+          {chips.length > 1 && (
             <div className="flex flex-wrap gap-1.5">
               {chips.map((c, i) => (
                 <span key={i} className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] font-bold text-emerald-800 max-w-full truncate">{c}</span>
               ))}
             </div>
           )}
+          <MealDetails body={step.body || ''} tr={tr} />
           <div className="pt-2.5 border-t border-zinc-100 grid grid-cols-2 gap-2">
             <button type="button" onClick={onOpenScan} className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-full bg-white border border-emerald-600 text-emerald-700 text-xs font-black cursor-pointer active:scale-95 transition">
               <ScanLine className="w-3.5 h-3.5" />{tr('Scan my plate', 'प्लेट स्कैन करें')}
