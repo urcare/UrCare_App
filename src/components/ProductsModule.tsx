@@ -82,6 +82,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
       if (view === 'orders') setPharmacyView('orders');
       else if (view === 'cart') { setPharmacyView('shop'); setIsCartOpen(true); }
       else if (view === 'shop') setPharmacyView('shop');
+      else if (view && view.startsWith('product:')) { setPharmacyView('shop'); setPendingProductId(view.slice(8)); }
     };
     apply((window as any).__urcarePharmacyView);
     (window as any).__urcarePharmacyView = undefined;
@@ -91,6 +92,14 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   }, []);
   const [addedAnimationId, setAddedAnimationId] = useState<string | null>(null);
   const [selectedProductDetails, setSelectedProductDetails] = useState<Product | null>(null);
+  // Product asked for from a plan step's "Shop Now"; opened once the list loads.
+  const [pendingProductId, setPendingProductId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingProductId || !products.length) return;
+    const hit = products.find((p) => p.id === pendingProductId);
+    if (hit) setSelectedProductDetails(hit);
+    setPendingProductId(null);
+  }, [pendingProductId, products]);
   // The pack picked in the details popup — starts at the default pack.
   const [selectedPackMonths, setSelectedPackMonths] = useState<number | null>(null);
   useEffect(() => { setSelectedPackMonths(selectedProductDetails ? defaultPack(selectedProductDetails)?.months ?? null : null); }, [selectedProductDetails]);
@@ -672,7 +681,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
               <div className="space-y-1.5 flex-1 min-w-0">
                 <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  {selectedProductDetails.category.toUpperCase()}
+                  {(categories.find((c) => c.id === selectedProductDetails.category)?.label || selectedProductDetails.category).toUpperCase()}
                 </span>
 
                 <h3 className={`text-lg sm:text-xl font-black leading-tight ${textPrimary}`}>

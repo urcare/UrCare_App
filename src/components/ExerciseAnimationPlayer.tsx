@@ -23,6 +23,25 @@ const MOVES: Record<string, Move> = {
   pushup: { file: 'pushup', name: ['Push-up', 'पुश-अप'], start: ['Hands under shoulders, body in a straight line.', 'हाथ कंधों के नीचे, शरीर एक सीधी लाइन में।'], posture: ['Lower chest to the floor, press back up. Knees down if needed.', 'छाती ज़मीन तक लाएं, वापस ऊपर धकेलें। ज़रूरत हो तो घुटने टिकाएं।'], reps: 10, unit: 'reps' },
   lunge: { file: 'lunge', name: ['Lunge', 'लंज'], start: ['Stand tall, step one foot forward.', 'सीधे खड़े हों, एक पैर आगे रखें।'], posture: ['Bend both knees to 90°, front knee over the ankle.', 'दोनों घुटने 90° मोड़ें, आगे का घुटना टखने के ऊपर।'], reps: 10, unit: 'reps' },
   plank: { file: 'plank', name: ['Plank with reach', 'प्लैंक'], start: ['Forearms under shoulders, legs straight.', 'कोहनियां कंधों के नीचे, पैर सीधे।'], posture: ['Keep hips level, tighten the stomach, breathe.', 'कूल्हे सीध में, पेट टाइट, सांस लेते रहें।'], reps: 20, unit: 'seconds' },
+  sleep: { file: 'sleep', name: ['Bedtime relaxation (Yoga Nidra)', 'सोने से पहले रिलैक्सेशन (योग निद्रा)'], start: ['Lie on your back in bed, arms by your sides, eyes closed.', 'बिस्तर पर पीठ के बल लेटें, हाथ बगल में, आंखें बंद।'], posture: ['Relax each body part from toes to head, slow breaths.', 'पैरों से सिर तक हर अंग ढीला छोड़ें, धीमी सांस।'], reps: 10, unit: 'breaths' },
+  seated: { file: 'yoga-seated', name: ['Seated yoga (Sukhasana)', 'सुखासन'], start: ['Sit cross-legged on a mat, back straight.', 'चटाई पर पालथी मारकर बैठें, पीठ सीधी।'], posture: ['Relax shoulders, hands on knees, breathe slowly.', 'कंधे ढीले, हाथ घुटनों पर, धीरे सांस लें।'], reps: 10, unit: 'breaths' },
+  core: { file: 'core-ball', name: ['Core workout', 'पेट की एक्सरसाइज़'], start: ['Lie on your back, knees bent, feet flat.', 'पीठ के बल लेटें, घुटने मोड़ें, पैर ज़मीन पर।'], posture: ['Lift legs slowly, keep the lower back on the floor.', 'पैर धीरे उठाएं, कमर ज़मीन से लगी रहे।'], reps: 10, unit: 'reps' },
+  chakra: { file: 'meditate-chakra', name: ['Meditation', 'ध्यान'], start: ['Sit comfortably, spine tall, eyes closed.', 'आराम से बैठें, रीढ़ सीधी, आंखें बंद।'], posture: ['Focus on the breath; if the mind wanders, come back.', 'सांस पर ध्यान रखें; मन भटके तो वापस लाएं।'], reps: 12, unit: 'breaths' },
+  chairSquat: { file: 'chair-squat', name: ['Chair sit-to-stand', 'कुर्सी से उठना-बैठना'], start: ['Sit at the front of a sturdy chair, feet flat.', 'मज़बूत कुर्सी के आगे बैठें, पैर ज़मीन पर।'], posture: ['Stand up without using hands, sit back down slowly.', 'हाथों के बिना खड़े हों, धीरे वापस बैठें।'], reps: 10, unit: 'reps' },
+  gobletSquat: { file: 'goblet-squat', name: ['Weighted squat', 'वज़न के साथ स्क्वाट'], start: ['Hold a light weight or water bottle at your chest.', 'हल्का वज़न या पानी की बोतल छाती पर पकड़ें।'], posture: ['Sit back, chest up, push through the heels to stand.', 'पीछे बैठें, छाती ऊपर, एड़ियों से ज़ोर देकर उठें।'], reps: 10, unit: 'reps' },
+  legRaise: { file: 'leg-raise', name: ['Leg raise', 'पैर उठाना'], start: ['Lie on your back, hands beside your hips.', 'पीठ के बल लेटें, हाथ कूल्हों के पास।'], posture: ['Lift both legs slowly, lower without touching the floor.', 'दोनों पैर धीरे उठाएं, ज़मीन छुए बिना नीचे लाएं।'], reps: 10, unit: 'reps' },
+  cycling: { file: 'cycling', name: ['Cycling', 'साइकिलिंग'], start: ['Adjust the seat so the knee is slightly bent at the bottom.', 'सीट ऐसी रखें कि नीचे घुटना थोड़ा मुड़ा रहे।'], posture: ['Pedal at an easy, steady pace; keep the back relaxed.', 'आराम से एक जैसी रफ़्तार में पैडल करें, पीठ ढीली।'], reps: 60, unit: 'seconds' },
+  jog: { file: 'jogging', name: ['Easy jog', 'हल्की जॉगिंग'], start: ['Warm up with 2 minutes of walking.', '2 मिनट चलकर वार्म-अप करें।'], posture: ['Short steps, land softly, you should still be able to talk.', 'छोटे कदम, हल्के से पैर रखें, बात कर सकें इतनी रफ़्तार।'], reps: 60, unit: 'seconds' },
+  run: { file: 'running', name: ['Running', 'दौड़ना'], start: ['Only if your doctor allows it. Warm up first.', 'सिर्फ़ डॉक्टर की इजाज़त हो तो। पहले वार्म-अप करें।'], posture: ['Arms at 90 degrees, relaxed shoulders, steady breathing.', 'हाथ 90 डिग्री पर, कंधे ढीले, सांस एक जैसी।'], reps: 60, unit: 'seconds' },
+  treadmill: { file: 'treadmill', name: ['Treadmill walk', 'ट्रेडमिल वॉक'], start: ['Start slow, hold the rails only for balance.', 'धीमे शुरू करें, रेलिंग सिर्फ़ संतुलन के लिए पकड़ें।'], posture: ['Walk tall, increase speed a little every few minutes.', 'सीधे चलें, हर कुछ मिनट में रफ़्तार थोड़ी बढ़ाएं।'], reps: 60, unit: 'seconds' },
+  shadowBox: { file: 'shadow-box', name: ['Shadow boxing', 'शैडो बॉक्सिंग'], start: ['Stand with one foot forward, fists near your chin.', 'एक पैर आगे, मुट्ठियां ठोड़ी के पास।'], posture: ['Punch forward gently, alternate arms, keep moving the feet.', 'हल्के से आगे पंच करें, हाथ बदलते रहें, पैर चलाते रहें।'], reps: 30, unit: 'reps' },
+  walk2: { file: 'walk-2', name: ['After-meal walk', 'खाने के बाद टहलना'], start: ['Start 10 to 15 minutes after eating.', 'खाने के 10 से 15 मिनट बाद शुरू करें।'], posture: ['Easy pace, relaxed arms. It helps lower blood sugar.', 'आराम की रफ़्तार, हाथ ढीले। इससे शुगर घटती है।'], reps: 20, unit: 'steps' },
+  walkTogether: { file: 'walk-together', name: ['Walk with family', 'परिवार के साथ टहलें'], start: ['Invite a family member or friend.', 'परिवार के किसी सदस्य या दोस्त को साथ लें।'], posture: ['Talk while you walk, at a pace where you can still chat.', 'चलते हुए बात करें, इतनी रफ़्तार कि बात हो सके।'], reps: 20, unit: 'steps' },
+  armCircles: { file: 'arm-circles', name: ['Arm circles', 'हाथ घुमाना'], start: ['Stand tall, arms out to the sides.', 'सीधे खड़े हों, हाथ बगल में फैलाएं।'], posture: ['Make small circles forward, then backward.', 'आगे की ओर छोटे घेरे बनाएं, फिर पीछे की ओर।'], reps: 10, unit: 'reps' },
+  sideStretch: { file: 'side-stretch', name: ['Side plank reach', 'साइड स्ट्रेच'], start: ['Lie on your side, elbow under the shoulder.', 'करवट लेटें, कोहनी कंधे के नीचे।'], posture: ['Lift the hips, reach the top arm up, hold and breathe.', 'कूल्हे उठाएं, ऊपर का हाथ ऊपर करें, रुकें और सांस लें।'], reps: 6, unit: 'reps' },
+  twist: { file: 'yoga-twist', name: ['Yoga twist', 'योग ट्विस्ट'], start: ['Start on hands and knees or in a low lunge.', 'हाथ-घुटनों के बल या लो लंज में शुरू करें।'], posture: ['Open one arm to the ceiling, follow it with your eyes, switch.', 'एक हाथ छत की ओर खोलें, आंखों से देखें, फिर बदलें।'], reps: 6, unit: 'reps' },
+  legsUp: { file: 'legs-up-wall', name: ['Legs up the wall (Viparita Karani)', 'विपरीत करणी'], start: ['Lie near a wall, rest your legs straight up on it.', 'दीवार के पास लेटें, पैर दीवार पर सीधे टिकाएं।'], posture: ['Arms relaxed, slow breathing. Great before sleep.', 'हाथ ढीले, धीमी सांस। सोने से पहले बहुत अच्छा।'], reps: 10, unit: 'breaths' },
+  meditateW: { file: 'meditate-woman', name: ['Calm meditation', 'शांत ध्यान'], start: ['Sit cross-legged, hands resting on the knees.', 'पालथी मारकर बैठें, हाथ घुटनों पर।'], posture: ['Close your eyes and count slow breaths.', 'आंखें बंद करें और धीमी सांसें गिनें।'], reps: 10, unit: 'breaths' },
   jack: { file: 'jumping-jack', name: ['Jumping jacks', 'जंपिंग जैक'], start: ['Stand with feet together, arms by your sides.', 'पैर साथ, हाथ बगल में।'], posture: ['Jump feet out and arms up, then back. Step instead of jumping if needed.', 'पैर फैलाते हुए हाथ ऊपर, फिर वापस। ज़रूरत हो तो कूदने के बजाय कदम रखें।'], reps: 20, unit: 'reps' },
 };
 
@@ -30,12 +49,16 @@ const MOVES: Record<string, Move> = {
 export function movesForExercise(title: string, body = ''): Move[] {
   const t = `${title} ${body}`.toLowerCase();
   const pick = (...keys: string[]) => keys.map((k) => MOVES[k]);
-  if (/pranayam|breath|meditat|anulom|kapal|bhramari|relaxation/.test(t)) return pick('breathe');
-  if (/strength|resistance|intensive exercise|squat|push.?up|lunge|plank/.test(t)) return pick('squat', 'pushup', 'lunge', 'plank');
-  if (/fasted cardio|cardio|hiit|jumping/.test(t)) return pick('walk', 'jack', 'squat');
-  if (/yoga|asana|surya|bhujang|cobra/.test(t)) return pick('cobra', 'stretch', 'breathe');
-  if (/stretch|flexib|mobility|warm.?up|cool.?down/.test(t)) return pick('stretch', 'hip', 'cobra');
-  if (/walk|steps|stroll|movement|टहल/.test(t)) return pick('walk');
+  if (/sleep|bedtime|night|nidra|shavasana|savasana|wind.?down|सोने/.test(t)) return pick('sleep', 'legsUp', 'breathe');
+  if (/meditat|dhyan|mindful/.test(t)) return pick('chakra', 'meditateW', 'breathe');
+  if (/pranayam|breath|anulom|kapal|bhramari|relaxation/.test(t)) return pick('breathe', 'seated', 'meditateW');
+  if (/chair|senior|elderly|beginner|gentle/.test(t)) return pick('chairSquat', 'armCircles', 'walk2');
+  if (/strength|resistance|intensive exercise|squat|push.?up|lunge|plank|core|abs|weight/.test(t)) return pick('squat', 'chairSquat', 'gobletSquat', 'pushup', 'lunge', 'plank', 'core', 'legRaise');
+  if (/fasted cardio|cardio|hiit|jumping|aerobic|run|jog|cycl|treadmill|box/.test(t)) return pick('jog', 'cycling', 'treadmill', 'jack', 'shadowBox', 'run');
+  if (/yoga|asana|surya|bhujang|cobra/.test(t)) return pick('seated', 'cobra', 'twist', 'stretch', 'sideStretch', 'breathe');
+  if (/stretch|flexib|mobility|warm.?up|cool.?down|massage|abhyanga/.test(t)) return pick('stretch', 'armCircles', 'hip', 'sideStretch', 'cobra');
+  if (/after.?(meal|lunch|dinner|breakfast)|post.?(meal|lunch|dinner)/.test(t)) return pick('walk2', 'walk');
+  if (/walk|steps|stroll|movement|टहल/.test(t)) return pick('walk', 'walk2', 'walkTogether');
   return [];
 }
 

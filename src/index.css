@@ -136,6 +136,7 @@
 .home-focus { grid-column: span 4; }
 .home-plan { grid-column: span 8; }
 .home-exercise { grid-column: span 7; grid-row: span 2; }
+.home-meal { grid-column: span 5; }
 .home-food { grid-column: span 5; min-height: 356px; }
 .home-health { grid-column: span 5; }
 .home-library { grid-column: span 4; }
@@ -179,6 +180,13 @@
 .health-orbit-node-b { right: 16px; top: 20px; animation: node-float 4.6s ease-in-out infinite reverse; }
 
 .exercise-visual { height: 280px; }
+.meal-visual { height: 230px; overflow: hidden; }
+.meal-blob {
+  position: absolute; right: -40px; top: -40px; width: 200px; height: 200px; border-radius: 999px;
+  background: radial-gradient(circle, rgba(34,197,94,.22), transparent 70%);
+  animation: meal-float 6s ease-in-out infinite; will-change: transform;
+}
+@keyframes meal-float { 50% { transform: translate3d(-14px, 12px, 0) scale(1.08); } }
 .exercise-visual-shade,
 .food-visual-shade {
   position: absolute;
@@ -224,7 +232,7 @@
 @keyframes node-float { 50% { transform: translateY(-9px) scale(1.12); } }
 
 @media (max-width: 1023px) {
-  .home-focus, .home-plan, .home-exercise, .home-food, .home-health, .home-library, .home-timeline { grid-column: span 6; }
+  .home-focus, .home-plan, .home-exercise, .home-meal, .home-food, .home-health, .home-library, .home-timeline { grid-column: span 6; }
 }
 
 @media (max-width: 767px) {

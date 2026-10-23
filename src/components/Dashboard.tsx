@@ -80,6 +80,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setActiveTab('store');
     window.dispatchEvent(new CustomEvent('urcare:pharmacy', { detail: view }));
   };
+  // "Shop Now" on a plan step opens that product in the pharmacy.
+  useEffect(() => {
+    const onOpen = (e: Event) => openPharmacy(`product:${(e as CustomEvent).detail}` as any);
+    window.addEventListener('urcare:open-product', onOpen);
+    return () => window.removeEventListener('urcare:open-product', onOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [cartCount, setCartCount] = useState<number>(() => (getCachedAccountState().cart || []).reduce((n, it) => n + (it.quantity || 0), 0));
   useEffect(() => {
     const onCount = (e: Event) => setCartCount(Number((e as CustomEvent).detail) || 0);

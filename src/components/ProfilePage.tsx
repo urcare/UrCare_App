@@ -13,6 +13,7 @@ import { NotificationsPanel } from './NotificationsPanel';
 import { MyTimelinePanel, ACTION_META, CATEGORY_META, relativeTime } from './MyTimelinePanel';
 import { ChatPanel } from './ChatPanel';
 import { TodaysExerciseCard } from './TodaysExerciseCard';
+import { TodaysMealCard, isMealStep } from './TodaysMealCard';
 import { HealthOverviewCard } from './HealthOverviewCard';
 import { ShareHealthModal } from './ShareHealthModal';
 import { UrCareBuddy, progressMessage } from './ProgressCelebration';
@@ -338,6 +339,25 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     return cur || nxt || sorted[0];
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nowTick is a deliberate re-run trigger, not a real input
   }, [timelineSections, nowTick]);
+
+  // Today's Meal — the meal happening now, else the next one (same rule as exercise).
+  const todaysMeal = useMemo(() => {
+    const meals = timelineSections.filter((s) => isMealStep(s.title));
+    if (meals.length === 0) return null;
+    const sorted = [...meals].sort((a, b) => labelMinutes(a.timeLabel || '') - labelMinutes(b.timeLabel || ''));
+    const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+    let cur: PlanSection | null = null;
+    let nxt: PlanSection | null = null;
+    for (const item of sorted) {
+      const mins = labelMinutes(item.timeLabel || '');
+      if (mins <= nowMinutes) cur = item;
+      else { nxt = item; break; }
+    }
+    // Once a meal is eaten, show the next one.
+    if (cur && completedToday[cur.id] && nxt) return nxt;
+    return cur || nxt || sorted[0];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nowTick is a deliberate re-run trigger
+  }, [timelineSections, nowTick, completedToday]);
 
   const handleMarkExerciseDone = () => {
     if (!todaysExercise || !userId) return;
@@ -713,6 +733,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             onMarkDone={handleMarkExerciseDone}
             tr={tr}
           />
+          </div>
+        )}
+
+        {/* Today's Meal — someone eating + the day's meal from the plan. */}
+        {todaysMeal && (
+          <div className="home-meal">
+            <TodaysMealCard step={todaysMeal} isDone={!!completedToday[todaysMeal.id]} onOpenPlan={onOpenPlan} onOpenScan={onOpenScan} tr={tr} />
           </div>
         )}
 

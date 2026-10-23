@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { PlanProductSuggest } from './PlanProductSuggest';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   CheckCircle2, ChevronRight, ChevronDown,
@@ -1340,6 +1341,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                                     </p>
                                   ) : null;
                                 })()}
+                                {!section.isCustom && <PlanProductSuggest title={section.title} body={section.body || ''} isDark={isDark} tr={tr} />}
                                 {section.isCustom && section.verdictReason && (
                                   <p className={`text-xs font-semibold flex items-start gap-1.5 ${isRisky ? 'text-rose-500' : 'text-amber-600'}`}>
                                     {isRisky ? <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
@@ -1354,6 +1356,16 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                                   >
                                     <Youtube className="w-3.5 h-3.5" />
                                     {tr('Watch Exercise Video', 'व्यायाम वीडियो देखें')}
+                                  </button>
+                                )}
+                                {categoryFor(section.title) === 'rest' && /sleep|relax|meditat/i.test(section.title) && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setVideoModalTitle(section.title); }}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-black shadow-sm shadow-indigo-600/30 transition-colors cursor-pointer"
+                                  >
+                                    <Moon className="w-3.5 h-3.5" />
+                                    {tr('Guided relaxation', 'गाइडेड रिलैक्सेशन')}
                                   </button>
                                 )}
                               </div>
