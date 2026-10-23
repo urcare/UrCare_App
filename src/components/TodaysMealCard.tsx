@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { UtensilsCrossed, Clock, CheckCircle2, ScanLine, ChevronRight } from 'lucide-react';
+import { UtensilsCrossed, Clock, CheckCircle2, ScanLine, ChevronRight, ChevronLeft } from 'lucide-react';
 import { PlanSection } from './ReversalLibraryPanel';
 import { ShineBorder } from './magicui/shine-border';
 
@@ -46,19 +46,6 @@ export function mealKindFor(title: string): MealKind {
   return 'lunch';
 }
 
-/** The first few foods named in the plan step, shown as chips. */
-function foodsFrom(body = ''): string[] {
-  // Plan meals are written as numbered options: "1. Moong Dal Chilla — 2 chillas + …"
-  const options = body.split('\n')
-    .map((l) => l.match(/^\s*\d+[.)]\s*(.+)$/)?.[1] || '')
-    .map((l) => l.split(/\s[—–?-]\s|:|\(/)[0].trim())
-    .filter((l) => l.length > 2 && l.length < 36);
-  if (options.length) return options.slice(0, 4);
-  const lines = body.split(/\n|•|;/).map((l) => l.replace(/^[\s\-–\d.)]+/, '').trim()).filter(Boolean);
-  const picks = lines.filter((l) => l.length > 2 && l.length < 60 && !/^(note|tip|important|critical|why)/i.test(l));
-  return (picks.length ? picks : body.split(',').map((x) => x.trim()).filter((x) => x.length > 2 && x.length < 40)).slice(0, 4);
-}
-
 /** The whole plan text for the meal, laid out: the rules first, then each
  *  numbered option as its own card (name, what's in it, nutrition), then any
  *  notes after the options. */
@@ -89,6 +76,69 @@ function parseMeal(body: string) {
   return { intro, options, notes };
 }
 
+type MealOption = { name: string; detail: string; macros: string[] };
+
+/** One option at a time with ← → arrows (and swipe on phones). */
+const OptionCarousel: React.FC<{ options: MealOption[]; tr: (en: string, hi: string) => string }> = ({ options, tr }) => {
+  const [i, setI] = useState(0);
+  const [dir, setDir] = useState(1);
+  const touchX = React.useRef<number | null>(null);
+  const n = options.length;
+  const go = (d: number) => { setDir(d); setI((x) => (x + d + n) % n); };
+  const o = options[Math.min(i, n - 1)];
+  const arrow = 'w-9 h-9 shrink-0 rounded-full border border-emerald-200 bg-white text-emerald-700 flex items-center justify-center shadow-sm cursor-pointer active:scale-90 transition disabled:opacity-30';
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        {n > 1 && <button type="button" onClick={() => go(-1)} className={arrow} aria-label={tr('Previous option', 'पिछला विकल्प')}><ChevronLeft className="w-4 h-4" /></button>}
+        <div
+          className="relative flex-1 min-w-0 overflow-hidden"
+          onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
+          onTouchEnd={(e) => {
+            if (touchX.current == null) return;
+            const dx = e.changedTouches[0].clientX - touchX.current;
+            touchX.current = null;
+            if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+          }}
+        >
+          <AnimatePresence mode="popLayout" initial={false} custom={dir}>
+            <motion.div
+              key={i}
+              custom={dir}
+              initial={{ opacity: 0, x: dir * 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: dir * -40 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="flex gap-2.5 rounded-xl border border-emerald-100 bg-white p-3 shadow-sm min-h-[7.5rem]"
+            >
+              <span className="w-6 h-6 shrink-0 rounded-full bg-emerald-600 text-white text-[11px] font-black flex items-center justify-center">{i + 1}</span>
+              <div className="min-w-0 space-y-1">
+                {o.name && <div className="text-[13px] font-black text-zinc-900 leading-snug">{o.name}</div>}
+                <p className="text-[12.5px] leading-relaxed text-zinc-600">{o.detail}</p>
+                {o.macros.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {o.macros.map((m, j) => <span key={j} className="px-1.5 py-0.5 rounded-md bg-zinc-100 text-[10px] font-bold text-zinc-600">{m}</span>)}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        {n > 1 && <button type="button" onClick={() => go(1)} className={arrow} aria-label={tr('Next option', 'अगला विकल्प')}><ChevronRight className="w-4 h-4" /></button>}
+      </div>
+      {n > 1 && (
+        <div className="flex items-center justify-center gap-1">
+          {options.map((_, j) => (
+            <button key={j} type="button" onClick={() => { setDir(j > i ? 1 : -1); setI(j); }} aria-label={`${j + 1}`}
+              className={`h-1.5 rounded-full transition-all cursor-pointer ${j === i ? 'w-5 bg-emerald-600' : 'w-1.5 bg-emerald-200'}`} />
+          ))}
+          <span className="ml-2 text-[10px] font-black text-zinc-400 tabular-nums">{i + 1}/{n}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const MealDetails: React.FC<{ body: string; tr: (en: string, hi: string) => string }> = ({ body, tr }) => {
   const { intro, options, notes } = useMemo(() => parseMeal(body), [body]);
   if (!intro.length && !options.length && !notes.length) return null;
@@ -105,25 +155,22 @@ const MealDetails: React.FC<{ body: string; tr: (en: string, hi: string) => stri
           <div className="text-[10px] font-black uppercase tracking-wider text-emerald-700">
             {options.length > 1 ? tr(`Choose one of ${options.length} options`, `${options.length} में से एक चुनें`) : tr('What to eat', 'क्या खाएं')}
           </div>
-          {options.map((o, i) => (
-            <div key={i} className="flex gap-2.5 rounded-xl border border-emerald-100 bg-white p-3 shadow-sm">
-              <span className="w-6 h-6 shrink-0 rounded-full bg-emerald-600 text-white text-[11px] font-black flex items-center justify-center">{i + 1}</span>
-              <div className="min-w-0 space-y-1">
-                {o.name && <div className="text-[13px] font-black text-zinc-900 leading-snug">{o.name}</div>}
-                <p className="text-[12.5px] leading-relaxed text-zinc-600">{o.detail}</p>
-                {o.macros.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-0.5">
-                    {o.macros.map((m, j) => <span key={j} className="px-1.5 py-0.5 rounded-md bg-zinc-100 text-[10px] font-bold text-zinc-600">{m}</span>)}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+          <OptionCarousel options={options} tr={tr} />
         </div>
       )}
       {notes.length > 0 && (
         <div className="space-y-1">
-          {notes.map((t, i) => <p key={i} className="text-[12px] leading-relaxed text-zinc-500">• {t}</p>)}
+          {notes.map((t, i) => {
+            const url = t.match(/https?:\/\/\S+/)?.[0];
+            if (!url) return <p key={i} className="text-[12px] leading-relaxed text-zinc-500">• {t}</p>;
+            const label = t.replace(url, '').replace(/[:\s-]+$/, '').trim() || tr('More options', 'और विकल्प');
+            return (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-black text-emerald-800">
+                {label}<ChevronRight className="w-3 h-3" />
+              </a>
+            );
+          })}
         </div>
       )}
     </div>
@@ -151,7 +198,6 @@ export const TodaysMealCard: React.FC<TodaysMealCardProps> = ({ step, isDone, on
   }, []);
   const food = foods[tick % foods.length];
   const photo = PHOTOS[kind][tick % PHOTOS[kind].length];
-  const chips = useMemo(() => foodsFrom(step.body), [step.body]);
   const kindLabel: Record<MealKind, [string, string]> = {
     breakfast: ['Breakfast', 'नाश्ता'], lunch: ['Lunch', 'दोपहर का खाना'], dinner: ['Dinner', 'रात का खाना'], snack: ['Snack', 'स्नैक'],
   };
@@ -208,13 +254,6 @@ export const TodaysMealCard: React.FC<TodaysMealCardProps> = ({ step, isDone, on
             {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
           </div>
           <h3 className="text-lg font-bold font-display text-foreground leading-snug">{step.title}</h3>
-          {chips.length > 1 && (
-            <div className="flex flex-wrap gap-1.5">
-              {chips.map((c, i) => (
-                <span key={i} className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] font-bold text-emerald-800 max-w-full truncate">{c}</span>
-              ))}
-            </div>
-          )}
           <MealDetails body={step.body || ''} tr={tr} />
           <div className="pt-2.5 border-t border-zinc-100 grid grid-cols-2 gap-2">
             <button type="button" onClick={onOpenScan} className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-full bg-white border border-emerald-600 text-emerald-700 text-xs font-black cursor-pointer active:scale-95 transition">
