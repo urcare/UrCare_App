@@ -1001,6 +1001,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             account={account}
             reports={myReports}
             onUpdateProfile={onUpdateProfile}
+            onOpenReports={() => setActiveTab('reports')}
           />
         ) : (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">

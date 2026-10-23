@@ -453,18 +453,68 @@
     radial-gradient(30rem 30rem at 85% 10%, rgba(74, 222, 128, 0.14), transparent 60%),
     linear-gradient(180deg, #ffffff, #f0fdf4);
 }
+/* Only transform + opacity move (GPU), so it never stutters while the app
+   loads underneath. */
+.splash-intro { animation: splash-fade-out 0.45s ease-in 0.25s forwards; animation-play-state: paused; }
+.splash-intro.is-exiting { animation-play-state: running; }
 .splash-ring {
   position: absolute; left: 50%; top: 50%;
   width: 180px; height: 180px; margin: -90px 0 0 -90px;
   border-radius: 999px; border: 2px solid rgba(16, 185, 129, 0.45);
-  pointer-events: none;
+  pointer-events: none; opacity: 0;
+  will-change: transform, opacity;
+  animation: splash-ring 2.1s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
-.splash-logo { filter: drop-shadow(0 18px 30px rgba(5, 150, 105, 0.35)); }
-.splash-word {
-  background: linear-gradient(135deg, #065f46 0%, #059669 45%, #10b981 75%, #0d9488 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+.splash-group { will-change: transform, opacity; }
+.splash-intro.is-exiting .splash-group { animation: splash-zoom 0.7s cubic-bezier(0.55, 0, 0.75, 0.2) forwards; }
+.splash-row {
+  display: flex; align-items: center;
+  will-change: transform;
+  transform: translate3d(var(--splash-shift, 0px), 0, 0);
+  animation: splash-slide 0.75s cubic-bezier(0.65, 0, 0.35, 1) 0.85s forwards;
 }
-.splash-word > span { background: inherit; -webkit-background-clip: text; background-clip: text; }
+.splash-logo {
+  filter: drop-shadow(0 18px 30px rgba(5, 150, 105, 0.35));
+  will-change: transform, opacity;
+  opacity: 0; transform: scale(0.3) rotate(-14deg);
+  animation: splash-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s forwards;
+}
+.splash-word { color: #047857; display: inline-flex; }
+.splash-letter {
+  display: inline-block; opacity: 0;
+  transform: translate3d(22px, 0, 0);
+  will-change: transform, opacity;
+  animation: splash-letter 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.splash-tagline {
+  color: rgba(4, 120, 87, 0.7); opacity: 0; transform: translate3d(0, 6px, 0);
+  animation: splash-tag 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1.45s forwards;
+}
+@keyframes splash-pop {
+  0% { opacity: 0; transform: scale(0.3) rotate(-14deg); }
+  60% { opacity: 1; transform: scale(1.06) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes splash-slide { to { transform: translate3d(0, 0, 0); } }
+@keyframes splash-letter { to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes splash-tag { to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes splash-ring {
+  0% { opacity: 0; transform: scale(0.45); }
+  25% { opacity: 0.35; }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+/* Small dip, a little bounce, then a soft zoom into the app. */
+@keyframes splash-zoom {
+  0% { transform: scale(1); opacity: 1; }
+  22% { transform: scale(0.93); opacity: 1; }
+  45% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(3.4); opacity: 0; }
+}
+@keyframes splash-fade-out { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .splash-ring { display: none; }
+  .splash-logo, .splash-letter, .splash-tagline, .splash-row { animation-duration: 0.01s; animation-delay: 0s; }
+}
 
 /* ---- Report + paywall (new accounts) ---- */
 .access-bg {

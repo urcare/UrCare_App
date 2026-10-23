@@ -1,110 +1,78 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { TextAnimate } from './magicui/text-animate';
-
-type Phase = 'logo' | 'reveal' | 'exit' | 'done';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 const SEEN_KEY = 'urcare_splash_seen';
+const WORD = 'UrCare';
+// Total length of the intro before it starts zooming into the app (ms).
+const EXIT_AT = 2250;
+// Zoom + fade length; the overlay is removed after this.
+const EXIT_MS = 700;
 
-/** Shown once each time the app is opened: the UrCare logo pops in, slides
- *  aside as the "UrCare" wordmark slides in letter by letter (Magic UI Text
- *  Animate), then everything bounces and zooms forward into the app. Tap to
- *  skip. It sits on top of the app, which keeps loading underneath. */
+/** Shown once each time the app is opened: the logo pops in at the centre,
+ *  slides left as "UrCare" slides in letter by letter, then bounces and
+ *  zooms forward into the app. Tap to skip.
+ *
+ *  Every movement is a CSS animation of transform/opacity only, so the phone
+ *  runs it on the GPU and it stays smooth even while the app loads
+ *  underneath (JavaScript-driven animation stutters at that moment). */
 export const SplashIntro: React.FC = () => {
-  const [phase, setPhase] = useState<Phase>(() => {
-    try { return sessionStorage.getItem(SEEN_KEY) ? 'done' : 'logo'; } catch { return 'logo'; }
+  const [visible, setVisible] = useState(() => {
+    try { return !sessionStorage.getItem(SEEN_KEY); } catch { return true; }
   });
+  const [exiting, setExiting] = useState(false);
+  const wordRef = useRef<HTMLSpanElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // The logo starts in the middle of the screen: shift it right by half the
+  // word's width (measured before the first paint, so nothing jumps).
+  useLayoutEffect(() => {
+    if (!visible || !wordRef.current || !rootRef.current) return;
+    const w = wordRef.current.getBoundingClientRect().width;
+    // half the word plus its left margin
+    rootRef.current.style.setProperty('--splash-shift', `${Math.round(w / 2 + 4)}px`);
+  }, [visible]);
 
   useEffect(() => {
-    if (phase === 'done') return;
+    if (!visible) return;
     try { sessionStorage.setItem(SEEN_KEY, '1'); } catch {}
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const t = reduced
-      ? [window.setTimeout(() => setPhase('exit'), 900)]
-      : [
-          window.setTimeout(() => setPhase('reveal'), 900),
-          window.setTimeout(() => setPhase('exit'), 2300),
-        ];
-    return () => t.forEach(clearTimeout);
-    // Runs once on mount; later phase changes come from the timers above.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const t = window.setTimeout(() => setExiting(true), reduced ? 700 : EXIT_AT);
+    return () => clearTimeout(t);
+  }, [visible]);
 
-  if (phase === 'done') return null;
-  const showWord = phase === 'reveal' || phase === 'exit';
+  useEffect(() => {
+    if (!exiting) return;
+    const t = window.setTimeout(() => setVisible(false), EXIT_MS);
+    return () => clearTimeout(t);
+  }, [exiting]);
+
+  if (!visible) return null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        key="splash"
-        className="splash-intro fixed inset-0 z-[200] flex items-center justify-center overflow-hidden cursor-pointer"
-        onClick={() => setPhase('exit')}
-        animate={phase === 'exit' ? { opacity: 0 } : { opacity: 1 }}
-        transition={phase === 'exit' ? { duration: 0.35, delay: 0.45, ease: 'easeIn' } : { duration: 0.2 }}
-        onAnimationComplete={() => { if (phase === 'exit') setPhase('done'); }}
-        aria-label="UrCare"
-        role="img"
-      >
-        {/* soft ripples behind the logo */}
-        {[0, 1, 2].map((i) => (
-          <motion.span
-            key={i}
-            className="splash-ring"
-            initial={{ scale: 0.4, opacity: 0 }}
-            animate={{ scale: [0.4, 2.6], opacity: [0, 0.35, 0] }}
-            transition={{ duration: 2.4, delay: 0.25 + i * 0.5, repeat: Infinity, ease: 'easeOut' }}
-          />
-        ))}
+    <div
+      ref={rootRef}
+      className={`splash-intro fixed inset-0 z-[200] flex items-center justify-center overflow-hidden cursor-pointer ${exiting ? 'is-exiting' : ''}`}
+      onClick={() => setExiting(true)}
+      aria-label="UrCare"
+      role="img"
+    >
+      <span className="splash-ring" style={{ animationDelay: '0.2s' }} />
+      <span className="splash-ring" style={{ animationDelay: '0.9s' }} />
+      <span className="splash-ring" style={{ animationDelay: '1.6s' }} />
 
-        <motion.div
-          className="relative flex items-center"
-          animate={phase === 'exit'
-            ? { scale: [1, 0.9, 1.08, 9], opacity: [1, 1, 1, 0] }
-            : { scale: 1, opacity: 1 }}
-          transition={phase === 'exit'
-            ? { duration: 0.8, times: [0, 0.22, 0.45, 1], ease: 'easeInOut' }
-            : { duration: 0.3 }}
-        >
-          <motion.img
-            layout
-            src="/urcare-logo-mark.png"
-            alt=""
-            draggable={false}
-            className="splash-logo w-24 h-24 sm:w-28 sm:h-28 object-contain"
-            initial={{ scale: 0, rotate: -18, opacity: 0 }}
-            animate={{ scale: 1, rotate: 0, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 14, mass: 0.9, layout: { type: 'spring', stiffness: 170, damping: 20 } }}
-          />
-          {showWord && (
-            <motion.div
-              layout
-              className="ml-1 sm:ml-2 flex flex-col"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2 }}
-            >
-              <TextAnimate
-                as="span"
-                by="character"
-                animation="slideLeft"
-                duration={0.55}
-                startOnView={false}
-                className="splash-word font-display text-5xl sm:text-6xl font-bold tracking-tight leading-none"
-              >
-                UrCare
-              </TextAnimate>
-              <motion.span
-                className="mt-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-[0.28em] text-emerald-700/70"
-                initial={{ opacity: 0, y: 6, filter: 'blur(6px)' }}
-                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                transition={{ duration: 0.5, delay: 0.55 }}
-              >
-                True Healthcare Platform
-              </motion.span>
-            </motion.div>
-          )}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+      <div className="splash-group">
+        {/* The whole row slides, so the letters come out right beside the logo. */}
+        <div className="splash-row">
+          <img src="/urcare-logo-mark.png" alt="" draggable={false} className="splash-logo w-24 h-24 sm:w-28 sm:h-28 object-contain" />
+          <div className="ml-1 sm:ml-2 flex flex-col">
+            <span ref={wordRef} className="splash-word font-display text-5xl sm:text-6xl font-bold tracking-tight leading-none" aria-hidden="true">
+              {WORD.split('').map((ch, i) => (
+                <span key={i} className="splash-letter" style={{ animationDelay: `${0.95 + i * 0.055}s` }}>{ch}</span>
+              ))}
+            </span>
+            <span className="splash-tagline mt-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-[0.28em]">True Healthcare Platform</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
