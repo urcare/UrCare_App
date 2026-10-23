@@ -8,10 +8,7 @@ import { useBiomarkerVitals, VitalStatus, VITAL_STATUS_COLOR, VITAL_STATUS_LABEL
 // ---------------------------------------------------------------------------
 // BIOMARKER TRACKER (Profile page presentation) — the original card-list
 // look: a flat grid of left-accent-bordered rows with a small 3-band meter.
-// The Tracker module deliberately uses a different, more colorful,
-// gauge-based presentation instead (see BiomarkerTrackerVisual.tsx) — both
-// are powered by the same useBiomarkerVitals data/edit hook, so neither is
-// a second, divergent copy of the underlying logic.
+// Its data and editing come from the shared useBiomarkerVitals hook.
 // ---------------------------------------------------------------------------
 
 /** Small three-band good/attention/high meter with an animated marker —

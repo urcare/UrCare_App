@@ -24,7 +24,7 @@ export const WowCelebration: React.FC<WowCelebrationProps> = ({ profile, onEnter
   const rawBmi = calculatedPlan?.bmi ?? (heightCm ? currentWeightKg / Math.pow(heightCm / 100, 2) : 24.2);
   const bmi = typeof rawBmi === 'number' && !isNaN(rawBmi) ? Number(rawBmi.toFixed(1)) : 24.2;
 
-  // Same style of dynamic risk percentage used on the UrgentRiskScreen —
+  // Dynamic risk percentage —
   // driven by real BMI/age, clamped to a believable "high risk" band.
   const riskPercent = Math.min(92, Math.max(71, Math.round(52 + (bmi > 25 ? (bmi - 25) * 4.2 : 16) + (age > 30 ? 11 : 6))));
 
