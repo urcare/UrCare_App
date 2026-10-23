@@ -238,7 +238,10 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   // The header cart button shows this count.
   useEffect(() => { window.dispatchEvent(new CustomEvent('urcare:cart-count', { detail: totalCartItems })); }, [totalCartItems]);
   const cartSubtotal = cart.reduce((acc, item) => acc + (item.product.discountPrice || item.product.price) * item.quantity, 0);
-  const couponDiscount = couponResult?.valid ? couponResult.discount : 0;
+  // The coupon box and banner only show while some product has a coupon
+  // amount set in Admin → Products (none right now: urcare.org prices).
+  const couponsOn = products.some((p) => maxCouponOff(p) > 0);
+  const couponDiscount = couponsOn && couponResult?.valid ? couponResult.discount : 0;
   // Referral points: ₹1 each, spent in whole 50-point blocks (same rule as the server).
   const [referral, setReferral] = useState<ReferralStatus | null>(null);
   const [usePoints, setUsePoints] = useState(false);
@@ -477,7 +480,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
       ) : (
       <>
       {/* Coupon banner — same offer as urcare.org */}
-      <div className="rounded-2xl bg-white border border-amber-200 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+      {couponsOn && <div className="rounded-2xl bg-white border border-amber-200 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
             <Ticket className="w-5 h-5" />
@@ -495,7 +498,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
         >
           {appliedCoupon === STORE_COUPON ? tr('Applied ✓ — view cart', 'लगा दिया ✓ — कार्ट देखें') : tr('Apply to cart', 'कार्ट में लगाएं')}
         </button>
-      </div>
+      </div>}
 
       {/* Categories & Cart Toggle */}
       <div className="flex flex-wrap items-center justify-between gap-3 sticky top-0 z-10 py-1.5 -mx-1 px-1 backdrop-blur-sm">
@@ -894,7 +897,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             {cart.length > 0 && (
               <div className="pt-4 border-t border-zinc-800/40 space-y-3">
                 <div className="space-y-1.5">
-                  {appliedCoupon && couponResult?.valid ? (
+                  {!couponsOn ? null : appliedCoupon && couponResult?.valid ? (
                     <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
                       <span className="font-bold text-emerald-800 flex items-center gap-1.5"><Ticket className="w-3.5 h-3.5" />{appliedCoupon} {tr('applied', 'लगा')}</span>
                       <button type="button" onClick={removeCoupon} className="font-bold text-rose-600 cursor-pointer">{tr('Remove', 'हटाएं')}</button>
@@ -918,7 +921,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                       </button>
                     </div>
                   )}
-                  {couponResult && !couponResult.valid ? (
+                  {!couponsOn ? null : couponResult && !couponResult.valid ? (
                     <p className="text-[11px] text-rose-600 px-1">{couponResult.message}</p>
                   ) : couponResult?.valid ? (
                     <p className="text-[11px] text-emerald-700 px-1">{couponResult.message}</p>

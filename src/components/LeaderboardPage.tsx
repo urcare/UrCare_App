@@ -44,6 +44,35 @@ function buildBoard() {
 }
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
+/** ₹1,00,000 → "1 Lakh", ₹50,000 → "50 Thousand". */
+const prizeWords = (n: number, tr: (en: string, hi: string) => string) =>
+  n >= 100000 ? `${n / 100000} ${tr('Lakh', 'लाख')}` : `${n / 1000} ${tr('Thousand', 'हज़ार')}`;
+
+const TROPHY_COLORS: Record<number, [string, string, string]> = {
+  1: ['#fff7cc', '#facc15', '#b45309'], // gold
+  2: ['#ffffff', '#cbd5e1', '#64748b'], // silver
+  3: ['#ffedd5', '#fb923c', '#9a3412'], // bronze
+};
+
+/** Gold / silver / bronze trophy cup. */
+const TrophyCup: React.FC<{ place: number; size?: number }> = ({ place, size = 34 }) => {
+  const [light, mid, dark] = TROPHY_COLORS[place] || TROPHY_COLORS[1];
+  const id = `cup${place}`;
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" className="drop-shadow-[0_3px_6px_rgba(0,0,0,0.25)]">
+      <defs>
+        <linearGradient id={`${id}g`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={light} />
+          <stop offset="0.5" stopColor={mid} />
+          <stop offset="1" stopColor={dark} />
+        </linearGradient>
+      </defs>
+      <path d="M18 10h28v6h8a2 2 0 0 1 2 2c0 9-6 15-13 16-2 4-5 6-9 7v6h7a3 3 0 0 1 3 3v4H20v-4a3 3 0 0 1 3-3h7v-6c-4-1-7-3-9-7-7-1-13-7-13-16a2 2 0 0 1 2-2h8zm0 10h-6c1 5 4 8 7 9-1-3-1-6-1-9zm28 0c0 3 0 6-1 9 3-1 6-4 7-9z" fill={`url(#${id}g)`} stroke={dark} strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M24 14c0 9 2 15 6 18" fill="none" stroke="#fff" strokeOpacity="0.7" strokeWidth="2.4" strokeLinecap="round" />
+      <text x="32" y="27" textAnchor="middle" fontSize="11" fontWeight="900" fill={dark}>{place}</text>
+    </svg>
+  );
+};
 
 interface LeaderboardPageProps {
   tr: (en: string, hi: string) => string;
@@ -71,7 +100,7 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, userId }) 
         <div className="mt-6 grid grid-cols-3 items-end gap-2 sm:gap-4">
           {[top3[1], top3[0], top3[2]].map((p) => {
             const place = p.rank;
-            const h = place === 1 ? 'h-28' : place === 2 ? 'h-20' : 'h-16';
+            const h = place === 1 ? 'h-32' : place === 2 ? 'h-28' : 'h-24';
             const ring = place === 1 ? 'ring-amber-300' : place === 2 ? 'ring-slate-200' : 'ring-orange-300';
             return (
               <motion.div key={p.rank} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 * (place === 1 ? 0 : place), type: 'spring', stiffness: 200, damping: 18 }} className="flex flex-col items-center text-center">
@@ -80,8 +109,9 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, userId }) 
                 <div className="mt-2 text-[12px] sm:text-sm font-black leading-tight line-clamp-1">{p.flag} {p.name.split(' ')[0]}</div>
                 <div className="text-[10px] font-bold text-white/80">{fmt(p.points)} {tr('pts', 'पॉइंट्स')}</div>
                 <div className={`podium-step mt-2 w-full ${h} rounded-t-2xl flex flex-col items-center justify-start pt-2`}>
-                  <span className="text-2xl font-black">{place}</span>
-                  <span className="mt-0.5 px-2 py-0.5 rounded-full bg-white/90 text-emerald-800 text-[9px] sm:text-[10px] font-black whitespace-nowrap">🏆 {fmt(PRIZES[place - 1])}</span>
+                  <TrophyCup place={place} size={place === 1 ? 40 : 32} />
+                  <span className="mt-1 px-2 py-0.5 rounded-full bg-white/95 text-emerald-800 text-[10px] sm:text-xs font-black whitespace-nowrap tabular-nums">₹{fmt(PRIZES[place - 1])}</span>
+                  <span className="mt-0.5 text-[9px] sm:text-[10px] font-bold text-white/90 whitespace-nowrap">{prizeWords(PRIZES[place - 1], tr)}</span>
                 </div>
               </motion.div>
             );

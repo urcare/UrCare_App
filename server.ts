@@ -3339,6 +3339,27 @@ app.delete('/api/account', requireUser(async (req, res, user) => {
   try {
     const { data: dependents } = await supabase.from('family_members').select('dependent_user_id').eq('primary_user_id', user.id);
     const dependentIds = (dependents || []).map((d: any) => d.dependent_user_id as string);
+    // Take this account out of everyone else's Family & Friends lists and
+    // pending requests (kept in their app_metadata). Points they already
+    // earned stay.
+    try {
+      const idx = await buildUserIndex(supabase);
+      for (const other of idx.byCode.values()) {
+        if (other.id === user.id) continue;
+        const m = other.app_metadata || {};
+        const members = Array.isArray(m.family_members) ? m.family_members : [];
+        const requests = Array.isArray(m.family_requests) ? m.family_requests : [];
+        if (!members.some((x: any) => x.uid === user.id) && !requests.some((x: any) => x.from === user.id)) continue;
+        await supabase.auth.admin.updateUserById(other.id, { app_metadata: {
+          ...m,
+          family_members: members.filter((x: any) => x.uid !== user.id),
+          family_requests: requests.filter((x: any) => x.from !== user.id),
+        } });
+      }
+      userIndexCache = null;
+    } catch (err) {
+      console.warn('delete account: could not clear family links:', err);
+    }
     for (const id of [...dependentIds, user.id]) {
       await deleteUserData(supabase, id);
       await supabase.from('family_members').delete().or(`primary_user_id.eq.${id},dependent_user_id.eq.${id}`);

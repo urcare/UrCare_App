@@ -14,6 +14,8 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     url: PRODUCTION_URL,
+    // Local page shown when the server can't be reached (no internet).
+    errorPath: 'offline.html',
   },
 };
 
