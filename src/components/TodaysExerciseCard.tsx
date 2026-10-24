@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { Dumbbell, Play, Clock, CheckCircle2 } from 'lucide-react';
 import { PlanSection } from './ReversalLibraryPanel';
 import { ExerciseVideoModal } from './ExerciseVideoModal';
-import exerciseImage from '../assets/urcare-exercise.jpg';
-import { resolveYoutubeVideoId } from '../utils/youtube';
+import { movesForExercise } from './ExerciseAnimationPlayer';
 import { ShineBorder } from './magicui/shine-border';
 
 interface TodaysExerciseCardProps {
@@ -14,27 +14,22 @@ interface TodaysExerciseCardProps {
   tr: (en: string, hi: string) => string;
 }
 
-/** A featured "Today's Exercise" card for Home — pulled straight from
- *  today's real Daily Plan (never invented content), styled as a video-led
- *  hero moment instead of a plain checklist row. Tapping the thumbnail or
- *  "Begin" opens an in-app player modal; since we have no YouTube Data API
- *  key to resolve one verified video id per (open-ended) exercise title, the
- *  modal embeds a live YouTube search instead of a single hardcoded id, and
- *  always shows a plain "Open in YouTube" link too so there's never a dead
- *  end if the embed doesn't play in a given browser. */
+const ROTATE_MS = 6000;
+
+/** "Today's Exercise" on Home — today's real exercise step from the plan,
+ *  with its animated moves (LottieFiles) playing right on the card. When the
+ *  step has several moves they take turns. Tap to open the full guide. */
 export const TodaysExerciseCard: React.FC<TodaysExerciseCardProps> = ({ step, isDone, onMarkDone, tr }) => {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
-
-  // The card shows this exercise's own YouTube video thumbnail; the stock
-  // image is only a placeholder until (or if) no video is found.
-  const [videoId, setVideoId] = useState<string | null>(null);
+  const moves = useMemo(() => movesForExercise(step.title, step.body || ''), [step.title, step.body]);
+  const [index, setIndex] = useState(0);
   useEffect(() => {
-    let cancelled = false;
-    setVideoId(null);
-    resolveYoutubeVideoId(step.title).then((id) => { if (!cancelled) setVideoId(id); });
-    return () => { cancelled = true; };
-  }, [step.title]);
-  const thumbnail = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : exerciseImage;
+    setIndex(0);
+    if (moves.length < 2) return;
+    const id = setInterval(() => setIndex((n) => (n + 1) % moves.length), ROTATE_MS);
+    return () => clearInterval(id);
+  }, [moves]);
+  const move = moves[index % moves.length];
 
   return (
     <>
@@ -54,27 +49,30 @@ export const TodaysExerciseCard: React.FC<TodaysExerciseCardProps> = ({ step, is
           )}
         </div>
 
-        <motion.div
-          whileHover={{ y: -2 }}
-          className="relative rounded-2xl bg-card border border-border shadow-depth overflow-hidden"
-        >
+        <motion.div whileHover={{ y: -2 }} className="relative rounded-2xl bg-card border border-border shadow-depth overflow-hidden">
           <ShineBorder borderWidth={2} duration={12} shineColor={['#fb923c', '#fde68a', '#34d399']} className="z-[3]" />
           <button
             type="button"
             onClick={() => setIsPlayerOpen(true)}
             className="exercise-visual group relative block w-full overflow-hidden cursor-pointer"
-            aria-label={tr('Play exercise guide', 'व्यायाम गाइड चलाएं')}
+            aria-label={tr('Open exercise guide', 'व्यायाम गाइड खोलें')}
           >
-            <img
-              key={thumbnail}
-              src={thumbnail}
-              alt=""
-              onError={(e) => { (e.currentTarget as HTMLImageElement).src = exerciseImage; }}
-              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03] animate-in fade-in"
-            />
-            <span className="exercise-visual-shade" />
-            <span className="exercise-duration"><Clock className="w-3.5 h-3.5" />{step.timeLabel || tr('Guided session', 'निर्देशित सत्र')}</span>
-            <span className="exercise-play"><Play className="w-5 h-5" fill="currentColor" /></span>
+            <span className="absolute inset-0" style={{ background: 'radial-gradient(120% 90% at 30% 30%, #ffedd5 0%, #fff7ed 50%, #ecfdf5 100%)' }} />
+            <AnimatePresence mode="wait">
+              {move && (
+                <motion.div key={move.file} className="absolute inset-0" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
+                  <DotLottieReact src={`/lottie/exercise/${move.file}.lottie`} autoplay loop style={{ width: '100%', height: '100%' }} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {move && (
+              <span className="absolute left-3 bottom-3 max-w-[70%] truncate px-2.5 py-1 rounded-full bg-white/90 border border-orange-200 text-[11px] font-black text-orange-700 shadow-sm">
+                {tr(...move.name)}{moves.length > 1 ? ` · ${index % moves.length + 1}/${moves.length}` : ''}
+              </span>
+            )}
+            <span className="absolute right-3 top-3 w-10 h-10 rounded-full bg-white/90 text-orange-600 shadow-md flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Play className="w-4 h-4 ml-0.5" fill="currentColor" />
+            </span>
           </button>
 
           <div className="p-5 space-y-3">
@@ -101,7 +99,7 @@ export const TodaysExerciseCard: React.FC<TodaysExerciseCardProps> = ({ step, is
               <button
                 type="button"
                 onClick={() => setIsPlayerOpen(true)}
-                className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 active:scale-95 text-white text-xs font-black shadow-md shadow-orange-600/25 transition-all cursor-pointer"
+                className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 active:scale-95 text-white text-xs font-black shadow-md shadow-orange-600/25 transition-all cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5" fill="white" />
                 {tr('Begin', 'शुरू करें')}

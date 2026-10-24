@@ -677,6 +677,33 @@ export async function updateUploadedPlan(sections: { timeLabel: string; title: s
   }
 }
 
+/** Is the one free AI plan still available for this account? */
+export async function getAiPlanStatus(): Promise<{ used: boolean; available: boolean }> {
+  try {
+    const res = await authedFetch('/api/custom-plan/ai-status');
+    const data = await res.json();
+    return { used: !!data.used, available: data.available !== false };
+  } catch {
+    return { used: false, available: false };
+  }
+}
+
+/** Creates the user's own plan — typed by hand, or built once by UrCare AI
+ *  from their data. Saved as their "My plan" (replaces any earlier one). */
+export async function createOwnPlan(
+  input: { mode: 'manual'; sections: { timeLabel: string; title: string; body: string }[] } | { mode: 'ai'; wishes?: string; language?: string },
+  dependentId?: string | null,
+): Promise<{ customPlan?: UploadedPlan; error?: string; used?: boolean }> {
+  try {
+    const res = await authedFetch('/api/custom-plan/create', { method: 'POST', body: JSON.stringify({ ...input, dependentId: dependentId || undefined }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: data.error || 'Could not create your plan.', used: data.used };
+    return { customPlan: data.customPlan };
+  } catch {
+    return { error: 'Could not reach the server. Please check your connection and try again.' };
+  }
+}
+
 /** Deletes the uploaded plan — only the built-in UrCare plan remains. */
 export async function deleteUploadedPlan(dependentId?: string | null): Promise<{ error?: string }> {
   try {

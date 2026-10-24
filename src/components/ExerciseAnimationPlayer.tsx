@@ -45,9 +45,16 @@ const MOVES: Record<string, Move> = {
   jack: { file: 'jumping-jack', name: ['Jumping jacks', 'जंपिंग जैक'], start: ['Stand with feet together, arms by your sides.', 'पैर साथ, हाथ बगल में।'], posture: ['Jump feet out and arms up, then back. Step instead of jumping if needed.', 'पैर फैलाते हुए हाथ ऊपर, फिर वापस। ज़रूरत हो तो कूदने के बजाय कदम रखें।'], reps: 20, unit: 'reps' },
 };
 
-/** Which animated moves demonstrate a plan step, from its title + details. */
+export type ExerciseMove = Move;
+
+/** Which animated moves demonstrate a plan step: matched on the step's name
+ *  first (its details often mention other things, like sleep), then on the
+ *  details, else a gentle walk / stretch / breathing set. */
 export function movesForExercise(title: string, body = ''): Move[] {
-  const t = `${title} ${body}`.toLowerCase();
+  return matchMoves(title.toLowerCase()) || (body ? matchMoves(`${title} ${body}`.toLowerCase()) : null) || [MOVES.walk, MOVES.stretch, MOVES.breathe];
+}
+
+function matchMoves(t: string): Move[] | null {
   const pick = (...keys: string[]) => keys.map((k) => MOVES[k]);
   if (/sleep|bedtime|night|nidra|shavasana|savasana|wind.?down|सोने/.test(t)) return pick('sleep', 'legsUp', 'breathe');
   if (/meditat|dhyan|mindful/.test(t)) return pick('chakra', 'meditateW', 'breathe');
@@ -59,7 +66,7 @@ export function movesForExercise(title: string, body = ''): Move[] {
   if (/stretch|flexib|mobility|warm.?up|cool.?down|massage|abhyanga/.test(t)) return pick('stretch', 'armCircles', 'hip', 'sideStretch', 'cobra');
   if (/after.?(meal|lunch|dinner|breakfast)|post.?(meal|lunch|dinner)/.test(t)) return pick('walk2', 'walk');
   if (/walk|steps|stroll|movement|टहल/.test(t)) return pick('walk', 'walk2', 'walkTogether');
-  return [];
+  return null;
 }
 
 const UNIT_LABEL: Record<Move['unit'], [string, string]> = { reps: ['reps', 'बार'], breaths: ['breaths', 'सांस'], steps: ['steps', 'कदम'], seconds: ['sec', 'सेकंड'] };

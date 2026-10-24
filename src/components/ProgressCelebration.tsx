@@ -171,7 +171,7 @@ export const ProgressCelebration: React.FC<ProgressCelebrationProps> = ({ pct, d
                 type="button"
                 disabled={sharing}
                 onClick={async () => { setSharing(true); await shareProgressStory(pct, name, msg.body, tr); setSharing(false); }}
-                className="py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-black cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                className="py-3 rounded-2xl bg-brand-gradient text-white text-sm font-black cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
               >
                 <Share2 className="w-4 h-4" />{tr('Share status', 'स्टेटस शेयर')}
               </button>

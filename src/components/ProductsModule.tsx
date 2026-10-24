@@ -450,7 +450,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     <div id="urcare-products-store" className="space-y-6">
       
       {/* Store Header Banner */}
-      <div className={`rounded-3xl p-6 sm:p-8 relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-900/10`}>
+      <div className={`rounded-3xl p-6 sm:p-8 relative overflow-hidden bg-brand-gradient text-white shadow-lg shadow-emerald-900/10`}>
         <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
         <div className="absolute right-10 bottom-0 w-24 h-24 rounded-full bg-white/10 blur-xl" />
         <div className="max-w-xl space-y-2 relative">

@@ -336,7 +336,7 @@ const Paywall: React.FC<{
                   <input value={utr} onChange={(e) => setUtr(e.target.value)} placeholder={tr('UPI reference / UTR (optional)', 'UPI रेफ़रेंस / UTR (वैकल्पिक)')} className="mt-2 w-full px-3 py-2.5 rounded-xl border border-zinc-200 text-xs font-semibold outline-none focus:border-emerald-500" />
                 </div>
                 {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
-                <button type="button" onClick={submit} disabled={submitting} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-black shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-60 active:scale-[0.99] transition-transform">
+                <button type="button" onClick={submit} disabled={submitting} className="w-full py-3.5 rounded-2xl bg-brand-gradient text-white text-sm font-black shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-60 active:scale-[0.99] transition-transform">
                   {submitting ? tr('Submitting…', 'सबमिट हो रहा है…') : tr(`Submit payment of ₹${price}`, `₹${price} का पेमेंट सबमिट करें`)}
                 </button>
                 <p className="flex items-center justify-center gap-1.5 text-[10px] font-semibold text-zinc-400"><ShieldCheck className="w-3.5 h-3.5" />{tr('Our team verifies every payment by hand', 'हमारी टीम हर पेमेंट खुद जांचती है')}</p>

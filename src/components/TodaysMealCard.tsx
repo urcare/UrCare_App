@@ -79,13 +79,49 @@ function parseMeal(body: string) {
 type MealOption = { name: string; detail: string; macros: string[] };
 
 /** One option at a time with ← → arrows (and swipe on phones). */
-const OptionCarousel: React.FC<{ options: MealOption[]; tr: (en: string, hi: string) => string }> = ({ options, tr }) => {
+const readChoice = (key: string): number | null => { try { const v = localStorage.getItem(key); return v == null ? null : Number(v); } catch { return null; } };
+
+const OptionCard: React.FC<{ o: MealOption; n: number; chosen?: boolean; tr: (en: string, hi: string) => string }> = ({ o, n, chosen, tr }) => (
+  <div className={`flex gap-2.5 rounded-xl border p-3 shadow-sm min-h-[7.5rem] ${chosen ? 'border-emerald-400 bg-emerald-50/60 ring-2 ring-emerald-200' : 'border-emerald-100 bg-white'}`}>
+    <span className="w-6 h-6 shrink-0 rounded-full bg-emerald-600 text-white text-[11px] font-black flex items-center justify-center">{chosen ? '✓' : n}</span>
+    <div className="min-w-0 space-y-1">
+      {chosen && <div className="text-[10px] font-black uppercase tracking-wider text-emerald-700">{tr('Your choice for today', 'आज आपकी पसंद')}</div>}
+      {o.name && <div className="text-[13px] font-black text-zinc-900 leading-snug">{o.name}</div>}
+      <p className="text-[12.5px] leading-relaxed text-zinc-600">{o.detail}</p>
+      {o.macros.length > 0 && (
+        <div className="flex flex-wrap gap-1 pt-0.5">
+          {o.macros.map((m, j) => <span key={j} className="px-1.5 py-0.5 rounded-md bg-white text-[10px] font-bold text-zinc-600 border border-zinc-100">{m}</span>)}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+const OptionCarousel: React.FC<{ options: MealOption[]; choiceKey: string; tr: (en: string, hi: string) => string }> = ({ options, choiceKey, tr }) => {
+  const [chosen, setChosen] = useState<number | null>(() => readChoice(choiceKey));
+  useEffect(() => { setChosen(readChoice(choiceKey)); }, [choiceKey]);
+  const choose = (idx: number | null) => {
+    setChosen(idx);
+    try { if (idx == null) localStorage.removeItem(choiceKey); else localStorage.setItem(choiceKey, String(idx)); } catch {}
+  };
   const [i, setI] = useState(0);
   const [dir, setDir] = useState(1);
   const touchX = React.useRef<number | null>(null);
   const n = options.length;
   const go = (d: number) => { setDir(d); setI((x) => (x + d + n) % n); };
   const o = options[Math.min(i, n - 1)];
+  if (chosen != null && options[chosen]) {
+    return (
+      <div className="space-y-2">
+        <OptionCard o={options[chosen]} n={chosen + 1} chosen tr={tr} />
+        {n > 1 && (
+          <button type="button" onClick={() => { setI(chosen); choose(null); }} className="text-[11px] font-black text-emerald-700 underline underline-offset-2 cursor-pointer">
+            {tr(`Change — see all ${n} options`, `बदलें — सभी ${n} विकल्प देखें`)}
+          </button>
+        )}
+      </div>
+    );
+  }
   const arrow = 'w-9 h-9 shrink-0 rounded-full border border-emerald-200 bg-white text-emerald-700 flex items-center justify-center shadow-sm cursor-pointer active:scale-90 transition disabled:opacity-30';
   return (
     <div className="space-y-2">
@@ -109,23 +145,16 @@ const OptionCarousel: React.FC<{ options: MealOption[]; tr: (en: string, hi: str
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: dir * -40 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="flex gap-2.5 rounded-xl border border-emerald-100 bg-white p-3 shadow-sm min-h-[7.5rem]"
             >
-              <span className="w-6 h-6 shrink-0 rounded-full bg-emerald-600 text-white text-[11px] font-black flex items-center justify-center">{i + 1}</span>
-              <div className="min-w-0 space-y-1">
-                {o.name && <div className="text-[13px] font-black text-zinc-900 leading-snug">{o.name}</div>}
-                <p className="text-[12.5px] leading-relaxed text-zinc-600">{o.detail}</p>
-                {o.macros.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-0.5">
-                    {o.macros.map((m, j) => <span key={j} className="px-1.5 py-0.5 rounded-md bg-zinc-100 text-[10px] font-bold text-zinc-600">{m}</span>)}
-                  </div>
-                )}
-              </div>
+              <OptionCard o={o} n={i + 1} tr={tr} />
             </motion.div>
           </AnimatePresence>
         </div>
         {n > 1 && <button type="button" onClick={() => go(1)} className={arrow} aria-label={tr('Next option', 'अगला विकल्प')}><ChevronRight className="w-4 h-4" /></button>}
       </div>
+      <button type="button" onClick={() => choose(Math.min(i, n - 1))} className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black cursor-pointer active:scale-[0.98] transition">
+        <CheckCircle2 className="w-4 h-4" />{tr(`I'll eat this${n > 1 ? ` (option ${Math.min(i, n - 1) + 1})` : ''}`, `यही खाऊंगा${n > 1 ? ` (विकल्प ${Math.min(i, n - 1) + 1})` : ''}`)}
+      </button>
       {n > 1 && (
         <div className="flex items-center justify-center gap-1">
           {options.map((_, j) => (
@@ -139,7 +168,7 @@ const OptionCarousel: React.FC<{ options: MealOption[]; tr: (en: string, hi: str
   );
 };
 
-const MealDetails: React.FC<{ body: string; tr: (en: string, hi: string) => string }> = ({ body, tr }) => {
+const MealDetails: React.FC<{ body: string; choiceKey: string; tr: (en: string, hi: string) => string }> = ({ body, choiceKey, tr }) => {
   const { intro, options, notes } = useMemo(() => parseMeal(body), [body]);
   if (!intro.length && !options.length && !notes.length) return null;
   return (
@@ -155,7 +184,7 @@ const MealDetails: React.FC<{ body: string; tr: (en: string, hi: string) => stri
           <div className="text-[10px] font-black uppercase tracking-wider text-emerald-700">
             {options.length > 1 ? tr(`Choose one of ${options.length} options`, `${options.length} में से एक चुनें`) : tr('What to eat', 'क्या खाएं')}
           </div>
-          <OptionCarousel options={options} tr={tr} />
+          <OptionCarousel options={options} choiceKey={choiceKey} tr={tr} />
         </div>
       )}
       {notes.length > 0 && (
@@ -254,7 +283,7 @@ export const TodaysMealCard: React.FC<TodaysMealCardProps> = ({ step, isDone, on
             {isDone && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
           </div>
           <h3 className="text-lg font-bold font-display text-foreground leading-snug">{step.title}</h3>
-          <MealDetails body={step.body || ''} tr={tr} />
+          <MealDetails body={step.body || ''} choiceKey={`urcare_meal_choice_${step.id}_${new Date().toISOString().slice(0, 10)}`} tr={tr} />
           <div className="pt-2.5 border-t border-zinc-100 grid grid-cols-2 gap-2">
             <button type="button" onClick={onOpenScan} className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-full bg-white border border-emerald-600 text-emerald-700 text-xs font-black cursor-pointer active:scale-95 transition">
               <ScanLine className="w-3.5 h-3.5" />{tr('Scan my plate', 'प्लेट स्कैन करें')}

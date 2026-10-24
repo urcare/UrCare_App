@@ -63,7 +63,7 @@ export const AppFeedbackModal: React.FC<AppFeedbackModalProps> = ({ isOpen, onCl
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
       <div className="w-full sm:max-w-lg max-h-[92vh] overflow-y-auto bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-5 py-4 bg-brand-gradient text-white">
           <div className="flex items-center gap-2.5">
             <MessageSquareHeart className="w-5 h-5" />
             <div>

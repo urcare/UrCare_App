@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PlanProductSuggest } from './PlanProductSuggest';
+import { CreatePlanPage } from './CreatePlanPage';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   CheckCircle2, ChevronRight, ChevronDown,
@@ -7,7 +8,7 @@ import {
   RefreshCw, AlertCircle, Clock, Calendar as CalendarIcon,
   Sunrise, Sun, Sunset, Moon, Edit3, AlertTriangle, Trash2,
   Droplet, Scale, HeartPulse, Eye, Bone, Zap, Flame, Leaf, Activity, Sparkles, Utensils,
-  Pill, Dumbbell, Bath, BedDouble, Youtube, Upload, Stethoscope, Info, Lock, BookOpen, CalendarCheck, SlidersHorizontal,
+  Pill, Dumbbell, Bath, BedDouble, Play, Upload, Stethoscope, Info, Lock, BookOpen, CalendarCheck, SlidersHorizontal,
 } from 'lucide-react';
 import { UserHealthProfile, Prescription, CustomPlanStep, FamilyMember } from '../types';
 import { useTheme } from '../context/ThemeContext';
@@ -502,6 +503,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   const [dayCelebration, setDayCelebration] = useState<{ pct: number; done: number; total: number } | null>(null);
   // Plan settings (intensity, diet, exercise likes, full day vs meals & exercise) + 7-day log.
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCreatePlanOpen, setIsCreatePlanOpen] = useState(false);
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [planSettings, setPlanSettings] = useState(getPlanSettings);
   useEffect(() => {
@@ -673,6 +675,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
           <div className="flex items-center gap-1.5 shrink-0">
             <button type="button" onClick={() => setIsLogsOpen(true)} title={tr('Daily health log', 'रोज़ का हेल्थ लॉग')} className="w-9 h-9 rounded-xl border border-zinc-200 bg-white text-zinc-600 hover:text-emerald-700 hover:border-emerald-300 flex items-center justify-center cursor-pointer"><CalendarCheck className="w-4 h-4" /></button>
             <button type="button" onClick={() => setIsSettingsOpen(true)} title={tr('Plan settings', 'प्लान सेटिंग्स')} className="w-9 h-9 rounded-xl border border-zinc-200 bg-white text-zinc-600 hover:text-emerald-700 hover:border-emerald-300 flex items-center justify-center cursor-pointer"><SlidersHorizontal className="w-4 h-4" /></button>
+            <button type="button" onClick={() => setIsCreatePlanOpen(true)} title={tr('Create my own plan', 'अपना प्लान बनाएं')} className="w-9 h-9 rounded-xl bg-brand-gradient text-white shadow-md shadow-emerald-700/25 flex items-center justify-center cursor-pointer active:scale-95 transition"><Plus className="w-4 h-4" /></button>
           </div>
         </div>
         {planSettings.view === 'meals-exercise' && (
@@ -1009,10 +1012,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setVideoModalTitle(heroInfo.item.title)}
-                    className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow-sm shadow-red-600/30 transition-colors cursor-pointer"
+                    className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-black shadow-sm shadow-orange-600/30 transition-colors cursor-pointer"
                   >
-                    <Youtube className="w-4 h-4" />
-                    {tr('Watch Exercise Video', 'व्यायाम वीडियो देखें')}
+                    <Play className="w-4 h-4" fill="currentColor" />
+                    {tr('How to do it', 'कैसे करें')}
                   </button>
                 )}
               </div>
@@ -1352,10 +1355,10 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); setVideoModalTitle(section.title); }}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-[11px] font-black shadow-sm shadow-red-600/30 transition-colors cursor-pointer"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-black shadow-sm shadow-orange-600/30 transition-colors cursor-pointer"
                                   >
-                                    <Youtube className="w-3.5 h-3.5" />
-                                    {tr('Watch Exercise Video', 'व्यायाम वीडियो देखें')}
+                                    <Play className="w-3.5 h-3.5" fill="currentColor" />
+                                    {tr('How to do it', 'कैसे करें')}
                                   </button>
                                 )}
                                 {categoryFor(section.title) === 'rest' && /sleep|relax|meditat/i.test(section.title) && (
@@ -1476,6 +1479,16 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         />
       )}
 
+      <CreatePlanPage
+        isOpen={isCreatePlanOpen}
+        onClose={() => setIsCreatePlanOpen(false)}
+        tr={tr}
+        language={language}
+        dependentId={activeDependentId}
+        hasOwnPlan={!!uploadedPlan}
+        starterSections={builtInSections}
+        onCreated={(plan) => { setUploadedPlan(plan); setIsCreatePlanOpen(false); choosePlan('mine'); }}
+      />
       <PlanSettingsSheet open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} tr={tr} />
       <DailyLogsSheet open={isLogsOpen} onClose={() => setIsLogsOpen(false)} userId={effectiveUserId} tr={tr} language={language} />
 

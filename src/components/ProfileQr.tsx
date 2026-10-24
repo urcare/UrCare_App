@@ -71,7 +71,7 @@ export const UsernameSheet: React.FC<{ open: boolean; onClose: () => void; curre
       <p className={`text-xs font-semibold ${state.available === false ? 'text-rose-600' : state.available ? 'text-emerald-700' : 'text-zinc-500'}`}>
         {state.available === false ? state.message || tr('Not available', 'उपलब्ध नहीं') : state.available ? tr(`@${name} is available`, `@${name} उपलब्ध है`) : tr('4–20 letters, numbers or _, starting with a letter.', '4–20 अक्षर, अंक या _, अक्षर से शुरू।')}
       </p>
-      <button type="button" onClick={save} disabled={!state.available || saving || name === current} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-black shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+      <button type="button" onClick={save} disabled={!state.available || saving || name === current} className="w-full py-3.5 rounded-2xl bg-brand-gradient text-white text-sm font-black shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
         {saving && <Loader2 className="w-4 h-4 animate-spin" />}{tr('Save username', 'यूज़रनेम सेव करें')}
       </button>
     </Sheet>
@@ -167,7 +167,7 @@ export const MyQrSheet: React.FC<{ open: boolean; onClose: () => void; name: str
 
   return (
     <Sheet open={open} onClose={onClose} icon={<QrCode className="w-5 h-5" />} title={tr('My QR code', 'मेरा QR कोड')} subtitle={tr('Anyone can scan it to add you', 'कोई भी स्कैन करके आपको जोड़ सकता है')}>
-      <div className="relative rounded-[1.5rem] p-5 pt-20 bg-gradient-to-br from-emerald-700 via-teal-600 to-teal-700 text-center overflow-hidden">
+      <div className="relative rounded-[1.5rem] p-5 pt-20 bg-brand-gradient text-center overflow-hidden">
         <div className="absolute top-3.5 left-0 right-0 text-white text-lg font-black tracking-tight">UrCare</div>
         <div className="relative bg-white rounded-3xl px-4 pt-12 pb-4 shadow-xl">
           <div className="absolute -top-9 left-1/2 -translate-x-1/2 w-[72px] h-[72px] rounded-full bg-white p-1 shadow-md">

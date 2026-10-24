@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { ExerciseAnimationPlayer, movesForExercise } from './ExerciseAnimationPlayer';
 import { motion, AnimatePresence } from 'motion/react';
-import { Youtube, X, ExternalLink, CheckCircle2, RefreshCw, Play } from 'lucide-react';
-import { youtubeSearchUrl, youtubeEmbedUrl, resolveYoutubeVideoId } from '../utils/youtube';
+import { Dumbbell, X, CheckCircle2 } from 'lucide-react';
 
 interface ExerciseVideoModalProps {
   title: string;
@@ -17,30 +16,11 @@ interface ExerciseVideoModalProps {
   onMarkDone?: () => void;
 }
 
-/** The shared "watch this exercise" player. Resolves one real, specific
- *  YouTube video id for the title via the server (real YouTube Data API,
- *  see /api/youtube-search) and embeds exactly that video — a plain "Open
- *  in YouTube" link is always shown too, never just a failure fallback.
- *  Without a YOUTUBE_API_KEY configured server-side, no id resolves and
- *  this shows a clean "watch on YouTube" card instead of a broken embed
- *  (an earlier version embedded a live YouTube *search*, which YouTube has
- *  since stopped supporting — it only ever showed "This video is
- *  unavailable"). Used by every "Watch Exercise Video" entry point in the
- *  app, so opening a video looks and behaves the same everywhere. */
+/** The shared exercise guide: animated how-to moves (LottieFiles) with
+ *  steps and a rep counter, plus an optional "Mark as Done". */
 export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ title, isOpen, onClose, tr, isDone, onMarkDone }) => {
-  const [videoId, setVideoId] = useState<string | null | undefined>(undefined);
-  // Animated how-to for the exercise (when one matches) — the video is one tab away.
+  // Animated how-to (LottieFiles), no YouTube.
   const moves = useMemo(() => movesForExercise(title), [title]);
-  const [view, setView] = useState<'animation' | 'video'>('animation');
-  useEffect(() => { if (isOpen) setView(moves.length ? 'animation' : 'video'); }, [isOpen, moves.length]);
-
-  useEffect(() => {
-    if (!isOpen || !title) return;
-    setVideoId(undefined);
-    let cancelled = false;
-    resolveYoutubeVideoId(title).then((id) => { if (!cancelled) setVideoId(id); });
-    return () => { cancelled = true; };
-  }, [isOpen, title]);
 
   return (
     <AnimatePresence>
@@ -58,8 +38,8 @@ export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ title, i
           >
             <div className="flex items-center justify-between p-4 border-b border-zinc-100 shrink-0">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                  <Youtube className="w-4 h-4" />
+                <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                  <Dumbbell className="w-4 h-4" />
                 </div>
                 <h4 className="font-black text-sm text-zinc-900 truncate">{title}</h4>
               </div>
@@ -72,62 +52,11 @@ export const ExerciseVideoModal: React.FC<ExerciseVideoModalProps> = ({ title, i
               </button>
             </div>
 
-            {moves.length > 0 && (
-              <div className="px-4 pt-3 shrink-0">
-                <div className="relative grid grid-cols-2 p-1 rounded-xl bg-zinc-100">
-                  <span className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-lg bg-white shadow-sm transition-transform duration-300" style={{ transform: view === 'video' ? 'translateX(100%)' : 'none' }} />
-                  <button type="button" onClick={() => setView('animation')} className={`relative z-10 py-2 text-xs font-black cursor-pointer ${view === 'animation' ? 'text-orange-700' : 'text-zinc-500'}`}>{tr('🏃 How to do it', '🏃 कैसे करें')}</button>
-                  <button type="button" onClick={() => setView('video')} className={`relative z-10 py-2 text-xs font-black cursor-pointer ${view === 'video' ? 'text-red-600' : 'text-zinc-500'}`}>{tr('▶ Video', '▶ वीडियो')}</button>
-                </div>
-              </div>
-            )}
-
-            {view === 'animation' && moves.length > 0 ? (
-              <div className="overflow-y-auto">
-                <ExerciseAnimationPlayer moves={moves} tr={tr} />
-              </div>
-            ) : (
-            <div className="relative w-full aspect-video bg-black shrink-0">
-              {videoId === undefined ? (
-                <div className="absolute inset-0 flex items-center justify-center text-white/60">
-                  <RefreshCw className="w-6 h-6 animate-spin" />
-                </div>
-              ) : videoId ? (
-                <iframe
-                  key={videoId}
-                  className="w-full h-full"
-                  src={youtubeEmbedUrl(videoId)}
-                  title={title}
-                  frameBorder={0}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              ) : (
-                <a
-                  href={youtubeSearchUrl(title)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white hover:bg-white/5 transition-colors"
-                >
-                  <span className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center">
-                    <Play className="w-6 h-6 ml-0.5" fill="white" />
-                  </span>
-                  <span className="text-xs font-bold text-white/80">{tr('Tap to watch on YouTube', 'YouTube पर देखने के लिए टैप करें')}</span>
-                </a>
-              )}
+            <div className="overflow-y-auto">
+              <ExerciseAnimationPlayer moves={moves} tr={tr} />
             </div>
-            )}
 
             <div className="p-4 flex flex-col gap-2.5 bg-zinc-50 overflow-y-auto">
-              <a
-                href={youtubeSearchUrl(title)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white border border-zinc-200 text-zinc-700 text-xs font-bold hover:border-red-300 hover:text-red-600 transition-colors"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                {tr('Open in YouTube', 'YouTube में खोलें')}
-              </a>
               {onMarkDone && (
                 <button
                   type="button"

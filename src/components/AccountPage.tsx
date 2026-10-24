@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Mail, Phone, Flame, Edit3, LogOut, RefreshCw,
-  Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight, Droplets,
+  Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight, Droplets, Users, Share2,
 } from 'lucide-react';
-import { UserHealthProfile, UserAccount, MedicalReportAnalysis } from '../types';
+import { UserHealthProfile, UserAccount, MedicalReportAnalysis, Prescription } from '../types';
+import { ShareHealthModal } from './ShareHealthModal';
 import { useLanguage } from '../context/LanguageContext';
 import { updateAvatar, logActivity } from '../utils/supabase';
 import { StreakWidget } from './StreakWidget';
@@ -63,6 +64,9 @@ interface AccountPageProps {
   onOpenReports: () => void;
   onOpenAssessment: () => void;
   onLogOut: () => void;
+  /** Opens Friends & Family (invite & earn). */
+  onOpenFamily?: () => void;
+  prescriptions?: Prescription[];
 }
 
 /** Downscales/compresses an image file to a small square JPEG data URL before
@@ -103,11 +107,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({
   onOpenReports,
   onOpenAssessment,
   onLogOut,
+  onOpenFamily,
+  prescriptions = [],
 }) => {
   const { t, language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -463,6 +470,30 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <span className="text-sm font-bold text-zinc-900 flex-1 min-w-0 truncate">{tr('My Orders', 'मेरे ऑर्डर')}</span>
             <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
           </button>
+
+          {onOpenFamily && (
+            <button type="button" onClick={onOpenFamily} className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Users className="w-4.5 h-4.5" />
+              </div>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-bold text-zinc-900 truncate">{tr('Friends & Family', 'दोस्त और परिवार')}</span>
+                <span className="block text-[11px] font-semibold text-emerald-700 truncate">{tr('Invite & earn reward points', 'बुलाएं और रिवॉर्ड पॉइंट कमाएं')}</span>
+              </span>
+              <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
+            </button>
+          )}
+
+          <button type="button" onClick={() => setIsShareOpen(true)} className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Share2 className="w-4.5 h-4.5" />
+            </div>
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-bold text-zinc-900 truncate">{tr('Share my health data', 'मेरा हेल्थ डेटा शेयर करें')}</span>
+              <span className="block text-[11px] font-semibold text-zinc-500 truncate">{tr('QR card for your doctor or family', 'डॉक्टर या परिवार के लिए QR कार्ड')}</span>
+            </span>
+            <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
+          </button>
         </div>
 
         <FamilyMembersPanel tr={tr} />
@@ -480,6 +511,16 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         </button>
 
       </main>
+
+      <ShareHealthModal
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        profile={profile}
+        displayName={(profile.name || account.displayName || '').trim()}
+        prescriptions={prescriptions}
+        reports={reports}
+        tr={tr}
+      />
 
       {isEditProfileOpen && (
         <EditHealthProfileModal

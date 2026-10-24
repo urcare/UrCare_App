@@ -439,7 +439,7 @@ const AddPersonSheet: React.FC<{
                             <button key={r} type="button" onClick={() => setRelation(r)} className={`px-2.5 py-1.5 rounded-full text-[11px] font-bold border cursor-pointer ${relation === r ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-zinc-200 text-zinc-600'}`}>{relLabel(r)}</button>
                           ))}
                         </div>
-                        <button type="button" onClick={send} disabled={working} className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-black shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2">
+                        <button type="button" onClick={send} disabled={working} className="w-full py-3 rounded-2xl bg-brand-gradient text-white text-sm font-black shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2">
                           {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}{tr('Send request', 'रिक्वेस्ट भेजें')}
                         </button>
                       </>

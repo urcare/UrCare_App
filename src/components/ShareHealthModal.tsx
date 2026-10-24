@@ -404,7 +404,7 @@ export const ShareHealthModal: React.FC<ShareHealthModalProps> = ({ isOpen, onCl
                     const card = parseSummary(text);
                     return (
                       <div className="share-preview mt-3 bg-white rounded-xl border border-emerald-100 overflow-hidden">
-                        <div className="px-3 py-2 bg-gradient-to-r from-emerald-700 to-teal-600 text-white flex items-center gap-2">
+                        <div className="px-3 py-2 bg-brand-gradient text-white flex items-center gap-2">
                           <img src="/urcare-logo-mark.png" alt="" className="w-6 h-6 rounded-full bg-white p-0.5" />
                           <span className="text-sm font-black tracking-tight">UrCare</span>
                           <span className="text-[10px] font-semibold opacity-85">{card.title.replace(/^UrCare\s*/i, '')}</span>

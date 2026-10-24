@@ -321,7 +321,7 @@
 .home-hero {
   --hero-x: 80%;
   --hero-y: 20%;
-  background: linear-gradient(135deg, #047857 0%, #059669 38%, #0d9488 72%, #047857 100%);
+  background: var(--brand-gradient);
   box-shadow: 0 30px 60px -30px rgba(4, 120, 87, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   isolation: isolate;
 }
@@ -377,7 +377,7 @@
 .header-icon-btn:hover { color: #059669; border-color: #6ee7b7; }
 .header-icon-btn:active { transform: scale(0.94); }
 .header-chat-btn {
-  background: linear-gradient(135deg, #10b981, #059669 55%, #0d9488);
+  background: var(--brand-gradient);
   box-shadow: 0 8px 18px -8px rgba(5, 150, 105, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .header-badge {
@@ -396,7 +396,7 @@
   76% { transform: rotate(10deg); } 82% { transform: rotate(-6deg); } 88% { transform: rotate(3deg); }
 }
 .header-avatar {
-  background: linear-gradient(135deg, #059669, #0d9488);
+  background: var(--brand-gradient);
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px #34d399, 0 8px 18px -8px rgba(5, 150, 105, 0.7);
 }
 .streak-pill {
@@ -411,7 +411,7 @@
 .streak-pill-heart { display: inline-flex; }
 .streak-pill.is-active .streak-pill-heart { animation: streak-beat 1.6s ease-in-out infinite; }
 @keyframes streak-beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.15); } 30% { transform: scale(1); } 45% { transform: scale(1.1); } }
-.notif-header { background: linear-gradient(135deg, #047857, #059669 45%, #0d9488); }
+.notif-header { background: var(--brand-gradient); }
 @media (prefers-reduced-motion: reduce) {
   .bell-ring, .streak-pill.is-active .streak-pill-heart { animation: none; }
 }
@@ -453,6 +453,10 @@
 /* Horizontally scrollable rows without a visible scrollbar. */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* One brand gradient for every big green header / button (same as the tracker). */
+:root { --brand-gradient: linear-gradient(135deg, #065f46 0%, #008000 55%, #22c55e 100%); }
+.bg-brand-gradient { background-image: var(--brand-gradient); }
 
 /* ---- App-open splash ---- */
 .splash-intro {
@@ -545,7 +549,7 @@
 
 /* ---- Leaderboard & rewards ---- */
 .lb-hero {
-  background: linear-gradient(135deg, #065f46 0%, #047857 35%, #0f766e 70%, #065f46 100%);
+  background: var(--brand-gradient);
   box-shadow: 0 30px 60px -30px rgba(4, 120, 87, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   isolation: isolate;
 }
@@ -555,7 +559,7 @@
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 .lb-teaser {
-  background: linear-gradient(135deg, #15803d 0%, #22c55e 45%, #166534 100%);
+  background: var(--brand-gradient);
   box-shadow: 0 18px 36px -20px rgba(21, 128, 61, 0.8);
 }
 

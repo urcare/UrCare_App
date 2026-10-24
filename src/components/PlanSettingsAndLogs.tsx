@@ -94,7 +94,7 @@ export const PlanSettingsSheet: React.FC<{ open: boolean; onClose: () => void; t
         </div>
       </div>
       <p className="text-[11px] text-zinc-500 leading-snug">{tr('AI alternatives (the → on meals and exercises) follow these settings. Your doctor-guided plan itself does not change.', 'AI विकल्प (खाने व एक्सरसाइज़ पर →) इन सेटिंग्स के हिसाब से आते हैं। डॉक्टर-गाइडेड प्लान खुद नहीं बदलता।')}</p>
-      <button type="button" onClick={save} className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-black shadow-lg shadow-emerald-600/25 cursor-pointer">{tr('Save settings', 'सेटिंग्स सेव करें')}</button>
+      <button type="button" onClick={save} className="w-full py-3.5 rounded-2xl bg-brand-gradient text-white text-sm font-black shadow-lg shadow-emerald-600/25 cursor-pointer">{tr('Save settings', 'सेटिंग्स सेव करें')}</button>
     </Sheet>
   );
 };

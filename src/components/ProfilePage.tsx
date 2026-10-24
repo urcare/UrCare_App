@@ -463,15 +463,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             </PulsatingButton>
             {chatUnread && <span className="absolute -top-0.5 -right-0.5 z-20 w-3 h-3 rounded-full bg-rose-500 border-2 border-white pointer-events-none" />}
             </div>
-            <RippleButton
-              type="button"
-              onClick={() => setIsShareOpen(true)}
-              rippleColor="#10b981"
-              className="header-icon-btn shrink-0"
-              title={tr('Share my health data', 'मेरा हेल्थ डेटा शेयर करें')}
-            >
-              <Share2 className="w-4 h-4" />
-            </RippleButton>
             <div className="relative shrink-0">
               <RippleButton
                 type="button"
@@ -486,17 +477,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <span className="header-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
               )}
             </div>
-            <button
-              type="button"
-              onClick={onOpenProfile}
-              className="header-avatar w-9 h-9 rounded-full text-white flex items-center justify-center text-xs font-black overflow-hidden shrink-0 cursor-pointer active:scale-95 transition-transform"
-            >
-              {account.avatarUrl ? (
-                <img src={account.avatarUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                (profile.name || account.displayName || 'U').slice(0, 2).toUpperCase()
-              )}
-            </button>
           </div>
         </div>
       </header>

@@ -117,7 +117,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // below), so they're not duplicated here too — only what's genuinely
   // drawer-only stays.
   const moduleMenuItems = [
-    { id: 'tracker' as const, label: tr('Tracker', 'ट्रैकर'), icon: Activity },
     { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
     { id: 'assessment' as const, label: tr('Root Cause Analysis', 'रूट कॉज़ एनालिसिस'), icon: ClipboardCheck },
     { id: 'store' as const, label: tr('UrCare Medical Pharmacy', 'UrCare मेडिकल फार्मेसी'), icon: ShoppingBag },
@@ -524,7 +523,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           >
             <div className={`rounded-2xl shadow-2xl p-4 flex items-start gap-3 ${
               queueAlert.tone === 'turn'
-                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white'
+                ? 'bg-brand-gradient text-white'
                 : 'bg-white border border-emerald-200 text-zinc-900'
             }`}>
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
@@ -973,8 +972,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
           />
         ) : activeTab === 'leaderboard' ? (
           <LeaderboardPage tr={tr} userId={account.uid} />
-        ) : activeTab === 'plan' ? (
+        ) : activeTab === 'plan' || activeTab === 'tracker' ? (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
+            {/* Daily Plan | My Tracker — the tracker lives inside Plan. */}
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-emerald-50 border border-emerald-100">
+              {(['plan', 'tracker'] as const).map((v) => (
+                <button key={v} type="button" onClick={() => setActiveTab(v)}
+                  className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-black cursor-pointer transition ${activeTab === v ? 'bg-brand-gradient text-white shadow-md' : 'text-emerald-800 hover:bg-white/70'}`}>
+                  {v === 'plan' ? <Calendar className="w-4 h-4" /> : <Activity className="w-4 h-4" />}
+                  {v === 'plan' ? tr('Daily Plan', 'डेली प्लान') : tr('My Tracker', 'मेरा ट्रैकर')}
+                </button>
+              ))}
+            </div>
+            {activeTab === 'tracker' ? (
+              <div className="-mx-4 sm:-mx-8 -mt-2">
+                <TrackerModule
+                  profile={profile}
+                  account={account}
+                  reports={myReports}
+                  onUpdateProfile={onUpdateProfile}
+                  onOpenReports={() => setActiveTab('reports')}
+                />
+              </div>
+            ) : (<>
             {/* Leaderboard & referral teaser, right above the plan */}
             <button
               type="button"
@@ -989,6 +1009,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <ChevronRight className="w-5 h-5 shrink-0 opacity-80" />
             </button>
             <RecommendationsView profile={profile} prescriptions={prescriptions} />
+            </>)}
           </main>
         ) : activeTab === 'account' ? (
           <AccountPage
@@ -1001,14 +1022,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onOpenReports={() => setIsHealthReportOpen(true)}
             onOpenAssessment={() => setIsAssessmentModalOpen(true)}
             onLogOut={() => setShowLogoutConfirm(true)}
-          />
-        ) : activeTab === 'tracker' ? (
-          <TrackerModule
-            profile={profile}
-            account={account}
-            reports={myReports}
-            onUpdateProfile={onUpdateProfile}
-            onOpenReports={() => setActiveTab('reports')}
+            onOpenFamily={() => setActiveTab('family')}
+            prescriptions={prescriptions}
           />
         ) : (
           <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
@@ -1166,7 +1181,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* ===================================================================== */}
           {activeTab === 'assessment' && (
             <div className="space-y-6 text-left">
-              <div className="rounded-3xl p-6 sm:p-8 relative overflow-hidden bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-900/10">
+              <div className="rounded-3xl p-6 sm:p-8 relative overflow-hidden bg-brand-gradient text-white shadow-lg shadow-emerald-900/10">
                 <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
                 <div className="absolute right-10 bottom-0 w-24 h-24 rounded-full bg-white/10 blur-xl" />
 

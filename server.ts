@@ -11,7 +11,7 @@ import { createServer as createViteServer } from 'vite';
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Body parser middleware for base64-data-URL payloads (chat/report/plan
 // attachments elsewhere in the app — all well under this). Large media
@@ -1848,6 +1848,98 @@ app.put('/api/custom-daily-plan', requireUser(async (req, res, user) => {
   }
 }));
 
+// CREATE MY OWN PLAN (Plan → "+"). Manual: the steps the user typed.
+// AI: a full day built from everything the app knows about the person
+// (profile, conditions, medicines, sugar/BP, lab reports, routine). The AI
+// plan is free once per account (app_metadata.ai_plan_used_at). Either way
+// it is saved as the user's own plan ("My plan", 35 days), editable later.
+const cleanPlanSections = (sections: any[]) => sections
+  .filter((s) => s && typeof s.title === 'string' && s.title.trim())
+  .slice(0, 60)
+  .map((s) => ({
+    timeLabel: typeof s.timeLabel === 'string' ? s.timeLabel.trim().slice(0, 20) : '',
+    title: String(s.title).trim().slice(0, 200),
+    body: typeof s.body === 'string' ? s.body.trim().slice(0, 2000) : '',
+  }))
+  .sort((a, b) => parseClockTimeToMinutes(a.timeLabel) - parseClockTimeToMinutes(b.timeLabel))
+  .map((s, i) => ({ id: 'custom_' + i, ...s }));
+
+app.get('/api/custom-plan/ai-status', requireUser(async (_req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.json({ used: false, available: false });
+  const u = await getAuthUser(supabase, user.id);
+  const usedAt = u?.app_metadata?.ai_plan_used_at || null;
+  res.json({ used: !!usedAt, usedAt, available: isAIConfigured() });
+}));
+
+app.post('/api/custom-plan/create', requireUser(async (req, res, user) => {
+  try {
+    const { mode, sections, dependentId, language, wishes } = req.body || {};
+    const supabase = getSupabaseAdmin();
+    if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+    const actingUserId = await resolveActingUserId(supabase, user.id, dependentId);
+
+    let steps: ReturnType<typeof cleanPlanSections>;
+    if (mode === 'manual') {
+      steps = cleanPlanSections(Array.isArray(sections) ? sections : []);
+      if (!steps.length) return res.status(400).json({ error: 'Add at least one step with a title.' });
+    } else if (mode === 'ai') {
+      const me = await getAuthUser(supabase, user.id);
+      if (me?.app_metadata?.ai_plan_used_at) return res.status(403).json({ error: 'You have already used your free AI plan. You can still edit it or create a plan manually.', used: true });
+      if (!isAIConfigured()) return res.status(503).json({ error: 'AI is not available right now. Please try again later.' });
+      const context = await buildHealthBotContext(supabase, actingUserId);
+      const { data: hp } = await supabase.from('health_profiles').select('wake_time, bedtime, meals_per_day, exercise_types, foods_to_avoid, allergies, sleep_quality').eq('user_id', actingUserId).maybeSingle();
+      const routine = hp ? [
+        hp.wake_time ? `Wakes up at ${hp.wake_time}` : '',
+        hp.bedtime ? `Goes to bed at ${hp.bedtime}` : '',
+        hp.meals_per_day ? `Meals per day: ${hp.meals_per_day}` : '',
+        Array.isArray(hp.exercise_types) && hp.exercise_types.length ? `Likes exercise: ${hp.exercise_types.join(', ')}` : '',
+        Array.isArray(hp.foods_to_avoid) && hp.foods_to_avoid.length ? `Avoids: ${hp.foods_to_avoid.join(', ')}` : '',
+        Array.isArray(hp.allergies) && hp.allergies.length ? `Allergies: ${hp.allergies.join(', ')}` : '',
+      ].filter(Boolean).join('. ') : '';
+      const { data } = await callAIForJson({
+        tier: 'heavy',
+        maxTokens: 6000,
+        system: `You are UrCare's doctor-led metabolic health planner (diabetes, pre-diabetes, BP, cholesterol, thyroid, PCOS, fatty liver, weight). Build ONE complete, realistic daily routine for this person, from waking up to sleep, personalised to their conditions, lab values, diet preference, age and routine. Include: wake-up and hydration, every meal and snack with 2-3 commonly available Indian options and portions (low glycaemic, high fibre and protein, matching veg/non-veg/Jain), movement after meals, one exercise session safe for their age and conditions with minutes/reps, stress or breathing practice, screen-off and sleep routine. If they take medicines or insulin, add a reminder step "Take your medicines as prescribed by your doctor" at sensible times — NEVER name new medicines, doses or changes. 14 to 22 steps. Times like "6:30 AM". Each body 2-6 short lines with quantities. Write in ${language === 'hi' ? 'simple Hindi (Devanagari)' : 'simple English'}. Call the record_plan tool once.`,
+        text: `About this person:\n${context}${routine ? `\nRoutine: ${routine}.` : ''}${wishes ? `\nTheir own wishes for the plan: ${String(wishes).slice(0, 600)}` : ''}`,
+        toolName: 'record_plan',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            steps: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  timeLabel: { type: 'string', description: 'Start time, e.g. "6:30 AM".' },
+                  title: { type: 'string', description: 'Short step name, e.g. "Breakfast — choose one".' },
+                  body: { type: 'string', description: 'What to do or eat, 2-6 short lines.' },
+                },
+                required: ['timeLabel', 'title', 'body'],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ['steps'],
+          additionalProperties: false,
+        },
+      });
+      steps = cleanPlanSections(Array.isArray(data.steps) ? data.steps : []);
+      if (steps.length < 5) return res.status(502).json({ error: 'The AI could not build a full plan right now. Please try again — your free AI plan was not used.' });
+    } else {
+      return res.status(400).json({ error: 'Choose manual or AI.' });
+    }
+
+    const saved = await persistCustomDailyPlan(supabase, { id: actingUserId }, staggerDuplicateTimes(steps), null);
+    if (mode === 'ai') await patchUserMeta(supabase, user.id, () => ({ ai_plan_used_at: new Date().toISOString() }));
+    await createActivityLog(supabase, actingUserId, 'created', 'plan', mode === 'ai' ? 'Created a plan with UrCare AI' : 'Created your own plan', `${steps.length} steps`);
+    return res.json({ customPlan: saved });
+  } catch (error) {
+    console.error('Error creating own plan:', error);
+    return res.status(500).json({ error: 'Could not create your plan right now. Please try again.' });
+  }
+}));
+
 // DELETE the user's own uploaded plan — the built-in UrCare plan is all that
 // remains, exactly as it was.
 app.delete('/api/custom-daily-plan', requireUser(async (req, res, user) => {
@@ -3618,46 +3710,6 @@ app.post('/api/admin/qr-settings', requireAdmin(async (req, res) => {
   }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true, qrSettings: data });
-}));
-
-// ---- YouTube video resolution (for the in-app exercise video player) ----
-//
-// The embedded player needs one real, specific video id per exercise title
-// to actually play — an earlier attempt embedded a live YouTube SEARCH
-// ("listType=search") instead, since there was no API key to resolve a
-// real id, but YouTube has since dropped support for that embed mode
-// entirely (it now just shows "This video is unavailable"). This calls the
-// real YouTube Data API v3 search endpoint to find one, gated behind an
-// optional YOUTUBE_API_KEY (free tier: https://console.cloud.google.com/
-// — enable "YouTube Data API v3", create an API key). Without a key set,
-// this returns { videoId: null } and the client falls back to a plain
-// "Open in YouTube" link instead of a broken embed.
-const youtubeVideoIdCache = new Map<string, { videoId: string | null; cachedAt: number }>();
-const YOUTUBE_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // a day — exercise titles recur daily, and video results don't change minute to minute
-
-app.get('/api/youtube-search', requireUser(async (req, res) => {
-  const query = String(req.query.q || '').trim();
-  if (!query) return res.status(400).json({ error: 'A search query is required.' });
-
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) return res.json({ videoId: null });
-
-  const cached = youtubeVideoIdCache.get(query);
-  if (cached && Date.now() - cached.cachedAt < YOUTUBE_CACHE_TTL_MS) {
-    return res.json({ videoId: cached.videoId });
-  }
-
-  try {
-    const searchQuery = `${query} exercise how to`;
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&safeSearch=strict&q=${encodeURIComponent(searchQuery)}&key=${apiKey}`;
-    const response = await fetch(url);
-    const data: any = await response.json();
-    const videoId: string | null = data?.items?.[0]?.id?.videoId || null;
-    youtubeVideoIdCache.set(query, { videoId, cachedAt: Date.now() });
-    res.json({ videoId });
-  } catch (error: any) {
-    res.json({ videoId: null });
-  }
 }));
 
 // ---- Care Team Status (WhatsApp-Status-style, admin-posted only) ----
