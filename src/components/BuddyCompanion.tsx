@@ -13,7 +13,14 @@ const WALK = '/lottie/buddy/girl-walk.lottie';
 
 export type BuddyMood = 'happy' | 'sad' | 'wave';
 const EVENT = 'urcare:buddy';
-const HIDE_KEY = 'urcare_buddy_hidden';
+// ✕ hides the Buddy for a while only (it comes back by itself, and on the
+// next app open); the ⋮ menu can bring it back at any time.
+const HIDE_KEY = 'urcare_buddy_hidden_until';
+const HIDE_MS = 15 * 60 * 1000;
+const SHOW_EVENT = 'urcare:buddy-show';
+/** Brings the Buddy back right away (⋮ menu). */
+export function showBuddy() { window.dispatchEvent(new Event(SHOW_EVENT)); }
+const hiddenNow = () => { try { return Number(sessionStorage.getItem(HIDE_KEY) || 0) > Date.now(); } catch { return false; } };
 
 /** Anywhere in the app: make the Buddy react, optionally with a line to say. */
 export function buddyReact(mood: BuddyMood, say?: string) {
@@ -49,7 +56,22 @@ const SPEED = 160; // px per second while walking
 export const BuddyCompanion: React.FC<{ page: string }> = ({ page }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
-  const [hidden, setHidden] = useState(() => { try { return localStorage.getItem(HIDE_KEY) === '1'; } catch { return false; } });
+  const [hidden, setHidden] = useState(() => {
+    // The old setting hid the Buddy forever — forget it.
+    try { localStorage.removeItem('urcare_buddy_hidden'); } catch {}
+    return hiddenNow();
+  });
+  // Come back after the short break, or when asked from the menu.
+  useEffect(() => {
+    const show = () => { try { sessionStorage.removeItem(HIDE_KEY); } catch {} setHidden(false); };
+    window.addEventListener(SHOW_EVENT, show);
+    let t: number | undefined;
+    if (hidden) {
+      const left = Number((() => { try { return sessionStorage.getItem(HIDE_KEY); } catch { return 0; } })() || 0) - Date.now();
+      t = window.setTimeout(show, Math.max(1000, left));
+    }
+    return () => { window.removeEventListener(SHOW_EVENT, show); if (t) window.clearTimeout(t); };
+  }, [hidden]);
   const [x, setX] = useState(() => Math.max(8, window.innerWidth - SIZE - 16));
   const [walking, setWalking] = useState<{ ms: number; left: boolean } | null>(null);
   const [mood, setMood] = useState<BuddyMood | 'idle'>('wave');
@@ -135,7 +157,7 @@ export const BuddyCompanion: React.FC<{ page: string }> = ({ page }) => {
 
   useEffect(() => () => { window.clearTimeout(moodTimer.current); window.clearTimeout(lineTimer.current); window.clearTimeout(walkTimer.current); }, []);
 
-  const hide = () => { setHidden(true); try { localStorage.setItem(HIDE_KEY, '1'); } catch {} };
+  const hide = () => { setHidden(true); try { sessionStorage.setItem(HIDE_KEY, String(Date.now() + HIDE_MS)); } catch {} };
   if (hidden) return null;
 
   const onBuddyTap = () => {
@@ -159,7 +181,7 @@ export const BuddyCompanion: React.FC<{ page: string }> = ({ page }) => {
             className={`absolute bottom-full mb-1 w-56 pointer-events-auto rounded-2xl bg-white border border-emerald-100 shadow-lg px-3 py-2 text-[12px] font-bold text-zinc-800 ${bubbleOnLeft ? 'right-2' : 'left-2'}`}
           >
             {line}
-            <button type="button" onClick={hide} className="ml-1 inline-flex align-middle text-zinc-300 hover:text-zinc-500 cursor-pointer" aria-label={tr('Hide UrCare Buddy', 'UrCare Buddy छुपाएं')} title={tr('Hide Buddy', 'Buddy छुपाएं')}>
+            <button type="button" onClick={hide} className="ml-1 inline-flex align-middle text-zinc-300 hover:text-zinc-500 cursor-pointer" aria-label={tr('Hide UrCare Buddy for 15 minutes', 'UrCare Buddy को 15 मिनट के लिए छुपाएं')} title={tr('Hide for 15 min', '15 मिनट के लिए छुपाएं')}>
               <X className="w-3 h-3" />
             </button>
           </motion.div>

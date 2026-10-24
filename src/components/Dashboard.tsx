@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BuddyCompanion } from './BuddyCompanion';
+import { BuddyCompanion, showBuddy, buddyReact } from './BuddyCompanion';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Settings, Clock,
@@ -7,7 +7,7 @@ import {
   ShoppingBag, Stethoscope, Camera, Lock, ClipboardCheck,
   Package, User, Check, FileText, CheckCircle2, HeartPulse,
   LogOut, MessageSquare, AlertCircle, MoreVertical, X, Bot,
-  Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash, MessageSquareHeart, Trophy, ShoppingCart,
+  Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash, MessageSquareHeart, Trophy, ShoppingCart, Smile,
 } from 'lucide-react';
 import { RewardUnlockWatcher } from './Rewards';
 import { PullToRefresh, refreshEverything } from './PullToRefresh';
@@ -140,6 +140,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     { id: 'ai_bots' as const, label: IS_LOCAL_DEMO ? tr('UrCare Medical Team', 'UrCare मेडिकल टीम') : tr('UrCare Medical Team (AI)', 'UrCare मेडिकल टीम (AI)'), icon: Bot },
     // Not a tab — opens the app-feedback form (what helps / what is missing).
     { id: 'app_feedback' as const, label: tr('Give Feedback', 'प्रतिक्रिया दें'), icon: MessageSquareHeart },
+    // Not a tab — brings the UrCare Buddy back if it was hidden.
+    { id: 'buddy' as const, label: tr('Show UrCare Buddy', 'UrCare Buddy दिखाएं'), icon: Smile },
     // Not a tab — opens the Settings modal directly (see the drawer's onClick).
     { id: 'settings' as const, label: tr('Settings', 'सेटिंग्स'), icon: Settings },
     // Not a tab either — opens the sign-out confirmation (see the drawer's onClick).
@@ -879,6 +881,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           setIsAppFeedbackOpen(true);
                         } else if (item.id === 'ai_bots') {
                           setIsHealthBotsOpen(true);
+                        } else if (item.id === 'buddy') {
+                          showBuddy();
+                          buddyReact('wave', tr("Hi! I'm back 👋", 'हाय! मैं वापस आ गई 👋'));
                         } else {
                           setFamilyStartAdding(false);
                           setActiveTab(item.id);
