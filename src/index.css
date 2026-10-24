@@ -133,6 +133,7 @@
 }
 
 .home-welcome { grid-column: 1 / -1; min-height: 0; display: flex; align-items: center; }
+.home-merged { grid-column: 1 / -1; }
 .home-focus { grid-column: span 4; }
 .home-plan { grid-column: span 8; }
 .home-exercise { grid-column: span 7; grid-row: span 2; }

@@ -35,6 +35,8 @@ import { RecommendationsView } from './RecommendationsView';
 import { AccountPage } from './AccountPage';
 import { TrackerModule } from './TrackerModule';
 import { ReportTimeline } from './ReportTimeline';
+import { MyTimelineCard } from './MyTimelineCard';
+import { FoodScanCard } from './FoodScanCard';
 import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { MyCareFilesPanel } from './MyCareFilesPanel';
@@ -1037,6 +1039,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* ===================================================================== */}
           {activeTab === 'premium' && (
             <div className="space-y-6 text-left">
+              <FoodScanCard tr={tr} onOpen={() => setIsFoodScannerOpen(true)} />
               <div className={`p-5 sm:p-6 rounded-3xl ${cardClass} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
                 <div className="flex items-start gap-3.5 min-w-0">
                   <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
@@ -1158,6 +1161,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     Tracker module). Every entry is clickable and opens the
                     exact report it refers to — live if it still exists, or
                     the full snapshot captured the moment it was deleted. */}
+                {/* MY TIMELINE — everything you did in the app, next to the report history. */}
+                <MyTimelineCard userId={profile.id || account.uid} tr={tr} />
+
                 <ReportTimeline
                   userId={account.uid}
                   reports={reportsToShow}

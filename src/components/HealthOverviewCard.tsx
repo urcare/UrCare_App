@@ -170,11 +170,14 @@ interface HealthOverviewCardProps {
   tr: (en: string, hi: string) => string;
   onAsk: (prompt: string) => void;
   onOpenAssessment: () => void;
+  /** Inside the Home welcome card: no border/shadow of its own. */
+  embedded?: boolean;
 }
 
 /** "Your Health Overview" — health score gauge, Ask UrCare prompts and
  *  estimated biological age, all from the Root Cause Analysis answers. */
-export const HealthOverviewCard: React.FC<HealthOverviewCardProps> = ({ profile, tr, onAsk, onOpenAssessment }) => {
+export const HealthOverviewCard: React.FC<HealthOverviewCardProps> = ({ profile, tr, onAsk, onOpenAssessment, embedded }) => {
+  const shell = embedded ? 'health-overview p-4 sm:p-6' : 'health-overview rounded-2xl bg-white border border-zinc-200 shadow-depth p-4 sm:p-5';
   const overview = useMemo(() => computeHealthOverview(profile), [profile]);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -188,7 +191,7 @@ export const HealthOverviewCard: React.FC<HealthOverviewCardProps> = ({ profile,
 
   if (!overview) {
     return (
-      <div className="health-overview rounded-2xl bg-white border border-zinc-200 shadow-depth p-4 sm:p-5">
+      <div className={shell}>
         <h2 className="text-base font-black text-emerald-800">{tr('Your Health Overview', 'आपका हेल्थ ओवरव्यू')}</h2>
         <p className="text-xs text-zinc-500 mt-0.5">{tr('Key insights calculated from your assessment results.', 'आपके असेसमेंट रिज़ल्ट से निकाली गई मुख्य जानकारी।')}</p>
         <button type="button" onClick={onOpenAssessment} className="mt-4 w-full flex items-center gap-3 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-left cursor-pointer hover:bg-emerald-100 transition-colors">
@@ -206,7 +209,7 @@ export const HealthOverviewCard: React.FC<HealthOverviewCardProps> = ({ profile,
   const ageDiff = actualAge && biologicalAge ? actualAge - biologicalAge : 0;
 
   return (
-    <div className="health-overview rounded-2xl bg-white border border-zinc-200 shadow-depth p-4 sm:p-5">
+    <div className={shell}>
       <h2 className="text-base font-black text-emerald-800">{tr('Your Health Overview', 'आपका हेल्थ ओवरव्यू')}</h2>
       <p className="text-xs text-zinc-500 mt-0.5">{tr('Key insights calculated from your assessment results.', 'आपके असेसमेंट रिज़ल्ट से निकाली गई मुख्य जानकारी।')}</p>
 

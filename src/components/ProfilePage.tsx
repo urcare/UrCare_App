@@ -10,11 +10,11 @@ import { RecommendationsView, REVERSAL_GOALS, DEFAULT_REVERSAL_GOAL, labelMinute
 import { PlanSection } from './ReversalLibraryPanel';
 import { StreakWidget } from './StreakWidget';
 import { NotificationsPanel } from './NotificationsPanel';
-import { MyTimelinePanel, ACTION_META, CATEGORY_META, relativeTime } from './MyTimelinePanel';
 import { ChatPanel } from './ChatPanel';
 import { TodaysExerciseCard } from './TodaysExerciseCard';
 import { TodaysMealCard, isMealStep } from './TodaysMealCard';
 import { HealthOverviewCard } from './HealthOverviewCard';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { ShareHealthModal } from './ShareHealthModal';
 import { UrCareBuddy, progressMessage } from './ProgressCelebration';
 import { StatusStrip } from './FamilyStatus';
@@ -26,53 +26,12 @@ import { MagicCard } from './magicui/magic-card';
 import { ShineBorder } from './magicui/shine-border';
 import { PulsatingButton } from './magicui/pulsating-button';
 import { RippleButton } from './magicui/ripple-button';
-import mealImage from '../assets/urcare-meal.jpg';
 import { StatusViewer } from './StatusViewer';
-import { getDailyPlan, activePlanSections, getTaskCompletion, getNotifications, getDailyQuote, getActivityLog, getMyChatThread, toggleDailyTask, getActiveStatuses } from '../utils/supabase';
+import { getDailyPlan, activePlanSections, getTaskCompletion, getNotifications, getDailyQuote, getMyChatThread, toggleDailyTask, getActiveStatuses } from '../utils/supabase';
 import { toDateKey } from './DailyCalendar';
 
 // Food Scan card: people scanning meals (Pexels, free licence) in
 // public/food-scan/, cross-fading every 5 seconds under a scanning overlay.
-const FOOD_SCAN_PHOTOS = Array.from({ length: 14 }, (_, i) => `/food-scan/scan-${i + 1}.jpg`);
-const FOOD_SCAN_SLIDE_MS = 5000;
-
-function FoodScanSlideshow({ tr }: { tr: (en: string, hi: string) => string }) {
-  // Start on a different photo each visit.
-  const [slide, setSlide] = useState(() => Math.floor(Math.random() * FOOD_SCAN_PHOTOS.length));
-  useEffect(() => {
-    const id = setInterval(() => setSlide((n) => (n + 1) % FOOD_SCAN_PHOTOS.length), FOOD_SCAN_SLIDE_MS);
-    return () => clearInterval(id);
-  }, []);
-  const count = FOOD_SCAN_PHOTOS.length;
-  const prev = (slide - 1 + count) % count;
-  const next = (slide + 1) % count;
-  return (
-    <>
-      {FOOD_SCAN_PHOTOS.map((src, i) => (
-        // Only the previous (fading out), current and next (preloading)
-        // photos are mounted, so the rest load only when their turn comes.
-        (i === prev || i === slide || i === next) && (
-          <img
-            key={src}
-            src={src}
-            alt=""
-            onError={(e) => { (e.currentTarget as HTMLImageElement).src = mealImage; }}
-            className={`food-scan-photo absolute inset-0 h-full w-full object-cover ${i === slide ? 'is-active' : ''}`}
-          />
-        )
-      ))}
-      <span className="food-scan-frame" aria-hidden="true">
-        <span /><span /><span /><span />
-      </span>
-      <span key={slide} className="food-scan-line" aria-hidden="true" />
-      <span key={`chip-${slide}`} className="food-scan-chip">
-        <span className="food-scan-chip-scanning">{tr('Scanning…', 'स्कैन हो रहा है…')}</span>
-        <span className="food-scan-chip-done">✓ {tr('Analysed', 'विश्लेषण पूरा')}</span>
-      </span>
-    </>
-  );
-}
-
 /** Hero ring (Magic UI progress bar + number ticker) — today's real plan steps done out of total. */
 function TodayRing({ done, total, onClick, tr }: { done: number; total: number; onClick: () => void; tr: (en: string, hi: string) => string }) {
   const pct = total > 0 ? Math.round(Math.min(1, done / total) * 100) : 0;
@@ -212,11 +171,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     try { localStorage.setItem('urcare-status-last-seen', latest); } catch { /* per-viewer convenience only */ }
     setLastSeenStatusAt(latest);
   };
-  // My Timeline — a real GitHub-commit-style audit trail of this user's own
-  // actions (upload/edit/update/delete); see MyTimelinePanel/logActivity.
-  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [recentActivity, setRecentActivity] = useState<ActivityLogEntry[]>([]);
 
   const userId = profile.id || '';
   const todayKey = toDateKey(new Date());
@@ -279,17 +234,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     check();
     const interval = setInterval(check, 20000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [userId]);
-
-  // My Timeline preview — the 3 most recent real actions, live-refreshed
-  // whenever anything anywhere in the app calls logActivity().
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    const loadRecent = () => getActivityLog(userId, 3).then((list) => { if (!cancelled) setRecentActivity(list); });
-    loadRecent();
-    window.addEventListener('urcare:activity-logged', loadRecent);
-    return () => { cancelled = true; window.removeEventListener('urcare:activity-logged', loadRecent); };
   }, [userId]);
 
   const timelineSections = useMemo(() => sections.filter((s) => !!s.timeLabel), [sections]);
@@ -486,11 +430,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         {/* Greeting — a vivid gradient hero card instead of plain page text,
             so Home opens with a real "front door" moment. The daily quote
             still lives right here as the subtitle. */}
+        {/* Welcome + Your Health Overview, one card. */}
         <motion.div
-          ref={heroRef}
-          onPointerMove={handleHeroPointer}
           initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="home-welcome home-hero relative overflow-hidden rounded-[1.75rem] p-5 sm:p-7 text-white"
+          className="home-merged rounded-[1.75rem] overflow-hidden bg-white border border-emerald-100 shadow-depth"
+        >
+        <div
+          ref={heroRef as any}
+          onPointerMove={handleHeroPointer as any}
+          className="home-welcome home-hero relative overflow-hidden p-5 sm:p-7 text-white"
         >
           <span className="home-hero-blob home-hero-blob-a" aria-hidden="true" />
           <span className="home-hero-blob home-hero-blob-b" aria-hidden="true" />
@@ -507,11 +455,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 className="mt-3 font-display text-xl sm:text-3xl font-bold leading-tight"
                 initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
               >
-                {greeting}{firstName ? `, ${firstName}` : ''} <motion.span
-                  className="inline-block origin-[70%_70%]"
-                  animate={{ rotate: [0, 14, -8, 14, 0] }}
-                  transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 3, ease: 'easeInOut' }}
-                >👋</motion.span>
+                {greeting}{firstName ? `, ${firstName}` : ''} <span className="inline-block align-middle w-9 h-9 sm:w-12 sm:h-12 -my-2" aria-hidden="true">
+                  {/* waving hand — LottieFiles (Lottie Simple License) */}
+                  <DotLottieReact src="/lottie/wave-hand.lottie" autoplay loop style={{ width: '100%', height: '100%' }} />
+                </span>
               </motion.h1>
               <p className="flex items-start gap-1.5 text-xs sm:text-sm text-white/85 font-medium mt-2 max-w-xl">
                 <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5" />
@@ -532,6 +479,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 )}
               </div>
           </div>
+        </div>
+        <HealthOverviewCard embedded profile={profile} tr={tr} onAsk={(q) => onAskUrCare?.(q)} onOpenAssessment={onOpenAssessment} />
         </motion.div>
 
         {/* Plan-continue card — cycles through every real condition-derived
@@ -694,13 +643,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           );
         })()}
 
-        {/* Your Health Overview — score, Ask UrCare and biological age from the Root Cause Analysis. */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.16, ease: 'easeOut' }}
-          className="home-overview"
-        >
-          <HealthOverviewCard profile={profile} tr={tr} onAsk={(q) => onAskUrCare?.(q)} onOpenAssessment={onOpenAssessment} />
-        </motion.div>
 
         {/* Today's Exercise — a featured video-led card for the day's one
             exercise/movement step (if there is one), pulled straight off
@@ -723,89 +665,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         )}
 
-        <motion.button
-          type="button"
-          onClick={onOpenScan}
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.18, ease: 'easeOut' }}
-          whileHover={{ y: -3 }} whileTap={{ scale: 0.99 }}
-          className="home-food group relative overflow-hidden rounded-2xl bg-card border border-border shadow-depth text-left cursor-pointer"
-        >
-          <FoodScanSlideshow tr={tr} />
-          <span className="food-visual-shade" />
-          <ShineBorder borderWidth={2} duration={10} shineColor={['#34d399', '#fde68a', '#4ade80']} className="z-[3]" />
-          <span className="absolute left-5 right-5 bottom-5 text-primary-foreground">
-            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"><Sparkles className="w-3.5 h-3.5" />{tr('UrCare Food Scan', 'UrCare फूड स्कैन')}</span>
-            <span className="mt-1 block font-display text-xl font-bold">{tr('Know what is on your plate', 'जानें आपकी प्लेट में क्या है')}</span>
-            <span className="mt-1 block text-xs text-primary-foreground/80">{tr('Snap a meal for personalised guidance', 'व्यक्तिगत मार्गदर्शन के लिए भोजन स्कैन करें')}</span>
-          </span>
-        </motion.button>
-
-        {/* My Timeline — a compact preview of the real GitHub-commit-style
-            audit trail (see MyTimelinePanel); tapping it, or "View All",
-            opens the full history. Only ever the 3 most recent real
-            actions here, so Home stays calm — the full log is one tap away. */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.24, ease: 'easeOut' }}
-          className="home-timeline"
-        >
-          <MagicCard className="rounded-2xl shadow-depth" gradientSize={240} gradientColor="#ede9fe" gradientOpacity={0.6} gradientFrom="#16a34a" gradientTo="#10b981">
-          <motion.button
-            type="button"
-            onClick={() => setIsTimelineOpen(true)}
-            whileTap={{ scale: 0.99 }}
-            className="group w-full p-4 sm:p-5 rounded-2xl bg-transparent text-left cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/25">
-                <GitCommit className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-black text-zinc-950">{tr('My Timeline', 'मेरी टाइमलाइन')}</h2>
-                <p className="text-[11px] text-zinc-500 font-semibold">{tr('Everything you have added or changed', 'आपने जो कुछ जोड़ा या बदला')}</p>
-              </div>
-              <span className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-black group-hover:bg-emerald-100 transition-colors">
-                {tr('View all', 'सभी देखें')}
-                <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </div>
-
-            {recentActivity.length === 0 ? (
-              <div className="mt-4 p-4 rounded-2xl bg-zinc-50/80 border border-dashed border-zinc-200 text-center">
-                <p className="text-xs font-semibold text-zinc-500">{tr('No activity yet — your uploads and edits will show up here.', 'अभी तक कोई गतिविधि नहीं — आपके अपलोड व संपादन यहां दिखेंगे।')}</p>
-              </div>
-            ) : (
-              <ol className="mt-4 space-y-3">
-                {recentActivity.map((item, i) => {
-                  const action = ACTION_META[item.action];
-                  const category = CATEGORY_META[item.category];
-                  const CategoryIcon = category?.icon || GitCommit;
-                  const isLast = i === recentActivity.length - 1;
-                  return (
-                    <li key={item.id} className="relative flex items-start gap-3">
-                      {/* the line that joins one event to the next */}
-                      {!isLast && <span className="absolute left-[17px] top-9 -bottom-3 w-px bg-gradient-to-b from-zinc-200 to-transparent" aria-hidden="true" />}
-                      <div className={`relative w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${action?.chip || 'bg-zinc-50 text-zinc-500'}`}>
-                        <CategoryIcon className="w-4 h-4" />
-                        <span className={`absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${action?.dot || 'bg-zinc-300'}`} />
-                      </div>
-                      <div className="min-w-0 flex-1 pt-0.5">
-                        <p className="text-xs font-bold text-zinc-900 truncate">{item.title}</p>
-                        <p className="mt-0.5 flex items-center gap-1.5 text-[10px] font-semibold text-zinc-400">
-                          {action && <span className={`px-1.5 py-0.5 rounded-md font-black ${action.chip}`}>{tr(action.label[0], action.label[1])}</span>}
-                          {category && <span>{tr(category.label[0], category.label[1])}</span>}
-                          <span>·</span>
-                          <span>{relativeTime(item.createdAt, tr)}</span>
-                        </p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </motion.button>
-          </MagicCard>
-        </motion.div>
 
       </main>
 
@@ -823,12 +682,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
         onUnreadCountChange={setUnreadCount}
-      />
-
-      <MyTimelinePanel
-        isOpen={isTimelineOpen}
-        onClose={() => setIsTimelineOpen(false)}
-        userId={userId}
       />
 
       <ChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
