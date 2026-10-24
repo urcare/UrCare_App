@@ -134,6 +134,11 @@
 
 .home-welcome { grid-column: 1 / -1; min-height: 0; display: flex; align-items: center; }
 .home-merged { grid-column: 1 / -1; }
+.home-rootcause { grid-column: 1 / -1; }
+.rc-orb { position: absolute; border-radius: 999px; pointer-events: none; filter: blur(30px); opacity: .45; will-change: transform; }
+.rc-orb-a { width: 220px; height: 220px; right: -60px; top: -80px; background: #86efac; animation: rc-float 9s ease-in-out infinite; }
+.rc-orb-b { width: 180px; height: 180px; left: -50px; bottom: -70px; background: #fde68a; animation: rc-float 11s ease-in-out infinite reverse; }
+@keyframes rc-float { 50% { transform: translate3d(-20px, 16px, 0) scale(1.1); } }
 .home-focus { grid-column: span 4; }
 .home-plan { grid-column: span 8; }
 .home-exercise { grid-column: span 7; grid-row: span 2; }

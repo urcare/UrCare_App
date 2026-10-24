@@ -57,6 +57,7 @@ export const PlanAlternative: React.FC<PlanAlternativeProps> = ({ stepId, dateKe
         }),
       });
       const data = await res.json().catch(() => ({}));
+      if (data.quotaExceeded) { setError(data.error); return; }
       if (!res.ok || data.error || !data.title) throw new Error(data.error || 'failed');
       const updated = [...alts, { title: data.title, body: data.body, why: data.why, calories: data.calories }];
       setAlts(updated);

@@ -1200,6 +1200,7 @@ const MAX_REPORTS_PER_USER = 2;
 app.post('/api/analyze-report', requireUser(async (req, res, user) => {
   try {
     const { imageBase64, mimeType = 'image/jpeg', reportText, reportType } = req.body;
+    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id)) return;
     if (!isAIConfigured()) {
       return res.status(503).json({ analysisFailed: true, rejectionReason: 'The scanner is not configured right now. Please try again later.' });
     }
@@ -1349,6 +1350,7 @@ MANDATORY OUTPUT SHAPE — your JSON MUST always contain ALL EIGHT top-level key
       }
     }
 
+    await recordAiUse(getSupabaseAdmin(), user.id);
     return res.json({
       ...parsed,
       id: reportId,
@@ -1375,6 +1377,7 @@ MANDATORY OUTPUT SHAPE — your JSON MUST always contain ALL EIGHT top-level key
 app.post('/api/analyze-food', requireUser(async (req, res, user) => {
   try {
     const { imageBase64, description, mealCategory = 'lunch', profile, language } = req.body;
+    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id)) return;
     const replyInHindi = language === 'hi';
 
     const profileContext = profile
@@ -1470,6 +1473,7 @@ Call the record_food_analysis tool exactly once with the complete result.`;
       }
     }
 
+    if (parsed?.isFood !== false) await recordAiUse(getSupabaseAdmin(), user.id);
     return res.json(parsed);
   } catch (error: any) {
     console.error('Error analyzing food:', error);
@@ -1485,9 +1489,10 @@ Call the record_food_analysis tool exactly once with the complete result.`;
 // 2b. AI alternative for ONE plan step (a meal or an exercise) — same calories /
 //     effort and the same purpose, suited to this user's conditions and diet.
 //     Only that one item changes; nothing is saved to the plan.
-app.post('/api/plan/alternative', requireUser(async (req, res) => {
+app.post('/api/plan/alternative', requireUser(async (req, res, user) => {
   try {
     const { title, body, kind, exclude = [], language, profile, settings } = req.body || {};
+    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id)) return;
     if (!title || (kind !== 'meal' && kind !== 'exercise')) return res.status(400).json({ error: 'A meal or exercise step is required.' });
     if (!isAIConfigured()) return res.status(503).json({ error: 'AI is not available right now.' });
     const ctx = profile ? [
@@ -1524,6 +1529,7 @@ app.post('/api/plan/alternative', requireUser(async (req, res) => {
         additionalProperties: false,
       },
     });
+    await recordAiUse(getSupabaseAdmin(), user.id);
     res.json({ title: data.title, body: data.body, why: data.why, calories: data.calories ?? null });
   } catch (error: any) {
     console.error('plan alternative failed:', error);
@@ -1665,6 +1671,7 @@ async function persistCustomDailyPlan(
 app.post('/api/analyze-daily-plan', requireUser(async (req, res, user) => {
   try {
     const { imageBase64, mimeType = 'image/jpeg', persist = true, dependentId } = req.body as { imageBase64?: string; mimeType?: string; persist?: boolean; dependentId?: string };
+    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id)) return;
     if (!imageBase64) {
       return res.json({ isValidPlan: false, rejectionReason: 'Please upload a photo or PDF of your daily plan.' });
     }
@@ -1745,6 +1752,7 @@ Call the record_daily_plan tool exactly once with the complete result.`;
     );
 
     const supabase = getSupabaseAdmin();
+    if (supabase) await recordAiUse(supabase, user.id);
     if (!supabase) {
       return res.json({ isValidPlan: true, uploadedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString(), sections: finalSections });
     }
@@ -1803,6 +1811,7 @@ app.post('/api/save-daily-plan', requireUser(async (req, res, user) => {
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
     const actingUserId = await resolveActingUserId(supabase, user.id, dependentId);
     const saved = await persistCustomDailyPlan(supabase, { id: actingUserId }, staggered, typeof sourceImageUrl === 'string' ? sourceImageUrl : null);
+    await recordAiUse(supabase, user.id);
     return res.json({ isValidPlan: true, ...saved });
   } catch (error) {
     console.error('Error saving merged daily plan:', error);
@@ -1848,6 +1857,54 @@ app.put('/api/custom-daily-plan', requireUser(async (req, res, user) => {
   }
 }));
 
+// ----------------------------------------------------------------------------
+// AI LIMIT — anything UrCare AI generates for a person (report analysis, food
+// scan, plan upload reading, AI plan, meal/exercise alternative) is limited
+// to AI_WEEKLY_LIMIT per user per rolling 7 days. Kept in app_metadata.ai_uses
+// (timestamps); admins aren't limited. Chat replies aren't counted.
+// ----------------------------------------------------------------------------
+const AI_WEEKLY_LIMIT = 3;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+async function aiQuota(supabase: any, userId: string): Promise<{ ok: boolean; used: number; remaining: number; nextAt: string | null; uses: string[]; meta: any }> {
+  const u = await getAuthUser(supabase, userId);
+  const meta = u?.app_metadata || {};
+  const since = Date.now() - WEEK_MS;
+  const uses: string[] = (Array.isArray(meta.ai_uses) ? meta.ai_uses : []).filter((t: string) => new Date(t).getTime() > since).sort();
+  if (meta.role === 'admin') return { ok: true, used: uses.length, remaining: AI_WEEKLY_LIMIT, nextAt: null, uses, meta };
+  const remaining = Math.max(0, AI_WEEKLY_LIMIT - uses.length);
+  const nextAt = remaining === 0 && uses[0] ? new Date(new Date(uses[0]).getTime() + WEEK_MS).toISOString() : null;
+  return { ok: remaining > 0, used: uses.length, remaining, nextAt, uses, meta };
+}
+
+/** Counts one AI generation for the user (call only after it succeeded). */
+async function recordAiUse(supabase: any, userId: string) {
+  try {
+    const q = await aiQuota(supabase, userId);
+    await supabase.auth.admin.updateUserById(userId, { app_metadata: { ...q.meta, ai_uses: [...q.uses, new Date().toISOString()].slice(-20) } });
+  } catch (err) {
+    console.warn('recordAiUse failed:', err);
+  }
+}
+
+/** Stops the request with a friendly message when the weekly AI limit is used up. */
+async function blockIfAiLimitReached(res: any, supabase: any, userId: string): Promise<boolean> {
+  if (!supabase) return false;
+  const q = await aiQuota(supabase, userId);
+  if (q.ok) return false;
+  const when = q.nextAt ? new Date(q.nextAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'next week';
+  const msg = `You have used your ${AI_WEEKLY_LIMIT} UrCare AI uses for this week. You can use AI again from ${when}.`;
+  res.status(429).json({ quotaExceeded: true, error: msg, rejectionReason: msg, analysisFailed: true, isValidReport: null, isValidPlan: false, nextAt: q.nextAt });
+  return true;
+}
+
+app.get('/api/ai-quota', requireUser(async (_req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.json({ limit: AI_WEEKLY_LIMIT, remaining: AI_WEEKLY_LIMIT, used: 0, nextAt: null });
+  const q = await aiQuota(supabase, user.id);
+  res.json({ limit: AI_WEEKLY_LIMIT, remaining: q.remaining, used: q.used, nextAt: q.nextAt });
+}));
+
 // CREATE MY OWN PLAN (Plan → "+"). Manual: the steps the user typed.
 // AI: a full day built from everything the app knows about the person
 // (profile, conditions, medicines, sugar/BP, lab reports, routine). The AI
@@ -1867,9 +1924,8 @@ const cleanPlanSections = (sections: any[]) => sections
 app.get('/api/custom-plan/ai-status', requireUser(async (_req, res, user) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.json({ used: false, available: false });
-  const u = await getAuthUser(supabase, user.id);
-  const usedAt = u?.app_metadata?.ai_plan_used_at || null;
-  res.json({ used: !!usedAt, usedAt, available: isAIConfigured() });
+  const q = await aiQuota(supabase, user.id);
+  res.json({ used: !q.ok, remaining: q.remaining, limit: AI_WEEKLY_LIMIT, nextAt: q.nextAt, available: isAIConfigured() });
 }));
 
 app.post('/api/custom-plan/create', requireUser(async (req, res, user) => {
@@ -1884,8 +1940,7 @@ app.post('/api/custom-plan/create', requireUser(async (req, res, user) => {
       steps = cleanPlanSections(Array.isArray(sections) ? sections : []);
       if (!steps.length) return res.status(400).json({ error: 'Add at least one step with a title.' });
     } else if (mode === 'ai') {
-      const me = await getAuthUser(supabase, user.id);
-      if (me?.app_metadata?.ai_plan_used_at) return res.status(403).json({ error: 'You have already used your free AI plan. You can still edit it or create a plan manually.', used: true });
+      if (await blockIfAiLimitReached(res, supabase, user.id)) return;
       if (!isAIConfigured()) return res.status(503).json({ error: 'AI is not available right now. Please try again later.' });
       const context = await buildHealthBotContext(supabase, actingUserId);
       const { data: hp } = await supabase.from('health_profiles').select('wake_time, bedtime, meals_per_day, exercise_types, foods_to_avoid, allergies, sleep_quality').eq('user_id', actingUserId).maybeSingle();
@@ -1925,13 +1980,13 @@ app.post('/api/custom-plan/create', requireUser(async (req, res, user) => {
         },
       });
       steps = cleanPlanSections(Array.isArray(data.steps) ? data.steps : []);
-      if (steps.length < 5) return res.status(502).json({ error: 'The AI could not build a full plan right now. Please try again — your free AI plan was not used.' });
+      if (steps.length < 5) return res.status(502).json({ error: 'The AI could not build a full plan right now. Please try again — this did not count toward your weekly AI uses.' });
     } else {
       return res.status(400).json({ error: 'Choose manual or AI.' });
     }
 
     const saved = await persistCustomDailyPlan(supabase, { id: actingUserId }, staggerDuplicateTimes(steps), null);
-    if (mode === 'ai') await patchUserMeta(supabase, user.id, () => ({ ai_plan_used_at: new Date().toISOString() }));
+    if (mode === 'ai') await recordAiUse(supabase, user.id);
     await createActivityLog(supabase, actingUserId, 'created', 'plan', mode === 'ai' ? 'Created a plan with UrCare AI' : 'Created your own plan', `${steps.length} steps`);
     return res.json({ customPlan: saved });
   } catch (error) {

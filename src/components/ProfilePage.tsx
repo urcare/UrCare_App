@@ -14,6 +14,7 @@ import { ChatPanel } from './ChatPanel';
 import { TodaysExerciseCard } from './TodaysExerciseCard';
 import { TodaysMealCard, isMealStep } from './TodaysMealCard';
 import { HealthOverviewCard } from './HealthOverviewCard';
+import { RootCausesCard } from './RootCausesCard';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { ShareHealthModal } from './ShareHealthModal';
 import { UrCareBuddy, progressMessage } from './ProgressCelebration';
@@ -665,6 +666,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         )}
 
+
+        {/* Your Root Causes — at the bottom of Home. */}
+        <RootCausesCard profile={profile} tr={tr} onOpenAssessment={onOpenAssessment} onOpenPlan={onOpenPlan} />
 
       </main>
 

@@ -53,6 +53,7 @@ export const CreatePlanPage: React.FC<CreatePlanPageProps> = ({ isOpen, onClose,
   const [tab, setTab] = useState<'ai' | 'manual'>('ai');
   const [aiUsed, setAiUsed] = useState<boolean | null>(null);
   const [aiAvailable, setAiAvailable] = useState(true);
+  const [aiLeft, setAiLeft] = useState<{ remaining: number; limit: number; nextAt: string | null }>({ remaining: 3, limit: 3, nextAt: null });
   const [wishes, setWishes] = useState('');
   const [rows, setRows] = useState<Row[]>(EMPTY_ROWS);
   const [working, setWorking] = useState(false);
@@ -62,10 +63,10 @@ export const CreatePlanPage: React.FC<CreatePlanPageProps> = ({ isOpen, onClose,
   useEffect(() => {
     if (!isOpen) return;
     setError('');
-    getAiPlanStatus().then(({ used, available }) => {
+    getAiPlanStatus().then(({ used, available, remaining, limit, nextAt }) => {
       setAiUsed(used);
       setAiAvailable(available);
-      if (used) setTab('manual');
+      setAiLeft({ remaining, limit, nextAt });
     });
   }, [isOpen]);
 
@@ -82,7 +83,7 @@ export const CreatePlanPage: React.FC<CreatePlanPageProps> = ({ isOpen, onClose,
     setWorking(false);
     if (used) setAiUsed(true);
     if (err || !customPlan) { setError(err || tr('Could not create your plan.', 'प्लान नहीं बन सका।')); return; }
-    setAiUsed(true);
+    setAiLeft((q) => ({ ...q, remaining: Math.max(0, q.remaining - 1) }));
     onCreated(customPlan);
   };
 
@@ -175,13 +176,13 @@ export const CreatePlanPage: React.FC<CreatePlanPageProps> = ({ isOpen, onClose,
                   ) : aiUsed ? (
                     <div className="rounded-2xl bg-zinc-50 border border-zinc-200 p-4 flex gap-3">
                       <Lock className="w-5 h-5 text-zinc-400 shrink-0 mt-0.5" />
-                      <p className="text-xs text-zinc-600 leading-relaxed">{tr('You have already used your free AI plan. You can edit it from "My plan" in the Plan tab, or write a new plan yourself.', 'आप अपना फ्री AI प्लान इस्तेमाल कर चुके हैं। प्लान टैब में "मेरा प्लान" से उसे बदल सकते हैं, या नया प्लान खुद लिख सकते हैं।')}</p>
+                      <p className="text-xs text-zinc-600 leading-relaxed">{tr(`You have used your ${aiLeft.limit} UrCare AI uses for this week${aiLeft.nextAt ? ` — more from ${new Date(aiLeft.nextAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}. You can still edit "My plan" or write a plan yourself.`, `आप इस हफ़्ते के ${aiLeft.limit} UrCare AI इस्तेमाल कर चुके हैं${aiLeft.nextAt ? ` — ${new Date(aiLeft.nextAt).toLocaleDateString('hi-IN', { day: 'numeric', month: 'short' })} से फिर मिलेंगे` : ''}। आप "मेरा प्लान" बदल सकते हैं या खुद प्लान लिख सकते हैं।`)}</p>
                     </div>
                   ) : (
                     <button type="button" onClick={createWithAi} disabled={!aiAvailable || aiUsed === null}
                       className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-brand-gradient text-white text-sm font-black shadow-lg shadow-emerald-700/25 cursor-pointer active:scale-[0.98] transition disabled:opacity-50">
                       <Sparkles className="w-4 h-4" />{tr('Create my plan with AI', 'AI से मेरा प्लान बनाएं')}
-                      <span className="ml-1 px-2 py-0.5 rounded-full bg-white/20 text-[10px]">{tr('1 free use', '1 बार फ्री')}</span>
+                      <span className="ml-1 px-2 py-0.5 rounded-full bg-white/20 text-[10px]">{tr(`${aiLeft.remaining} of ${aiLeft.limit} left this week`, `इस हफ़्ते ${aiLeft.limit} में से ${aiLeft.remaining} बाकी`)}</span>
                     </button>
                   )}
                   {!aiAvailable && !aiUsed && <p className="text-[11px] text-rose-600">{tr('AI is not available right now. You can write your plan yourself.', 'AI अभी उपलब्ध नहीं है। आप प्लान खुद लिख सकते हैं।')}</p>}

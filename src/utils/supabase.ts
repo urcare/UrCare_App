@@ -677,14 +677,15 @@ export async function updateUploadedPlan(sections: { timeLabel: string; title: s
   }
 }
 
-/** Is the one free AI plan still available for this account? */
-export async function getAiPlanStatus(): Promise<{ used: boolean; available: boolean }> {
+/** UrCare AI uses left this week (3 per rolling 7 days, shared by plans,
+ *  reports, food scans and alternatives). */
+export async function getAiPlanStatus(): Promise<{ used: boolean; available: boolean; remaining: number; limit: number; nextAt: string | null }> {
   try {
     const res = await authedFetch('/api/custom-plan/ai-status');
     const data = await res.json();
-    return { used: !!data.used, available: data.available !== false };
+    return { used: !!data.used, available: data.available !== false, remaining: Number(data.remaining ?? 3), limit: Number(data.limit ?? 3), nextAt: data.nextAt || null };
   } catch {
-    return { used: false, available: false };
+    return { used: false, available: false, remaining: 0, limit: 3, nextAt: null };
   }
 }
 
