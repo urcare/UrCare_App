@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { Lottie as DotLottieReact } from './Lottie';
 import { X, ChevronRight, ChevronDown, Search, Wrench, Target, CalendarCheck, ShieldCheck, ClipboardList, Sparkles } from 'lucide-react';
 import { UserHealthProfile } from '../types';
 import { computeHealthOverview } from './HealthOverviewCard';

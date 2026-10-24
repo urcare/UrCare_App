@@ -3,21 +3,24 @@ import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { UserHealthProfile, UserAccount } from './types';
 import { AuthScreen } from './components/AuthScreen';
-import { OnboardingFlow } from './components/OnboardingFlow';
-import { WowCelebration } from './components/WowCelebration';
 import { Dashboard } from './components/Dashboard';
-import { AdminDashboard } from './components/AdminDashboard';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AIConsentGate } from './components/AIConsentGate';
 import { AttachmentViewer } from './components/AttachmentViewer';
 import { SplashIntro } from './components/SplashIntro';
-import { AccessFlow } from './components/AccessFlow';
 
 /** The post-onboarding organs / body-map screen — off for now, kept for later. */
 const ENABLE_BODY_MAP_AFTER_ONBOARDING = false;
 import { loadAccountState } from './utils/accountState';
 import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn, getAccessStatus, AccessStatus, captureReferralFromUrl, claimStoredReferral, captureAddFromUrl } from './utils/supabase';
+import { lazyComponent, PageLoader } from './utils/lazyComponent';
+
+// Loaded only when first opened (smaller, faster app start).
+const OnboardingFlow = lazyComponent<typeof import('./components/OnboardingFlow')['OnboardingFlow']>(() => import('./components/OnboardingFlow'), 'OnboardingFlow', <PageLoader />);
+const WowCelebration = lazyComponent<typeof import('./components/WowCelebration')['WowCelebration']>(() => import('./components/WowCelebration'), 'WowCelebration');
+const AdminDashboard = lazyComponent<typeof import('./components/AdminDashboard')['AdminDashboard']>(() => import('./components/AdminDashboard'), 'AdminDashboard', <PageLoader />);
+const AccessFlow = lazyComponent<typeof import('./components/AccessFlow')['AccessFlow']>(() => import('./components/AccessFlow'), 'AccessFlow', <PageLoader />);
 
 // A referral link (?ref=CODE) and a scanned profile QR (?add=@name) are
 // remembered as soon as the app opens.

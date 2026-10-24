@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { Lottie as DotLottieReact } from './Lottie';
 import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Exercise animations from LottieFiles (Lottie Simple License — free for

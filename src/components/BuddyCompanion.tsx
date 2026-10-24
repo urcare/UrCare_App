@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { Lottie as DotLottieReact } from './Lottie';
 import confetti from 'canvas-confetti';
 import { X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';

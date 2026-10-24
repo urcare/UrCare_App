@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { Lottie as DotLottieReact } from './Lottie';
 import confetti from 'canvas-confetti';
 import { Share2, X, Check, Eye } from 'lucide-react';
 import { getFamily, setFamilyShareProgress } from '../utils/supabase';

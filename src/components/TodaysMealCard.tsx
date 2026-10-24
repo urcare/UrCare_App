@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { Lottie as DotLottieReact } from './Lottie';
 import { UtensilsCrossed, Clock, CheckCircle2, ScanLine, ChevronRight, ChevronLeft } from 'lucide-react';
 import { PlanSection } from './ReversalLibraryPanel';
 import { ShineBorder } from './magicui/shine-border';

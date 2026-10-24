@@ -15,7 +15,7 @@ import { TodaysExerciseCard } from './TodaysExerciseCard';
 import { TodaysMealCard, isMealStep } from './TodaysMealCard';
 import { HealthOverviewCard } from './HealthOverviewCard';
 import { RootCausesCard } from './RootCausesCard';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { Lottie as DotLottieReact } from './Lottie';
 import { ShareHealthModal } from './ShareHealthModal';
 import { UrCareBuddy, progressMessage } from './ProgressCelebration';
 import { StatusStrip } from './FamilyStatus';

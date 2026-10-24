@@ -33,9 +33,20 @@ export const PullToRefresh: React.FC<{ onRefresh?: () => Promise<unknown> | void
     const atTop = () => (window.scrollY || document.documentElement.scrollTop) <= 0;
     // Don't hijack pulls inside sheets/modals or horizontally scrolling rows.
     const insideOverlay = (el: EventTarget | null) => !!(el as HTMLElement | null)?.closest?.('.fixed, [role="dialog"], .no-scrollbar');
+    // The blocking (non-passive) touchmove listener is only attached while a
+    // pull may be starting at the very top — everywhere else scrolling stays
+    // fully passive, so the browser never waits for JavaScript to scroll.
+    let listening = false;
+    const listen = (on: boolean) => {
+      if (on === listening) return;
+      listening = on;
+      if (on) window.addEventListener('touchmove', onMove, { passive: false });
+      else window.removeEventListener('touchmove', onMove);
+    };
     const onStart = (e: TouchEvent) => {
       if (busy.current || e.touches.length !== 1 || !atTop() || insideOverlay(e.target)) { start.current = null; return; }
       start.current = { y: e.touches[0].clientY, x: e.touches[0].clientX, active: false };
+      listen(true);
     };
     const onMove = (e: TouchEvent) => {
       const s = start.current;
@@ -44,7 +55,7 @@ export const PullToRefresh: React.FC<{ onRefresh?: () => Promise<unknown> | void
       const dx = Math.abs(e.touches[0].clientX - s.x);
       if (!s.active) {
         if (dy > 8 && dy > dx && atTop()) s.active = true;
-        else if (dy < 0 || dx > 12) { start.current = null; return; }
+        else if (dy < 0 || dx > 12) { start.current = null; listen(false); return; }
         else return;
       }
       // Rubber-band: the further you pull, the slower it follows.
@@ -55,6 +66,7 @@ export const PullToRefresh: React.FC<{ onRefresh?: () => Promise<unknown> | void
     const onEnd = async () => {
       const s = start.current;
       start.current = null;
+      listen(false);
       if (!s?.active) return;
       if (pull.get() >= TRIGGER) {
         busy.current = true;
@@ -74,12 +86,11 @@ export const PullToRefresh: React.FC<{ onRefresh?: () => Promise<unknown> | void
       animate(pull, 0, { duration: 0.45, ease: [0.22, 1, 0.36, 1] });
     };
     window.addEventListener('touchstart', onStart, { passive: true });
-    window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onEnd);
     window.addEventListener('touchcancel', onEnd);
     return () => {
       window.removeEventListener('touchstart', onStart);
-      window.removeEventListener('touchmove', onMove);
+      listen(false);
       window.removeEventListener('touchend', onEnd);
       window.removeEventListener('touchcancel', onEnd);
     };

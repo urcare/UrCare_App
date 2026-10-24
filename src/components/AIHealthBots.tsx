@@ -31,7 +31,8 @@ const BOTS = [
 /** Local-demo presentation (college project on localhost only): plain
  *  Indian names and no AI badges/banners. The deployed app always keeps the
  *  AI labels so real users are never misled. */
-export const IS_LOCAL_DEMO = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+export { IS_LOCAL_DEMO } from '../utils/demo';
+import { IS_LOCAL_DEMO } from '../utils/demo';
 // No personal names anywhere, the local demo uses the same bot names.
 const DEMO_PROFILES: Record<string, { name: string; role: [string, string]; hello: [string, string] }> = {};
 

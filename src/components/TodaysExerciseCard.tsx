@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { Lottie as DotLottieReact } from './Lottie';
 import { Dumbbell, Play, Clock, CheckCircle2 } from 'lucide-react';
 import { PlanSection } from './ReversalLibraryPanel';
 import { ExerciseVideoModal } from './ExerciseVideoModal';

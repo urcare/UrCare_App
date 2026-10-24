@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+import { Lottie as DotLottieReact } from './Lottie';
 import { Lock, X } from 'lucide-react';
 import { getActiveDates, getFamily, getReferralStatus } from '../utils/supabase';
 import { toDateKey } from './DailyCalendar';

@@ -112,13 +112,25 @@ function AutoScrollRow({ children, speed = 28 }: { children: React.ReactNode; sp
     const el = ref.current;
     if (!el) return;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    // Measure once (and on resize) instead of every frame, run only while the
+    // row is on screen, and hold still while the page itself is scrolling.
+    let half = el.scrollWidth / 2;
+    let fits = half <= el.clientWidth;
+    const measure = () => { half = el.scrollWidth / 2; fits = half <= el.clientWidth; };
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    let visible = true;
+    const io = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible) loop(); }) : null;
+    io?.observe(el);
+    const onPageScroll = () => { pausedUntil.current = performance.now() + 400; };
+    window.addEventListener('scroll', onPageScroll, { passive: true });
     let raf = 0;
     let last = performance.now();
     const step = (t: number) => {
+      raf = 0;
       const dt = Math.min(64, t - last);
       last = t;
-      const half = el.scrollWidth / 2;
-      if (half > el.clientWidth && !hovering.current && !drag.current && t > pausedUntil.current) {
+      if (!fits && !hovering.current && !drag.current && t > pausedUntil.current) {
         pos.current += (speed * dt) / 1000;
         if (pos.current >= half) pos.current -= half;
         el.scrollLeft = pos.current;
@@ -128,10 +140,11 @@ function AutoScrollRow({ children, speed = 28 }: { children: React.ReactNode; sp
         else if (el.scrollLeft <= 0 && half > 0) el.scrollLeft += half;
         pos.current = el.scrollLeft;
       }
-      raf = requestAnimationFrame(step);
+      if (visible) raf = requestAnimationFrame(step);
     };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    const loop = () => { if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); } };
+    loop();
+    return () => { cancelAnimationFrame(raf); ro?.disconnect(); io?.disconnect(); window.removeEventListener('scroll', onPageScroll); };
   }, [speed]);
 
   const pause = () => { pausedUntil.current = performance.now() + 2500; };

@@ -9,8 +9,6 @@ import {
   LogOut, MessageSquare, AlertCircle, MoreVertical, X, Bot,
   Flame, Scale, Heart, Droplets, Target, UserCheck, Edit3, Hash, MessageSquareHeart, Trophy, ShoppingCart,
 } from 'lucide-react';
-import { LeaderboardPage } from './LeaderboardPage';
-import { FamilyPage } from './FamilyPage';
 import { RewardUnlockWatcher } from './Rewards';
 import { PullToRefresh, refreshEverything } from './PullToRefresh';
 import { getCachedAccountState } from '../utils/accountState';
@@ -21,24 +19,13 @@ import {
   Order, Prescription, BurnActivity, MedicationLogItem 
 } from '../types';
 import AppBackground from './AppBackground';
-import { HealthReportModal } from './HealthReportModal';
-import { SettingsModal } from './SettingsModal';
-import { ProductsModule } from './ProductsModule';
-import { FoodScannerModal } from './FoodScannerModal';
-import { AIHealthBots, IS_LOCAL_DEMO } from './AIHealthBots';
-import { MyOrdersModal } from './MyOrdersModal';
-import { DoctorConsultModal } from './DoctorConsultModal';
-import { ClinicalFeedbackModal } from './ClinicalFeedbackModal';
-import { AppFeedbackModal } from './AppFeedbackModal';
-import { RootCauseAssessmentModal } from './RootCauseAssessmentModal';
+import { IS_LOCAL_DEMO } from '../utils/demo';
 import { ProfilePage } from './ProfilePage';
 import { RecommendationsView } from './RecommendationsView';
 import { AccountPage } from './AccountPage';
-import { TrackerModule } from './TrackerModule';
 import { ReportTimeline } from './ReportTimeline';
 import { MyTimelineCard } from './MyTimelineCard';
 import { FoodScanCard } from './FoodScanCard';
-import { RiskAssessmentModal } from './RiskAssessmentModal';
 import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { MyCareFilesPanel } from './MyCareFilesPanel';
 import { Logo } from './Logo';
@@ -47,6 +34,23 @@ import { signOutUser, activePlanSections, addMealToLog, getMyOrders, getMyPrescr
 import { calculateNutritionPlan } from '../utils/calculator';
 import { labelMinutes } from './RecommendationsView';
 import { useLanguage } from '../context/LanguageContext';
+import { lazyComponent, PageLoader, prefetchLazyParts } from '../utils/lazyComponent';
+
+// Loaded only when first opened (smaller, faster app start).
+const LeaderboardPage = lazyComponent<typeof import('./LeaderboardPage')['LeaderboardPage']>(() => import('./LeaderboardPage'), 'LeaderboardPage', <PageLoader />);
+const FamilyPage = lazyComponent<typeof import('./FamilyPage')['FamilyPage']>(() => import('./FamilyPage'), 'FamilyPage', <PageLoader />);
+const HealthReportModal = lazyComponent<typeof import('./HealthReportModal')['HealthReportModal']>(() => import('./HealthReportModal'), 'HealthReportModal');
+const SettingsModal = lazyComponent<typeof import('./SettingsModal')['SettingsModal']>(() => import('./SettingsModal'), 'SettingsModal');
+const ProductsModule = lazyComponent<typeof import('./ProductsModule')['ProductsModule']>(() => import('./ProductsModule'), 'ProductsModule', <PageLoader />);
+const FoodScannerModal = lazyComponent<typeof import('./FoodScannerModal')['FoodScannerModal']>(() => import('./FoodScannerModal'), 'FoodScannerModal');
+const MyOrdersModal = lazyComponent<typeof import('./MyOrdersModal')['MyOrdersModal']>(() => import('./MyOrdersModal'), 'MyOrdersModal');
+const DoctorConsultModal = lazyComponent<typeof import('./DoctorConsultModal')['DoctorConsultModal']>(() => import('./DoctorConsultModal'), 'DoctorConsultModal');
+const ClinicalFeedbackModal = lazyComponent<typeof import('./ClinicalFeedbackModal')['ClinicalFeedbackModal']>(() => import('./ClinicalFeedbackModal'), 'ClinicalFeedbackModal');
+const AppFeedbackModal = lazyComponent<typeof import('./AppFeedbackModal')['AppFeedbackModal']>(() => import('./AppFeedbackModal'), 'AppFeedbackModal');
+const RootCauseAssessmentModal = lazyComponent<typeof import('./RootCauseAssessmentModal')['RootCauseAssessmentModal']>(() => import('./RootCauseAssessmentModal'), 'RootCauseAssessmentModal');
+const TrackerModule = lazyComponent<typeof import('./TrackerModule')['TrackerModule']>(() => import('./TrackerModule'), 'TrackerModule', <PageLoader />);
+const AIHealthBots = lazyComponent<typeof import('./AIHealthBots')['AIHealthBots']>(() => import('./AIHealthBots'), 'AIHealthBots');
+const RiskAssessmentModal = lazyComponent<typeof import('./RiskAssessmentModal')['RiskAssessmentModal']>(() => import('./RiskAssessmentModal'), 'RiskAssessmentModal');
 
 interface DashboardProps {
   profile: UserHealthProfile;
@@ -75,6 +79,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // (identity, stats, quick actions). 'reports', 'assessment' + 'store' are
   // always free — 'store' isn't in the primary nav (see navItems below) but
   // is still reachable from Home's quick-actions grid.
+  // Quietly fetch the on-demand screens a few seconds after opening.
+  useEffect(() => { prefetchLazyParts(); }, []);
   const [activeTab, setActiveTab] = useState<'profile' | 'plan' | 'premium' | 'account' | 'reports' | 'assessment' | 'store' | 'tracker' | 'leaderboard' | 'family'>('profile');
   // Pharmacy sub-sections (Shop / Cart / My Orders) opened from the menu or the
   // header cart button; the cart count shown on that button.
@@ -708,7 +714,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           trigger, so this one would just be a second header stacked above
           it otherwise. */}
       {activeTab !== 'profile' && (
-      <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+      <header className="app-topbar md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-zinc-200 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2">
         {/* '⋮' module switcher — lives here, in the one persistent sticky
             header shown on every tab, so it never jumps position when you
             switch tabs or scroll (unlike an inline element placed inside
@@ -755,7 +761,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           home-indicator gesture area on notched phones instead of the
           labels sitting flush against it. */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-zinc-200 px-1 pt-1.5"
+        className="app-bottomnav md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-zinc-200 px-1 pt-1.5"
         style={{ paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom))' }}
       >
         <div className="relative flex items-center">
