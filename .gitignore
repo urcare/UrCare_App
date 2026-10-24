@@ -20,5 +20,3 @@ android/app/src/main/assets/capacitor.config.json
 *.apk
 *.aab
 
-# copied at build time (scripts/copy-lottie-wasm.mjs)
-public/lottie/dotlottie-player.wasm
