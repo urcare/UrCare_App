@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PlanProductSuggest } from './PlanProductSuggest';
 import { CreatePlanPage } from './CreatePlanPage';
+import { SeasonGuideCard } from './SeasonGuideCard';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   CheckCircle2, ChevronRight, ChevronDown,
@@ -678,6 +679,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
             <button type="button" onClick={() => setIsCreatePlanOpen(true)} title={tr('Create my own plan', 'अपना प्लान बनाएं')} className="w-9 h-9 rounded-xl bg-brand-gradient text-white shadow-md shadow-emerald-700/25 flex items-center justify-center cursor-pointer active:scale-95 transition"><Plus className="w-4 h-4" /></button>
           </div>
         </div>
+        <SeasonGuideCard settings={planSettings} tr={tr} onChange={() => setIsSettingsOpen(true)} />
         {planSettings.view === 'meals-exercise' && (
           <button type="button" onClick={() => setIsSettingsOpen(true)} className="w-full text-left text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 cursor-pointer">
             {tr('Showing meals & exercise only — tap to show the full day', 'सिर्फ़ खाना व एक्सरसाइज़ दिख रहे हैं — पूरा दिन देखने के लिए टैप करें')}

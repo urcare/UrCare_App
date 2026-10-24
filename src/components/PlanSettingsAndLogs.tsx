@@ -6,6 +6,7 @@ import { getCachedAccountState, saveAccountState, PlanSettings, DEFAULT_PLAN_SET
 import { getDailyPlan, activePlanSections, getTaskCompletion } from '../utils/supabase';
 import { categoryFor } from './RecommendationsView';
 import { toDateKey } from './DailyCalendar';
+import { SEASONS, MONTH_NAMES, SeasonKey } from './seasonalGuide';
 
 export const PLAN_SETTINGS_EVENT = 'urcare:plan-settings-changed';
 export const getPlanSettings = (): PlanSettings => ({ ...DEFAULT_PLAN_SETTINGS, ...(getCachedAccountState().planSettings || {}) });
@@ -83,6 +84,24 @@ export const PlanSettingsSheet: React.FC<{ open: boolean; onClose: () => void; t
         <div className="text-[11px] font-black uppercase tracking-wider text-zinc-400 mb-2">{tr('Exercises you like', 'पसंदीदा एक्सरसाइज़')}</div>
         <div className="flex flex-wrap gap-2">
           {exercises.map(([k, en, hi]) => <Chip key={k} on={s.exercises.includes(k)} onClick={() => setS({ ...s, exercises: s.exercises.includes(k) ? s.exercises.filter((x) => x !== k) : [...s.exercises, k] })}>{tr(en, hi)}</Chip>)}
+        </div>
+      </div>
+      <div>
+        <div className="text-[11px] font-black uppercase tracking-wider text-zinc-400 mb-2">{tr('Season', 'मौसम')}</div>
+        <div className="flex flex-wrap gap-2">
+          <Chip on={(s.season || 'auto') === 'auto'} onClick={() => setS({ ...s, season: 'auto' })}>{tr('🗓️ Auto (today)', '🗓️ अपने आप (आज)')}</Chip>
+          {(Object.keys(SEASONS) as SeasonKey[]).map((k) => (
+            <Chip key={k} on={s.season === k} onClick={() => setS({ ...s, season: k })}>{SEASONS[k].emoji} {tr(...SEASONS[k].name)}</Chip>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div className="text-[11px] font-black uppercase tracking-wider text-zinc-400 mb-2">{tr('Month', 'महीना')}</div>
+        <div className="flex flex-wrap gap-1.5">
+          <Chip on={(s.month ?? 'auto') === 'auto'} onClick={() => setS({ ...s, month: 'auto' })}>{tr('Auto', 'अपने आप')}</Chip>
+          {MONTH_NAMES.map((m, i) => (
+            <Chip key={m[0]} on={s.month === i} onClick={() => setS({ ...s, month: i })}>{tr(m[0].slice(0, 3), m[1])}</Chip>
+          ))}
         </div>
       </div>
       <div>

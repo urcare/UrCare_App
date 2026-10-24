@@ -30,8 +30,12 @@ export type PlanSettings = {
   diet: 'any' | 'vegetarian' | 'eggetarian' | 'vegan' | 'jain' | 'non-vegetarian';
   exercises: string[];
   view: 'full' | 'meals-exercise';
+  /** 'auto' follows today's date. */
+  season?: 'auto' | 'spring' | 'summer' | 'monsoon' | 'autumn' | 'winter';
+  /** 'auto' or 0–11 (January = 0). */
+  month?: 'auto' | number;
 };
-export const DEFAULT_PLAN_SETTINGS: PlanSettings = { intensity: 'moderate', diet: 'any', exercises: [], view: 'full' };
+export const DEFAULT_PLAN_SETTINGS: PlanSettings = { intensity: 'moderate', diet: 'any', exercises: [], view: 'full', season: 'auto', month: 'auto' };
 
 let cache: AccountAppState = {};
 let pending: Partial<AccountAppState> = {};

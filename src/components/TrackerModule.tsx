@@ -383,6 +383,47 @@ export const TrackerModule: React.FC<TrackerModuleProps> = ({ profile, account, 
           </div>
         </section>
 
+        {/* OVERVIEW — the whole picture at a glance */}
+        {(() => {
+          const planPct = daysSinceStart ? Math.round((planDays / daysSinceStart) * 100) : 0;
+          const feelVals = FEELINGS.map((f) => valueToFace(stored(feelCp, f.id), f.goal)).filter((v) => v >= 0);
+          const mood = feelVals.length ? Math.round(feelVals.reduce((x, y) => x + y, 0) / feelVals.length) : -1;
+          const daysToNext = next ? Math.max(0, next.day - (dayNumber - 1)) : 0;
+          const worse = score.comparable - score.good;
+          const tone = score.comparable === 0 ? 'start' : worse === 0 && planPct >= 60 ? 'good' : worse > score.good || planPct < 30 ? 'attention' : 'ok';
+          const headline: Record<string, [string, string]> = {
+            start: ['Add your readings to start tracking', 'ट्रैकिंग शुरू करने के लिए अपनी रीडिंग जोड़ें'],
+            good: ['Great going — keep it up!', 'बहुत बढ़िया — ऐसे ही चलते रहें!'],
+            ok: ['Good progress — stay consistent', 'अच्छी प्रगति — लगातार बने रहें'],
+            attention: ['Needs attention — follow your plan daily', 'ध्यान दें — रोज़ अपना प्लान फ़ॉलो करें'],
+          };
+          const toneCls = tone === 'good' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : tone === 'attention' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-amber-50 border-amber-200 text-amber-800';
+          const stats: { label: [string, string]; value: string; sub: [string, string] }[] = [
+            { label: ['Readings better', 'बेहतर रीडिंग'], value: score.comparable ? `${score.good}/${score.comparable}` : '—', sub: score.comparable ? ['better or steady', 'बेहतर या स्थिर'] : ['no readings yet', 'अभी कोई रीडिंग नहीं'] },
+            { label: ['Plan followed', 'प्लान फ़ॉलो'], value: `${planPct}%`, sub: [`${planDays} of ${daysSinceStart} days`, `${daysSinceStart} में से ${planDays} दिन`] },
+            { label: ['Next check-in', 'अगला चेक-इन'], value: next ? `${daysToNext}d` : '✓', sub: next ? [next.label[0], next.label[1]] : ['90 days done', '90 दिन पूरे'] },
+            { label: ['Mood today', 'आज का मूड'], value: mood >= 0 ? FACES[mood] : '—', sub: mood >= 0 ? ['from your check-in', 'आपके चेक-इन से'] : ['tap a face below', 'नीचे चेहरा चुनें'] },
+          ];
+          return (
+            <section className="space-y-2.5">
+              <div className="px-0.5">
+                <h2 className="text-base font-black text-zinc-900">{tr('Overview', 'ओवरव्यू')}</h2>
+                <p className="text-[11px] text-zinc-500">{tr('Your progress at a glance.', 'एक नज़र में आपकी प्रगति।')}</p>
+              </div>
+              <div className={`rounded-2xl border px-4 py-3 text-sm font-black ${toneCls}`}>{L(headline[tone])}</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {stats.map((st) => (
+                  <div key={st.label[0]} className="rounded-2xl bg-white border border-zinc-200 p-3 shadow-sm">
+                    <div className="text-[11px] font-black text-zinc-500">{L(st.label)}</div>
+                    <div className="mt-1 text-2xl font-black text-zinc-950 tabular-nums">{st.value}</div>
+                    <div className="text-[10px] text-zinc-400">{L(st.sub)}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
+
         {/* KEY READINGS */}
         <section className="space-y-2.5">
           <div className="flex items-end justify-between px-0.5">

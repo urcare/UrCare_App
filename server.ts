@@ -1508,6 +1508,8 @@ app.post('/api/plan/alternative', requireUser(async (req, res, user) => {
       settings.intensity ? `Preferred workout intensity: ${String(settings.intensity).slice(0, 20)}` : '',
       settings.diet && settings.diet !== 'any' ? `Diet preference: ${String(settings.diet).slice(0, 30)}` : '',
       Array.isArray(settings.exercises) && settings.exercises.length ? `Likes: ${settings.exercises.slice(0, 8).map((x: any) => String(x).slice(0, 20)).join(', ')}` : '',
+      settings.season && settings.season !== 'auto' ? `Season: ${String(settings.season).slice(0, 12)} (use seasonal Indian produce)` : `Current month: ${new Date().toLocaleString('en-IN', { month: 'long' })} (use seasonal Indian produce)`,
+      typeof settings.month === 'number' ? `Month: ${['January','February','March','April','May','June','July','August','September','October','November','December'][settings.month] || ''}` : '',
     ].filter(Boolean).join('. ') : '';
     const avoid = (Array.isArray(exclude) ? exclude : []).slice(0, 8).map((x: any) => String(x).slice(0, 120));
     const { data } = await callAIForJson({
@@ -4034,6 +4036,44 @@ async function startServer() {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`UrCare Full-Stack Server running on http://0.0.0.0:${PORT}`);
   });
+
+  // Weekly "update your readings" reminder — only on the live server (Render
+  // sets RENDER), never from a developer's machine.
+  if (process.env.RENDER || process.env.ENABLE_WEEKLY_REMINDERS === 'true') {
+    setTimeout(sendWeeklyReadingReminders, 60_000);
+    setInterval(sendWeeklyReadingReminders, 6 * 60 * 60 * 1000);
+  }
+}
+
+/** Every user gets one reminder a week (first one a week after sign-up) to
+ *  add this week's sugar, weight and BP, so the tracker shows real progress.
+ *  Goes to the in-app notifications and, through createNotification, to the
+ *  phone as a push. */
+async function sendWeeklyReadingReminders() {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return;
+  try {
+    const idx = await buildUserIndex(supabase);
+    const now = Date.now();
+    let sent = 0;
+    for (const u of idx.byCode.values()) {
+      if (sent >= 500) break; // spread a big user base over several runs
+      const meta = u.app_metadata || {};
+      const last = new Date(meta.reading_reminder_at || u.created_at || 0).getTime();
+      if (now - last < WEEK_MS) continue;
+      await createNotification(
+        supabase, u.id, 'plan',
+        'Time to update your readings 📈',
+        "Add this week's sugar, weight and BP in Plan → My Tracker so you can see your real progress.",
+        { kind: 'reading_reminder', open: 'tracker' },
+      );
+      await supabase.auth.admin.updateUserById(u.id, { app_metadata: { ...meta, reading_reminder_at: new Date(now).toISOString() } });
+      sent++;
+    }
+    if (sent) console.log(`weekly reading reminders sent: ${sent}`);
+  } catch (err) {
+    console.warn('weekly reading reminders failed:', err);
+  }
 }
 
 startServer();

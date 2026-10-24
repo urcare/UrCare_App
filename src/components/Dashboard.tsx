@@ -676,15 +676,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {cartCount > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center">{cartCount}</span>}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('account')}
-              className="p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
-              title={tr('My Profile', 'मेरी प्रोफ़ाइल')}
-            >
-              <User className="w-4 h-4 text-zinc-700" />
-            </button>
-
             {onOpenAdminPortal && (
               <button
                 type="button"
@@ -734,15 +725,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveTab('account')}
-            className="p-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shrink-0"
-            title={tr('Profile', 'प्रोफ़ाइल')}
-          >
-            <User className="w-4 h-4 text-emerald-600 shrink-0" />
-          </button>
-
           <button
             type="button"
             onClick={() => openPharmacy('cart')}
