@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { BuddyCompanion } from './BuddyCompanion';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Settings, Clock,
@@ -925,6 +926,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </>
         )}
       </AnimatePresence>
+
+      {/* UrCare Buddy — walks around every screen */}
+      <BuddyCompanion page={activeTab} />
 
       {/* 4. MAIN CONTENT CONTAINER (Desktop pl-64) */}
       <PullToRefresh onRefresh={() => refreshAccountData()}>

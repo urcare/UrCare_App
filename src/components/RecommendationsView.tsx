@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { buddyReact } from './BuddyCompanion';
 import { PlanProductSuggest } from './PlanProductSuggest';
 import { CreatePlanPage } from './CreatePlanPage';
 import { SeasonGuideCard } from './SeasonGuideCard';
@@ -478,6 +479,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
     setCompletedToday((prev) => ({ ...prev, [taskId]: !prev[taskId] }));
     toggleDailyTask(effectiveUserId, dateKey, taskId);
     if (willBeDone) {
+      buddyReact('happy', tr('Yay! One more step done 🎉', 'वाह! एक और स्टेप पूरा 🎉'));
       setCelebration(celebrationMessages[Math.floor(Math.random() * celebrationMessages.length)]);
       window.setTimeout(() => setCelebration(null), 1600);
     }

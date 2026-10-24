@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { buddyReact } from './BuddyCompanion';
 import {
   Droplets, Gauge, Scale, Activity, FlaskConical, HeartPulse, ChevronDown, Share2, Printer,
   CalendarCheck, GlassWater, Sparkles, FileUp, Check, ArrowDownRight, ArrowUpRight, Minus,
@@ -309,6 +310,18 @@ export const TrackerModule: React.FC<TrackerModuleProps> = ({ profile, account, 
 
   const daysSinceStart = Math.min(dayNumber, 90);
   const planDays = [...activeDays].filter((d) => d >= startDate).length;
+
+  // UrCare Buddy reacts once when the tracker opens: cheers if things are
+  // better, looks worried if readings moved the wrong way.
+  const buddyDone = React.useRef(false);
+  useEffect(() => {
+    if (!isLoaded || buddyDone.current || score.comparable === 0) return;
+    buddyDone.current = true;
+    const worse = score.comparable - score.good;
+    if (worse > 0) buddyReact('sad', tr(`${worse} reading${worse > 1 ? 's' : ''} went the wrong way — let's fix it together 💪`, `${worse} रीडिंग बिगड़ी है — चलो साथ मिलकर ठीक करें 💪`));
+    else buddyReact('happy', tr('Your readings are better or steady — great work! 🎉', 'आपकी रीडिंग बेहतर या स्थिर हैं — बहुत बढ़िया! 🎉'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, score.comparable, score.good]);
 
   // Today's check-in lives in the current checkpoint (Start = baseline).
   const feelCp: CheckpointKey = current.key;

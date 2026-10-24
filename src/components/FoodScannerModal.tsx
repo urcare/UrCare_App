@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { buddyReact } from './BuddyCompanion';
 import { AIResultNotice } from './AIResultNotice';
 import { ensureAIConsent, AI_CONSENT_DECLINED_MESSAGE } from '../utils/aiConsent';
 import {
@@ -200,6 +201,9 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
       }
 
       setScannedResult(data);
+      const sc = Number(data.score);
+      if (data.suitability === 'avoid' || (sc && sc <= 4)) buddyReact('sad', tr('This plate may raise your sugar — try the swaps 👇', 'यह खाना शुगर बढ़ा सकता है — नीचे के विकल्प देखें 👇'));
+      else if (data.suitability === 'excellent' || data.suitability === 'good' || sc >= 7) buddyReact('happy', tr('Great choice for your health! 🥗', 'सेहत के लिए बढ़िया चुनाव! 🥗'));
     } catch (err) {
       console.error(err);
       setError(tr('Could not reach the food scanner. Please check your connection and try scanning again.', 'फूड स्कैनर तक नहीं पहुंच सके। कृपया अपना कनेक्शन जांचें व दोबारा स्कैन करें।'));
