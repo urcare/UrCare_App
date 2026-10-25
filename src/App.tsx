@@ -9,6 +9,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import { AIConsentGate } from './components/AIConsentGate';
 import { AttachmentViewer } from './components/AttachmentViewer';
 import { SplashIntro } from './components/SplashIntro';
+import { AiUseConfirmHost } from './components/AiUseConfirm';
 
 /** The post-onboarding organs / body-map screen — off for now, kept for later. */
 const ENABLE_BODY_MAP_AFTER_ONBOARDING = false;
@@ -19,7 +20,6 @@ import { lazyComponent, PageLoader } from './utils/lazyComponent';
 // Loaded only when first opened (smaller, faster app start).
 const OnboardingFlow = lazyComponent<typeof import('./components/OnboardingFlow')['OnboardingFlow']>(() => import('./components/OnboardingFlow'), 'OnboardingFlow', <PageLoader />);
 const WowCelebration = lazyComponent<typeof import('./components/WowCelebration')['WowCelebration']>(() => import('./components/WowCelebration'), 'WowCelebration');
-const AdminDashboard = lazyComponent<typeof import('./components/AdminDashboard')['AdminDashboard']>(() => import('./components/AdminDashboard'), 'AdminDashboard', <PageLoader />);
 const AccessFlow = lazyComponent<typeof import('./components/AccessFlow')['AccessFlow']>(() => import('./components/AccessFlow'), 'AccessFlow', <PageLoader />);
 
 // A referral link (?ref=CODE) and a scanned profile QR (?add=@name) are
@@ -37,7 +37,6 @@ function MainApp() {
   const [account, setAccount] = useState<UserAccount | null>(null);
   const [showWowCelebration, setShowWowCelebration] = useState(false);
   const [showBodyMap, setShowBodyMap] = useState(false);
-  const [isAdminPortalOpen, setIsAdminPortalOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   // Surfaced on AuthScreen if the native Google sign-in flow (see below)
   // completes but fails — so a failure is visible instead of just silently
@@ -187,20 +186,10 @@ function MainApp() {
     );
   }
 
-  // 1. Admin Portal View
-  if (isAdminPortalOpen) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] text-zinc-950">
-        <AdminDashboard onExitAdmin={() => setIsAdminPortalOpen(false)} />
-      </div>
-    );
-  }
-
   // 2. Auth Flow: If user is not authenticated yet, show Login & Sign Up Screen at the start!
   if (!account) {
     return (
       <AuthScreen
-        onOpenAdmin={() => setIsAdminPortalOpen(true)}
         externalError={nativeAuthError}
       />
     );
@@ -269,7 +258,6 @@ function MainApp() {
         onUpdateProfile={handleUpdateProfile}
         onUpdateAccount={handleUpdateAccount}
         onResetOnboarding={handleResetOnboarding}
-        onOpenAdminPortal={() => setIsAdminPortalOpen(true)}
       />
     );
   }
@@ -279,7 +267,6 @@ function MainApp() {
     <OnboardingFlow
       initialAccount={account}
       onComplete={handleOnboardingComplete}
-      onOpenAdmin={() => setIsAdminPortalOpen(true)}
     />
   );
 }
@@ -292,6 +279,8 @@ export default function App() {
         <AIConsentGate />
         <AttachmentViewer />
         <SplashIntro />
+      {/* "Once a week" popup before any UrCare AI feature (works on every screen) */}
+      <AiUseConfirmHost />
       </ThemeProvider>
     </LanguageProvider>
   );

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { confirmAiUse } from './AiUseConfirm';
 import { AIResultNotice } from './AIResultNotice';
 import { X, Upload, FileText, Check, AlertCircle, RefreshCw, CalendarClock, Sparkles, Files } from 'lucide-react';
 import { uploadCustomDailyPlan, saveMergedDailyPlan, CustomDailyPlanResult, DailyPlanSectionInput } from '../utils/supabase';
@@ -163,6 +164,7 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
       setError(tr('Please choose a photo or PDF of your daily plan first.', 'कृपया पहले अपने डेली प्लान की फोटो या PDF चुनें।'));
       return;
     }
+    if (!(await confirmAiUse('plan_upload', tr))) return;
     playClickSound(700);
     setIsAnalyzing(true);
     setError(null);

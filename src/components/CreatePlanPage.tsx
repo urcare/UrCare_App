@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { confirmAiUse } from './AiUseConfirm';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, PenLine, Plus, Trash2, Copy, Loader2, CheckCircle2, Lock, FileText, Activity, Pill, Utensils, Moon } from 'lucide-react';
 import { createOwnPlan, getAiPlanStatus, UploadedPlan } from '../utils/supabase';
@@ -78,6 +79,7 @@ export const CreatePlanPage: React.FC<CreatePlanPageProps> = ({ isOpen, onClose,
   }, [working, tab]);
 
   const createWithAi = async () => {
+    if (!(await confirmAiUse('ai_plan', tr))) return;
     setWorking(true); setError('');
     const { customPlan, error: err, used } = await createOwnPlan({ mode: 'ai', wishes: wishes.trim() || undefined, language }, dependentId);
     setWorking(false);

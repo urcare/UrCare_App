@@ -19,7 +19,6 @@ import {
   Order, Prescription, BurnActivity, MedicationLogItem 
 } from '../types';
 import AppBackground from './AppBackground';
-import { IS_LOCAL_DEMO } from '../utils/demo';
 import { ProfilePage } from './ProfilePage';
 import { RecommendationsView } from './RecommendationsView';
 import { AccountPage } from './AccountPage';
@@ -49,7 +48,6 @@ const ClinicalFeedbackModal = lazyComponent<typeof import('./ClinicalFeedbackMod
 const AppFeedbackModal = lazyComponent<typeof import('./AppFeedbackModal')['AppFeedbackModal']>(() => import('./AppFeedbackModal'), 'AppFeedbackModal');
 const RootCauseAssessmentModal = lazyComponent<typeof import('./RootCauseAssessmentModal')['RootCauseAssessmentModal']>(() => import('./RootCauseAssessmentModal'), 'RootCauseAssessmentModal');
 const TrackerModule = lazyComponent<typeof import('./TrackerModule')['TrackerModule']>(() => import('./TrackerModule'), 'TrackerModule', <PageLoader />);
-const AIHealthBots = lazyComponent<typeof import('./AIHealthBots')['AIHealthBots']>(() => import('./AIHealthBots'), 'AIHealthBots');
 const RiskAssessmentModal = lazyComponent<typeof import('./RiskAssessmentModal')['RiskAssessmentModal']>(() => import('./RiskAssessmentModal'), 'RiskAssessmentModal');
 
 interface DashboardProps {
@@ -58,7 +56,6 @@ interface DashboardProps {
   onUpdateProfile: (updated: UserHealthProfile) => void;
   onUpdateAccount?: (updated: UserAccount) => void;
   onResetOnboarding: () => void;
-  onOpenAdminPortal?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -67,7 +64,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onUpdateProfile,
   onUpdateAccount,
   onResetOnboarding,
-  onOpenAdminPortal,
 }) => {
   const { t, language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
@@ -116,9 +112,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // persistent header/sidebar (never inline in a tab's scrolling content), so
   // it never jumps position when the tab changes or the page scrolls.
   const [isModuleMenuOpen, setIsModuleMenuOpen] = useState(false);
-  const [isHealthBotsOpen, setIsHealthBotsOpen] = useState(false);
-  // A question from Home's "Ask UrCare" chips, pre-filled in the chat.
-  const [healthBotsPrompt, setHealthBotsPrompt] = useState<string | null>(null);
   // 'Daily Plan', 'UrCare Camera' and 'Profile' are deliberately left out
   // here — they already have their own permanent spot in the bottom/side
   // nav bar, so listing them again in this drawer was pure duplication.
@@ -135,9 +128,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     // onClick). Used to be its own persistent sidebar card; moved in here to
     // declutter the sidebar.
     { id: 'doctor_hotline' as const, label: tr('Doctor Hotline', 'डॉक्टर हॉटलाइन'), icon: Stethoscope },
-    // Not a tab — opens the AI chat (six AI assistants). "(AI)" stays in the
-    // name so nobody mistakes it for real doctors chatting.
-    { id: 'ai_bots' as const, label: IS_LOCAL_DEMO ? tr('UrCare Medical Team', 'UrCare मेडिकल टीम') : tr('UrCare Medical Team (AI)', 'UrCare मेडिकल टीम (AI)'), icon: Bot },
     // Not a tab — opens the app-feedback form (what helps / what is missing).
     { id: 'app_feedback' as const, label: tr('Give Feedback', 'प्रतिक्रिया दें'), icon: MessageSquareHeart },
     // Not a tab — brings the UrCare Buddy back if it was hidden.
@@ -685,17 +675,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {cartCount > 0 && <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center">{cartCount}</span>}
             </button>
 
-            {onOpenAdminPortal && (
-              <button
-                type="button"
-                onClick={onOpenAdminPortal}
-                className="p-2.5 rounded-xl text-xs font-bold bg-zinc-100 text-zinc-700 hover:text-black hover:bg-zinc-200 border border-zinc-200 transition-all cursor-pointer"
-                title={tr('Admin Portal', 'एडमिन पोर्टल')}
-              >
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              </button>
-            )}
-
             <button
               type="button"
               onClick={() => setShowLogoutConfirm(true)}
@@ -865,7 +844,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <nav className="module-menu flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-1">
                 {moduleMenuItems.map((item) => {
                   const ItemIcon = item.icon;
-                  const isActive = item.id !== 'settings' && item.id !== 'logout' && item.id !== 'doctor_hotline' && item.id !== 'app_feedback' && item.id !== 'ai_bots' && activeTab === (item.id as typeof activeTab);
+                  const isActive = item.id !== 'settings' && item.id !== 'logout' && item.id !== 'doctor_hotline' && item.id !== 'app_feedback' && activeTab === (item.id as typeof activeTab);
                   return (
                     <React.Fragment key={item.id}>
                     <button
@@ -879,8 +858,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           handleOpenDoctorConsult();
                         } else if (item.id === 'app_feedback') {
                           setIsAppFeedbackOpen(true);
-                        } else if (item.id === 'ai_bots') {
-                          setIsHealthBotsOpen(true);
                         } else if (item.id === 'buddy') {
                           showBuddy();
                           buddyReact('wave', tr("Hi! I'm back 👋", 'हाय! मैं वापस आ गई 👋'));
@@ -957,7 +934,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onOpenReports={() => setActiveTab('reports')}
             onOpenAssessment={() => setIsAssessmentModalOpen(true)}
             onOpenMoreMenu={() => setIsModuleMenuOpen(true)}
-            onAskUrCare={(prompt) => { setHealthBotsPrompt(prompt); setIsHealthBotsOpen(true); }}
           />
         ) : activeTab === 'family' ? (
           <FamilyPage
@@ -1268,16 +1244,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           onOpenDoctorConsult={() => handleOpenDoctorConsult()}
           onLogOut={() => { setIsSettingsOpen(false); setShowLogoutConfirm(true); }}
           onAccountDeleted={() => { setIsSettingsOpen(false); handleLogout(); }}
-        />
-      )}
-
-      {isHealthBotsOpen && (
-        <AIHealthBots
-          userId={account.uid}
-          initialBotId={healthBotsPrompt ? 'sharma' : undefined}
-          initialPrompt={healthBotsPrompt || undefined}
-          onClose={() => { setIsHealthBotsOpen(false); setHealthBotsPrompt(null); }}
-          onOpenCareTeam={() => { setIsHealthBotsOpen(false); handleOpenDoctorConsult(); }}
         />
       )}
 

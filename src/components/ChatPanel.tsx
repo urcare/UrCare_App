@@ -23,6 +23,8 @@ const TypingDots: React.FC = () => (
 interface ChatPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  /** A question to pre-fill (e.g. from Home's "Ask UrCare" chips). */
+  initialDraft?: string;
 }
 
 function formatTime(iso: string): string {
@@ -51,13 +53,14 @@ function formatDayLabel(iso: string, tr: (en: string, hi: string) => string): st
  *  ones, and a working call button that dials the admin-set Care Team phone
  *  number. Polls every 2.5s while open (simple, no Supabase Realtime setup
  *  required) so a reply — and the typing indicator — show up live. */
-export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose }) => {
+export const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose, initialDraft }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [draft, setDraft] = useState('');
+  useEffect(() => { if (isOpen && initialDraft) setDraft(initialDraft); }, [isOpen, initialDraft]);
   const [attachedFile, setAttachedFile] = useState<{ url: string; name: string; type: string } | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [careTeamTyping, setCareTeamTyping] = useState(false);

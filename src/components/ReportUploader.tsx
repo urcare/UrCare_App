@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { confirmAiUse } from './AiUseConfirm';
 import { AIResultNotice } from './AIResultNotice';
 import { ensureAIConsent, AI_CONSENT_DECLINED_MESSAGE } from '../utils/aiConsent';
 import { 
@@ -146,6 +147,8 @@ export const ReportUploader: React.FC<ReportUploaderProps> = ({
       setError(lang2 === 'hi' ? AI_CONSENT_DECLINED_MESSAGE.hi : AI_CONSENT_DECLINED_MESSAGE.en);
       return;
     }
+
+    if (!(await confirmAiUse('report', tr))) return;
 
     playClickSound(750);
     setIsAnalyzing(true);

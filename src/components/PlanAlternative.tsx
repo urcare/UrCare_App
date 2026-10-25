@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { confirmAiUse } from './AiUseConfirm';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
 import { UserHealthProfile } from '../types';
@@ -45,6 +46,7 @@ export const PlanAlternative: React.FC<PlanAlternativeProps> = ({ stepId, dateKe
     setError(null);
     if (index < options.length - 1) { setIndex(index + 1); persist(alts, index + 1); return; }
     if (!(await ensureAIConsent())) return;
+    if (!(await confirmAiUse('alternative', tr))) return;
     setLoading(true);
     try {
       const res = await authedFetch('/api/plan/alternative', {

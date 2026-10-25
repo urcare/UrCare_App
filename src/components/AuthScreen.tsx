@@ -9,7 +9,6 @@ import { LEGAL_PAGES, openExternalPage } from '../utils/externalPages';
 import { signInWithGoogle, signInWithApple, signInWithEmail, signUpWithEmail, sendPasswordReset, isSupabaseConfigured } from '../utils/supabase';
 
 interface AuthScreenProps {
-  onOpenAdmin?: () => void;
   /** Set when the native app's own Google sign-in flow (a real browser tab,
    *  since Google blocks embedded WebViews — see completeNativeOAuthSignIn
    *  in utils/supabase.ts) finishes and failed. Without this, a failure
@@ -20,7 +19,7 @@ interface AuthScreenProps {
   externalError?: string | null;
 }
 
-export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalError }) => {
+export const AuthScreen: React.FC<AuthScreenProps> = ({ externalError }) => {
   const { language, setLanguage } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
   const [authModal, setAuthModal] = useState<'signin' | 'signup' | null>(null);
@@ -214,18 +213,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onOpenAdmin, externalErr
           </button>
         </div>
 
-        {/* Hidden / Subtle Admin access */}
-        {onOpenAdmin && (
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={onOpenAdmin}
-              className="text-[10px] text-white/40 hover:text-white/70 font-bold transition-colors cursor-pointer"
-            >
-              {tr('Admin Console Portal', 'एडमिन कंसोल पोर्टल')}
-            </button>
-          </div>
-        )}
       </footer>
 
       {/* ========================================================================= */}

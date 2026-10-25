@@ -127,7 +127,6 @@ interface ProfilePageProps {
    *  uses, so it needs its own trigger for the same drawer. */
   onOpenMoreMenu: () => void;
   /** Opens the AI chat with this question ready to send. */
-  onAskUrCare?: (prompt: string) => void;
 }
 
 /** "Home" — a calm, focused landing summary: today's next step, this
@@ -144,7 +143,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onOpenReports,
   onOpenAssessment,
   onOpenMoreMenu,
-  onAskUrCare,
 }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
@@ -153,6 +151,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   // Care Team Chat — see ChatPanel.
   const [isChatOpen, setIsChatOpen] = useState(false);
+  // A question from the "Ask UrCare" chips, pre-filled in the care-team chat.
+  const [chatDraft, setChatDraft] = useState('');
   const [chatUnread, setChatUnread] = useState(false);
   // Care Team Status — a WhatsApp-Status-style feed, admin-posted only (see
   // StatusViewer). "Seen" is tracked per-device via localStorage, same as
@@ -481,7 +481,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               </div>
           </div>
         </div>
-        <HealthOverviewCard embedded profile={profile} tr={tr} onAsk={(q) => onAskUrCare?.(q)} onOpenAssessment={onOpenAssessment} />
+        <HealthOverviewCard embedded profile={profile} tr={tr} onAsk={(q) => { setChatDraft(q); setChatUnread(false); setIsChatOpen(true); }} onOpenAssessment={onOpenAssessment} />
         </motion.div>
 
         {/* Plan-continue card — cycles through every real condition-derived
@@ -688,7 +688,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         onUnreadCountChange={setUnreadCount}
       />
 
-      <ChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      <ChatPanel isOpen={isChatOpen} initialDraft={chatDraft} onClose={() => { setIsChatOpen(false); setChatDraft(''); }} />
 
       {isStatusOpen && statuses.length > 0 && (
         <StatusViewer statuses={statuses} onClose={handleCloseStatusViewer} tr={tr} />

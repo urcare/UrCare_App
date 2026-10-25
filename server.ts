@@ -629,66 +629,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ============================================================================
-// AI HEALTH BOTS — six AI chat personas (three-dots menu → "AI Health Bots").
-// Every one is clearly an AI ("... Bot", AI badge in the UI) with a made-up
-// name — never a real person. Each reply is grounded in the signed-in user's
-// own data (health profile, conditions, recent lab findings) and follows the
-// same safety rules: no diagnosis, no prescription-drug or dose changes,
-// emergencies → 112, and a nudge to the real care team when it matters.
-// ============================================================================
-type HealthBotId = 'sharma' | 'mehra' | 'joshi' | 'iyer' | 'priya' | 'arjun';
-
-const HEALTH_BOT_PERSONAS: Record<HealthBotId, { name: string; role: string; style: string }> = {
-  sharma: {
-    name: 'MBBS Health Bot',
-    role: 'an AI general-health assistant trained on general medicine (MBBS curriculum) knowledge',
-    style: 'A man (use masculine Hindi forms like "karunga", "bataunga"). Calm, methodical family-doctor manner. Starts by understanding symptoms (onset, duration, severity), then explains in simple words.',
-  },
-  mehra: {
-    name: 'Diabetes & Sugar Bot',
-    role: 'an AI diabetes and blood-sugar assistant trained on general medicine (MBBS curriculum) and diabetology knowledge',
-    style: 'A woman (use feminine Hindi forms like "karungi", "bataungi"). Focused and data-driven about blood sugar: fasting/post-meal values, HbA1c, meal timing, hypoglycemia signs. Encouraging but precise.',
-  },
-  joshi: {
-    name: 'Ayurveda Bot',
-    role: 'an AI Ayurveda assistant trained on Ayurveda (BAMS curriculum) knowledge',
-    style: 'A man (use masculine Hindi forms like "karunga", "bataunga"). Warm, traditional vaidya manner. Talks about dinacharya (daily routine), digestion (agni), seasonal eating and simple home practices, always alongside modern care.',
-  },
-  iyer: {
-    name: 'Gut & Metabolism Bot',
-    role: 'an AI Ayurveda assistant trained on Ayurveda (BAMS curriculum) knowledge, focused on gut health and metabolism',
-    style: 'A woman (use feminine Hindi forms like "karungi", "bataungi"). Gentle and analytical. Connects digestion, sleep and stress to metabolic health; suggests food-first, low-risk Ayurvedic habits.',
-  },
-  priya: {
-    name: 'Diet Bot',
-    role: 'an AI diet and nutrition coach',
-    style: 'A woman (use feminine Hindi forms like "karungi", "bataungi"). Friendly, practical Indian-kitchen coach. Gives concrete meal ideas with portions (roti, dal, sabzi, millets), plate method, and easy swaps based on the user’s diet preference.',
-  },
-  arjun: {
-    name: 'Fitness Bot',
-    role: 'an AI fitness, yoga and lifestyle coach',
-    style: 'A man (use masculine Hindi forms like "karunga", "bataunga"). Energetic and motivating. Gives safe, beginner-friendly walking, strength and yoga routines with sets/minutes, adjusted to the user’s conditions and activity level.',
-  },
-};
-
-const HEALTH_BOT_RULES = `Safety rules (always follow):
-- You are an AI, not a human and not a licensed doctor. If asked whether you are a real person or doctor, say clearly that you are an AI health assistant in the UrCare app.
-- Never give a diagnosis as certain; say what a finding "may suggest" and recommend confirming with a doctor.
-- Never tell the user to start, stop, skip, reduce, increase or re-time ANY prescription medicine or insulin — not even "slightly" or "maybe". If a medicine could be involved (e.g. low sugar on insulin), say their doctor must review the dose soon and point them to the care team. Ayurvedic herbs/supplements: mention possible interactions (especially with diabetes/BP medicines) and advise checking with their doctor first.
-- Emergency signs (chest pain, severe breathlessness, fainting, blood sugar below 70 mg/dL with symptoms or above 300 mg/dL, signs of stroke, very high BP with headache/vision problems): tell them to call 112 or go to the nearest hospital immediately.
-- When something needs a real professional, suggest the UrCare care team: "Profile → Care Team chat" or the Doctor Hotline in the app menu.
-How to talk:
-- Understand Hindi, Hinglish (Hindi in English letters) and English, including typos and mixed words. Reply in the language named at the end of the user's message.
-- Address the user according to the gender in their data (Hindi/Hinglish verb forms like "le rahe hain" for a man, "le rahi hain" for a woman); if unknown, use neutral phrasing.
-- Chat like a caring human expert on WhatsApp: warm, natural, a little personal (use their first name now and then), never robotic. React to what they said before giving advice.
-- Short: usually 3-6 sentences or a short list, under about 120 words. Go longer only if they ask for detail or a full plan.
-- Plain chat text: no headings, tables or italics; **bold** for at most two key words; "- " for short lists.
-- Personalise with their data below and say plainly what in it is concerning and why.
-- If you need more information, ask ONE clear follow-up question at the end instead of guessing.
-- Mention the AI/doctor/emergency notes only when relevant to this message — not in every reply.`;
-
-async function buildHealthBotContext(supabase: SupabaseClient, userId: string): Promise<string> {
+// What UrCare knows about a person (profile, conditions, medicines, sugar/BP,
+// lab findings) as plain text — the context for the AI plan.
+async function buildUserHealthContext(supabase: SupabaseClient, userId: string): Promise<string> {
   const [{ data: profile }, { data: hp }, { data: reports }] = await Promise.all([
     supabase.from('profiles').select('full_name').eq('user_id', userId).maybeSingle(),
     supabase.from('health_profiles').select('age, gender, height, weight, target_weight_kg, goal, diet_preference, existing_concerns, activity_level, extra_data').eq('user_id', userId).maybeSingle(),
@@ -721,132 +664,6 @@ async function buildHealthBotContext(supabase: SupabaseClient, userId: string): 
   if (!reports?.length) lines.push('No lab reports uploaded yet.');
   return lines.join('\n');
 }
-
-/** Free-text chat reply: Claude first, Groq as the fallback (same pattern as
- *  callAIForJson, but for plain conversational text). */
-async function callAIChat(system: string, messages: { role: 'user' | 'assistant'; content: string }[]): Promise<string> {
-  const claude = getClaudeClient();
-  const groq = getGroqClient();
-  if (claude) {
-    try {
-      const model = CLAUDE_MODELS.heavy;
-      const response = await claude.messages.create({
-        model,
-        max_tokens: 1024,
-        // The system prompt (persona + rules + this user's data) and the
-        // earlier turns repeat on every message of a chat — cache them so
-        // each new turn pays ~10% for that repeated part.
-        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-        cache_control: { type: 'ephemeral' },
-        messages,
-        ...(!model.startsWith('claude-haiku') ? { output_config: { effort: 'low' as const } } : {}),
-      });
-      if (response.stop_reason === 'refusal') throw new Error('Claude declined this chat turn');
-      const text = response.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map((b) => b.text).join('\n').trim();
-      if (text) return text;
-      throw new Error('Claude returned no text');
-    } catch (err) {
-      if (!groq) throw err;
-      console.error('callAIChat: Claude failed, falling back to Groq —', extractDebugReason(err));
-    }
-  }
-  if (!groq) throw new Error('No AI provider is configured.');
-  // The larger model for chat: it follows the safety and language rules far
-  // more reliably than the small one used for short structured answers.
-  const completion = await groq.chat.completions.create({
-    model: GROQ_CHAT_MODEL,
-    max_completion_tokens: 1500,
-    temperature: 0.6,
-    messages: [{ role: 'system', content: system }, ...messages],
-  });
-  return completion.choices[0]?.message?.content?.trim() || '';
-}
-
-app.post('/api/health-bots/chat', requireUser(async (req, res, user) => {
-  try {
-    const { botId, messages } = req.body as { botId?: string; messages?: { role: string; content: string }[] };
-    const persona = HEALTH_BOT_PERSONAS[botId as HealthBotId];
-    if (!persona) return res.status(400).json({ error: 'Unknown assistant.' });
-    if (!isAIConfigured()) return res.status(503).json({ error: 'The assistant is not available right now. Please try again later.' });
-    // Last 20 turns, user/assistant only, trimmed — must start with a user turn.
-    let history = (Array.isArray(messages) ? messages : [])
-      .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
-      .slice(-12)
-      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content.slice(0, 3000) }));
-    while (history.length && history[0].role !== 'user') history = history.slice(1);
-    if (!history.length || history[history.length - 1].role !== 'user') return res.status(400).json({ error: 'Please type a message.' });
-
-    // Models often answer Roman-script Hindi ("meri sugar high hai") in
-    // Devanagari — detect the script/language of the latest message and say
-    // exactly which one to reply in.
-    const lastText = history[history.length - 1].content;
-    const replyLanguage = /[\u0900-\u097F]/.test(lastText)
-      ? 'Hindi in Devanagari script'
-      : /\b(hai|hain|kya|kyu|kyun|kaise|kese|meri|mera|mere|mujhe|karu|karun|karna|nahi|nhi|aap|ap|hu|hoon|ho|raha|rahi|batao|bataiye|kab|kitna|kitni|kuch|sab|accha|acha|theek|thik)\b/i.test(lastText)
-      ? 'Hinglish — Hindi written in English (Roman) letters, like "aapki fasting sugar thodi high hai". Do NOT use Devanagari script'
-      : 'English';
-    const supabase = getSupabaseAdmin();
-    const context = supabase ? await buildHealthBotContext(supabase, user.id) : 'No health data available.';
-    const system = `You are "${persona.name}", ${persona.role}, inside the UrCare metabolic-health app (India).
-Personality: ${persona.style}
-
-${HEALTH_BOT_RULES}
-
-The user's own health data from their UrCare account (use it, but don't recite it all back):
-${context}`;
-    const genderLine = /Gender: male/i.test(context)
-      ? ' The user is a man (masculine verb forms).'
-      : /Gender: female/i.test(context) ? ' The user is a woman (feminine verb forms).' : '';
-    const sent = history.map((m, i) => (i === history.length - 1
-      ? { ...m, content: `${m.content}\n\n[Reply language: ${replyLanguage}.${genderLine} Never suggest changing any medicine or insulin dose or timing.]` }
-      : m));
-    const reply = await callAIChat(system, sent);
-    if (!reply) return res.status(502).json({ error: 'The assistant could not reply right now. Please try again.' });
-    // Saved to the account so the chat shows on every device. Before the
-    // health_bot_messages table exists (supabase/patches.sql §22) this just
-    // reports stored:false and the app keeps the chat on the device.
-    let stored = false;
-    if (supabase) {
-      const now = Date.now();
-      const { error } = await supabase.from('health_bot_messages').insert([
-        { user_id: user.id, bot_id: botId, role: 'user', content: lastText, created_at: new Date(now - 1).toISOString() },
-        { user_id: user.id, bot_id: botId, role: 'assistant', content: reply, created_at: new Date(now).toISOString() },
-      ]);
-      stored = !error;
-      if (error && !/does not exist|schema cache/i.test(error.message)) console.error('Could not save bot chat:', error.message);
-    }
-    return res.json({ reply, stored });
-  } catch (error) {
-    console.error('Health bot chat failed:', error);
-    return res.status(500).json({ error: 'The assistant could not reply right now. Please try again.', debugReason: extractDebugReason(error) });
-  }
-}));
-
-// The signed-in user's saved bot chats (last 80 messages per bot).
-app.get('/api/health-bots/history', requireUser(async (req, res, user) => {
-  const supabase = getSupabaseAdmin();
-  if (!supabase) return res.json({ stored: false, chats: {} });
-  const { data, error } = await supabase.from('health_bot_messages')
-    .select('bot_id, role, content, created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: true })
-    .limit(2000);
-  if (error) return res.json({ stored: false, chats: {} });
-  const chats: Record<string, { role: string; content: string; at: string }[]> = {};
-  for (const row of data || []) {
-    (chats[row.bot_id] ||= []).push({ role: row.role, content: row.content, at: row.created_at });
-  }
-  for (const id of Object.keys(chats)) chats[id] = chats[id].slice(-80);
-  return res.json({ stored: true, chats });
-}));
-
-app.delete('/api/health-bots/history', requireUser(async (req, res, user) => {
-  const botId = typeof req.query.botId === 'string' ? req.query.botId : '';
-  if (!HEALTH_BOT_PERSONAS[botId as HealthBotId]) return res.status(400).json({ error: 'Unknown assistant.' });
-  const supabase = getSupabaseAdmin();
-  if (supabase) await supabase.from('health_bot_messages').delete().eq('user_id', user.id).eq('bot_id', botId);
-  return res.json({ success: true });
-}));
 
 // ----------------------------------------------------------------------------
 // DAILY QUOTE — one real Groq-generated line per calendar day, cached in
@@ -1204,7 +1021,7 @@ const MAX_REPORTS_PER_USER = 2;
 app.post('/api/analyze-report', requireUser(async (req, res, user) => {
   try {
     const { imageBase64, mimeType = 'image/jpeg', reportText, reportType } = req.body;
-    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id)) return;
+    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id, 'report')) return;
     if (!isAIConfigured()) {
       return res.status(503).json({ analysisFailed: true, rejectionReason: 'The scanner is not configured right now. Please try again later.' });
     }
@@ -1354,7 +1171,7 @@ MANDATORY OUTPUT SHAPE — your JSON MUST always contain ALL EIGHT top-level key
       }
     }
 
-    await recordAiUse(getSupabaseAdmin(), user.id);
+    await recordAiUse(getSupabaseAdmin(), user.id, 'report');
     return res.json({
       ...parsed,
       id: reportId,
@@ -1381,7 +1198,7 @@ MANDATORY OUTPUT SHAPE — your JSON MUST always contain ALL EIGHT top-level key
 app.post('/api/analyze-food', requireUser(async (req, res, user) => {
   try {
     const { imageBase64, description, mealCategory = 'lunch', profile, language } = req.body;
-    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id)) return;
+    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id, 'food')) return;
     const replyInHindi = language === 'hi';
 
     const profileContext = profile
@@ -1477,7 +1294,7 @@ Call the record_food_analysis tool exactly once with the complete result.`;
       }
     }
 
-    if (parsed?.isFood !== false) await recordAiUse(getSupabaseAdmin(), user.id);
+    if (parsed?.isFood !== false) await recordAiUse(getSupabaseAdmin(), user.id, 'food');
     return res.json(parsed);
   } catch (error: any) {
     console.error('Error analyzing food:', error);
@@ -1496,7 +1313,7 @@ Call the record_food_analysis tool exactly once with the complete result.`;
 app.post('/api/plan/alternative', requireUser(async (req, res, user) => {
   try {
     const { title, body, kind, exclude = [], language, profile, settings } = req.body || {};
-    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id)) return;
+    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id, 'alternative')) return;
     if (!title || (kind !== 'meal' && kind !== 'exercise')) return res.status(400).json({ error: 'A meal or exercise step is required.' });
     if (!isAIConfigured()) return res.status(503).json({ error: 'AI is not available right now.' });
     const ctx = profile ? [
@@ -1535,7 +1352,7 @@ app.post('/api/plan/alternative', requireUser(async (req, res, user) => {
         additionalProperties: false,
       },
     });
-    await recordAiUse(getSupabaseAdmin(), user.id);
+    await recordAiUse(getSupabaseAdmin(), user.id, 'alternative');
     res.json({ title: data.title, body: data.body, why: data.why, calories: data.calories ?? null });
   } catch (error: any) {
     console.error('plan alternative failed:', error);
@@ -1677,7 +1494,7 @@ async function persistCustomDailyPlan(
 app.post('/api/analyze-daily-plan', requireUser(async (req, res, user) => {
   try {
     const { imageBase64, mimeType = 'image/jpeg', persist = true, dependentId } = req.body as { imageBase64?: string; mimeType?: string; persist?: boolean; dependentId?: string };
-    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id)) return;
+    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id, 'plan_upload')) return;
     if (!imageBase64) {
       return res.json({ isValidPlan: false, rejectionReason: 'Please upload a photo or PDF of your daily plan.' });
     }
@@ -1758,7 +1575,7 @@ Call the record_daily_plan tool exactly once with the complete result.`;
     );
 
     const supabase = getSupabaseAdmin();
-    if (supabase) await recordAiUse(supabase, user.id);
+    if (supabase) await recordAiUse(supabase, user.id, 'plan_upload');
     if (!supabase) {
       return res.json({ isValidPlan: true, uploadedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString(), sections: finalSections });
     }
@@ -1817,7 +1634,7 @@ app.post('/api/save-daily-plan', requireUser(async (req, res, user) => {
     if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
     const actingUserId = await resolveActingUserId(supabase, user.id, dependentId);
     const saved = await persistCustomDailyPlan(supabase, { id: actingUserId }, staggered, typeof sourceImageUrl === 'string' ? sourceImageUrl : null);
-    await recordAiUse(supabase, user.id);
+    await recordAiUse(supabase, user.id, 'plan_upload');
     return res.json({ isValidPlan: true, ...saved });
   } catch (error) {
     console.error('Error saving merged daily plan:', error);
@@ -1864,57 +1681,69 @@ app.put('/api/custom-daily-plan', requireUser(async (req, res, user) => {
 }));
 
 // ----------------------------------------------------------------------------
-// AI LIMIT — anything UrCare AI generates for a person (report analysis, food
-// scan, plan upload reading, AI plan, meal/exercise alternative) is limited
-// to AI_WEEKLY_LIMIT per user per rolling 7 days. Kept in app_metadata.ai_uses
-// (timestamps); admins aren't limited. Chat replies aren't counted.
+// AI LIMIT — each UrCare AI feature can be used once per user per 7 days
+// (rolling): report analysis, food scan, plan upload, AI plan and the
+// meal/exercise alternative. Kept in app_metadata.ai_uses_by[feature]
+// (timestamps); admins aren't limited. Keeps AI cost low and predictable.
 // ----------------------------------------------------------------------------
-const AI_WEEKLY_LIMIT = 3;
+type AiFeature = 'report' | 'food' | 'plan_upload' | 'ai_plan' | 'alternative';
+const AI_FEATURES: AiFeature[] = ['report', 'food', 'plan_upload', 'ai_plan', 'alternative'];
+const AI_PER_WEEK = 1;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const AI_FEATURE_NAME: Record<AiFeature, string> = {
+  report: 'report analysis', food: 'food scan', plan_upload: 'plan upload', ai_plan: 'AI plan', alternative: 'AI alternative',
+};
 
-async function aiQuota(supabase: any, userId: string): Promise<{ ok: boolean; used: number; remaining: number; nextAt: string | null; uses: string[]; meta: any }> {
+async function aiQuota(supabase: any, userId: string, feature: AiFeature): Promise<{ ok: boolean; remaining: number; nextAt: string | null; uses: string[]; meta: any }> {
   const u = await getAuthUser(supabase, userId);
   const meta = u?.app_metadata || {};
   const since = Date.now() - WEEK_MS;
-  const uses: string[] = (Array.isArray(meta.ai_uses) ? meta.ai_uses : []).filter((t: string) => new Date(t).getTime() > since).sort();
-  if (meta.role === 'admin') return { ok: true, used: uses.length, remaining: AI_WEEKLY_LIMIT, nextAt: null, uses, meta };
-  const remaining = Math.max(0, AI_WEEKLY_LIMIT - uses.length);
+  const all = meta.ai_uses_by && typeof meta.ai_uses_by === 'object' ? meta.ai_uses_by : {};
+  const uses: string[] = (Array.isArray(all[feature]) ? all[feature] : []).filter((t: string) => new Date(t).getTime() > since).sort();
+  if (meta.role === 'admin') return { ok: true, remaining: AI_PER_WEEK, nextAt: null, uses, meta };
+  const remaining = Math.max(0, AI_PER_WEEK - uses.length);
   const nextAt = remaining === 0 && uses[0] ? new Date(new Date(uses[0]).getTime() + WEEK_MS).toISOString() : null;
-  return { ok: remaining > 0, used: uses.length, remaining, nextAt, uses, meta };
+  return { ok: remaining > 0, remaining, nextAt, uses, meta };
 }
 
-/** Counts one AI generation for the user (call only after it succeeded). */
-async function recordAiUse(supabase: any, userId: string) {
+/** Counts one use of an AI feature (call only after it succeeded). */
+async function recordAiUse(supabase: any, userId: string, feature: AiFeature) {
   try {
-    const q = await aiQuota(supabase, userId);
-    await supabase.auth.admin.updateUserById(userId, { app_metadata: { ...q.meta, ai_uses: [...q.uses, new Date().toISOString()].slice(-20) } });
+    const q = await aiQuota(supabase, userId, feature);
+    const all = q.meta.ai_uses_by && typeof q.meta.ai_uses_by === 'object' ? q.meta.ai_uses_by : {};
+    await supabase.auth.admin.updateUserById(userId, { app_metadata: { ...q.meta, ai_uses_by: { ...all, [feature]: [...q.uses, new Date().toISOString()].slice(-5) } } });
   } catch (err) {
     console.warn('recordAiUse failed:', err);
   }
 }
 
-/** Stops the request with a friendly message when the weekly AI limit is used up. */
-async function blockIfAiLimitReached(res: any, supabase: any, userId: string): Promise<boolean> {
+/** Stops the request with a friendly message when this week's use is taken. */
+async function blockIfAiLimitReached(res: any, supabase: any, userId: string, feature: AiFeature): Promise<boolean> {
   if (!supabase) return false;
-  const q = await aiQuota(supabase, userId);
+  const q = await aiQuota(supabase, userId, feature);
   if (q.ok) return false;
   const when = q.nextAt ? new Date(q.nextAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'next week';
-  const msg = `You have used your ${AI_WEEKLY_LIMIT} UrCare AI uses for this week. You can use AI again from ${when}.`;
-  res.status(429).json({ quotaExceeded: true, error: msg, rejectionReason: msg, analysisFailed: true, isValidReport: null, isValidPlan: false, nextAt: q.nextAt });
+  const msg = `You have already used this week's ${AI_FEATURE_NAME[feature]}. You can use it again on ${when}.`;
+  res.status(429).json({ quotaExceeded: true, feature, error: msg, rejectionReason: msg, analysisFailed: true, isValidReport: null, isValidPlan: false, nextAt: q.nextAt });
   return true;
 }
 
+/** Each AI feature: available now, or the date it opens again. */
 app.get('/api/ai-quota', requireUser(async (_req, res, user) => {
   const supabase = getSupabaseAdmin();
-  if (!supabase) return res.json({ limit: AI_WEEKLY_LIMIT, remaining: AI_WEEKLY_LIMIT, used: 0, nextAt: null });
-  const q = await aiQuota(supabase, user.id);
-  res.json({ limit: AI_WEEKLY_LIMIT, remaining: q.remaining, used: q.used, nextAt: q.nextAt });
+  const out: Record<string, { available: boolean; nextAt: string | null }> = {};
+  for (const f of AI_FEATURES) {
+    if (!supabase) { out[f] = { available: true, nextAt: null }; continue; }
+    const q = await aiQuota(supabase, user.id, f);
+    out[f] = { available: q.ok, nextAt: q.nextAt };
+  }
+  res.json({ perWeek: AI_PER_WEEK, features: out, aiConfigured: isAIConfigured() });
 }));
 
 // CREATE MY OWN PLAN (Plan → "+"). Manual: the steps the user typed.
 // AI: a full day built from everything the app knows about the person
-// (profile, conditions, medicines, sugar/BP, lab reports, routine). The AI
-// plan is free once per account (app_metadata.ai_plan_used_at). Either way
+// (profile, conditions, medicines, sugar/BP, lab reports, routine) — once a
+// week (see AI LIMIT). Either way
 // it is saved as the user's own plan ("My plan", 35 days), editable later.
 const cleanPlanSections = (sections: any[]) => sections
   .filter((s) => s && typeof s.title === 'string' && s.title.trim())
@@ -1930,8 +1759,8 @@ const cleanPlanSections = (sections: any[]) => sections
 app.get('/api/custom-plan/ai-status', requireUser(async (_req, res, user) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.json({ used: false, available: false });
-  const q = await aiQuota(supabase, user.id);
-  res.json({ used: !q.ok, remaining: q.remaining, limit: AI_WEEKLY_LIMIT, nextAt: q.nextAt, available: isAIConfigured() });
+  const q = await aiQuota(supabase, user.id, 'ai_plan');
+  res.json({ used: !q.ok, remaining: q.remaining, limit: AI_PER_WEEK, nextAt: q.nextAt, available: isAIConfigured() });
 }));
 
 app.post('/api/custom-plan/create', requireUser(async (req, res, user) => {
@@ -1946,9 +1775,9 @@ app.post('/api/custom-plan/create', requireUser(async (req, res, user) => {
       steps = cleanPlanSections(Array.isArray(sections) ? sections : []);
       if (!steps.length) return res.status(400).json({ error: 'Add at least one step with a title.' });
     } else if (mode === 'ai') {
-      if (await blockIfAiLimitReached(res, supabase, user.id)) return;
+      if (await blockIfAiLimitReached(res, supabase, user.id, 'ai_plan')) return;
       if (!isAIConfigured()) return res.status(503).json({ error: 'AI is not available right now. Please try again later.' });
-      const context = await buildHealthBotContext(supabase, actingUserId);
+      const context = await buildUserHealthContext(supabase, actingUserId);
       const { data: hp } = await supabase.from('health_profiles').select('wake_time, bedtime, meals_per_day, exercise_types, foods_to_avoid, allergies, sleep_quality').eq('user_id', actingUserId).maybeSingle();
       const routine = hp ? [
         hp.wake_time ? `Wakes up at ${hp.wake_time}` : '',
@@ -1992,7 +1821,7 @@ app.post('/api/custom-plan/create', requireUser(async (req, res, user) => {
     }
 
     const saved = await persistCustomDailyPlan(supabase, { id: actingUserId }, staggerDuplicateTimes(steps), null);
-    if (mode === 'ai') await recordAiUse(supabase, user.id);
+    if (mode === 'ai') await recordAiUse(supabase, user.id, 'ai_plan');
     await createActivityLog(supabase, actingUserId, 'created', 'plan', mode === 'ai' ? 'Created a plan with UrCare AI' : 'Created your own plan', `${steps.length} steps`);
     return res.json({ customPlan: saved });
   } catch (error) {
@@ -4020,6 +3849,9 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   }
   next(err);
 });
+
+// Admin dashboard: its own page, outside the user app.
+app.get(['/admin', '/admin/'], (_req, res) => res.redirect('/admin.html'));
 
 // Start Vite / Express server
 async function startServer() {

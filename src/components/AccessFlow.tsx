@@ -249,7 +249,7 @@ const Paywall: React.FC<{
   const unlocks: [string, string][] = [
     ['Your full daily reversal plan, timed to your day', 'आपके दिन के हिसाब से पूरा डेली रिवर्सल प्लान'],
     ['Detailed report insights and health score', 'डिटेल्ड रिपोर्ट इनसाइट्स और हेल्थ स्कोर'],
-    ['UrCare Medical Team (AI) chat, any time', 'UrCare मेडिकल टीम (AI) चैट, कभी भी'],
+    ['Chat with the UrCare care team', 'UrCare केयर टीम से चैट'],
     ['Food scan with good / bad and healthier swaps', 'फूड स्कैन — अच्छा/बुरा और हेल्दी विकल्प'],
     ['Health team chat and doctor review', 'हेल्थ टीम चैट और डॉक्टर रिव्यू'],
     ['Weekly progress tracking', 'हर हफ़्ते की प्रोग्रेस ट्रैकिंग'],

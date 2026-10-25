@@ -29,7 +29,9 @@ const PLAYERS: [string, string][] = [
   ['Evelyn Ross', '🇺🇸'], ['Mason Griffin', '🇺🇸'], ['Abigail Fisher', '🇺🇸'], ['Elijah Murphy', '🇺🇸'], ['Grace Patterson', '🇺🇸'],
 ];
 
-const PRIZES = [100000, 50000, 10000];
+// Top 3 rewards: app bonus points and a badge (no cash prizes).
+const PRIZES = [5000, 2500, 1000];
+const PRIZE_BADGES: [string, string][] = [['Gold badge', 'गोल्ड बैज'], ['Silver badge', 'सिल्वर बैज'], ['Bronze badge', 'ब्रॉन्ज़ बैज']];
 const avatarUrl = (seed: string) =>
   `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(seed)}&backgroundColor=d1fae5,dcfce7,ecfccb,bbf7d0,a7f3d0,f0fdf4`;
 
@@ -44,9 +46,6 @@ function buildBoard() {
 }
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
-/** ₹1,00,000 → "1 Lakh", ₹50,000 → "50 Thousand". */
-const prizeWords = (n: number, tr: (en: string, hi: string) => string) =>
-  n >= 100000 ? `${n / 100000} ${tr('Lakh', 'लाख')}` : `${n / 1000} ${tr('Thousand', 'हज़ार')}`;
 
 const TROPHY_COLORS: Record<number, [string, string, string]> = {
   1: ['#fff7cc', '#facc15', '#b45309'], // gold
@@ -110,8 +109,8 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ tr, userId }) 
                 <div className="text-[10px] font-bold text-white/80">{fmt(p.points)} {tr('pts', 'पॉइंट्स')}</div>
                 <div className={`podium-step mt-2 w-full ${h} rounded-t-2xl flex flex-col items-center justify-start pt-2`}>
                   <TrophyCup place={place} size={place === 1 ? 40 : 32} />
-                  <span className="mt-1 px-2 py-0.5 rounded-full bg-white/95 text-emerald-800 text-[10px] sm:text-xs font-black whitespace-nowrap tabular-nums">₹{fmt(PRIZES[place - 1])}</span>
-                  <span className="mt-0.5 text-[9px] sm:text-[10px] font-bold text-white/90 whitespace-nowrap">{prizeWords(PRIZES[place - 1], tr)}</span>
+                  <span className="mt-1 px-2 py-0.5 rounded-full bg-white/95 text-emerald-800 text-[10px] sm:text-xs font-black whitespace-nowrap tabular-nums">+{fmt(PRIZES[place - 1])} {tr('pts', 'पॉइंट्स')}</span>
+                  <span className="mt-0.5 text-[9px] sm:text-[10px] font-bold text-white/90 whitespace-nowrap">{tr(...PRIZE_BADGES[place - 1])}</span>
                 </div>
               </motion.div>
             );

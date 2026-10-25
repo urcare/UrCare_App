@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { confirmAiUse } from './AiUseConfirm';
 import { buddyReact } from './BuddyCompanion';
 import { AIResultNotice } from './AIResultNotice';
 import { ensureAIConsent, AI_CONSENT_DECLINED_MESSAGE } from '../utils/aiConsent';
@@ -144,6 +145,8 @@ export const FoodScannerModal: React.FC<FoodScannerModalProps> = ({
       setError(language === 'hi' ? AI_CONSENT_DECLINED_MESSAGE.hi : AI_CONSENT_DECLINED_MESSAGE.en);
       return;
     }
+
+    if (!(await confirmAiUse('food', tr))) return;
 
     setIsScanning(true);
     setError(null);
