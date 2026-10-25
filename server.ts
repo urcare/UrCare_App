@@ -289,7 +289,8 @@ type ClaudeEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 const CLAUDE_MODELS: Record<AITier, string> = {
   heavy: process.env.CLAUDE_HEAVY_MODEL || 'claude-sonnet-5-5',
-  light: process.env.CLAUDE_LIGHT_MODEL || 'claude-haiku-4-5',
+  // Haiku 5.5: about 10x cheaper than Haiku 4.5 for the short structured jobs.
+  light: process.env.CLAUDE_LIGHT_MODEL || 'claude-haiku-5-5',
 };
 const CLAUDE_MAX_TOKENS: Record<AITier, number> = { heavy: 16000, light: 4096 };
 // Lab-report/plan extraction is transcription plus light interpretation, not
@@ -335,6 +336,9 @@ function toClaudeSchema(schema: any): any {
     const nonNull = types.filter((t) => t !== 'null');
     if (types.includes('null') && nonNull.length === 1) {
       const { description, ...rest } = out;
+      // An enum on the non-null branch may only list values of that type —
+      // `null` lives in the separate { type: 'null' } branch.
+      if (Array.isArray(rest.enum)) rest.enum = rest.enum.filter((v: unknown) => v !== null);
       return {
         ...(description ? { description } : {}),
         anyOf: [{ ...rest, type: nonNull[0] }, { type: 'null' }],
@@ -377,7 +381,7 @@ async function callClaudeForJson(client: Anthropic, opts: AIJsonOptions): Promis
   const outputConfig: Anthropic.OutputConfig = {
     format: { type: 'json_schema', schema: toClaudeSchema(opts.inputSchema) },
   };
-  // Haiku 4.5 rejects the effort parameter; every current Sonnet/Opus takes it.
+  // Effort is set for the heavy tier only; the light tier uses the model's default.
   if (opts.tier === 'heavy' && !model.startsWith('claude-haiku')) outputConfig.effort = CLAUDE_HEAVY_EFFORT;
 
   const response = await client.messages.create({
