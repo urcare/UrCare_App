@@ -1198,7 +1198,6 @@ MANDATORY OUTPUT SHAPE — your JSON MUST always contain ALL EIGHT top-level key
 app.post('/api/analyze-food', requireUser(async (req, res, user) => {
   try {
     const { imageBase64, description, mealCategory = 'lunch', profile, language } = req.body;
-    if (await blockIfAiLimitReached(res, getSupabaseAdmin(), user.id, 'food')) return;
     const replyInHindi = language === 'hi';
 
     const profileContext = profile
@@ -1294,7 +1293,6 @@ Call the record_food_analysis tool exactly once with the complete result.`;
       }
     }
 
-    if (parsed?.isFood !== false) await recordAiUse(getSupabaseAdmin(), user.id, 'food');
     return res.json(parsed);
   } catch (error: any) {
     console.error('Error analyzing food:', error);
@@ -1681,17 +1679,18 @@ app.put('/api/custom-daily-plan', requireUser(async (req, res, user) => {
 }));
 
 // ----------------------------------------------------------------------------
-// AI LIMIT — each UrCare AI feature can be used once per user per 7 days
-// (rolling): report analysis, food scan, plan upload, AI plan and the
-// meal/exercise alternative. Kept in app_metadata.ai_uses_by[feature]
+// AI LIMIT — these UrCare AI features can each be used once per user per 7
+// days (rolling): report analysis, plan upload, AI plan and the meal/exercise
+// alternative. The food scan is unlimited. Kept in app_metadata.ai_uses_by[feature]
 // (timestamps); admins aren't limited. Keeps AI cost low and predictable.
 // ----------------------------------------------------------------------------
-type AiFeature = 'report' | 'food' | 'plan_upload' | 'ai_plan' | 'alternative';
-const AI_FEATURES: AiFeature[] = ['report', 'food', 'plan_upload', 'ai_plan', 'alternative'];
+// The food scan (camera) is not limited — people can scan every meal.
+type AiFeature = 'report' | 'plan_upload' | 'ai_plan' | 'alternative';
+const AI_FEATURES: AiFeature[] = ['report', 'plan_upload', 'ai_plan', 'alternative'];
 const AI_PER_WEEK = 1;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const AI_FEATURE_NAME: Record<AiFeature, string> = {
-  report: 'report analysis', food: 'food scan', plan_upload: 'plan upload', ai_plan: 'AI plan', alternative: 'AI alternative',
+  report: 'report analysis', plan_upload: 'plan upload', ai_plan: 'AI plan', alternative: 'AI alternative',
 };
 
 async function aiQuota(supabase: any, userId: string, feature: AiFeature): Promise<{ ok: boolean; remaining: number; nextAt: string | null; uses: string[]; meta: any }> {

@@ -4,12 +4,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Lock, CalendarClock } from 'lucide-react';
 import { authedFetch } from '../utils/supabase';
 
-/** UrCare AI features — each can be used once a week (server-enforced). */
-export type AiFeature = 'report' | 'food' | 'plan_upload' | 'ai_plan' | 'alternative';
+/** UrCare AI features limited to once a week (server-enforced). The food scan is unlimited. */
+export type AiFeature = 'report' | 'plan_upload' | 'ai_plan' | 'alternative';
 
 const NAMES: Record<AiFeature, [string, string]> = {
   report: ['report analysis', 'रिपोर्ट एनालिसिस'],
-  food: ['food scan', 'फूड स्कैन'],
   plan_upload: ['plan upload', 'प्लान अपलोड'],
   ai_plan: ['AI plan', 'AI प्लान'],
   alternative: ['AI alternative', 'AI विकल्प'],
