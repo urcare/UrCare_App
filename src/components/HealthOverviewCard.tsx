@@ -1,25 +1,44 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, ChevronDown, ClipboardList } from 'lucide-react';
+import { Sparkles, ChevronDown, ClipboardList, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { UserHealthProfile } from '../types';
+import { ROOT_CAUSES } from './rootCauseLibrary';
 
 /** Score at or above this counts as the optimal (green) range. */
 const OPTIMAL_SCORE = 85;
 
-interface Factor { label: [string, string]; points: number }
+interface Factor { label: [string, string]; points: number; condition?: boolean }
 
 const num = (v: unknown): number | null => {
   const n = parseFloat(String(v ?? '').replace(/[^\d.]/g, ''));
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
-/** Health score out of 100, built only from the user's own Root Cause
- *  Analysis answers. Each finding takes points off 100, and every deduction
- *  is listed so the score is never a black box. Returns null until the
- *  assessment has been filled in. */
+/** Points each diagnosed condition takes off the score. */
+const CONDITION_POINTS: Record<string, number> = {
+  'Diabetes / Pre-Diabetes': 12, 'Heart Disease': 12, 'Kidney Disease': 12,
+  'Neuropathy (Nerve Pain/Tingling)': 8, 'Diabetic Retinopathy': 8, 'High Blood Pressure': 8, 'High Cholesterol / Fatty Liver': 8,
+  'Obesity': 6, 'Thyroid (Hypo/Hyper)': 5, 'PCOS / PCOD': 5, 'Sleep Apnea / Sleep Issues': 5, 'Uric Acid / Gout': 5,
+  'Erectile Dysfunction': 4, 'Joint Pain / Arthritis': 4, 'Chronic Fatigue': 4, 'Digestive / IBS': 4,
+};
+
+type Risk = 'optimal' | 'moderate' | 'high' | 'very_high';
+/** Risk band for a score. */
+export function riskLevel(score: number): Risk {
+  if (score >= OPTIMAL_SCORE) return 'optimal';
+  if (score >= 70) return 'moderate';
+  if (score >= 50) return 'high';
+  return 'very_high';
+}
+
+/** Health score out of 100, from the person's diagnosed conditions and their
+ *  Root Cause Analysis answers. Each finding takes points off 100, and every
+ *  deduction is listed so the score is never a black box. Returns null when
+ *  there is neither an assessment nor any condition to go on. */
 export function computeHealthOverview(profile: UserHealthProfile) {
-  const a = profile.assessmentData;
-  if (!a) return null;
+  const conditions = (profile.medicalConditions || []).filter((c) => CONDITION_POINTS[c]);
+  if (!profile.assessmentData && !conditions.length) return null;
+  const a: any = profile.assessmentData || {};
   const factors: Factor[] = [];
   const add = (points: number, en: string, hi: string) => { if (points > 0) factors.push({ label: [en, hi], points }); };
 
@@ -39,9 +58,10 @@ export function computeHealthOverview(profile: UserHealthProfile) {
   // Weight
   const heightM = ((Number(a.heightFeet) || 0) * 12 + (Number(a.heightInches) || 0)) * 0.0254 || (profile.heightCm || 0) / 100;
   const weight = Number(a.currentWeightKg) || profile.currentWeightKg || 0;
+  let bmiCounted = false;
   if (heightM > 1 && weight > 0) {
     const bmi = Math.round((weight / (heightM * heightM)) * 10) / 10;
-    if (bmi >= 30) add(8, `BMI ${bmi} (obese range)`, `BMI ${bmi} (मोटापा रेंज)`);
+    if (bmi >= 30) { add(8, `BMI ${bmi} (obese range)`, `BMI ${bmi} (मोटापा रेंज)`); bmiCounted = true; }
     else if (bmi >= 25) add(4, `BMI ${bmi} (overweight)`, `BMI ${bmi} (अधिक वज़न)`);
     else if (bmi < 18.5) add(4, `BMI ${bmi} (underweight)`, `BMI ${bmi} (कम वज़न)`);
   }
@@ -80,16 +100,26 @@ export function computeHealthOverview(profile: UserHealthProfile) {
   }
 
   // Conditions that aren't under control
-  const uncontrolled = (a.diagnosedConditions || []).filter((c) => c.currentStatus === 'uncontrolled' || c.currentStatus === 'worsening');
+  const uncontrolled = (a.diagnosedConditions || []).filter((c: any) => c.currentStatus === 'uncontrolled' || c.currentStatus === 'worsening');
   if (uncontrolled.length) add(Math.min(9, uncontrolled.length * 3), `${uncontrolled.length} condition(s) not under control`, `${uncontrolled.length} बीमारी नियंत्रण में नहीं`);
 
-  const score = Math.max(20, Math.min(100, 100 - factors.reduce((s, f) => s + f.points, 0)));
+  // Diagnosed conditions (onboarding / profile).
+  for (const c of conditions) {
+    const name = ROOT_CAUSES[c]?.name || [c, c];
+    const pts = c === 'Obesity' && bmiCounted ? 2 : CONDITION_POINTS[c];
+    factors.push({ label: [`${name[0]} (diagnosed)`, `${name[1]} (बीमारी)`], points: pts, condition: true });
+  }
+  if (conditions.length >= 3) factors.push({ label: [`${conditions.length} conditions together (they make each other worse)`, `${conditions.length} बीमारियां एक साथ (एक-दूसरे को बढ़ाती हैं)`], points: 6, condition: true });
+
+  const score = Math.max(15, Math.min(100, 100 - factors.reduce((s, f) => s + f.points, 0)));
   const age = Number(a.age) || profile.age || 0;
   // Estimated from the same answers: every 4 points below optimal ≈ one
-  // year older, above it ≈ younger; capped at ±10 years.
-  const ageShift = Math.max(-10, Math.min(10, Math.round((OPTIMAL_SCORE - score) / 4)));
+  // year older, above it ≈ younger; capped at −10 / +15 years.
+  const ageShift = Math.max(-10, Math.min(15, Math.round((OPTIMAL_SCORE - score) / 4)));
   return {
     score,
+    conditionCount: conditions.length,
+    risk: riskLevel(score),
     fromOptimal: score - OPTIMAL_SCORE,
     factors: factors.sort((x, y) => y.points - x.points),
     actualAge: age || null,
@@ -218,23 +248,79 @@ export const HealthOverviewCard: React.FC<HealthOverviewCardProps> = ({ profile,
     );
   }
 
-  const { score, fromOptimal, factors, actualAge, biologicalAge } = overview;
+  const { score, fromOptimal, factors, actualAge, biologicalAge, risk, conditionCount } = overview;
   const ageDiff = actualAge && biologicalAge ? actualAge - biologicalAge : 0;
+  const RISK: Record<Risk, { label: [string, string]; chip: string; text: string; panel: string }> = {
+    optimal: { label: ['Optimal', 'बेहतरीन'], chip: 'bg-emerald-100 text-emerald-800', text: 'text-emerald-700', panel: '' },
+    moderate: { label: ['Moderate risk', 'मध्यम खतरा'], chip: 'bg-amber-100 text-amber-800', text: 'text-amber-600', panel: 'bg-amber-50 border-amber-200 text-amber-900' },
+    high: { label: ['High risk', 'ज़्यादा खतरा'], chip: 'bg-rose-100 text-rose-700', text: 'text-rose-600', panel: 'bg-rose-50 border-rose-200 text-rose-900' },
+    very_high: { label: ['Very high risk', 'बहुत ज़्यादा खतरा'], chip: 'bg-red-600 text-white', text: 'text-red-600', panel: 'bg-gradient-to-br from-red-600 to-rose-700 border-red-700 text-white' },
+  };
+  const r = RISK[risk];
+  const top = factors.slice(0, 3);
+  const danger = risk === 'high' || risk === 'very_high';
+  const severe = risk === 'very_high';
 
   return (
     <div className={shell}>
-      <h2 className="text-base font-black text-emerald-800">{tr('Your Health Overview', 'आपका हेल्थ ओवरव्यू')}</h2>
-      <p className="text-xs text-zinc-500 mt-0.5">{tr('Key insights calculated from your assessment results.', 'आपके असेसमेंट रिज़ल्ट से निकाली गई मुख्य जानकारी।')}</p>
+      <h2 className={`text-base font-black ${danger ? 'text-red-700' : 'text-emerald-800'}`}>{tr('Your Health Overview', 'आपका हेल्थ ओवरव्यू')}</h2>
+      <p className="text-xs text-zinc-500 mt-0.5">{tr('Calculated from your conditions and assessment results.', 'आपकी बीमारियों और असेसमेंट रिज़ल्ट से निकाला गया।')}</p>
+
+      {/* Risk warning — what is pulling the score down, said plainly */}
+      {risk !== 'optimal' && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+          className={`mt-3 rounded-2xl border p-3.5 ${r.panel}`}
+        >
+          <div className="flex items-start gap-2.5">
+            <motion.span
+              animate={danger ? { scale: [1, 1.15, 1] } : undefined}
+              transition={{ duration: 1.4, repeat: Infinity }}
+              className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center ${severe ? 'bg-white/20' : 'bg-white'}`}
+            >
+              <AlertTriangle className={`w-5 h-5 ${severe ? 'text-white' : r.text}`} />
+            </motion.span>
+            <div className="min-w-0">
+              <div className="text-sm font-black">
+                {severe
+                  ? tr('Very high risk — your body needs care now', 'बहुत ज़्यादा खतरा — आपके शरीर को अभी देखभाल चाहिए')
+                  : risk === 'high'
+                    ? tr('High risk — this needs attention', 'ज़्यादा खतरा — इस पर ध्यान देना ज़रूरी है')
+                    : tr('Some risk — act early', 'कुछ खतरा — जल्दी कदम उठाएं')}
+              </div>
+              <p className={`mt-0.5 text-[12px] leading-relaxed ${severe ? 'text-white/90' : 'opacity-90'}`}>
+                {conditionCount
+                  ? tr(`${conditionCount} health condition${conditionCount > 1 ? 's' : ''} and the factors below are putting strain on your body.`, `${conditionCount} बीमारी और नीचे के कारण आपके शरीर पर दबाव डाल रहे हैं।`)
+                  : tr('The factors below are putting strain on your body.', 'नीचे के कारण आपके शरीर पर दबाव डाल रहे हैं।')}
+              </p>
+            </div>
+          </div>
+          {top.length > 0 && (
+            <ul className="mt-2.5 space-y-1">
+              {top.map((f) => (
+                <li key={f.label[0]} className="flex items-center justify-between gap-2 text-[12px] font-bold">
+                  <span className="truncate">• {tr(f.label[0], f.label[1])}</span>
+                  <span className={`shrink-0 ${severe ? 'text-white' : 'text-rose-600'}`}>−{f.points}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className={`mt-2 flex items-center gap-1.5 text-[11px] font-bold ${severe ? 'text-white/90' : 'opacity-80'}`}>
+            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+            {tr('Most of these can improve with 3 months of your UrCare plan.', 'इनमें से ज़्यादातर 3 महीने के UrCare प्लान से सुधर सकते हैं।')}
+          </p>
+        </motion.div>
+      )}
 
       {/* Health score */}
       <div className="mt-4 flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-black text-zinc-900">{tr('Health score', 'हेल्थ स्कोर')}</div>
-          <span className={`mt-1 inline-block px-2 py-0.5 rounded-md text-[11px] font-black ${fromOptimal < 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
-            {fromOptimal < 0 ? tr(`${fromOptimal}pt from optimal`, `ऑप्टिमल से ${fromOptimal} अंक`) : tr('In the optimal range', 'ऑप्टिमल रेंज में')}
+          <span className={`mt-1 inline-block px-2 py-0.5 rounded-md text-[11px] font-black ${r.chip}`}>
+            {tr(r.label[0], r.label[1])}{fromOptimal < 0 ? ` · ${tr(`${fromOptimal}pt from optimal`, `ऑप्टिमल से ${fromOptimal} अंक`)}` : ''}
           </span>
         </div>
-        <div className="font-display leading-none text-zinc-900">
+        <div className={`font-display leading-none ${risk === 'optimal' ? 'text-zinc-900' : r.text}`}>
           <span className="text-4xl font-bold">{score}</span>
           <span className="text-sm font-semibold text-zinc-400"> / 100</span>
         </div>
@@ -291,13 +377,13 @@ export const HealthOverviewCard: React.FC<HealthOverviewCardProps> = ({ profile,
         <div className="mt-4 flex items-center justify-between gap-3">
           <div>
             <div className="text-sm font-black text-zinc-900">{tr('Biological age', 'बायोलॉजिकल उम्र')}</div>
-            <span className={`mt-1 inline-block px-2 py-0.5 rounded-md text-[11px] font-black ${ageDiff >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+            <span className={`mt-1 inline-block px-2 py-0.5 rounded-md text-[11px] font-black ${ageDiff >= 0 ? 'bg-emerald-100 text-emerald-800' : ageDiff <= -5 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800'}`}>
               {ageDiff > 0 ? tr(`${ageDiff} ${ageDiff === 1 ? 'yr' : 'yrs'} younger`, `${ageDiff} साल कम`) : ageDiff < 0 ? tr(`${-ageDiff} ${ageDiff === -1 ? 'yr' : 'yrs'} older`, `${-ageDiff} साल ज़्यादा`) : tr('Same as your age', 'आपकी उम्र जितनी')}
             </span>
           </div>
           <div className="flex items-end gap-4">
             <div className="text-center">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-display text-xl font-bold ${ageDiff >= 0 ? 'bg-emerald-100 text-emerald-800 ring-2 ring-emerald-300' : 'bg-amber-100 text-amber-800 ring-2 ring-amber-300'}`}>{biologicalAge}</div>
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-display text-xl font-bold ${ageDiff >= 0 ? 'bg-emerald-100 text-emerald-800 ring-2 ring-emerald-300' : ageDiff <= -5 ? 'bg-rose-100 text-rose-700 ring-2 ring-rose-300' : 'bg-amber-100 text-amber-800 ring-2 ring-amber-300'}`}>{biologicalAge}</div>
               <div className="mt-1 text-[10px] font-bold text-zinc-500">{tr('Biological', 'बायोलॉजिकल')}</div>
             </div>
             <div className="text-center">
@@ -334,7 +420,7 @@ export const HealthOverviewCard: React.FC<HealthOverviewCardProps> = ({ profile,
                 </div>
               ))}
               <p className="pt-2 text-[10px] text-zinc-400 leading-snug">
-                {tr('Score and biological age are estimates from your Root Cause Analysis answers — not a medical test. Update your answers to refresh them.', 'स्कोर और बायोलॉजिकल उम्र आपके रूट कॉज़ एनालिसिस के जवाबों से अनुमान हैं — मेडिकल टेस्ट नहीं। जवाब अपडेट करने पर ये बदलेंगे।')}
+                {tr('Score and biological age are estimates from your conditions and Root Cause Analysis answers — not a medical test. Update your answers to refresh them.', 'स्कोर और बायोलॉजिकल उम्र आपकी बीमारियों और रूट कॉज़ एनालिसिस के जवाबों से अनुमान हैं — मेडिकल टेस्ट नहीं। जवाब अपडेट करने पर ये बदलेंगे।')}
               </p>
               <button type="button" onClick={onOpenAssessment} className="text-[11px] font-black text-emerald-700 hover:underline cursor-pointer">
                 {tr('Update my assessment →', 'मेरा असेसमेंट अपडेट करें →')}

@@ -27,7 +27,7 @@ export const RootCausesCard: React.FC<RootCausesCardProps> = ({ profile, tr, onO
   const [open, setOpen] = useState(false);
   const conditions = useMemo(() => (profile.medicalConditions || []).filter((c) => ROOT_CAUSES[c]), [profile.medicalConditions]);
   const items: RootCauseInfo[] = conditions.length ? conditions.map((c) => ROOT_CAUSES[c]) : [GENERAL_ROOT_CAUSE];
-  const triggers = useMemo(() => computeHealthOverview(profile)?.factors.slice(0, 6) || [], [profile]);
+  const triggers = useMemo(() => (computeHealthOverview(profile)?.factors || []).filter((f) => !f.condition).slice(0, 6), [profile]);
   const hasAssessment = !!profile.assessmentData;
 
   return (

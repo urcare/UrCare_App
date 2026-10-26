@@ -49,7 +49,7 @@ function buildSummary(
   if (sections.score) {
     const o = computeHealthOverview(profile);
     if (o) {
-      lines.push(tr(`Health score: ${o.score}/100 (from Root Cause Analysis)`, `हेल्थ स्कोर: ${o.score}/100 (रूट कॉज़ एनालिसिस से)`));
+      lines.push(tr(`Health score: ${o.score}/100 (estimate)`, `हेल्थ स्कोर: ${o.score}/100 (अनुमान)`));
       if (o.biologicalAge && o.actualAge) lines.push(tr(`Estimated biological age: ${o.biologicalAge} (actual ${o.actualAge})`, `अनुमानित बायोलॉजिकल उम्र: ${o.biologicalAge} (असली ${o.actualAge})`));
     }
   }
