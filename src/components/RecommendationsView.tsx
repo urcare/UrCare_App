@@ -165,6 +165,12 @@ export function labelMinutes(label: string): number {
 
 function periodFor(label: string): Period {
   const mins = labelMinutes(label);
+  // Midnight–4:59 AM is still "Night" (continuing from the evening before),
+  // never "Morning" — Morning's own declared range starts at 5 AM (see
+  // PERIODS above). Without this, an overnight step like a 1 AM glucose
+  // check landed under the "MORNING · 5 AM – 12 PM" header, which read as
+  // simply wrong.
+  if (mins < 5 * 60) return 'night';
   if (mins < 12 * 60) return 'morning';
   if (mins < 17 * 60) return 'afternoon';
   if (mins < 20 * 60 + 30) return 'evening';
@@ -174,6 +180,7 @@ function periodFor(label: string): Period {
 function currentPeriod(): Period {
   const now = new Date();
   const mins = now.getHours() * 60 + now.getMinutes();
+  if (mins < 5 * 60) return 'night';
   if (mins < 12 * 60) return 'morning';
   if (mins < 17 * 60) return 'afternoon';
   if (mins < 20 * 60 + 30) return 'evening';

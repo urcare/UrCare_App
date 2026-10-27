@@ -18,13 +18,18 @@ interface UploadDailyPlanModalProps {
   dependentId?: string | null;
 }
 
-/** What step of a multi-page PDF upload is currently running — shown as
- *  live "page X of Y" progress instead of one opaque spinner, since a long
- *  PDF (this modal has been tested against 60+ page doctor printouts) can
- *  take a while to walk through. Not shown at all for a plain photo
- *  upload, which is still a single fast call. */
+/** What step of a PDF upload is currently running — shown as live progress
+ *  instead of one opaque spinner, since a long PDF (this modal has been
+ *  tested against 60+ page doctor printouts) can take a while. Not shown at
+ *  all for a plain photo upload, which is still a single fast call.
+ *  - 'reading': the whole-PDF-in-one-call path (see handleAnalyzePdfNative)
+ *    — the common case whenever Claude is configured, since Claude reads
+ *    PDF bytes natively.
+ *  - 'rendering'/'extracting'/'saving': the legacy page-by-page fallback
+ *    (see handleAnalyzePdfPageByPage), only actually used when the backend
+ *    reports the PDF isn't natively supported (Groq-only, no Claude key). */
 interface PdfProgress {
-  phase: 'rendering' | 'extracting' | 'saving';
+  phase: 'reading' | 'rendering' | 'extracting' | 'saving';
   page?: number;
   totalPages?: number;
 }
@@ -35,14 +40,17 @@ interface PdfProgress {
  *  as a separate "My Uploaded Plan" for 35 days — the built-in UrCare plan
  *  is never changed (see the plan switcher in RecommendationsView).
  *
- *  The vision model behind this (see /api/analyze-daily-plan) only ever
- *  reads a single image per call, never raw PDF bytes — so a PDF is
- *  rendered to one image per page entirely in the browser (pdfToImages.ts),
- *  each page is read by its own AI call, and every page's extracted steps
- *  are merged and saved together at the end. This is what lets even a long,
- *  multi-page PDF (a real doctor's printout can easily run 40-60+ pages
- *  once cover pages, disclaimers and diet guides are counted) work here,
- *  instead of being rejected outright the way a photo-only flow would. */
+ *  A PDF is sent whole, in one call (see /api/analyze-daily-plan +
+ *  handleAnalyzePdfNative) — Claude reads PDF bytes natively, so the model
+ *  sees every page at once instead of each page being read in isolation
+ *  with zero context of the others (which used to cause inconsistent time
+ *  inference and made a multi-page plan read like several unrelated
+ *  fragments). If the backend reports the PDF isn't natively supported
+ *  (Groq-only, no Claude key configured), this transparently falls back to
+ *  the old approach: render the PDF to one image per page in the browser
+ *  (pdfToImages.ts), read each page with its own AI call, and merge every
+ *  page's steps together at the end — still handling even a 60+ page
+ *  doctor's printout, just less ideally than the native path. */
 export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOpen, onClose, onUploaded, dependentId }) => {
   const { language } = useLanguage();
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
@@ -113,7 +121,47 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
     reader.readAsDataURL(file);
   };
 
-  const handleAnalyzePdf = async (file: File) => {
+  /** The primary path for a PDF: send the whole file in one call, read
+   *  natively by Claude (see server.ts's isWholePdf branch). Falls back to
+   *  the page-by-page approach below only if the backend reports the PDF
+   *  isn't natively supported — never on a genuine "this isn't a real
+   *  schedule" rejection, which is shown as-is. */
+  const handleAnalyzePdfNative = async (file: File) => {
+    setPdfProgress({ phase: 'reading', totalPages: pdfPageCount || undefined });
+    const fileBase64: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error(tr('Could not read this file. Please try again.', 'यह फ़ाइल पढ़ी नहीं जा सकी। कृपया दोबारा कोशिश करें।')));
+      reader.readAsDataURL(file);
+    });
+
+    const data = await uploadCustomDailyPlan(fileBase64, 'application/pdf', true, dependentId);
+
+    if (data.pdfNotSupported) {
+      // No Claude key configured server-side — the one case where silently
+      // switching strategy (instead of surfacing this as a rejection) is
+      // the right call, since it's a backend-capability gap, not anything
+      // about this specific file.
+      await handleAnalyzePdfPageByPage(file);
+      return;
+    }
+    if (!data.isValidPlan) {
+      const base = data.rejectionReason || tr('Could not find a daily schedule in this PDF. Please try a clearer file, or upload a photo instead.', 'इस PDF में डेली शेड्यूल नहीं मिला। कृपया साफ़ फ़ाइल आज़माएं, या फोटो अपलोड करें।');
+      setError(data.debugReason ? `${base} (${data.debugReason})` : base);
+      return;
+    }
+
+    setPdfSummary({ pagesRead: pdfPageCount || 1, totalPages: pdfPageCount || 1, truncated: false });
+    setResult(data);
+    playSuccessChime();
+  };
+
+  /** Legacy fallback — only actually reached when the backend has no Claude
+   *  key configured (Groq can't read PDF bytes at all), via
+   *  handleAnalyzePdfNative above. Renders the PDF to one image per page in
+   *  the browser and reads each page with its own AI call, since that's
+   *  the only way a Groq-only backend can handle a PDF at all. */
+  const handleAnalyzePdfPageByPage = async (file: File) => {
     setPdfProgress({ phase: 'rendering', page: 0, totalPages: pdfPageCount || 0 });
     const { images, totalPages, truncated } = await renderPdfPagesToImages(file, (pageDone, totalToRender) => {
       setPdfProgress({ phase: 'rendering', page: pageDone, totalPages: totalToRender });
@@ -171,7 +219,7 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
 
     try {
       if (isPdf) {
-        await handleAnalyzePdf(selectedFile);
+        await handleAnalyzePdfNative(selectedFile);
       } else {
         if (!fileBase64) {
           setError(tr('Please wait for the file to finish loading.', 'कृपया फ़ाइल लोड होने तक प्रतीक्षा करें।'));
@@ -201,6 +249,11 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
 
   const analyzeButtonLabel = (() => {
     if (!isAnalyzing) return tr('Extract & Use This Plan', 'निकालें व यह प्लान उपयोग करें');
+    if (pdfProgress?.phase === 'reading') {
+      return pdfProgress.totalPages
+        ? tr(`Reading all ${pdfProgress.totalPages} pages of your plan…`, `आपके प्लान के सभी ${pdfProgress.totalPages} पेज पढ़े जा रहे हैं…`)
+        : tr('Reading your plan…', 'आपका प्लान पढ़ा जा रहा है…');
+    }
     if (pdfProgress?.phase === 'rendering') return tr(`Reading page ${pdfProgress.page || 0} of ${pdfProgress.totalPages || '…'}…`, `पेज ${pdfProgress.page || 0} / ${pdfProgress.totalPages || '…'} पढ़ा जा रहा है…`);
     if (pdfProgress?.phase === 'extracting') return tr(`Analyzing page ${pdfProgress.page || 0} of ${pdfProgress.totalPages || '…'}…`, `पेज ${pdfProgress.page || 0} / ${pdfProgress.totalPages || '…'} का विश्लेषण हो रहा है…`);
     if (pdfProgress?.phase === 'saving') return tr('Saving your plan…', 'आपका प्लान सहेजा जा रहा है…');
@@ -337,8 +390,8 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
                 <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
                 <span>
                   {tr(
-                    'A long PDF is read one page at a time, so this can take a little while — you\'ll see live progress below once you tap Extract.',
-                    'लंबी PDF को एक-एक पेज करके पढ़ा जाता है, इसलिए इसमें थोड़ा समय लग सकता है — Extract दबाने पर नीचे लाइव प्रगति दिखेगी।'
+                    'A long PDF can take a little while to read — you\'ll see live progress below once you tap Extract.',
+                    'लंबी PDF पढ़ने में थोड़ा समय लग सकता है — Extract दबाने पर नीचे लाइव प्रगति दिखेगी।'
                   )}
                 </span>
               </p>
@@ -370,8 +423,16 @@ export const UploadDailyPlanModal: React.FC<UploadDailyPlanModalProps> = ({ isOp
               )}
             </button>
 
-            {/* Live page-by-page progress bar for a multi-page PDF. */}
-            {isAnalyzing && isPdf && pdfProgress && pdfProgress.totalPages ? (
+            {/* Progress bar — a real fraction for the page-by-page fallback
+                (which has actual discrete steps to report), or a single
+                indeterminate sweep for the native whole-PDF read (one atomic
+                call with no partial progress to show — a bar stuck at a
+                fixed %, or jumping straight to 100%, would look broken). */}
+            {isAnalyzing && isPdf && pdfProgress?.phase === 'reading' ? (
+              <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                <div className="h-full w-1/3 bg-emerald-500 rounded-full animate-[indeterminate-sweep_1.1s_ease-in-out_infinite]" />
+              </div>
+            ) : isAnalyzing && isPdf && pdfProgress && pdfProgress.totalPages ? (
               <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
                 <div
                   className="h-full bg-emerald-500 transition-all duration-300 ease-out"

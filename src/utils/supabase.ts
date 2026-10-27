@@ -739,6 +739,11 @@ export interface CustomDailyPlanResult {
   isValidPlan: boolean;
   rejectionReason?: string;
   analysisFailed?: boolean;
+  /** Set only when a whole-PDF upload reached a Groq-only backend (no Claude
+   *  key configured) — Groq can't read PDF bytes at all. The caller should
+   *  fall back to rendering the PDF to one image per page instead of
+   *  treating this as a real rejection. */
+  pdfNotSupported?: boolean;
   /** The real underlying error (e.g. from Groq) when analysisFailed is true
    *  — rejectionReason alone is a generic "check your connection" message
    *  that gives no way to tell a rate limit apart from a real outage. */

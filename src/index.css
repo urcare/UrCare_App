@@ -280,6 +280,15 @@
   animation: typing-wave 1.3s infinite ease-in-out;
 }
 
+/* A sweeping indeterminate bar — used where there's a single atomic step
+ * with no real sub-progress to report (e.g. reading a whole PDF in one AI
+ * call), so a fraction bar would otherwise sit stuck at a fixed % or jump
+ * straight to 100% and look broken. */
+@keyframes indeterminate-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
 /* ---- Home: Food Scan slideshow + scanning animation ---- */
 .food-scan-photo {
   opacity: 0;

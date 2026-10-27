@@ -292,6 +292,15 @@ const CLAUDE_MODELS: Record<AITier, string> = {
   // Haiku 5.5: about 10x cheaper than Haiku 4.5 for the short structured jobs.
   light: process.env.CLAUDE_LIGHT_MODEL || 'claude-haiku-5-5',
 };
+// heavy stays at 16000 — tried bumping this to 24000 for extra headroom on
+// a long multi-page plan, but the Anthropic SDK refuses ANY non-streaming
+// call above its own internal ~16-18k-token safety threshold ("Streaming
+// is required for operations that may take longer than 10 minutes"),
+// confirmed directly against the real API. 16000 is comfortably under that
+// and was never actually the bottleneck anyway — the native whole-PDF read
+// (see isWholePdf below) is what fixes multi-page extraction, not a bigger
+// token budget; a real 12-step, 2-page test plan used well under half of
+// this.
 const CLAUDE_MAX_TOKENS: Record<AITier, number> = { heavy: 16000, light: 4096 };
 // Lab-report/plan extraction is transcription plus light interpretation, not
 // deep reasoning — "low" keeps it fast and cheap. Raise to "medium" in .env
@@ -1500,7 +1509,29 @@ app.post('/api/analyze-daily-plan', requireUser(async (req, res, user) => {
       return res.status(503).json({ analysisFailed: true, rejectionReason: 'The plan scanner is not configured right now. Please try again later.' });
     }
 
-    const systemInstruction = `You are UrCare's clinical scheduling assistant. You are given a photo of one page of a person's own daily routine/schedule — it may be typed, handwritten, or a printout from their doctor or nutritionist. It could be a full 24-hour schedule or just a partial list of habits/timings, and if this came from a multi-page PDF it may be only ONE page of a larger document — that's expected, just extract whatever real schedule content is on THIS page.
+    const isWholePdf = fileMediaType(imageBase64.startsWith('data:') ? imageBase64 : `data:${mimeType};base64,${imageBase64}`) === 'application/pdf';
+
+    // Two real shapes this call is made with:
+    // - A single photo of one page (always — Groq has no PDF support, so a
+    //   multi-page PDF is rendered to one image per page client-side and
+    //   each page gets its own call like this, persist:false, then merged).
+    // - The COMPLETE original PDF, however many pages — Claude reads PDFs
+    //   natively, so this is the primary path whenever Claude is configured:
+    //   one call sees the whole document at once instead of fragmenting it
+    //   page by page with zero cross-page context, which is strictly better
+    //   for a schedule where "which page a step is on" has no bearing on
+    //   whether it's actually the same step repeated, a continuation, or a
+    //   real duplicate — and is also the only way to get consistent time
+    //   inference across the document instead of each page guessing in
+    //   isolation.
+    const systemInstruction = isWholePdf
+      ? `You are UrCare's clinical scheduling assistant. You are given the COMPLETE PDF (every page) of a person's own daily routine/schedule — it may be typed, handwritten, or a printout from their doctor or nutritionist, and may run many pages once cover pages, disclaimers, diet-guide reference material, and tables of contents are counted. The real timed schedule itself is often only on some of those pages — that's expected and fine.
+CRITICAL FIRST STEP: Scan the WHOLE document and decide whether it genuinely contains someone's daily routine/schedule/plan anywhere in it (e.g. wake-up time, meal times, exercise, medication times, sleep time, any timed daily activity list) versus containing nothing of the sort (e.g. it's entirely a lab report, an unrelated document, or unreadable).
+- If NO page contains real schedule content, set isValidPlan to false, explain what was actually provided in rejectionReason, and leave sections empty.
+- If the document DOES contain a real daily routine (even if only on some pages), set isValidPlan to true and extract EVERY distinct step from EVERY page that has one into "sections", ordered chronologically by time of day — ignore pages that are just cover pages, disclaimers, diet-guide reference lists, or tables of contents with no actual timed steps on them. For each step: timeLabel is REQUIRED and must always be a clock time like "7:00 AM" — use the exact time if one is stated, otherwise infer the single most reasonable clock time from context (e.g. "morning walk" → "6:30 AM", "after lunch" → "1:30 PM", "before bed" → "10:00 PM") so that every step gets a real time and none are ever left blank. title is a short (3-8 word) name for the step. body should preserve real, concrete detail from the source instead of just a generic label — but STAY BRIEF: 1 short sentence, roughly 15-25 words — include only the single most important exact quantity/dose/duration the source actually states, not invented ones. Never invent steps or details that aren't in the source — only structure and preserve what's actually there, and never drop a step just because it lacked a stated time. If the same step genuinely repeats verbatim across multiple pages (e.g. a recurring weekly template), include it once, not once per page.
+Prioritize including EVERY real step found anywhere in the document — completeness first, then detail, always.
+Call the record_daily_plan tool exactly once with the complete result.`
+      : `You are UrCare's clinical scheduling assistant. You are given a photo of one page of a person's own daily routine/schedule — it may be typed, handwritten, or a printout from their doctor or nutritionist. It could be a full 24-hour schedule or just a partial list of habits/timings, and if this came from a multi-page PDF it may be only ONE page of a larger document — that's expected, just extract whatever real schedule content is on THIS page.
 CRITICAL FIRST STEP: Decide whether the input is genuinely someone's daily routine/schedule/plan (e.g. wake-up time, meal times, exercise, medication times, sleep time, any timed daily activity list) versus something unrelated (a random photo, a selfie, a lab report, an unreadable/blank page, or text with no actual schedule content — a cover page, disclaimer, or table of contents from a larger document counts as unrelated too).
 - If it is NOT a daily routine/schedule, set isValidPlan to false, explain what was actually provided in rejectionReason, and leave sections empty.
 - If it IS a genuine daily routine, set isValidPlan to true and extract EVERY distinct step into "sections", ordered chronologically by time of day. For each step: timeLabel is REQUIRED and must always be a clock time like "7:00 AM" — use the exact time if one is stated, otherwise infer the single most reasonable clock time from context (e.g. "morning walk" → "6:30 AM", "after lunch" → "1:30 PM", "before bed" → "10:00 PM") so that every step gets a real time and none are ever left blank. title is a short (3-8 word) name for the step. body should preserve real, concrete detail from the source instead of just a generic label — but STAY BRIEF: 1 short sentence, roughly 15-25 words — include only the single most important exact quantity/dose/duration the source actually states, not invented ones. Never invent steps or details that aren't in the source — only structure and preserve what's actually there, and never drop a step just because it lacked a stated time.
@@ -1510,7 +1541,9 @@ Call the record_daily_plan tool exactly once with the complete result.`;
     const { data: parsed } = await callAIForJson({
       tier: 'heavy',
       system: systemInstruction,
-      text: 'Please extract this daily routine/schedule into structured, time-ordered steps.',
+      text: isWholePdf
+        ? 'Please extract this daily routine/schedule into structured, time-ordered steps, reading the entire document.'
+        : 'Please extract this daily routine/schedule into structured, time-ordered steps.',
       imageBase64: imageBase64.startsWith('data:') ? imageBase64 : `data:${mimeType};base64,${imageBase64}`,
       toolName: 'record_daily_plan',
       // Same free-tier ceiling as the report analyzer above (see
@@ -1582,7 +1615,16 @@ Call the record_daily_plan tool exactly once with the complete result.`;
     return res.json({ isValidPlan: true, ...saved });
   } catch (error: any) {
     if (error instanceof PdfNotSupportedError) {
-      return res.json({ isValidPlan: false, rejectionReason: 'PDF plans aren\'t supported right now — please upload a clear photo of your schedule instead.' });
+      // Only reachable when the call fell through to Groq (no Claude key
+      // configured) with a whole PDF — Groq can't read PDF bytes at all.
+      // `pdfNotSupported: true` lets the client fall back to its own
+      // page-by-page image rendering instead of just showing this as a
+      // generic rejection — see UploadDailyPlanModal's handleAnalyze.
+      return res.json({
+        isValidPlan: false,
+        pdfNotSupported: true,
+        rejectionReason: 'PDF plans aren\'t supported right now — please upload a clear photo of your schedule instead.',
+      });
     }
     console.error('Error analyzing daily plan:', error);
     return res.status(200).json({
