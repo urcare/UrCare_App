@@ -120,9 +120,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // drawer-only stays.
   const moduleMenuItems = [
     { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
-    { id: 'assessment' as const, label: tr('Root Cause Analysis', 'रूट कॉज़ एनालिसिस'), icon: ClipboardCheck },
+    { id: 'assessment' as const, label: tr('Assessment', 'असेसमेंट'), icon: ClipboardCheck },
     { id: 'store' as const, label: tr('UrCare Medical Pharmacy', 'UrCare मेडिकल फार्मेसी'), icon: ShoppingBag },
-    { id: 'family' as const, label: tr('Family & Friends', 'परिवार व दोस्त'), icon: Heart },
+    { id: 'family' as const, label: tr('Health Circle', 'हेल्थ सर्कल'), icon: Heart },
     { id: 'leaderboard' as const, label: tr('Leaderboard & Rewards', 'लीडरबोर्ड व रिवॉर्ड्स'), icon: Trophy },
     // Not a tab — opens the Doctor Consult modal directly (see the drawer's
     // onClick). Used to be its own persistent sidebar card; moved in here to

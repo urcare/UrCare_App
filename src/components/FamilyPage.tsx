@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Users, Search, Check, X, Copy, Share2, Gift, Heart, UserPlus, Trash2, Eye, EyeOff, Loader2, QrCode, ScanLine, ShoppingBag } from 'lucide-react';
+import { Plus, Users, Search, Check, X, Copy, Share2, Gift, Heart, UserPlus, Trash2, Eye, EyeOff, Loader2, QrCode, ScanLine, ShoppingBag, MessageCircle, ChevronRight } from 'lucide-react';
 import { UsernameSheet, MyQrSheet, QrScannerSheet } from './ProfileQr';
 import { StatusStrip } from './FamilyStatus';
 import { NumberTicker } from './magicui/number-ticker';
@@ -109,6 +109,18 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
     window.open(`https://wa.me/?text=${encodeURIComponent(inviteText)}`, '_blank', 'noopener');
   };
 
+  const chatText = tr(
+    `Hey! Let's check in on each other's health on UrCare 🙂 ${profileLink({ username: state?.username, id: myId })}`,
+    `हाय! चलो UrCare पर एक-दूसरे का हेल्थ चेक-इन करते हैं 🙂 ${profileLink({ username: state?.username, id: myId })}`,
+  );
+  const openChat = async () => {
+    try {
+      if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Share')) { await Share.share({ text: chatText, dialogTitle: tr('Chat with Family & Friends', 'परिवार व दोस्तों से बात करें') }); return; }
+      if (navigator.share) { await navigator.share({ text: chatText }); return; }
+    } catch { return; }
+    window.open(`https://wa.me/?text=${encodeURIComponent(chatText)}`, '_blank', 'noopener');
+  };
+
   const toggleShare = async () => {
     if (!state) return;
     const next = !state.shareProgress;
@@ -143,7 +155,7 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
         <BorderBeam size={110} duration={9} colorFrom="#fde68a" colorTo="#ffffff" borderWidth={2} />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <span className="hero-chip"><Users className="w-3.5 h-3.5" />{tr('Family & Friends', 'परिवार व दोस्त')}</span>
+            <span className="hero-chip"><Users className="w-3.5 h-3.5" />{tr('Health Circle', 'हेल्थ सर्कल')}</span>
             <h1 className="mt-3 font-display text-2xl sm:text-3xl font-bold leading-tight">{tr('Get healthy together', 'साथ मिलकर स्वस्थ बनें')}</h1>
             <p className="mt-1 text-sm text-white/85">{tr('Add the people you care about and cheer each other on.', 'अपनों को जोड़ें और एक-दूसरे का हौसला बढ़ाएं।')}</p>
           </div>
@@ -243,6 +255,16 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
         <span className={`relative w-11 h-6 rounded-full shrink-0 transition-colors ${state?.shareProgress ? 'bg-emerald-500' : 'bg-zinc-300'}`}>
           <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${state?.shareProgress ? 'left-[22px]' : 'left-0.5'}`} />
         </span>
+      </button>
+
+      {/* Chat with Family & Friends */}
+      <button type="button" onClick={openChat} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-zinc-200 shadow-depth text-left cursor-pointer">
+        <span className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"><MessageCircle className="w-5 h-5" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-black text-zinc-900">{tr('Chat with Family & Friends', 'परिवार व दोस्तों से बात करें')}</span>
+          <span className="block text-[11px] text-zinc-500 font-semibold">{tr('Start a chat on WhatsApp or any app you like', 'WhatsApp या अपनी पसंद की किसी भी ऐप पर बात शुरू करें')}</span>
+        </span>
+        <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
       </button>
 
       {/* Requests */}

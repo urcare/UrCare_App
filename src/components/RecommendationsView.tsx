@@ -257,6 +257,7 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
   const [uploadedPlan, setUploadedPlan] = useState<UploadedPlan | null>(null);
   const [planSource, setPlanSource] = useState<'urcare' | 'mine'>('urcare');
   const [isPlanEditorOpen, setIsPlanEditorOpen] = useState(false);
+  const [isPlanActionsOpen, setIsPlanActionsOpen] = useState(false);
   const [isConfirmingDeletePlan, setIsConfirmingDeletePlan] = useState(false);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
   const [planActionError, setPlanActionError] = useState<string | null>(null);
@@ -816,119 +817,112 @@ export const RecommendationsView: React.FC<RecommendationsViewProps> = ({
         </div>
       )}
 
-      {/* 1.2 WHICH PLAN — two clearly separate plans. The UrCare plan is
-          never changed by an upload; the user's own uploaded plan lives in
-          its own slot, where it can be edited or deleted (deleting simply
-          leaves the UrCare plan). */}
-      <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-3xl ${cardClass} space-y-4`}>
-        <div>
-          <h3 className={`text-base sm:text-lg font-black ${isDark ? 'text-white' : 'text-zinc-950'}`}>
-            {tr('Which plan do you want to see?', 'आप कौन सा प्लान देखना चाहते हैं?')}
-          </h3>
-          <p className="text-xs opacity-60 mt-0.5">
-            {tr('You have two separate plans. Tap one to see its steps below.', 'आपके पास दो अलग प्लान हैं। नीचे उसके steps देखने के लिए किसी एक पर टैप करें।')}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* UrCare plan */}
+      {/* 1.2 WHICH PLAN — two clearly separate plans, chosen via a compact
+          segmented toggle (same visual language as the Daily Plan / My
+          Tracker switch above this tab) instead of two full-size cards —
+          the two cards used to dominate the screen before you even reached
+          the actual timeline below. */}
+      <div className={`p-3 sm:p-4 rounded-2xl sm:rounded-3xl ${cardClass} space-y-3`}>
+        <div className="relative grid grid-cols-2 gap-1 p-1 rounded-2xl bg-emerald-50 border border-emerald-100">
           <button
             type="button"
             onClick={() => choosePlan('urcare')}
-            className={`text-left p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-              !showingUploaded
-                ? 'border-emerald-500 bg-emerald-500/5 shadow-sm'
-                : isDark ? 'border-zinc-800 hover:border-zinc-700' : 'border-zinc-200 hover:border-zinc-300'
+            className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs sm:text-sm font-black cursor-pointer transition-colors ${
+              !showingUploaded ? 'bg-emerald-600 text-white shadow-md' : 'text-emerald-800 hover:bg-white/70'
             }`}
           >
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2 font-black text-sm">
-                <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"><Stethoscope className="w-4 h-4" /></span>
-                {tr('UrCare Plan', 'UrCare प्लान')}
-              </span>
-              {!showingUploaded && <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-600 text-white">{tr('Showing', 'दिख रहा है')}</span>}
-            </div>
-            <p className="text-xs opacity-70 mt-2 leading-relaxed">
-              {tr('Made by UrCare for your health profile. It changes by itself as your program goes on. Uploading your own plan never changes it.', 'आपकी हेल्थ प्रोफ़ाइल के हिसाब से UrCare का बनाया प्लान। प्रोग्राम आगे बढ़ने के साथ अपने आप बदलता है। आपका अपना प्लान अपलोड करने से इसमें कोई बदलाव नहीं होता।')}
-            </p>
+            <Stethoscope className="w-4 h-4 shrink-0" />
+            <span className="truncate">{tr('UrCare Plan', 'UrCare प्लान')}</span>
           </button>
-
-          {/* The user's own uploaded plan */}
           <button
             type="button"
             onClick={() => (uploadedPlan ? choosePlan('mine') : setIsUploadPlanOpen(true))}
-            className={`text-left p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-              showingUploaded
-                ? 'border-amber-500 bg-amber-500/5 shadow-sm'
-                : uploadedPlan
-                ? isDark ? 'border-zinc-800 hover:border-zinc-700' : 'border-zinc-200 hover:border-zinc-300'
-                : 'border-dashed border-amber-400/60 hover:bg-amber-500/5'
+            className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs sm:text-sm font-black cursor-pointer transition-colors ${
+              showingUploaded ? 'bg-amber-500 text-white shadow-md' : 'text-amber-800 hover:bg-white/70'
             }`}
           >
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2 font-black text-sm">
-                <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0"><FileText className="w-4 h-4" /></span>
-                {tr('My Uploaded Plan', 'मेरा अपलोड किया प्लान')}
-              </span>
-              {showingUploaded && <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500 text-white">{tr('Showing', 'दिख रहा है')}</span>}
-            </div>
-            {uploadedPlan ? (
-              <p className="text-xs opacity-70 mt-2 leading-relaxed">
-                {tr(
-                  `Your own plan, uploaded on ${shortDate(uploadedPlan.uploadedAt)} · ${uploadedPlan.sections.length} steps · active for ${uploadedDaysLeft} more day${uploadedDaysLeft === 1 ? '' : 's'} (till ${shortDate(uploadedPlan.expiresAt)}).`,
-                  `आपका अपना प्लान, ${shortDate(uploadedPlan.uploadedAt)} को अपलोड किया · ${uploadedPlan.sections.length} steps · ${uploadedDaysLeft} दिन और चालू (${shortDate(uploadedPlan.expiresAt)} तक)।`
-                )}
-              </p>
-            ) : (
-              <p className="text-xs opacity-70 mt-2 leading-relaxed flex items-start gap-1.5">
-                <Upload className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-600" />
-                <span>{tr("No plan uploaded yet. Tap here to upload a photo or PDF of your doctor's or dietitian's plan — it opens here as a separate plan.", 'अभी कोई प्लान अपलोड नहीं है। अपने डॉक्टर या डाइटीशियन के प्लान की फोटो या PDF अपलोड करने के लिए यहाँ टैप करें — ये यहाँ एक अलग प्लान के रूप में खुलेगा।')}</span>
-              </p>
-            )}
+            <FileText className="w-4 h-4 shrink-0" />
+            <span className="truncate">{tr('My Uploaded Plan', 'मेरा अपलोड किया प्लान')}</span>
+            {!uploadedPlan && <Upload className="w-3 h-3 shrink-0 opacity-60" />}
           </button>
         </div>
 
-        {/* Actions for the uploaded plan — only while it's the one shown. */}
+        {/* One short status line for whichever is selected — the two cards'
+            worth of description condensed to what's actually useful at a
+            glance. */}
+        <p className="text-[11px] px-1 opacity-60 leading-relaxed">
+          {showingUploaded
+            ? uploadedPlan
+              ? tr(
+                  `Uploaded ${shortDate(uploadedPlan.uploadedAt)} · ${uploadedPlan.sections.length} steps · active till ${shortDate(uploadedPlan.expiresAt)}.`,
+                  `${shortDate(uploadedPlan.uploadedAt)} को अपलोड · ${uploadedPlan.sections.length} steps · ${shortDate(uploadedPlan.expiresAt)} तक सक्रिय।`
+                )
+              : tr("No plan uploaded yet — tap above to upload a photo or PDF of your doctor's plan.", 'अभी कोई प्लान अपलोड नहीं — डॉक्टर के प्लान की फोटो/PDF अपलोड करने के लिए ऊपर टैप करें।')
+            : tr('Made by UrCare for your health profile — changes by itself as your program goes on.', 'आपकी हेल्थ प्रोफ़ाइल के हिसाब से UrCare का बनाया प्लान — प्रोग्राम के साथ अपने आप बदलता है।')}
+        </p>
+
+        {/* Actions for the uploaded plan — collapsed behind one small
+            toggle instead of three always-visible buttons, since most
+            visits to this screen don't need them. */}
         {showingUploaded && uploadedPlan && (
-          <div className={`p-3 sm:p-4 rounded-2xl border space-y-3 ${isDark ? 'border-amber-500/30 bg-amber-500/5' : 'border-amber-200 bg-amber-50'}`}>
-            <p className={`text-xs flex items-start gap-1.5 ${isDark ? 'text-amber-200' : 'text-amber-900'}`}>
-              <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-              <span>{tr('You are seeing your uploaded plan. Edit it, replace it with a new upload, or delete it to go back to the UrCare plan.', 'आप अपना अपलोड किया प्लान देख रहे हैं। इसे बदलें, नया अपलोड करके बदलें, या डिलीट करके UrCare प्लान पर वापस जाएँ।')}</span>
-            </p>
-            {isConfirmingDeletePlan ? (
-              <div className="space-y-2">
-                <p className="text-xs font-bold text-rose-600">
-                  {tr('Delete your uploaded plan? This cannot be undone. Your UrCare plan stays exactly as it is.', 'अपना अपलोड किया प्लान डिलीट करें? इसे वापस नहीं लाया जा सकता। आपका UrCare प्लान जैसा है वैसा ही रहेगा।')}
-                </p>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setIsConfirmingDeletePlan(false)} disabled={isDeletingPlan}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold cursor-pointer ${isDark ? 'bg-zinc-900 text-zinc-300' : 'bg-white border border-zinc-200 text-zinc-700'}`}>
-                    {tr('Keep it', 'रहने दें')}
-                  </button>
-                  <button type="button" onClick={handleDeleteUploadedPlan} disabled={isDeletingPlan}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60">
-                    {isDeletingPlan ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    {tr('Yes, delete', 'हाँ, डिलीट करें')}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                <button type="button" onClick={() => setIsPlanEditorOpen(true)}
-                  className="py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-1.5 cursor-pointer">
-                  <Edit3 className="w-3.5 h-3.5" /> {tr('Edit', 'बदलें')}
-                </button>
-                <button type="button" onClick={() => setIsUploadPlanOpen(true)}
-                  className={`py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${isDark ? 'bg-zinc-900 text-zinc-200' : 'bg-white border border-zinc-200 text-zinc-700'}`}>
-                  <Upload className="w-3.5 h-3.5" /> {tr('Upload new', 'नया अपलोड')}
-                </button>
-                <button type="button" onClick={() => setIsConfirmingDeletePlan(true)}
-                  className={`py-2.5 rounded-xl text-xs font-bold text-rose-600 flex items-center justify-center gap-1.5 cursor-pointer ${isDark ? 'bg-zinc-900' : 'bg-white border border-rose-200'}`}>
-                  <Trash2 className="w-3.5 h-3.5" /> {tr('Delete', 'डिलीट')}
-                </button>
-              </div>
-            )}
-            {planActionError && <p className="text-xs font-bold text-rose-500">{planActionError}</p>}
+          <div className={`rounded-2xl border overflow-hidden ${isDark ? 'border-amber-500/30 bg-amber-500/5' : 'border-amber-200 bg-amber-50'}`}>
+            <button
+              type="button"
+              onClick={() => setIsPlanActionsOpen((v) => !v)}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left cursor-pointer ${isDark ? 'text-amber-200' : 'text-amber-900'}`}
+            >
+              <Info className="w-3.5 h-3.5 shrink-0" />
+              <span className="flex-1 min-w-0 text-[11px] font-bold truncate">{tr('Manage your uploaded plan', 'अपना अपलोड किया प्लान प्रबंधित करें')}</span>
+              <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isPlanActionsOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <AnimatePresence initial={false}>
+              {isPlanActionsOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-3 pb-3 space-y-2.5">
+                    {isConfirmingDeletePlan ? (
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-bold text-rose-600">
+                          {tr('Delete your uploaded plan? This cannot be undone. Your UrCare plan stays exactly as it is.', 'अपना अपलोड किया प्लान डिलीट करें? इसे वापस नहीं लाया जा सकता। आपका UrCare प्लान जैसा है वैसा ही रहेगा।')}
+                        </p>
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => setIsConfirmingDeletePlan(false)} disabled={isDeletingPlan}
+                            className={`flex-1 py-2 rounded-xl text-[11px] font-bold cursor-pointer ${isDark ? 'bg-zinc-900 text-zinc-300' : 'bg-white border border-zinc-200 text-zinc-700'}`}>
+                            {tr('Keep it', 'रहने दें')}
+                          </button>
+                          <button type="button" onClick={handleDeleteUploadedPlan} disabled={isDeletingPlan}
+                            className="flex-1 py-2 rounded-xl text-[11px] font-black bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60">
+                            {isDeletingPlan ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                            {tr('Yes, delete', 'हाँ, डिलीट करें')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button type="button" onClick={() => setIsPlanEditorOpen(true)}
+                          className="py-2 rounded-xl text-[11px] font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-1 cursor-pointer">
+                          <Edit3 className="w-3 h-3" /> {tr('Edit', 'बदलें')}
+                        </button>
+                        <button type="button" onClick={() => setIsUploadPlanOpen(true)}
+                          className={`py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${isDark ? 'bg-zinc-900 text-zinc-200' : 'bg-white border border-zinc-200 text-zinc-700'}`}>
+                          <Upload className="w-3 h-3" /> {tr('Upload new', 'नया अपलोड')}
+                        </button>
+                        <button type="button" onClick={() => setIsConfirmingDeletePlan(true)}
+                          className={`py-2 rounded-xl text-[11px] font-bold text-rose-600 flex items-center justify-center gap-1 cursor-pointer ${isDark ? 'bg-zinc-900' : 'bg-white border border-rose-200'}`}>
+                          <Trash2 className="w-3 h-3" /> {tr('Delete', 'डिलीट')}
+                        </button>
+                      </div>
+                    )}
+                    {planActionError && <p className="text-[11px] font-bold text-rose-500">{planActionError}</p>}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Mail, Phone, Flame, Edit3, LogOut, RefreshCw,
-  Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight, Droplets, Users, Share2,
+  Package, FileText, Camera, BadgeCheck, Sparkles, ChevronRight, Droplets, Users, Share2, ClipboardCheck,
 } from 'lucide-react';
 import { UserHealthProfile, UserAccount, MedicalReportAnalysis, Prescription } from '../types';
 import { ShareHealthModal } from './ShareHealthModal';
@@ -471,13 +471,21 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
           </button>
 
+          <button type="button" onClick={onOpenAssessment} className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <ClipboardCheck className="w-4.5 h-4.5" />
+            </div>
+            <span className="text-sm font-bold text-zinc-900 flex-1 min-w-0 truncate">{tr('Assessment', 'असेसमेंट')}</span>
+            <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
+          </button>
+
           {onOpenFamily && (
             <button type="button" onClick={onOpenFamily} className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left">
               <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                 <Users className="w-4.5 h-4.5" />
               </div>
               <span className="flex-1 min-w-0">
-                <span className="block text-sm font-bold text-zinc-900 truncate">{tr('Friends & Family', 'दोस्त और परिवार')}</span>
+                <span className="block text-sm font-bold text-zinc-900 truncate">{tr('Health Circle', 'हेल्थ सर्कल')}</span>
                 <span className="block text-[11px] font-semibold text-emerald-700 truncate">{tr('Invite & earn reward points', 'बुलाएं और रिवॉर्ड पॉइंट कमाएं')}</span>
               </span>
               <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
