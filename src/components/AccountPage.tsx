@@ -233,9 +233,21 @@ export const AccountPage: React.FC<AccountPageProps> = ({
         </div>
 
         {/* Streak — moved here from the Daily Plan's top header, since it's
-            a personal stat about the user rather than part of today's plan. */}
-        <div className="flex justify-start">
+            a personal stat about the user rather than part of today's plan.
+            Assessment and Health Circle sit right beside it as matching
+            pill buttons, instead of buried further down as plain list rows. */}
+        <div className="flex flex-wrap items-center gap-2">
           <StreakWidget profile={profile} />
+          <button type="button" onClick={onOpenAssessment} className="account-pill inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full cursor-pointer active:scale-95 transition-transform">
+            <ClipboardCheck className="w-4 h-4" />
+            <span className="text-sm font-black">{tr('Assessment', 'असेसमेंट')}</span>
+          </button>
+          {onOpenFamily && (
+            <button type="button" onClick={onOpenFamily} className="account-pill inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full cursor-pointer active:scale-95 transition-transform">
+              <Users className="w-4 h-4" />
+              <span className="text-sm font-black">{tr('Health Circle', 'हेल्थ सर्कल')}</span>
+            </button>
+          )}
         </div>
 
         {/* YOUR REVERSAL FOCUS — condition-derived focus tiles, the same
@@ -471,26 +483,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({
             <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
           </button>
 
-          <button type="button" onClick={onOpenAssessment} className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <ClipboardCheck className="w-4.5 h-4.5" />
-            </div>
-            <span className="text-sm font-bold text-zinc-900 flex-1 min-w-0 truncate">{tr('Assessment', 'असेसमेंट')}</span>
-            <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
-          </button>
-
-          {onOpenFamily && (
-            <button type="button" onClick={onOpenFamily} className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <Users className="w-4.5 h-4.5" />
-              </div>
-              <span className="flex-1 min-w-0">
-                <span className="block text-sm font-bold text-zinc-900 truncate">{tr('Health Circle', 'हेल्थ सर्कल')}</span>
-                <span className="block text-[11px] font-semibold text-emerald-700 truncate">{tr('Invite & earn reward points', 'बुलाएं और रिवॉर्ड पॉइंट कमाएं')}</span>
-              </span>
-              <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
-            </button>
-          )}
 
           <button type="button" onClick={() => setIsShareOpen(true)} className="w-full p-4 flex items-center gap-3 hover:bg-zinc-50 transition-colors cursor-pointer text-left">
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">

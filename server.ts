@@ -2606,6 +2606,156 @@ app.post('/api/family/settings', requireUser(async (req, res, user) => {
   res.json({ ok: true, shareProgress: !!req.body?.shareProgress });
 }));
 
+// ----------------------------------------------------------------------------
+// FAMILY & FRIENDS — IN-APP CHAT AND VOICE CALLS. Only two people who are
+// already linked (each other's app_metadata.family_members) can open a
+// thread or start a call with each other — never a WhatsApp/SMS deep link,
+// entirely inside the app. Calls are plain WebRTC signaled by polling one
+// row (see supabase/patches.sql §23) — no separate realtime/signaling
+// server, consistent with how the Care Team chat already polls.
+// ----------------------------------------------------------------------------
+
+/** True if `otherId` is in `userId`'s own family_members list — the same
+ *  link both sides end up with on accept, so checking one side is enough. */
+async function assertFamilyLinked(supabase: any, userId: string, otherId: string): Promise<boolean> {
+  if (userId === otherId) return false;
+  const me = await getAuthUser(supabase, userId);
+  return (me?.app_metadata?.family_members || []).some((m: any) => m.uid === otherId);
+}
+
+app.post('/api/family/chat/open', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const other = await userByCode(supabase, String(req.body?.id || ''));
+  if (!other) return res.status(400).json({ error: 'Member not found.' });
+  if (!(await assertFamilyLinked(supabase, user.id, other.id))) return res.status(403).json({ error: 'You can only chat with people in your Health Circle.' });
+  const [a, b] = [user.id, other.id].sort();
+  const { data: existing } = await supabase.from('family_chat_threads').select('id').eq('user_a', a).eq('user_b', b).maybeSingle();
+  let threadId = existing?.id as string | undefined;
+  if (!threadId) {
+    const { data: created, error } = await supabase.from('family_chat_threads').insert({ user_a: a, user_b: b }).select('id').single();
+    if (error) return res.status(500).json({ error: 'Could not open this chat.' });
+    threadId = created.id;
+  }
+  res.json({ threadId, person: await publicPerson(supabase, other) });
+}));
+
+app.get('/api/family/chat/:threadId/messages', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const { data: thread } = await supabase.from('family_chat_threads').select('*').eq('id', req.params.threadId).maybeSingle();
+  if (!thread || (thread.user_a !== user.id && thread.user_b !== user.id)) return res.status(403).json({ error: 'Not your chat.' });
+  const { data: rows, error } = await supabase.from('family_chat_messages').select('*').eq('thread_id', thread.id).order('created_at', { ascending: true }).limit(300);
+  if (error) return res.status(500).json({ error: 'Could not load messages.' });
+  res.json({ messages: (rows || []).map((m: any) => ({ id: m.id, body: m.body, senderId: m.sender_id, mine: m.sender_id === user.id, createdAt: m.created_at })) });
+}));
+
+app.post('/api/family/chat/:threadId/messages', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const body = String(req.body?.body || '').trim().slice(0, 2000);
+  if (!body) return res.status(400).json({ error: 'Message is empty.' });
+  const { data: thread } = await supabase.from('family_chat_threads').select('*').eq('id', req.params.threadId).maybeSingle();
+  if (!thread || (thread.user_a !== user.id && thread.user_b !== user.id)) return res.status(403).json({ error: 'Not your chat.' });
+  const { data: message, error } = await supabase.from('family_chat_messages').insert({ thread_id: thread.id, sender_id: user.id, body }).select('*').single();
+  if (error) return res.status(500).json({ error: 'Could not send message.' });
+  await supabase.from('family_chat_threads').update({ last_message_at: new Date().toISOString() }).eq('id', thread.id);
+  const otherId = thread.user_a === user.id ? thread.user_b : thread.user_a;
+  const me = await getAuthUser(supabase, user.id);
+  const sender = await publicPerson(supabase, me);
+  await createNotification(supabase, otherId, 'chat', `${sender.name} sent you a message`, body.slice(0, 80));
+  res.json({ message: { id: message.id, body: message.body, senderId: message.sender_id, mine: true, createdAt: message.created_at } });
+}));
+
+/** Rings this account has sent/received go stale fast — a call nobody
+ *  answers in 45s should stop showing as "incoming" anywhere. */
+const CALL_RING_TIMEOUT_MS = 45_000;
+
+app.post('/api/family/call/start', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const other = await userByCode(supabase, String(req.body?.id || ''));
+  if (!other) return res.status(400).json({ error: 'Member not found.' });
+  if (!(await assertFamilyLinked(supabase, user.id, other.id))) return res.status(403).json({ error: 'You can only call people in your Health Circle.' });
+  const { data: call, error } = await supabase.from('family_calls').insert({ caller_id: user.id, callee_id: other.id }).select('id').single();
+  if (error) return res.status(500).json({ error: 'Could not start the call.' });
+  res.json({ callId: call.id, person: await publicPerson(supabase, other) });
+}));
+
+app.get('/api/family/call/incoming', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const since = new Date(Date.now() - CALL_RING_TIMEOUT_MS).toISOString();
+  const { data: call } = await supabase.from('family_calls').select('*').eq('callee_id', user.id).eq('status', 'ringing').gt('created_at', since).order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (!call) return res.json({ call: null });
+  const caller = await getAuthUser(supabase, call.caller_id);
+  res.json({ call: { id: call.id, person: await publicPerson(supabase, caller) } });
+}));
+
+app.get('/api/family/call/:id', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const { data: call } = await supabase.from('family_calls').select('*').eq('id', req.params.id).maybeSingle();
+  if (!call || (call.caller_id !== user.id && call.callee_id !== user.id)) return res.status(403).json({ error: 'Not your call.' });
+  // A ring nobody answered in time reads as ended from here on, both sides.
+  const status = call.status === 'ringing' && Date.now() - new Date(call.created_at).getTime() > CALL_RING_TIMEOUT_MS ? 'ended' : call.status;
+  res.json({
+    status,
+    isCaller: call.caller_id === user.id,
+    offer: call.offer,
+    answer: call.answer,
+    candidates: call.caller_id === user.id ? call.callee_candidates : call.caller_candidates,
+  });
+}));
+
+app.post('/api/family/call/:id/offer', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const { data: call } = await supabase.from('family_calls').select('*').eq('id', req.params.id).maybeSingle();
+  if (!call || call.caller_id !== user.id) return res.status(403).json({ error: 'Not your call.' });
+  await supabase.from('family_calls').update({ offer: req.body?.offer, updated_at: new Date().toISOString() }).eq('id', call.id);
+  res.json({ ok: true });
+}));
+
+app.post('/api/family/call/:id/accept', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const { data: call } = await supabase.from('family_calls').select('*').eq('id', req.params.id).maybeSingle();
+  if (!call || call.callee_id !== user.id) return res.status(403).json({ error: 'Not your call.' });
+  await supabase.from('family_calls').update({ status: 'accepted', updated_at: new Date().toISOString() }).eq('id', call.id);
+  res.json({ ok: true });
+}));
+
+app.post('/api/family/call/:id/answer', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const { data: call } = await supabase.from('family_calls').select('*').eq('id', req.params.id).maybeSingle();
+  if (!call || call.callee_id !== user.id) return res.status(403).json({ error: 'Not your call.' });
+  await supabase.from('family_calls').update({ answer: req.body?.answer, updated_at: new Date().toISOString() }).eq('id', call.id);
+  res.json({ ok: true });
+}));
+
+app.post('/api/family/call/:id/candidate', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const { data: call } = await supabase.from('family_calls').select('*').eq('id', req.params.id).maybeSingle();
+  if (!call || (call.caller_id !== user.id && call.callee_id !== user.id)) return res.status(403).json({ error: 'Not your call.' });
+  const column = call.caller_id === user.id ? 'caller_candidates' : 'callee_candidates';
+  const list = Array.isArray(call[column]) ? call[column] : [];
+  await supabase.from('family_calls').update({ [column]: [...list, req.body?.candidate].slice(-60), updated_at: new Date().toISOString() }).eq('id', call.id);
+  res.json({ ok: true });
+}));
+
+app.post('/api/family/call/:id/end', requireUser(async (req, res, user) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const { data: call } = await supabase.from('family_calls').select('*').eq('id', req.params.id).maybeSingle();
+  if (!call || (call.caller_id !== user.id && call.callee_id !== user.id)) return res.status(403).json({ error: 'Not your call.' });
+  const status = call.status === 'ringing' && call.callee_id === user.id ? 'declined' : 'ended';
+  await supabase.from('family_calls').update({ status, updated_at: new Date().toISOString() }).eq('id', call.id);
+  res.json({ ok: true });
+}));
+
 // Today's plan progress (sent by the app whenever a step is ticked). When the
 // member shares progress, their family is notified at 50% and at 100%.
 app.post('/api/progress/today', requireUser(async (req, res, user) => {
@@ -3387,6 +3537,8 @@ app.delete('/api/account', requireUser(async (req, res, user) => {
     for (const id of [...dependentIds, user.id]) {
       await deleteUserData(supabase, id);
       await supabase.from('family_members').delete().or(`primary_user_id.eq.${id},dependent_user_id.eq.${id}`);
+      await supabase.from('family_chat_threads').delete().or(`user_a.eq.${id},user_b.eq.${id}`);
+      await supabase.from('family_calls').delete().or(`caller_id.eq.${id},callee_id.eq.${id}`);
       const { error } = await supabase.auth.admin.deleteUser(id);
       if (error) throw error;
     }

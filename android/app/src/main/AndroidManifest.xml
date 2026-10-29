@@ -57,6 +57,12 @@
          the runtime camera permission prompt; without it, every camera
          request from the WebView is rejected outright. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Required for in-app Health Circle voice calls
+         (navigator.mediaDevices.getUserMedia({audio:true}) in
+         FamilyCallModal.tsx) — same Capacitor permission check as CAMERA
+         above, for the microphone instead. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <!-- Play Store only allows exact alarms for alarm/calendar apps. Plan
          reminders work fine without it (the notification plugin falls back

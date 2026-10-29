@@ -1410,6 +1410,50 @@ export async function reportTodayProgress(done: number, total: number, status?: 
   try { await authedFetch('/api/progress/today', { method: 'POST', body: JSON.stringify({ done, total, status }) }); } catch {}
 }
 
+// ============================================================================
+// FAMILY & FRIENDS — IN-APP CHAT AND VOICE CALLS (see family_chat_threads /
+// family_chat_messages / family_calls in supabase/patches.sql §23). Only
+// usable with someone already in this account's Health Circle.
+// ============================================================================
+
+export interface FamilyChatMessage { id: string; body: string; senderId: string; mine: boolean; createdAt: string }
+
+export async function openFamilyChat(id: string): Promise<{ threadId: string; person: FamilyPerson } | null> {
+  try { const res = await authedFetch('/api/family/chat/open', { method: 'POST', body: JSON.stringify({ id }) }); return res.ok ? await res.json() : null; } catch { return null; }
+}
+export async function getFamilyChatMessages(threadId: string): Promise<FamilyChatMessage[]> {
+  try { const res = await authedFetch(`/api/family/chat/${threadId}/messages`, { method: 'GET' }); const data = await jsonOrNull(res); return res.ok ? (data?.messages || []) : []; } catch { return []; }
+}
+export async function sendFamilyChatMessage(threadId: string, body: string): Promise<{ message?: FamilyChatMessage; error?: string }> {
+  try { const res = await authedFetch(`/api/family/chat/${threadId}/messages`, { method: 'POST', body: JSON.stringify({ body }) }); const data = await jsonOrNull(res); return res.ok ? { message: data.message } : { error: data?.error || 'Could not send this message.' }; } catch { return { error: 'Could not reach the server. Please check your connection and try again.' }; }
+}
+
+export async function startFamilyCall(id: string): Promise<{ callId: string; person: FamilyPerson } | null> {
+  try { const res = await authedFetch('/api/family/call/start', { method: 'POST', body: JSON.stringify({ id }) }); return res.ok ? await res.json() : null; } catch { return null; }
+}
+export async function getIncomingFamilyCall(): Promise<{ id: string; person: FamilyPerson } | null> {
+  try { const res = await authedFetch('/api/family/call/incoming', { method: 'GET' }); const data = await jsonOrNull(res); return data?.call || null; } catch { return null; }
+}
+export interface FamilyCallState { status: 'ringing' | 'accepted' | 'declined' | 'ended'; isCaller: boolean; offer: any; answer: any; candidates: any[] }
+export async function getFamilyCall(callId: string): Promise<FamilyCallState | null> {
+  try { const res = await authedFetch(`/api/family/call/${callId}`, { method: 'GET' }); return res.ok ? await res.json() : null; } catch { return null; }
+}
+export async function sendFamilyCallOffer(callId: string, offer: any): Promise<void> {
+  try { await authedFetch(`/api/family/call/${callId}/offer`, { method: 'POST', body: JSON.stringify({ offer }) }); } catch {}
+}
+export async function acceptFamilyCall(callId: string): Promise<void> {
+  try { await authedFetch(`/api/family/call/${callId}/accept`, { method: 'POST', body: JSON.stringify({}) }); } catch {}
+}
+export async function sendFamilyCallAnswer(callId: string, answer: any): Promise<void> {
+  try { await authedFetch(`/api/family/call/${callId}/answer`, { method: 'POST', body: JSON.stringify({ answer }) }); } catch {}
+}
+export async function sendFamilyCallCandidate(callId: string, candidate: any): Promise<void> {
+  try { await authedFetch(`/api/family/call/${callId}/candidate`, { method: 'POST', body: JSON.stringify({ candidate }) }); } catch {}
+}
+export async function endFamilyCall(callId: string): Promise<void> {
+  try { await authedFetch(`/api/family/call/${callId}/end`, { method: 'POST', body: JSON.stringify({}) }); } catch {}
+}
+
 export interface ReferralStatus {
   code: string;
   joined: number;

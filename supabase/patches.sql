@@ -562,3 +562,59 @@ drop policy if exists "own bot messages select" on public.health_bot_messages;
 create policy "own bot messages select" on public.health_bot_messages for select using (auth.uid() = user_id);
 drop policy if exists "own bot messages delete" on public.health_bot_messages;
 create policy "own bot messages delete" on public.health_bot_messages for delete using (auth.uid() = user_id);
+
+-- 23. FAMILY & FRIENDS — IN-APP CHAT AND VOICE CALLS. Two people become
+--     "linked" the normal Family & Friends way (app_metadata.family_members
+--     on each account) — these tables are the actual conversation between
+--     two linked real accounts, entirely inside the app (no WhatsApp/SMS).
+--     One chat thread per unordered pair (the unique index on the
+--     least/greatest of the two ids prevents ever creating a second thread
+--     for the same pair). Calls are plain WebRTC: the two sides exchange an
+--     SDP offer/answer and ICE candidates by polling this one row — no
+--     separate signaling server needed, consistent with how chat/queue
+--     already poll instead of using Realtime. All writes go through the
+--     server (service_role), which checks the two people are actually
+--     linked before creating or reading anything.
+create table if not exists public.family_chat_threads (
+  id uuid primary key default gen_random_uuid(),
+  user_a uuid not null references auth.users(id) on delete cascade,
+  user_b uuid not null references auth.users(id) on delete cascade,
+  last_message_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists family_chat_threads_pair_idx on public.family_chat_threads (least(user_a, user_b), greatest(user_a, user_b));
+alter table public.family_chat_threads enable row level security;
+drop policy if exists "own family chat thread select" on public.family_chat_threads;
+create policy "own family chat thread select" on public.family_chat_threads for select using (auth.uid() = user_a or auth.uid() = user_b);
+
+create table if not exists public.family_chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  thread_id uuid not null references public.family_chat_threads(id) on delete cascade,
+  sender_id uuid not null references auth.users(id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists family_chat_messages_thread_id_created_at_idx on public.family_chat_messages (thread_id, created_at);
+alter table public.family_chat_messages enable row level security;
+drop policy if exists "own family chat messages select" on public.family_chat_messages;
+create policy "own family chat messages select" on public.family_chat_messages for select using (
+  auth.uid() in (select user_a from public.family_chat_threads where id = thread_id)
+  or auth.uid() in (select user_b from public.family_chat_threads where id = thread_id)
+);
+
+create table if not exists public.family_calls (
+  id uuid primary key default gen_random_uuid(),
+  caller_id uuid not null references auth.users(id) on delete cascade,
+  callee_id uuid not null references auth.users(id) on delete cascade,
+  status text not null default 'ringing', -- ringing | accepted | declined | ended
+  offer jsonb,
+  answer jsonb,
+  caller_candidates jsonb not null default '[]'::jsonb,
+  callee_candidates jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists family_calls_callee_status_idx on public.family_calls (callee_id, status);
+alter table public.family_calls enable row level security;
+drop policy if exists "own family calls select" on public.family_calls;
+create policy "own family calls select" on public.family_calls for select using (auth.uid() = caller_id or auth.uid() = callee_id);

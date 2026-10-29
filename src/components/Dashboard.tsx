@@ -29,7 +29,8 @@ import { ReportPhotoViewer } from './ReportPhotoViewer';
 import { MyCareFilesPanel } from './MyCareFilesPanel';
 import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
-import { signOutUser, activePlanSections, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity, getMyQueueEntry, takePendingAdd, getNotifications } from '../utils/supabase';
+import { signOutUser, activePlanSections, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity, getMyQueueEntry, takePendingAdd, getNotifications, getIncomingFamilyCall, FamilyPerson } from '../utils/supabase';
+import { FamilyCallModal } from './FamilyCallModal';
 import { calculateNutritionPlan } from '../utils/calculator';
 import { labelMinutes } from './RecommendationsView';
 import { useLanguage } from '../context/LanguageContext';
@@ -149,6 +150,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [isFoodScannerOpen, setIsFoodScannerOpen] = useState(false);
   const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
   const [isRiskAssessmentOpen, setIsRiskAssessmentOpen] = useState(false);
+
+  // Incoming Health Circle voice calls — rings from anywhere in the app
+  // (not just while Family & Friends is open), by polling every 3s. Once a
+  // call is showing, polling pauses so it isn't re-triggered mid-call.
+  const [incomingCall, setIncomingCall] = useState<{ id: string; person: FamilyPerson } | null>(null);
+  useEffect(() => {
+    if (incomingCall) return;
+    const poll = () => { if (document.visibilityState === 'visible') getIncomingFamilyCall().then((c) => { if (c) setIncomingCall(c); }); };
+    const interval = window.setInterval(poll, 3000);
+    return () => window.clearInterval(interval);
+  }, [incomingCall]);
 
   // Daily target macros (used to personalize the AI food scan & recommendations)
   const targetProtein = profile.calculatedPlan?.proteinGrams || 130;
@@ -1293,6 +1305,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           }}
         />
       )}
+
+      <FamilyCallModal
+        open={!!incomingCall}
+        onClose={() => setIncomingCall(null)}
+        callId={incomingCall?.id || null}
+        person={incomingCall?.person || null}
+        mode="incoming"
+      />
 
       {isRiskAssessmentOpen && (
         <RiskAssessmentModal

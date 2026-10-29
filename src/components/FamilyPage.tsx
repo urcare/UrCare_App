@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Users, Search, Check, X, Copy, Share2, Gift, Heart, UserPlus, Trash2, Eye, EyeOff, Loader2, QrCode, ScanLine, ShoppingBag, MessageCircle, ChevronRight } from 'lucide-react';
+import { Plus, Users, Search, Check, X, Copy, Share2, Gift, Heart, UserPlus, Trash2, Eye, EyeOff, Loader2, QrCode, ScanLine, ShoppingBag, MessageCircle, ChevronRight, Phone } from 'lucide-react';
 import { UsernameSheet, MyQrSheet, QrScannerSheet } from './ProfileQr';
 import { StatusStrip } from './FamilyStatus';
 import { NumberTicker } from './magicui/number-ticker';
@@ -10,10 +10,13 @@ import { Share } from '@capacitor/share';
 import {
   getFamily, searchFamilyMember, sendFamilyRequest, respondFamilyRequest, removeFamilyMember, setFamilyShareProgress,
   FamilyState, FamilyPerson, FamilyLink, profileLink, getReferralStatus, ReferralStatus,
+  openFamilyChat, startFamilyCall,
 } from '../utils/supabase';
 import { BorderBeam } from './magicui/border-beam';
 import { MagicCard } from './magicui/magic-card';
 import { AnimatedListItem } from './magicui/animated-list';
+import { FamilyChatModal } from './FamilyChatModal';
+import { FamilyCallModal } from './FamilyCallModal';
 
 const RELATION_LABELS: Record<string, [string, string, string]> = {
   mother: ['Mother', 'माँ', '👩'], father: ['Father', 'पिता', '👨'], brother: ['Brother', 'भाई', '🧑'], sister: ['Sister', 'बहन', '👧'],
@@ -109,16 +112,21 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
     window.open(`https://wa.me/?text=${encodeURIComponent(inviteText)}`, '_blank', 'noopener');
   };
 
-  const chatText = tr(
-    `Hey! Let's check in on each other's health on UrCare 🙂 ${profileLink({ username: state?.username, id: myId })}`,
-    `हाय! चलो UrCare पर एक-दूसरे का हेल्थ चेक-इन करते हैं 🙂 ${profileLink({ username: state?.username, id: myId })}`,
-  );
-  const openChat = async () => {
-    try {
-      if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Share')) { await Share.share({ text: chatText, dialogTitle: tr('Chat with Family & Friends', 'परिवार व दोस्तों से बात करें') }); return; }
-      if (navigator.share) { await navigator.share({ text: chatText }); return; }
-    } catch { return; }
-    window.open(`https://wa.me/?text=${encodeURIComponent(chatText)}`, '_blank', 'noopener');
+  // In-app chat and voice call with one specific Health Circle member —
+  // never WhatsApp/SMS. Chat opens a thread (and may have been reached via
+  // "Call" from inside that chat, which starts a call for the same person
+  // without closing the chat screen first).
+  const [chatWith, setChatWith] = useState<{ threadId: string; person: FamilyPerson } | null>(null);
+  const [callWith, setCallWith] = useState<{ callId: string; person: FamilyPerson; mode: 'outgoing' | 'incoming' } | null>(null);
+  const openChatWith = async (id: string) => {
+    const result = await openFamilyChat(id);
+    if (result) setChatWith(result);
+    else flash(tr('Could not open this chat.', 'यह चैट नहीं खुल सकी।'));
+  };
+  const callMember = async (id: string) => {
+    const result = await startFamilyCall(id);
+    if (result) setCallWith({ ...result, mode: 'outgoing' });
+    else flash(tr('Could not start the call.', 'कॉल शुरू नहीं हो सकी।'));
   };
 
   const toggleShare = async () => {
@@ -257,16 +265,6 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
         </span>
       </button>
 
-      {/* Chat with Family & Friends */}
-      <button type="button" onClick={openChat} className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-zinc-200 shadow-depth text-left cursor-pointer">
-        <span className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0"><MessageCircle className="w-5 h-5" /></span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-black text-zinc-900">{tr('Chat with Family & Friends', 'परिवार व दोस्तों से बात करें')}</span>
-          <span className="block text-[11px] text-zinc-500 font-semibold">{tr('Start a chat on WhatsApp or any app you like', 'WhatsApp या अपनी पसंद की किसी भी ऐप पर बात शुरू करें')}</span>
-        </span>
-        <ChevronRight className="w-4 h-4 text-zinc-300 shrink-0" />
-      </button>
-
       {/* Requests */}
       {!!state?.requests.length && (
         <section className="space-y-2">
@@ -312,6 +310,8 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
                     {m.progress ? <ProgressRing pct={m.progress.pct} /> : (
                       <span className="text-[10px] font-bold text-zinc-400 text-right leading-tight w-16">{m.sharesProgress ? tr('Not started today', 'आज शुरू नहीं') : tr('Progress private', 'प्रोग्रेस निजी')}</span>
                     )}
+                    <button type="button" onClick={() => openChatWith(m.id)} className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 cursor-pointer" title={tr('Chat', 'चैट')}><MessageCircle className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => callMember(m.id)} className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 cursor-pointer" title={tr('Call', 'कॉल')}><Phone className="w-4 h-4" /></button>
                     <button type="button" onClick={() => remove(m)} disabled={busy === m.id} className="p-1.5 rounded-lg text-zinc-300 hover:text-rose-500 hover:bg-rose-50 cursor-pointer" title={tr('Remove', 'हटाएं')}><Trash2 className="w-4 h-4" /></button>
                   </li>
                 </AnimatedListItem>
@@ -352,6 +352,21 @@ export const FamilyPage: React.FC<FamilyPageProps> = ({ tr, startAdding, initial
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-full bg-zinc-900 text-white text-xs font-bold shadow-lg whitespace-nowrap">{notice}</motion.div>
         )}
       </AnimatePresence>
+
+      <FamilyChatModal
+        open={!!chatWith}
+        onClose={() => setChatWith(null)}
+        threadId={chatWith?.threadId || null}
+        person={chatWith?.person || null}
+        onCall={chatWith ? () => callMember(chatWith.person.id) : undefined}
+      />
+      <FamilyCallModal
+        open={!!callWith}
+        onClose={() => setCallWith(null)}
+        callId={callWith?.callId || null}
+        person={callWith?.person || null}
+        mode={callWith?.mode || 'outgoing'}
+      />
     </main>
   );
 };
