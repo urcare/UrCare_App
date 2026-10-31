@@ -16,6 +16,7 @@ const ENABLE_BODY_MAP_AFTER_ONBOARDING = false;
 import { loadAccountState } from './utils/accountState';
 import { getCurrentSession, onAuthStateChange, fetchProfileBundle, upsertProfile, verifySessionUser, signOutUser, completeNativeOAuthSignIn, getAccessStatus, AccessStatus, captureReferralFromUrl, claimStoredReferral, captureAddFromUrl } from './utils/supabase';
 import { lazyComponent, PageLoader } from './utils/lazyComponent';
+import { initAnalytics } from './utils/analytics';
 
 // Loaded only when first opened (smaller, faster app start).
 const OnboardingFlow = lazyComponent<typeof import('./components/OnboardingFlow')['OnboardingFlow']>(() => import('./components/OnboardingFlow'), 'OnboardingFlow', <PageLoader />);
@@ -42,6 +43,11 @@ function MainApp() {
   // completes but fails — so a failure is visible instead of just silently
   // landing back here with no explanation.
   const [nativeAuthError, setNativeAuthError] = useState<string | null>(null);
+
+  // Usage analytics for the admin panel (page views + clicks, device/IP/
+  // location) — the admin panel itself is a completely separate bundle
+  // (admin-main.tsx) and is never tracked by this.
+  useEffect(() => { initAnalytics(); }, []);
 
   const loadFromSession = useCallback(async (userId: string, email: string) => {
     // Per-account saved state (language, cart, onboarding draft, …) first,

@@ -618,3 +618,43 @@ create index if not exists family_calls_callee_status_idx on public.family_calls
 alter table public.family_calls enable row level security;
 drop policy if exists "own family calls select" on public.family_calls;
 create policy "own family calls select" on public.family_calls for select using (auth.uid() = caller_id or auth.uid() = callee_id);
+
+-- 24. ANALYTICS — website + app usage, admin-only. One row per visit
+--     ("session": a browser tab or one open of the Android app), with
+--     device/browser/IP/approx. location captured once by the server when
+--     the session starts; events (page views and clicks/taps on buttons)
+--     are appended as the person actually uses the app, giving the exact
+--     path they took ("opened Store → tapped Buy Now → opened Orders").
+--     Written only by the server (service_role) from
+--     POST /api/analytics/session and /api/analytics/events — never
+--     readable by a normal client, only by an admin (requireAdmin), so no
+--     select policy is granted to anon/authenticated here at all.
+create table if not exists public.analytics_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  platform text not null default 'web', -- 'web' | 'app'
+  entry_path text,
+  ip_address text,
+  country text,
+  city text,
+  device_type text, -- 'mobile' | 'tablet' | 'desktop'
+  os text,
+  browser text,
+  user_agent text,
+  started_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now()
+);
+create index if not exists analytics_sessions_started_at_idx on public.analytics_sessions (started_at desc);
+create index if not exists analytics_sessions_user_id_idx on public.analytics_sessions (user_id);
+alter table public.analytics_sessions enable row level security;
+
+create table if not exists public.analytics_events (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.analytics_sessions(id) on delete cascade,
+  type text not null, -- 'pageview' | 'click'
+  path text,
+  label text,
+  created_at timestamptz not null default now()
+);
+create index if not exists analytics_events_session_id_created_at_idx on public.analytics_events (session_id, created_at);
+alter table public.analytics_events enable row level security;

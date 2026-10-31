@@ -6,6 +6,7 @@ import {
   Truck, Check, Stethoscope, Search, ExternalLink, RefreshCw, Upload, X,
   Zap, ChevronRight, HelpCircle, Save, Activity, HeartPulse, Trash2, Image as ImageIcon, Tag, Package,
   User, Target, Flame, Droplets, Scale, Calendar, MessageCircle, Paperclip, Clock, Hash, PhoneCall, MessageSquareHeart, Play,
+  BarChart3, Globe, Smartphone, Monitor, MapPin, ChevronDown,
 } from 'lucide-react';
 import {
   AdminStats, MedicalReportAnalysis, Order, Prescription,
@@ -18,6 +19,7 @@ import { getReviews, getProducts, mapOrderRow } from '../utils/supabase';
 import { openAttachment } from '../utils/openAttachment';
 import { compressImageIfNeeded, compressVideoIfNeeded } from '../utils/compressMedia';
 import { calculateNutritionPlan } from '../utils/calculator';
+import { ExportButtons } from './admin/ExportButtons';
 
 const EMPTY_STATS: AdminStats = {
   totalUsers: 0, totalBuyers: 0, nonBuyers: 0,
@@ -54,7 +56,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'patients' | 'reports' | 'orders' | 'products_qr' | 'reviews' | 'messages' | 'status' | 'queue' | 'feedback'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'patients' | 'reports' | 'orders' | 'products_qr' | 'reviews' | 'messages' | 'status' | 'queue' | 'feedback' | 'analytics'>('overview');
 
   // Stats & Data — all real, fetched from Supabase via the server once logged in.
   const [stats, setStats] = useState<AdminStats>(EMPTY_STATS);
@@ -597,6 +599,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     }).catch(() => {}).finally(() => setIsLoadingFeedback(false));
   };
 
+  // ---- Analytics (website + app usage) ----
+  const [analyticsOverview, setAnalyticsOverview] = useState<any | null>(null);
+  const [analyticsSessions, setAnalyticsSessions] = useState<any[]>([]);
+  const [analyticsPlatformFilter, setAnalyticsPlatformFilter] = useState<'all' | 'web' | 'app'>('all');
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [sessionEvents, setSessionEvents] = useState<any[]>([]);
+  const loadAnalytics = (platform: 'all' | 'web' | 'app' = analyticsPlatformFilter) => {
+    if (!adminToken) return;
+    setIsLoadingAnalytics(true);
+    const qs = platform !== 'all' ? `?platform=${platform}` : '';
+    Promise.all([
+      adminFetch(adminToken, '/api/admin/analytics/overview').then((res) => res.json()),
+      adminFetch(adminToken, `/api/admin/analytics/sessions${qs}`).then((res) => res.json()),
+    ]).then(([overview, sessionsData]) => {
+      setAnalyticsOverview(overview);
+      setAnalyticsSessions(Array.isArray(sessionsData?.sessions) ? sessionsData.sessions : []);
+    }).catch(() => {}).finally(() => setIsLoadingAnalytics(false));
+  };
+  const toggleSessionEvents = (id: string) => {
+    if (expandedSessionId === id) { setExpandedSessionId(null); return; }
+    setExpandedSessionId(id);
+    if (!adminToken) return;
+    adminFetch(adminToken, `/api/admin/analytics/sessions/${id}/events`).then((res) => res.json()).then((data) => {
+      setSessionEvents(Array.isArray(data?.events) ? data.events : []);
+    }).catch(() => setSessionEvents([]));
+  };
+
   // ---- Consultation Queue ----
   const [queueEntries, setQueueEntries] = useState<any[]>([]);
   const [isLoadingQueue, setIsLoadingQueue] = useState(false);
@@ -1132,6 +1162,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
             <MessageSquareHeart className="w-4 h-4" />
             <span>App Feedback{appFeedback.length > 0 ? ` (${appFeedback.length})` : ''}</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => { setActiveTab('analytics'); loadAnalytics(); }}
+            className={`shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-[11px] sm:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer ${
+              activeTab === 'analytics' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Analytics</span>
+          </button>
         </div>
 
         {/* TAB 1: OVERVIEW METRICS */}
@@ -1228,14 +1269,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 <h2 className="text-xl font-black text-zinc-950">Patients</h2>
                 <p className="text-xs text-zinc-500 mt-0.5">Every real signed-up account — pick one to view their profile and Root-Cause Assessment.</p>
               </div>
-              <button
-                type="button"
-                onClick={loadPatientsList}
-                className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Refresh List</span>
-              </button>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <ExportButtons
+                  filename="urcare-users"
+                  title="UrCare — Signed-Up Users"
+                  columns={[
+                    { key: 'full_name', label: 'Name' }, { key: 'email', label: 'Email' },
+                    { key: 'onboarding_completed', label: 'Onboarding Done' }, { key: 'user_id', label: 'User ID' },
+                  ]}
+                  rows={patients}
+                />
+                <button
+                  type="button"
+                  onClick={loadPatientsList}
+                  className="px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Refresh List</span>
+                </button>
+              </div>
             </div>
 
             {/* Patient picker */}
@@ -1735,11 +1787,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
         {/* TAB 3: CUSTOMER ORDERS */}
         {activeTab === 'orders' && (
           <div className="space-y-6 text-left">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-black text-zinc-950">Store Order Fulfillment</h3>
                 <p className="text-xs text-zinc-500">Check each payment screenshot, approve or reject it, then manage shipment dispatch.</p>
               </div>
+              <ExportButtons
+                filename="urcare-orders"
+                title="UrCare — Store Orders"
+                columns={[
+                  { key: 'id', label: 'Order ID' }, { key: 'name', label: 'Customer' }, { key: 'phone', label: 'Phone' },
+                  { key: 'total', label: 'Total' }, { key: 'couponCode', label: 'Coupon' }, { key: 'paymentStatus', label: 'Payment' },
+                  { key: 'orderStatus', label: 'Status' }, { key: 'createdAt', label: 'Placed' },
+                ]}
+                rows={orders.map((o) => ({ id: o.id, name: o.shippingAddress?.fullName, phone: o.shippingAddress?.phone, total: o.total, couponCode: o.couponCode, paymentStatus: o.paymentStatus, orderStatus: o.orderStatus, createdAt: o.createdAt }))}
+              />
             </div>
 
             <div className="space-y-3">
@@ -1867,15 +1929,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  id="admin-add-product-btn"
-                  onClick={handleOpenAddProduct}
-                  className="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 transition-all cursor-pointer"
-                >
-                  <Plus className="w-4 h-4 stroke-[3]" />
-                  <span>Upload / Add New Product</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <ExportButtons
+                    filename="urcare-products"
+                    title="UrCare — Product Catalog"
+                    columns={[
+                      { key: 'id', label: 'ID' }, { key: 'name', label: 'Name' }, { key: 'category', label: 'Category' },
+                      { key: 'price', label: 'MRP' }, { key: 'discountPrice', label: 'Price' }, { key: 'inStock', label: 'In Stock' }, { key: 'featured', label: 'Featured' },
+                    ]}
+                    rows={products}
+                  />
+                  <button
+                    type="button"
+                    id="admin-add-product-btn"
+                    onClick={handleOpenAddProduct}
+                    className="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>Upload / Add New Product</span>
+                  </button>
+                </div>
               </div>
 
               {/* Filters & Search */}
@@ -2613,6 +2686,145 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
             </div>
           );
         })()}
+
+        {/* TAB: ANALYTICS — website + app usage. */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6 text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-black text-zinc-950">Website &amp; App Analytics</h3>
+                <p className="text-xs text-zinc-500">Every visit, real device/IP/location, and what they actually did — admin-only, never shown in the app or website.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-xl border border-zinc-200 overflow-hidden">
+                  {(['all', 'web', 'app'] as const).map((p) => (
+                    <button key={p} type="button" onClick={() => { setAnalyticsPlatformFilter(p); loadAnalytics(p); }}
+                      className={`px-3 py-2 text-xs font-bold capitalize cursor-pointer ${analyticsPlatformFilter === p ? 'bg-emerald-600 text-white' : 'bg-white text-zinc-600 hover:bg-zinc-50'}`}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => loadAnalytics()} className="px-3.5 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-xs font-bold text-zinc-800 flex items-center gap-1.5 border border-zinc-200 cursor-pointer">
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingAnalytics ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+
+            {isLoadingAnalytics && !analyticsOverview ? (
+              <div className={`p-12 rounded-3xl ${cardClass} text-center text-sm font-bold text-zinc-500`}>Loading analytics...</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                  <div className={`p-4 rounded-2xl ${cardClass}`}><div className="text-[10px] font-black uppercase text-zinc-400">Sessions (7d)</div><div className="text-2xl font-black text-zinc-950">{analyticsOverview?.totalSessions ?? 0}</div></div>
+                  <div className={`p-4 rounded-2xl ${cardClass}`}><div className="text-[10px] font-black uppercase text-zinc-400 flex items-center gap-1"><Globe className="w-3 h-3" />Website</div><div className="text-2xl font-black text-emerald-600">{analyticsOverview?.webSessions ?? 0}</div></div>
+                  <div className={`p-4 rounded-2xl ${cardClass}`}><div className="text-[10px] font-black uppercase text-zinc-400 flex items-center gap-1"><Smartphone className="w-3 h-3" />App</div><div className="text-2xl font-black text-emerald-600">{analyticsOverview?.appSessions ?? 0}</div></div>
+                  <div className={`p-4 rounded-2xl ${cardClass}`}><div className="text-[10px] font-black uppercase text-zinc-400">Signed-in Users</div><div className="text-2xl font-black text-zinc-950">{analyticsOverview?.uniqueUsers ?? 0}</div></div>
+                  <div className={`p-4 rounded-2xl ${cardClass}`}><div className="text-[10px] font-black uppercase text-zinc-400">Clicks / Views</div><div className="text-2xl font-black text-zinc-950">{analyticsOverview?.totalClicks ?? 0} / {analyticsOverview?.totalPageviews ?? 0}</div></div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                  <div className={`p-4 rounded-2xl ${cardClass} space-y-2`}>
+                    <h4 className="text-xs font-black uppercase text-zinc-500 flex items-center gap-1.5"><Monitor className="w-3.5 h-3.5" />By Device</h4>
+                    {(analyticsOverview?.byDevice || []).map((d: any) => (
+                      <div key={d.label} className="flex items-center justify-between text-xs"><span className="font-bold text-zinc-700 capitalize">{d.label}</span><span className="font-black text-zinc-950">{d.total}</span></div>
+                    ))}
+                  </div>
+                  <div className={`p-4 rounded-2xl ${cardClass} space-y-2`}>
+                    <h4 className="text-xs font-black uppercase text-zinc-500 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />By Country</h4>
+                    {(analyticsOverview?.byCountry || []).slice(0, 6).map((d: any) => (
+                      <div key={d.label} className="flex items-center justify-between text-xs"><span className="font-bold text-zinc-700">{d.label}</span><span className="font-black text-zinc-950">{d.total}</span></div>
+                    ))}
+                  </div>
+                  <div className={`p-4 rounded-2xl ${cardClass} space-y-2`}>
+                    <h4 className="text-xs font-black uppercase text-zinc-500 flex items-center gap-1.5"><BarChart3 className="w-3.5 h-3.5" />Top Pages/Screens</h4>
+                    {(analyticsOverview?.topPages || []).slice(0, 6).map((d: any) => (
+                      <div key={d.label} className="flex items-center justify-between text-xs"><span className="font-bold text-zinc-700 truncate">{d.label}</span><span className="font-black text-zinc-950 shrink-0 ml-2">{d.total}</span></div>
+                    ))}
+                  </div>
+                  <div className={`p-4 rounded-2xl ${cardClass} space-y-2`}>
+                    <h4 className="text-xs font-black uppercase text-zinc-500 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" />Most Clicked</h4>
+                    {(analyticsOverview?.topClicks || []).slice(0, 6).map((d: any) => (
+                      <div key={d.label} className="flex items-center justify-between text-xs"><span className="font-bold text-zinc-700 truncate">{d.label}</span><span className="font-black text-zinc-950 shrink-0 ml-2">{d.total}</span></div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-black text-zinc-950">Recent Visits ({analyticsSessions.length})</h4>
+                  <ExportButtons
+                    filename="urcare-analytics-sessions"
+                    title="UrCare — Website & App Visits"
+                    columns={[
+                      { key: 'userName', label: 'User' }, { key: 'platform', label: 'Platform' }, { key: 'deviceType', label: 'Device' },
+                      { key: 'os', label: 'OS' }, { key: 'browser', label: 'Browser' }, { key: 'ipAddress', label: 'IP Address' },
+                      { key: 'city', label: 'City' }, { key: 'country', label: 'Country' }, { key: 'entryPath', label: 'Entry Page' },
+                      { key: 'eventCount', label: 'Events' }, { key: 'startedAt', label: 'Started' }, { key: 'lastSeenAt', label: 'Last Seen' },
+                    ]}
+                    rows={analyticsSessions}
+                  />
+                </div>
+
+                <div className={`rounded-2xl ${cardClass} overflow-hidden`}>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-zinc-50 text-zinc-500 font-black uppercase text-[10px]">
+                        <tr>
+                          <th className="px-3 py-2.5 text-left">User</th>
+                          <th className="px-3 py-2.5 text-left">Platform</th>
+                          <th className="px-3 py-2.5 text-left">Device / OS / Browser</th>
+                          <th className="px-3 py-2.5 text-left">IP / Location</th>
+                          <th className="px-3 py-2.5 text-left">Entry Page</th>
+                          <th className="px-3 py-2.5 text-left">Events</th>
+                          <th className="px-3 py-2.5 text-left">Last Seen</th>
+                          <th className="px-3 py-2.5" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-100">
+                        {analyticsSessions.map((s) => (
+                          <React.Fragment key={s.id}>
+                            <tr className="hover:bg-zinc-50 cursor-pointer" onClick={() => toggleSessionEvents(s.id)}>
+                              <td className="px-3 py-2.5 font-bold text-zinc-800">{s.userName}</td>
+                              <td className="px-3 py-2.5 capitalize">{s.platform}</td>
+                              <td className="px-3 py-2.5 text-zinc-500">{s.deviceType} · {s.os || '—'} · {s.browser || '—'}</td>
+                              <td className="px-3 py-2.5 text-zinc-500">{s.ipAddress || '—'} {s.city ? `· ${s.city}, ${s.country}` : ''}</td>
+                              <td className="px-3 py-2.5 text-zinc-500 truncate max-w-[160px]">{s.entryPath || '—'}</td>
+                              <td className="px-3 py-2.5 font-black text-emerald-600">{s.eventCount}</td>
+                              <td className="px-3 py-2.5 text-zinc-500">{new Date(s.lastSeenAt).toLocaleString()}</td>
+                              <td className="px-3 py-2.5"><ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${expandedSessionId === s.id ? 'rotate-180' : ''}`} /></td>
+                            </tr>
+                            {expandedSessionId === s.id && (
+                              <tr>
+                                <td colSpan={8} className="px-3 pb-3 bg-zinc-50">
+                                  {sessionEvents.length === 0 ? (
+                                    <p className="text-[11px] text-zinc-400 py-2">No events recorded on this visit.</p>
+                                  ) : (
+                                    <ol className="py-2 space-y-1">
+                                      {sessionEvents.map((e: any) => (
+                                        <li key={e.id} className="flex items-center gap-2 text-[11px] text-zinc-600">
+                                          <span className="text-zinc-400 w-16 shrink-0">{new Date(e.created_at).toLocaleTimeString()}</span>
+                                          <span className={`px-1.5 py-0.5 rounded-md font-bold shrink-0 ${e.type === 'click' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>{e.type}</span>
+                                          <span className="font-semibold text-zinc-700">{e.type === 'click' ? e.label : e.path}</span>
+                                        </li>
+                                      ))}
+                                    </ol>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {analyticsSessions.length === 0 && (
+                    <div className="p-10 text-center text-sm font-bold text-zinc-400">No visits recorded yet.</div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* TAB 7: CONSULTATION QUEUE */}
         {activeTab === 'queue' && (

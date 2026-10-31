@@ -7,6 +7,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import multer from 'multer';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createServer as createViteServer } from 'vite';
+import { UAParser } from 'ua-parser-js';
 
 dotenv.config();
 
@@ -3583,6 +3584,162 @@ app.get('/api/qr-settings', async (req, res) => {
   const { data } = await supabase.from('qr_settings').select('*').eq('id', 'default').maybeSingle();
   res.json(data || {});
 });
+
+// ============================================================================
+// ANALYTICS — usage of the website and the app, for the admin panel only
+// (see analytics_sessions / analytics_events in supabase/patches.sql §24).
+// The client (src/utils/analytics.ts) opens one session per app
+// open/browser tab and reports page views + clicks on it; this server
+// enriches that session once, on creation, with the real IP, device/
+// browser/OS (parsed from the User-Agent) and an approximate city/country
+// (a free IP geolocation lookup — best-effort, never blocks the request if
+// it fails or is slow). Works for signed-in AND anonymous visitors: a
+// missing/invalid token is simply an anonymous session, not an error.
+// ============================================================================
+
+function getClientIp(req: express.Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  const first = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  if (first) return first.split(',')[0].trim();
+  return req.socket.remoteAddress || '';
+}
+
+/** Best-effort city/country for an IP — a free, no-key lookup, so it's
+ *  skipped entirely for local/private IPs (dev environment) and never
+ *  allowed to hang the request it's enriching. */
+async function geoLookup(ip: string): Promise<{ country: string | null; city: string | null }> {
+  if (!ip || /^(::1|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) return { country: null, city: null };
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,city`, { signal: controller.signal });
+    clearTimeout(timeout);
+    const data: any = await res.json();
+    return data?.status === 'success' ? { country: data.country || null, city: data.city || null } : { country: null, city: null };
+  } catch {
+    return { country: null, city: null };
+  }
+}
+
+app.post('/api/analytics/session', async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const user = await verifyUser(req);
+  const ip = getClientIp(req);
+  const ua = String(req.body?.userAgent || req.headers['user-agent'] || '');
+  const parsed = UAParser(ua);
+  const platform = req.body?.platform === 'app' ? 'app' : 'web';
+  const deviceType = parsed.device.type === 'mobile' || parsed.device.type === 'tablet' ? parsed.device.type : (platform === 'app' ? 'mobile' : 'desktop');
+  const geo = await geoLookup(ip);
+  const { data, error } = await supabase.from('analytics_sessions').insert({
+    user_id: user?.id || null,
+    platform,
+    entry_path: String(req.body?.entryPath || '').slice(0, 200) || null,
+    ip_address: ip || null,
+    country: geo.country,
+    city: geo.city,
+    device_type: deviceType,
+    os: parsed.os.name ? `${parsed.os.name} ${parsed.os.version || ''}`.trim() : null,
+    browser: parsed.browser.name ? `${parsed.browser.name} ${parsed.browser.version || ''}`.trim() : null,
+    user_agent: ua.slice(0, 500),
+  }).select('id').single();
+  if (error) return res.status(500).json({ error: 'Could not start tracking.' });
+  res.json({ sessionId: data.id });
+});
+
+app.post('/api/analytics/events', async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
+  const sessionId = String(req.body?.sessionId || '');
+  const events = Array.isArray(req.body?.events) ? req.body.events.slice(0, 50) : [];
+  if (!sessionId || !events.length) return res.json({ ok: true });
+  const rows = events
+    .filter((e: any) => e && (e.type === 'pageview' || e.type === 'click'))
+    .map((e: any) => ({ session_id: sessionId, type: e.type, path: String(e.path || '').slice(0, 200) || null, label: String(e.label || '').slice(0, 120) || null }));
+  if (rows.length) {
+    await supabase.from('analytics_events').insert(rows);
+    await supabase.from('analytics_sessions').update({ last_seen_at: new Date().toISOString() }).eq('id', sessionId);
+  }
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/analytics/overview', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const days = Math.min(90, Math.max(1, Number(req.query.days) || 7));
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const { data: sessions } = await supabase.from('analytics_sessions').select('platform, device_type, country, user_id').gte('started_at', since);
+  const { data: events } = await supabase.from('analytics_events').select('type, path, label, session_id, created_at').gte('created_at', since).limit(20000);
+  const rows = sessions || [];
+  const evRows = events || [];
+  const count = (list: any[], key: string) => {
+    const m = new Map<string, number>();
+    for (const r of list) { const k = r[key] || 'Unknown'; m.set(k, (m.get(k) || 0) + 1); }
+    return Array.from(m.entries()).map(([label, total]) => ({ label, total })).sort((a, b) => b.total - a.total);
+  };
+  const pageviews = evRows.filter((e: any) => e.type === 'pageview');
+  const clicks = evRows.filter((e: any) => e.type === 'click');
+  res.json({
+    totalSessions: rows.length,
+    webSessions: rows.filter((r: any) => r.platform === 'web').length,
+    appSessions: rows.filter((r: any) => r.platform === 'app').length,
+    signedInSessions: rows.filter((r: any) => r.user_id).length,
+    uniqueUsers: new Set(rows.filter((r: any) => r.user_id).map((r: any) => r.user_id)).size,
+    byDevice: count(rows, 'device_type'),
+    byCountry: count(rows, 'country'),
+    topPages: count(pageviews, 'path').slice(0, 15),
+    topClicks: count(clicks, 'label').slice(0, 15),
+    totalPageviews: pageviews.length,
+    totalClicks: clicks.length,
+  });
+}));
+
+app.get('/api/admin/analytics/sessions', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const platform = req.query.platform === 'web' || req.query.platform === 'app' ? req.query.platform : null;
+  let query = supabase.from('analytics_sessions').select('*').order('started_at', { ascending: false }).limit(300);
+  if (platform) query = query.eq('platform', platform);
+  const { data: sessions, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  const userIds = Array.from(new Set((sessions || []).map((s: any) => s.user_id).filter(Boolean)));
+  const names = new Map<string, string>();
+  if (userIds.length) {
+    const { data: profiles } = await supabase.from('profiles').select('user_id, full_name').in('user_id', userIds);
+    for (const p of profiles || []) names.set(p.user_id, p.full_name);
+  }
+  const ids = (sessions || []).map((s: any) => s.id);
+  const counts = new Map<string, number>();
+  if (ids.length) {
+    const { data: evCounts } = await supabase.from('analytics_events').select('session_id').in('session_id', ids);
+    for (const e of evCounts || []) counts.set(e.session_id, (counts.get(e.session_id) || 0) + 1);
+  }
+  res.json({
+    sessions: (sessions || []).map((s: any) => ({
+      id: s.id,
+      userName: s.user_id ? (names.get(s.user_id) || 'UrCare member') : 'Anonymous',
+      platform: s.platform,
+      deviceType: s.device_type,
+      os: s.os,
+      browser: s.browser,
+      ipAddress: s.ip_address,
+      country: s.country,
+      city: s.city,
+      entryPath: s.entry_path,
+      startedAt: s.started_at,
+      lastSeenAt: s.last_seen_at,
+      eventCount: counts.get(s.id) || 0,
+    })),
+  });
+}));
+
+app.get('/api/admin/analytics/sessions/:id/events', requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { data, error } = await supabase.from('analytics_events').select('*').eq('session_id', req.params.id).order('created_at', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ events: data || [] });
+}));
 
 // ============================================================================
 // ADMIN ENDPOINTS — every one behind requireAdmin, using the service-role

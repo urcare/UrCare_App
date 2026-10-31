@@ -31,6 +31,7 @@ import { Logo } from './Logo';
 import { toDateKey } from './DailyCalendar';
 import { signOutUser, activePlanSections, addMealToLog, getMyOrders, getMyPrescriptions, getMyReports, deleteReport, updateReportText, getDailyPlan, getTaskCompletion, sendPlanReminder, logActivity, getMyQueueEntry, takePendingAdd, getNotifications, getIncomingFamilyCall, FamilyPerson } from '../utils/supabase';
 import { FamilyCallModal } from './FamilyCallModal';
+import { trackPageView } from '../utils/analytics';
 import { calculateNutritionPlan } from '../utils/calculator';
 import { labelMinutes } from './RecommendationsView';
 import { useLanguage } from '../context/LanguageContext';
@@ -145,6 +146,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // tab's content bled into the new one.
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
+    trackPageView(`/${activeTab}`);
   }, [activeTab]);
 
   const [isFoodScannerOpen, setIsFoodScannerOpen] = useState(false);
