@@ -22,6 +22,14 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
+// Never let a browser/WebView cache an /api/* response — the website and
+// the native app are the exact same server and the exact same data (the
+// app's Capacitor shell just points at this same URL, see
+// capacitor.config.ts), so if the two ever visibly disagree (e.g. a
+// product edited in the admin panel showing on the website but not yet in
+// the app) it is this kind of stale HTTP cache, not two separate catalogs.
+app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+
 // Real binary file uploads (currently: Care Team Status media) — kept in
 // memory just long enough to stream straight into Supabase Storage, never
 // written to local disk.

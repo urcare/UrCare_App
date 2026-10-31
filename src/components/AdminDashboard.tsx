@@ -723,6 +723,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     loadPatientsList();
     loadChatThreads();
     loadQueue();
+    loadAnalytics('all');
 
     adminFetch(adminToken, '/api/admin/stats').then((res) => res.json()).then((data) => {
       if (data && !data.error) setStats(data);
@@ -1217,9 +1218,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
               </div>
             </div>
 
+            {/* Website vs App — same users, same data, same products; this is
+                just how much of the last 7 days' visits came in through a
+                browser vs the Capacitor app (from the Analytics tab). */}
+            <div className={`p-5 rounded-3xl ${cardClass}`}>
+              <h3 className="text-sm font-black text-zinc-950 mb-3">Website vs App (last 7 days)</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-100">
+                  <Globe className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <div className="text-[10px] font-black uppercase text-emerald-700">Website</div>
+                    <div className="text-xl font-black text-zinc-950">{analyticsOverview?.webSessions ?? '—'}</div>
+                    <div className="text-[10px] text-zinc-500">visits</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-100">
+                  <Smartphone className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <div className="text-[10px] font-black uppercase text-emerald-700">App</div>
+                    <div className="text-xl font-black text-zinc-950">{analyticsOverview?.appSessions ?? '—'}</div>
+                    <div className="text-[10px] text-zinc-500">visits</div>
+                  </div>
+                </div>
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-3">Same users, same catalog, same orders — only the visit counts differ by where people opened UrCare from. Full detail in the Analytics tab.</p>
+            </div>
+
             {/* Visual Breakdown Cards */}
             <div className="grid grid-cols-1 gap-6">
-              
+
               {/* E-commerce Buyer Conversion */}
               <div className={`p-6 rounded-3xl ${cardClass} space-y-4`}>
                 <h3 className="text-base font-black text-zinc-950">Product Purchasing Conversion</h3>
@@ -1927,6 +1954,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                   <p className="text-xs text-zinc-500 mt-1">
                     Upload new nutritional products, edit descriptions, upload photos, manage stock and clinical formulas.
                   </p>
+                  <p className="text-[11px] font-bold text-emerald-700 mt-1.5 flex items-center gap-1.5">
+                    <Globe className="w-3 h-3" /><Smartphone className="w-3 h-3" />
+                    One single catalog — any change here shows on the website AND the app, instantly, for everyone.
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -2122,6 +2153,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 </div>
                 <p className="text-xs text-zinc-500">
                   Configure the merchant UPI ID & QR Code shown to patients during store checkout.
+                </p>
+                <p className="text-[11px] font-bold text-emerald-700 flex items-center gap-1.5">
+                  <Globe className="w-3 h-3" /><Smartphone className="w-3 h-3" />
+                  One single setting — used at checkout on the website AND the app.
                 </p>
 
                 <form onSubmit={handleSaveQrSettings} className="space-y-4">
