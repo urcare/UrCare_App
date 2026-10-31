@@ -3998,6 +3998,30 @@ app.get('/api/admin/status', requireAdmin(async (req, res) => {
   res.json({ statuses: (data || []).map(mapCareTeamStatus) });
 }));
 
+// Product photo upload — same reasoning as the Care Team Status upload
+// just below: the admin product form used to read the file as a base64
+// data URL and store THAT directly in products.image, which is the same
+// "huge text value instead of a short URL" problem (every /api/products
+// response — and every Store screen load, website or app — had to carry
+// the full image data of every product, every time). This uploads the raw
+// bytes to Storage once and stores only the resulting public URL, exactly
+// like every other real product's image.
+app.post('/api/admin/products/upload-image', uploadMedia.single('media'), requireAdmin(async (req, res) => {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const file = (req as any).file as Express.Multer.File | undefined;
+  if (!file) return res.status(400).json({ error: 'An image is required.' });
+  const ext = (file.originalname.split('.').pop() || 'jpg').toLowerCase();
+  const objectPath = `products/${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
+  const { error: uploadError } = await supabase.storage.from('status-media').upload(objectPath, file.buffer, {
+    contentType: file.mimetype,
+    upsert: false,
+  });
+  if (uploadError) return res.status(500).json({ error: uploadError.message });
+  const { data: pub } = supabase.storage.from('status-media').getPublicUrl(objectPath);
+  res.json({ url: pub.publicUrl });
+}));
+
 // Real multipart upload (not a base64 JSON body) — a base64-encoded video
 // in a single giant JSON request was the actual cause of "posting is very
 // slow", since it inflates the payload ~33%, doubles it in memory as a JS

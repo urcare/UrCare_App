@@ -157,16 +157,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     setIsProductModalOpen(true);
   };
 
+  const [isUploadingProductPhoto, setIsUploadingProductPhoto] = useState(false);
+  const [productPhotoUploadError, setProductPhotoUploadError] = useState('');
   const handleProductPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (reader.result) {
-        setProductForm(prev => ({ ...prev, image: reader.result as string }));
-      }
-    };
-    reader.readAsDataURL(file);
+    e.target.value = '';
+    if (!file || !adminToken) return;
+    setProductPhotoUploadError('');
+    setIsUploadingProductPhoto(true);
+    const formData = new FormData();
+    formData.append('media', file);
+    adminFetch(adminToken, '/api/admin/products/upload-image', { method: 'POST', body: formData })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.url) setProductForm((prev) => ({ ...prev, image: data.url }));
+        else setProductPhotoUploadError(data?.error || 'Upload failed.');
+      })
+      .catch(() => setProductPhotoUploadError('Upload failed. Check your connection and try again.'))
+      .finally(() => setIsUploadingProductPhoto(false));
   };
 
   const handleSaveProduct = (e: React.FormEvent) => {
@@ -3387,17 +3395,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
 
                   {/* Upload Actions */}
                   <div className="flex-1 w-full space-y-2.5">
-                    <div className="flex flex-wrap gap-2">
-                      <label className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors">
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Upload Photo from Device</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className={`px-4 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors ${isUploadingProductPhoto ? 'bg-zinc-400 cursor-wait' : 'bg-emerald-600 hover:bg-emerald-500 cursor-pointer'}`}>
+                        {isUploadingProductPhoto ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                        <span>{isUploadingProductPhoto ? 'Uploading…' : 'Upload Photo from Device'}</span>
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
+                          disabled={isUploadingProductPhoto}
                           onChange={handleProductPhotoUpload}
                         />
                       </label>
+                      {productPhotoUploadError && <span className="text-[11px] font-bold text-rose-600">{productPhotoUploadError}</span>}
                     </div>
 
                     <div>
