@@ -2,16 +2,22 @@ import { Capacitor } from '@capacitor/core';
 import { authedFetch } from './supabase';
 
 // ============================================================================
-// ANALYTICS — one session per app open/browser tab, reported to the admin
-// panel (see analytics_sessions / analytics_events in supabase/patches.sql
-// §24, and /api/analytics/* in server.ts). Tracks page views (whichever tab/
-// screen is open) and taps/clicks on real interactive elements — nothing
-// else is recorded (no raw mouse coordinates, no full session replay).
-// Works the same whether this is the website in a browser or the Capacitor
-// app; `platform` is the only thing that tells them apart.
+// USAGE TRACKING — one session per app open/browser tab, reported to the
+// admin panel's Analytics tab (see analytics_sessions / analytics_events in
+// supabase/patches.sql §24, and /api/usage/* in server.ts). Tracks page
+// views (whichever tab/screen is open) and taps/clicks on real interactive
+// elements — nothing else is recorded (no raw mouse coordinates, no full
+// session replay). Works the same whether this is the website in a browser
+// or the Capacitor app; `platform` is the only thing that tells them apart.
+//
+// Deliberately NOT named "analytics" anywhere in the actual request path —
+// ad blockers and browser privacy filters (uBlock, Brave Shields, Firefox
+// strict tracking protection) commonly block any URL containing that word,
+// even first-party same-origin ones, which would otherwise silently drop
+// every single event with no error anywhere to notice it by.
 // ============================================================================
 
-const SESSION_KEY = 'urcare_analytics_session';
+const SESSION_KEY = 'urcare_usage_session';
 let sessionId: string | null = null;
 let sessionPromise: Promise<string | null> | null = null;
 let queue: { type: 'pageview' | 'click'; path: string; label?: string }[] = [];
@@ -25,7 +31,7 @@ async function openSession(): Promise<string | null> {
   try {
     const cached = sessionStorage.getItem(SESSION_KEY);
     if (cached) return cached;
-    const res = await authedFetch('/api/analytics/session', {
+    const res = await authedFetch('/api/usage/session', {
       method: 'POST',
       body: JSON.stringify({
         platform: Capacitor.isNativePlatform() ? 'app' : 'web',
@@ -41,13 +47,25 @@ async function openSession(): Promise<string | null> {
   }
 }
 
+/** Resolves the current session, trying again next time if the last
+ *  attempt failed (a blocked/offline request should not permanently kill
+ *  tracking for the rest of the tab's life). */
+async function getSessionId(): Promise<string | null> {
+  if (sessionId) return sessionId;
+  if (!sessionPromise) sessionPromise = openSession();
+  const id = await sessionPromise;
+  if (id) sessionId = id;
+  else sessionPromise = null; // let the next flush() retry
+  return id;
+}
+
 async function flush() {
   if (!queue.length) return;
   const batch = queue;
   queue = [];
-  const id = sessionId || (await (sessionPromise ||= openSession()));
+  const id = await getSessionId();
   if (!id) return;
-  try { await authedFetch('/api/analytics/events', { method: 'POST', body: JSON.stringify({ sessionId: id, events: batch }) }); } catch {}
+  try { await authedFetch('/api/usage/events', { method: 'POST', body: JSON.stringify({ sessionId: id, events: batch }) }); } catch {}
 }
 
 /** The nearest meaningfully-labeled interactive ancestor of a click target
@@ -86,8 +104,7 @@ export function trackPageView(path?: string) {
 export function initAnalytics() {
   if (started) return;
   started = true;
-  sessionPromise = openSession();
-  sessionPromise.then((id) => { sessionId = id; });
+  getSessionId();
   document.addEventListener('click', onClick, { capture: true, passive: true });
   window.setInterval(flush, 5000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });

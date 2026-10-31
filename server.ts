@@ -3621,7 +3621,11 @@ async function geoLookup(ip: string): Promise<{ country: string | null; city: st
   }
 }
 
-app.post('/api/analytics/session', async (req, res) => {
+// Deliberately named /api/usage/* rather than /api/analytics/* — ad
+// blockers and browser privacy filters commonly block any URL containing
+// the word "analytics", even first-party same-origin ones, which would
+// otherwise silently drop every event with nothing anywhere to notice it.
+app.post('/api/usage/session', async (req, res) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
   const user = await verifyUser(req);
@@ -3647,7 +3651,7 @@ app.post('/api/analytics/session', async (req, res) => {
   res.json({ sessionId: data.id });
 });
 
-app.post('/api/analytics/events', async (req, res) => {
+app.post('/api/usage/events', async (req, res) => {
   const supabase = getSupabaseAdmin();
   if (!supabase) return res.status(503).json({ error: 'Not available right now.' });
   const sessionId = String(req.body?.sessionId || '');
