@@ -61,14 +61,44 @@ npx cap sync android     # copies dist/ + config into the android project
 ```
 then rebuild the APK.
 
-## Moving to a real release build (Play Store) and iOS
+## Release builds
 
-1. **Android**: this is currently a **debug** build — fine for installing
-   directly on a phone, not for the Play Store. For that, build a **signed
-   release** from Android Studio (`Build → Generate Signed Bundle / APK`),
-   which needs a real signing keystore (Android Studio can create one).
-2. **iOS**: Capacitor supports iOS from this exact codebase, but building an
-   `.ipa` requires **Xcode on a Mac** — not possible on this Windows
-   machine. Once you have Mac access: `npx cap add ios`, then open
-   `ios/App/App.xcworkspace` in Xcode to build/run. It'll talk to the same
-   `https://urcare-app.onrender.com` — no server-side changes needed.
+### Android (Play Store)
+Signed release builds work from the command line. Use **JDK 21**: Android
+Studio's bundled JBR is Java 25, which this Gradle version can't run.
+```
+npm run build && npx cap sync android
+cd android
+set JAVA_HOME=C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot
+gradlew.bat bundleRelease
+```
+Output: `android/app/build/outputs/bundle/release/app-release.aab`, signed
+with the upload key in `C:/Users/singh/Documents/UrCare-Keys/` (via
+`android/keystore.properties`). **Back up that .jks file and its passwords.**
+Losing them means you can't ship updates without a key reset from Google.
+Bump `versionCode` in `android/app/build.gradle` for every upload.
+
+### iOS (App Store)
+The `ios/` project is generated and configured with permission texts, the
+login return URL scheme (`org.urcare.app`), the export-compliance flag and
+icons. It can only be **built on a Mac with Xcode** (or a cloud Mac such as
+Codemagic). On the Mac:
+```
+npm install && npx cap sync ios
+npx cap open ios
+```
+In Xcode: choose your Team under Signing & Capabilities, add the **Push
+Notifications** and **Sign in with Apple** capabilities, then Product →
+Archive → Distribute → App Store Connect.
+
+### Store-policy notes (so review doesn't reject it)
+- The ₹499 "app unlock" is never offered inside the native app (Play
+  Payments policy / App Store 3.1.1 forbid non-store payment for app
+  features). The app shows only "account being activated". Physical
+  products in the store can keep using UPI.
+- Apple requires **Sign in with Apple** whenever Google login is offered.
+  The button is shown on iOS. Enable the Apple provider in Supabase →
+  Authentication → Providers before submitting.
+- Give reviewers a working **demo account** (email + password) in the
+  review notes. If the paywall is ever switched on, that account must
+  already be unlocked.
