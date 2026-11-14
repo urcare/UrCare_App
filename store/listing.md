@@ -53,26 +53,85 @@ other (Health Circle chat/calls between people who accepted each other's request
 Select: Disease prevention & management, Nutrition & weight management,
 Activity & fitness, Medical reports. Not a medical device. Not regulated software.
 
-## Data safety (Play) / App Privacy (Apple)
-| Data | Collected | Why | Shared with third parties |
-|---|---|---|---|
-| Name, email | Yes | Account | No |
-| Phone number (optional) | Yes | Account, orders | No |
-| Address (for orders) | Yes | Delivering store orders | Courier only, for delivery |
-| Health info (conditions, vitals, lab reports) | Yes | App functionality, personalisation | Sent to our AI provider only to analyse it for you, not sold |
-| Photos (meal / report photos) | Yes | App functionality | Same as above |
-| Audio (Health Circle calls) | Live only, not stored | Calls | No |
-| Messages (care team / Health Circle chat) | Yes | App functionality | No |
-| Purchase history (store orders) | Yes | Orders | No |
-| Device / usage info | Yes | Analytics, app improvement | No |
-- Data is encrypted in transit (HTTPS): Yes
-- Users can request deletion: Yes (in-app Settings → Delete account, and the deletion URL)
-- Data used for tracking / ads: No
+## Play Console: Data safety (checked against the code, 14 Nov 2026)
 
-## Reviewer notes / App access (fill in a real demo account)
-Demo login: <email> / <password>
-Sign in with email. The account already has a completed profile and sample
-lab report. Camera is used for meal and report scanning; microphone only for
-Health Circle voice calls between linked members. Store products are
-physical nutrition supplements shipped to the user (paid via UPI, allowed for
-physical goods). No digital content or app features are sold in the app.
+**Overview questions**
+- Does your app collect or share any of the required user data types? **Yes**
+- Is all of the user data collected by your app encrypted in transit? **Yes** (HTTPS everywhere; calls use WebRTC DTLS-SRTP)
+- Which way can users request their data be deleted? **In-app (Settings → Delete account)** and **web URL**: https://urcare-app.onrender.com/delete-account.html
+- Account creation: **Username and password** + **OAuth (Google; Apple on iOS)**
+
+**"Shared" = No for every row below.** The only outside parties are service
+providers that process data on UrCare's behalf (Supabase, Render, Anthropic,
+Groq, Firebase, ip-api.com), and Play's definition of "sharing" excludes
+service providers. Delivery addresses go on the parcel when the UrCare team
+ships an order by hand; that's a transfer the user asked for, which is also
+excluded. There is no courier integration.
+
+| Play category → data type | Collected | Optional? | Purposes |
+|---|---|---|---|
+| Personal info → Name | Yes | Required | App functionality, Account management |
+| Personal info → Email address | Yes | Required | App functionality, Account management |
+| Personal info → User IDs | Yes | Required | App functionality, Account management |
+| Personal info → Address | Yes | Optional (only for store orders) | App functionality |
+| Personal info → Phone number | Yes | Optional | App functionality |
+| Personal info → Other info (age, gender, height, weight) | Yes | Required | App functionality, Personalization |
+| Financial info → Purchase history | Yes | Optional | App functionality |
+| Financial info → Other financial info (UPI payment screenshot, UPI reference no.) | Yes | Optional | App functionality |
+| Health and fitness → Health info | Yes | Required | App functionality, Personalization |
+| Health and fitness → Fitness info | Yes | Optional | App functionality, Personalization |
+| Messages → Other in-app messages | Yes | Optional | App functionality |
+| Photos and videos → Photos | Yes | Optional | App functionality |
+| Photos and videos → Videos (chat attachments) | Yes | Optional | App functionality |
+| Files and docs | Yes | Optional | App functionality |
+| Location → Approximate location (city/country from IP) | Yes | Required (automatic) | Analytics |
+| App activity → App interactions | Yes | Required (automatic) | Analytics |
+| Device or other IDs (push-notification token) | Yes | Optional (only if notifications allowed) | App functionality |
+
+**Not collected (answer No):** Precise location, Contacts, Calendar, Audio
+(calls go phone-to-phone and are never sent to or stored by UrCare), Web
+browsing, Search history, Installed apps, Crash logs, Diagnostics, Race/
+ethnicity, Political/religious beliefs, Sexual orientation, Credit/debit card
+or bank details (the user pays inside their own UPI app).
+
+**Processed ephemerally?** No (the rows above are stored). **Used for ads or
+tracking?** No for every row.
+
+## App Store Connect: App Privacy
+- Tracking: **No** (no data used for tracking, no ad SDKs)
+- **Data Linked to You:**
+  - Contact Info: Name, Email Address, Phone Number, Physical Address
+  - Health & Fitness: Health, Fitness
+  - Financial Info: Other Financial Info (UPI screenshot / reference)
+  - Location: Coarse Location
+  - User Content: Photos or Videos, Other User Content (reports, documents), Customer Support, Emails or Text Messages (in-app chat)
+  - Identifiers: User ID, Device ID (push token)
+  - Purchases: Purchase History
+  - Usage Data: Product Interaction
+- Purpose for every item: **App Functionality**. Also **Analytics** for Coarse Location and Product Interaction, and **Product Personalization** for Health & Fitness.
+- Data Not Collected: Audio Data, Contacts, Precise Location, Browsing/Search History, Sensitive Info, Diagnostics.
+
+## Reviewer notes / App access
+Paste this into Play Console → App content → App access ("All or some
+functionality is restricted" → add instructions) and App Store Connect →
+App Review Information. **The email and password are in
+`store/reviewer-login.local`. That file is kept out of git because the repo
+is public. Don't commit it.**
+
+> Sign in with email and password (not Google). The demo account already has
+> a completed health profile and a sample lab report (sample data, clearly
+> labelled), so the app opens straight to the home screen.
+> Camera is used to scan meals and lab reports. The microphone is used only
+> for Health Circle voice calls between two users who have accepted each
+> other's request. Calls go directly between the phones and are not recorded.
+> The in-app store sells physical nutrition products that are shipped to the
+> user and paid by UPI, which is allowed for physical goods. No digital
+> content, subscriptions or app features are sold inside the app.
+> UrCare gives general wellness guidance and shows a medical disclaimer on the
+> sign-in screen, in Settings and in the Terms.
+
+The demo account is exempt from the app-unlock paywall on the server
+(`APP_ACCESS_EXEMPT_EMAILS` in server.ts), so reviewers always get full access.
+To recreate it or reset its password, ask Claude Code, or rerun the same
+steps: Supabase admin creates the user, then a profile + health_profiles +
+one lab_reports row.

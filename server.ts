@@ -2325,6 +2325,13 @@ const APP_ACCESS_REQUIRED_SINCE = process.env.APP_ACCESS_REQUIRED_SINCE || '1970
 // The paywall is switched off for now (until the family plan is ready). Set
 // APP_ACCESS_PAYWALL_ENABLED=true on the server to turn it back on.
 const APP_ACCESS_PAYWALL_ENABLED = process.env.APP_ACCESS_PAYWALL_ENABLED === 'true';
+// Accounts that always have full access — the Play / App Store review demo
+// login must never be stuck behind the paywall. Extra emails: comma-separated
+// APP_ACCESS_EXEMPT_EMAILS on the server.
+const APP_ACCESS_EXEMPT_EMAILS = new Set(
+  ['urcarein+review@gmail.com', ...(process.env.APP_ACCESS_EXEMPT_EMAILS || '').split(',')]
+    .map((e) => e.trim().toLowerCase()).filter(Boolean),
+);
 
 app.get('/api/access-status', requireUser(async (req, res, user) => {
   const supabase = getSupabaseAdmin();
@@ -2335,6 +2342,7 @@ app.get('/api/access-status', requireUser(async (req, res, user) => {
   ]);
   const price = Number(product?.discount_price ?? product?.price) || 499;
   if (!APP_ACCESS_PAYWALL_ENABLED) return res.json({ required: false, hasAccess: true, price });
+  if (APP_ACCESS_EXEMPT_EMAILS.has(String(user.email || '').toLowerCase())) return res.json({ required: false, hasAccess: true, price });
   const createdAt = profileRow?.created_at || (user as any).created_at || new Date().toISOString();
   if (new Date(createdAt) < new Date(APP_ACCESS_REQUIRED_SINCE)) return res.json({ required: false, hasAccess: true, price });
 
@@ -3514,6 +3522,9 @@ const USER_DATA_TABLES = [
   'custom_plan_steps', 'daily_logs', 'daily_plans', 'food_scans', 'health_assessments', 'lab_reports',
   'notifications', 'patient_trackers', 'premium_transactions', 'razorpay_orders', 'subscriptions',
   'user_personalized_plans', 'health_bot_messages', 'orders', 'health_profiles', 'profiles',
+  // usage analytics (IP, city, device) — the FK only nulls user_id, so delete
+  // the rows explicitly; their analytics_events go with them (cascade).
+  'analytics_sessions',
 ];
 
 async function deleteUserData(supabase: SupabaseClient, userId: string): Promise<void> {
