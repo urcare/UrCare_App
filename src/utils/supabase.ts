@@ -86,14 +86,14 @@ export async function signInWithApple(): Promise<{ error?: string }> {
  *  blank/garbled browser tab — so it's checked first and reported clearly.
  *  Unknown (network failure) counts as enabled, so a flaky check never
  *  blocks a working sign-in. */
-async function isAuthProviderEnabled(provider: 'google' | 'apple'): Promise<boolean> {
+export async function isAuthProviderEnabled(provider: 'google' | 'apple', unknownMeans = true): Promise<boolean> {
   try {
     const res = await fetch(`${supabaseUrl}/auth/v1/settings`, { headers: { apikey: supabaseAnonKey } });
-    if (!res.ok) return true;
+    if (!res.ok) return unknownMeans;
     const data = await res.json();
     return data?.external?.[provider] !== false;
   } catch {
-    return true;
+    return unknownMeans;
   }
 }
 

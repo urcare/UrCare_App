@@ -79,25 +79,44 @@ with the upload key in `C:/Users/singh/Documents/UrCare-Keys/` (via
 Losing them means you can't ship updates without a key reset from Google.
 Bump `versionCode` in `android/app/build.gradle` for every upload.
 
-### iOS (App Store)
+### iOS (App Store) — no Mac needed
 The iOS build **bundles the screens inside the app** (App Store Guideline
 4.2 rejects remote-website wrappers) and only fetches data from the live
 server (see `capacitor.config.ts`, `src/utils/apiBase.ts`, and the CORS block
-in `server.ts`). So a screen change on iOS needs a new App Store build, and
-you must always run `npx cap sync ios` with the platform named (plain
-`npx cap sync` would give iOS the Android live-URL config).
+in `server.ts`). A screen change on iOS needs a new App Store build. Always
+run `npx cap sync ios` with the platform named. A plain `npx cap sync` gives
+iOS the Android live-URL config.
 
-The `ios/` project is generated and configured with permission texts, the
-login return URL scheme (`org.urcare.app`), the export-compliance flag and
-icons. It can only be **built on a Mac with Xcode** (or a cloud Mac such as
-Codemagic). On the Mac:
-```
-npm install && npx cap sync ios
-npx cap open ios
-```
-In Xcode: choose your Team under Signing & Capabilities, add the **Push
-Notifications** and **Sign in with Apple** capabilities, then Product →
-Archive → Distribute → App Store Connect.
+iOS-specific behaviour:
+- iPhone only, portrait only (no iPad screenshots or iPad review needed).
+- Sign-in on iOS is **email only** until Apple sign-in is switched on in
+  Supabase. Then the Google and Apple buttons both appear (Guideline 4.8).
+- No remote push on iOS yet. The server sends via FCM, which needs the
+  Firebase iOS SDK and an APNs key. Plan reminders still work, because
+  they're local notifications.
+
+**Build and upload with GitHub Actions** (`.github/workflows/ios-release.yml`,
+free macOS runners because the repo is public):
+1. Join the Apple Developer Program (developer.apple.com/programs/enroll,
+   US$99/year). You need an Apple ID with two-factor authentication.
+2. App Store Connect → Apps → **+ New App**: platform iOS, name, language,
+   bundle ID `org.urcare.app` (if it isn't listed, register it first at
+   developer.apple.com → Certificates, IDs & Profiles → Identifiers), SKU
+   `urcare-ios-001`.
+3. App Store Connect → Users and Access → Integrations → **App Store Connect
+   API** → generate a key with the **Admin** role. Note the Key ID and the
+   Issuer ID, and download the `.p8` file (it can only be downloaded once).
+4. Find your **Team ID** at developer.apple.com → Account → Membership details.
+5. GitHub repo → Settings → Secrets and variables → Actions → add:
+   `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (paste the
+   whole .p8 text), `SUPABASE_URL`, `SUPABASE_ANON_KEY` (same as `.env`).
+6. GitHub → Actions → **iOS release** → Run workflow (about 15–25 min). The
+   build shows up in App Store Connect → TestFlight a little later.
+7. Fill in the listing from `store/listing.md`, attach the build to the
+   version, and Submit for Review.
+
+With a Mac instead: `npm install && npx cap sync ios && npx cap open ios`.
+Then in Xcode, choose your Team and use Product → Archive → Distribute.
 
 ### Store-policy notes (so review doesn't reject it)
 - The ₹499 "app unlock" is never offered inside the native app (Play

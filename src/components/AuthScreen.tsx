@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { playClickSound, playSuccessChime } from '../utils/soundEffects';
 import { Capacitor } from '@capacitor/core';
 import { LEGAL_PAGES, openExternalPage } from '../utils/externalPages';
-import { signInWithGoogle, signInWithApple, signInWithEmail, signUpWithEmail, sendPasswordReset, isSupabaseConfigured } from '../utils/supabase';
+import { signInWithGoogle, signInWithApple, signInWithEmail, signUpWithEmail, sendPasswordReset, isSupabaseConfigured, isAuthProviderEnabled } from '../utils/supabase';
 
 interface AuthScreenProps {
   /** Set when the native app's own Google sign-in flow (a real browser tab,
@@ -57,6 +57,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ externalError }) => {
   };
 
   const showAppleSignIn = Capacitor.getPlatform() === 'ios';
+  // App Store Guideline 4.8: an iOS app offering Google sign-in must also
+  // offer Sign in with Apple. Until the Apple provider is switched on in
+  // Supabase, iOS shows email sign-in only (no social buttons at all), so
+  // review never sees a broken Apple button or Google without Apple.
+  const [showSocialSignIn, setShowSocialSignIn] = useState(!showAppleSignIn);
+  useEffect(() => {
+    if (!showAppleSignIn) return;
+    let cancelled = false;
+    isAuthProviderEnabled('apple', false).then((ok) => { if (!cancelled) setShowSocialSignIn(ok); });
+    return () => { cancelled = true; };
+  }, [showAppleSignIn]);
   const handleAppleSignIn = async () => {
     setError(null);
     if (!isSupabaseConfigured()) {
@@ -259,6 +270,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ externalError }) => {
 
             {/* One-Click Google Sign In Button, matching Google's own
                 branding guidelines for its logo button. */}
+            {showSocialSignIn && (
             <button
               type="button"
               disabled={googleLoading}
@@ -289,8 +301,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ externalError }) => {
               )}
               <span>{googleLoading ? tr('Redirecting to Google...', 'Google पर भेजा जा रहा है...') : tr('Continue with Google', 'Google से जारी रखें')}</span>
             </button>
+            )}
 
-            {showAppleSignIn && (
+            {showSocialSignIn && showAppleSignIn && (
               <button
                 type="button"
                 onClick={handleAppleSignIn}
@@ -304,10 +317,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ externalError }) => {
             )}
 
             {/* Divider */}
+            {showSocialSignIn && (
             <div className="relative flex items-center justify-center my-1">
               <div className="border-t border-zinc-200 w-full" />
               <span className="bg-white px-2.5 text-[10px] font-bold text-zinc-500 uppercase">{tr('or use email', 'या ईमेल का उपयोग करें')}</span>
             </div>
+            )}
 
             {/* Email / Password Form */}
             <form onSubmit={handleEmailSubmit} className="space-y-3">

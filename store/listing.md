@@ -40,6 +40,8 @@ UrCare is not an emergency service. In an emergency, call 112.
 Play: Health & Fitness · App Store: Health & Fitness (secondary: Medical is NOT recommended; it triggers stricter review)
 
 ## URLs
+- Support URL (App Store requires it): https://urcare-app.onrender.com/support.html
+- Marketing URL (optional): https://urcare.org
 - Privacy policy: https://urcare-app.onrender.com/privacy.html
 - Terms: https://urcare-app.onrender.com/terms.html
 - Account deletion: https://urcare-app.onrender.com/delete-account.html
@@ -135,3 +137,41 @@ The demo account is exempt from the app-unlock paywall on the server
 To recreate it or reset its password, ask Claude Code, or rerun the same
 steps: Supabase admin creates the user, then a profile + health_profiles +
 one lab_reports row.
+
+## App Store Connect: fields that differ from Play
+| Field | Value |
+|---|---|
+| Name (max 30) | UrCare: Metabolic Health Coach |
+| Subtitle (max 30) | Diet & lifestyle health coach |
+| Keywords (max 100) | diabetes,blood pressure,diet plan,HbA1c,sugar,thyroid,PCOS,fatty liver,meal scanner,lab report,habit |
+| Promotional text | Your daily diet, exercise and lifestyle plan for diabetes, BP and metabolic health, with lab report tracking and meal scan. |
+| Description | Same as "Full description" above |
+| Primary category | Health & Fitness (not Medical) |
+| Price | Free |
+| Bundle ID | org.urcare.app |
+| SKU | urcare-ios-001 |
+| Copyright | 2026 UrCare |
+| Availability | All countries, or India only if you prefer |
+
+**Age rating questionnaire:** answer **Medical or Treatment Information:
+Yes (Infrequent/Mild)**. UrCare gives wellness guidance and shows lab
+values, but doesn't diagnose or prescribe. Answer **None/No** to everything
+else (violence, gambling, mature themes, unrestricted web access).
+"User-generated content / messaging" = Yes (Health Circle chat between people who
+accepted each other's request; users can remove a connection). Apple
+calculates the rating itself.
+
+**App Review Information:**
+- Sign-in required: Yes. Use the same demo email and password (`store/reviewer-login.local`).
+- Notes: same reviewer notes as above, plus: "On iOS, sign-in is email and
+  password only. There is no third-party sign-in, so Sign in with Apple is
+  not required (Guideline 4.8)."
+- Contact: your name, phone, urcarein@gmail.com
+
+**Screenshots:** iPhone 6.9" display (1320 × 2868 or 1290 × 2796), 3–10 images.
+The app is iPhone-only, so no iPad screenshots are needed.
+
+**Later, if you turn on Google login for iOS:** first set up Sign in with
+Apple (Apple Developer → Identifiers → Services ID + key, then Supabase →
+Authentication → Providers → Apple). The app then shows both buttons
+automatically.

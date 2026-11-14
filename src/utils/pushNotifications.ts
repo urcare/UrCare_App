@@ -14,6 +14,11 @@ export const pushIsActive = () => active;
 export async function initPush(): Promise<boolean> {
   if (active) return true;
   if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable('PushNotifications')) return false;
+  // iOS: this plugin hands back an APNs token, but the server sends through
+  // FCM, which needs an FCM token (Firebase iOS SDK + APNs key). Until that
+  // is set up, iOS uses local notifications only — no push permission prompt
+  // for something that can't deliver.
+  if (Capacitor.getPlatform() === 'ios') return false;
   try {
     const res = await fetch('/api/push/config');
     const cfg = await res.json().catch(() => ({}));
