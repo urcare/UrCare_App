@@ -30,6 +30,23 @@ app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 // the app) it is this kind of stale HTTP cache, not two separate catalogs.
 app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
+// The iOS app bundles its screens (App Store Guideline 4.2), so its page
+// origin is capacitor://localhost and its /api calls are cross-origin. Allow
+// exactly the native app origins; auth is a Bearer token, not cookies.
+const NATIVE_APP_ORIGINS = new Set(['capacitor://localhost', 'ionic://localhost', 'https://localhost', 'http://localhost']);
+app.use('/api', (req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && NATIVE_APP_ORIGINS.has(origin)) {
+    res.set('Access-Control-Allow-Origin', origin);
+    res.set('Vary', 'Origin');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Headers', req.headers['access-control-request-headers'] || 'Authorization, Content-Type');
+    res.set('Access-Control-Max-Age', '86400');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+  }
+  next();
+});
+
 // Real binary file uploads (currently: Care Team Status media) — kept in
 // memory just long enough to stream straight into Supabase Storage, never
 // written to local disk.

@@ -64,12 +64,13 @@ then rebuild the APK.
 ## Release builds
 
 ### Android (Play Store)
-Signed release builds work from the command line. Use **JDK 21**: Android
-Studio's bundled JBR is Java 25, which this Gradle version can't run.
+Signed release builds work from Android Studio or the command line. Gradle
+is pinned to JDK 21 in `C:/Users/singh/.gradle/gradle.properties`
+(`org.gradle.java.home`), because Android Studio's bundled Java 25 can't run
+this Gradle version.
 ```
 npm run build && npx cap sync android
 cd android
-set JAVA_HOME=C:\Program Files\Microsoft\jdk-21.0.12.101-hotspot
 gradlew.bat bundleRelease
 ```
 Output: `android/app/build/outputs/bundle/release/app-release.aab`, signed
@@ -79,6 +80,13 @@ Losing them means you can't ship updates without a key reset from Google.
 Bump `versionCode` in `android/app/build.gradle` for every upload.
 
 ### iOS (App Store)
+The iOS build **bundles the screens inside the app** (App Store Guideline
+4.2 rejects remote-website wrappers) and only fetches data from the live
+server (see `capacitor.config.ts`, `src/utils/apiBase.ts`, and the CORS block
+in `server.ts`). So a screen change on iOS needs a new App Store build, and
+you must always run `npx cap sync ios` with the platform named (plain
+`npx cap sync` would give iOS the Android live-URL config).
+
 The `ios/` project is generated and configured with permission texts, the
 login return URL scheme (`org.urcare.app`), the export-compliance flag and
 icons. It can only be **built on a Mac with Xcode** (or a cloud Mac such as
@@ -99,6 +107,8 @@ Archive → Distribute → App Store Connect.
 - Apple requires **Sign in with Apple** whenever Google login is offered.
   The button is shown on iOS. Enable the Apple provider in Supabase →
   Authentication → Providers before submitting.
+- Ready-to-paste listing text, Data safety answers and reviewer notes:
+  `store/listing.md`.
 - Give reviewers a working **demo account** (email + password) in the
   review notes. If the paywall is ever switched on, that account must
   already be unlocked.

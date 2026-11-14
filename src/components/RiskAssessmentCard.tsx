@@ -79,7 +79,7 @@ export const RiskAssessmentCard: React.FC<RiskAssessmentCardProps> = ({
 
         <div className="px-3 py-1 rounded-xl bg-emerald-100/70 border border-emerald-300 text-emerald-900 text-xs font-black self-start sm:self-auto flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>{isHi ? 'कम जोखिम (Low Risk)' : 'Low Risk • 100% Safe'}</span>
+          <span>{isHi ? 'कम जोखिम (Low Risk)' : 'Low Risk'}</span>
         </div>
       </div>
 

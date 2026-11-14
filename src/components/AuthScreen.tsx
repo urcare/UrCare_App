@@ -398,6 +398,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ externalError }) => {
               <button type="button" onClick={() => openExternalPage(LEGAL_PAGES.privacy)} className="font-bold text-emerald-700 underline cursor-pointer">{tr('Privacy Policy', 'गोपनीयता नीति')}</button>
               {tr('.', ' से सहमत होते हैं।')}
             </p>
+            <p className="text-center text-[10px] text-zinc-400 leading-relaxed">
+              {tr(
+                'UrCare gives general wellness guidance and is not a substitute for medical advice, diagnosis or treatment. Never change your medicines without your doctor. In an emergency, call 112.',
+                'UrCare सामान्य वेलनेस मार्गदर्शन देता है, यह डॉक्टर की सलाह, जांच या इलाज का विकल्प नहीं है। डॉक्टर से पूछे बिना कभी दवा न बदलें। इमरजेंसी में 112 पर कॉल करें।',
+              )}
+            </p>
 
           </div>
         </div>
