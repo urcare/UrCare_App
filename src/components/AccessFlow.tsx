@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
+import { Capacitor } from '@capacitor/core';
 import QRCode from 'qrcode';
 import { siWhatsapp } from 'simple-icons';
 import {
@@ -195,6 +196,13 @@ const Paywall: React.FC<{
     QRCode.toDataURL(upiLink, { margin: 1, width: 480, color: { dark: '#064e3b', light: '#ffffff' } }).then(setUpiQr).catch(() => setUpiQr(''));
   }, [upiLink, usesUpiId]);
   const isPhone = /Android|iPhone|iPad/i.test(navigator.userAgent);
+  // Play Store (Payments policy) and App Store (Guideline 3.1.1) both forbid
+  // unlocking app features through any payment method other than their own
+  // billing, and also forbid pointing users to an outside way to pay. So the
+  // native app never shows the price, the UPI QR/link or the screenshot
+  // upload — only a neutral "being activated" state. Accounts unlocked
+  // elsewhere (website) still open the app normally.
+  const isNativeApp = Capacitor.isNativePlatform();
 
   // While a payment is being verified, check back every 20 s.
   useEffect(() => {
@@ -241,7 +249,9 @@ const Paywall: React.FC<{
   };
 
   const waText = encodeURIComponent(
-    status.status === 'pending'
+    isNativeApp
+      ? `Hi ${DOCTOR.name}, I have a question about my UrCare account. (${account.email})`
+      : status.status === 'pending'
       ? `Hi ${DOCTOR.name}, I have paid ₹${price} to unlock UrCare (${account.email}). Please verify my payment.`
       : `Hi ${DOCTOR.name}, I'd like to know more about the UrCare plan. (${account.email})`,
   );
@@ -282,6 +292,14 @@ const Paywall: React.FC<{
         )}
 
         {/* Unlock */}
+        {isNativeApp ? (
+          <div className="rounded-[1.5rem] bg-white border border-emerald-200 shadow-depth p-5 text-center space-y-3">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center"><Clock className="w-7 h-7" /></div>
+            <h3 className="text-base font-black text-zinc-900">{tr('Your account is being activated', 'आपका अकाउंट एक्टिवेट हो रहा है')}</h3>
+            <p className="text-xs text-zinc-500">{tr('The UrCare care team activates every new account. The app opens by itself once yours is ready.', 'UrCare केयर टीम हर नए अकाउंट को एक्टिवेट करती है। आपका अकाउंट तैयार होते ही ऐप अपने आप खुल जाएगी।')}</p>
+            <button type="button" onClick={onRefresh} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-zinc-200 text-xs font-black text-zinc-700 cursor-pointer"><RefreshCw className="w-3.5 h-3.5" />{tr('Check again', 'फिर देखें')}</button>
+          </div>
+        ) : (
         <div className="relative rounded-[1.5rem] bg-white border border-emerald-200 shadow-depth overflow-hidden">
           <ShineBorder borderWidth={2} duration={10} shineColor={['#34d399', '#fde68a', '#4ade80']} />
           <div className="p-5 bg-gradient-to-br from-emerald-50 to-teal-50 border-b border-emerald-100">
@@ -344,6 +362,7 @@ const Paywall: React.FC<{
             )}
           </div>
         </div>
+        )}
 
         {/* Doctor contact */}
         <div className="rounded-2xl bg-white border border-zinc-200 shadow-depth p-4 sm:p-5">
