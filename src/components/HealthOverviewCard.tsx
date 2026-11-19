@@ -307,7 +307,7 @@ export const HealthOverviewCard: React.FC<HealthOverviewCardProps> = ({ profile,
           )}
           <p className={`mt-2 flex items-center gap-1.5 text-[11px] font-bold ${severe ? 'text-white/90' : 'opacity-80'}`}>
             <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-            {tr('Most of these can improve with 3 months of your UrCare plan.', 'इनमें से ज़्यादातर 3 महीने के UrCare प्लान से सुधर सकते हैं।')}
+            {tr('Diet and lifestyle changes can help with many of these. Follow your plan and track progress with your doctor.', 'खान-पान और जीवनशैली में बदलाव इनमें से कई में मदद कर सकते हैं। अपना प्लान फ़ॉलो करें और डॉक्टर के साथ प्रोग्रेस देखें।')}
           </p>
         </motion.div>
       )}

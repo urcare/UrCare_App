@@ -1192,7 +1192,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     {tr('Your Full Root-Cause Assessment', 'आपका पूरा रूट-कॉज़ असेसमेंट')}
                   </h2>
                   <p className="text-xs sm:text-sm text-emerald-50/90 leading-relaxed">
-                    {tr('Blood sugar patterns, insulin resistance, polyherbal treatment, sleep, gut and organ health — one complete picture your doctor reviews. Free for everyone, fill at your own pace — your progress is saved automatically.', 'ब्लड शुगर पैटर्न, इंसुलिन प्रतिरोध, पॉलीहर्बल ट्रीटमेंट, नींद, गट व अंग स्वास्थ्य — एक पूरी तस्वीर जिसे आपका डॉक्टर देखता है। सभी के लिए मुफ्त, अपनी गति से भरें — प्रगति अपने आप सहेजी जाती है।')}
+                    {tr('Blood sugar patterns, insulin resistance, herbal supplements, sleep, gut and organ health — one complete picture your doctor reviews. Free for everyone, fill at your own pace — your progress is saved automatically.', 'ब्लड शुगर पैटर्न, इंसुलिन प्रतिरोध, हर्बल सप्लीमेंट, नींद, गट व अंग स्वास्थ्य — एक पूरी तस्वीर जिसे आपका डॉक्टर देखता है। सभी के लिए मुफ्त, अपनी गति से भरें — प्रगति अपने आप सहेजी जाती है।')}
                   </p>
 
                   <div className="flex flex-wrap items-center gap-2 pt-1">

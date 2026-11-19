@@ -137,7 +137,7 @@ export const RootCausesCard: React.FC<RootCausesCardProps> = ({ profile, tr, onO
                   <div className="relative mx-auto w-28 h-28 -mt-2">
                     <DotLottieReact src="/lottie/buddy-cheer.lottie" autoplay loop style={{ width: '100%', height: '100%' }} />
                   </div>
-                  <h3 className="relative font-display text-xl sm:text-2xl font-black leading-snug">{tr('Follow your UrCare Reversal Treatment', 'अपना UrCare रिवर्सल ट्रीटमेंट फ़ॉलो करें')}</h3>
+                  <h3 className="relative font-display text-xl sm:text-2xl font-black leading-snug">{tr('Follow your UrCare Reversal Plan', 'अपना UrCare रिवर्सल प्लान फ़ॉलो करें')}</h3>
                   <p className="relative mt-2 text-sm text-white/90 leading-relaxed max-w-md mx-auto">
                     {tr('With complete trust and consistency for 3 months — one day at a time — and see the results in your own reports.', 'पूरे भरोसे और लगातार 3 महीने तक — एक-एक दिन करके — और नतीजे अपनी ही रिपोर्ट में देखें।')}
                   </p>

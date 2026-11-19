@@ -1733,7 +1733,7 @@ export const RootCauseAssessmentModal: React.FC<RootCauseAssessmentModalProps> =
               <div className="space-y-5 animate-in fade-in">
                 <div className="border-b border-zinc-200 pb-3">
                   <span className="text-xs font-bold text-emerald-600 uppercase">{tr('Section 18', 'अनुभाग 18')}</span>
-                  <h3 className="text-xl font-black">{tr('Reversal Treatment Intensity Selection', 'रिवर्सल उपचार तीव्रता चयन')}</h3>
+                  <h3 className="text-xl font-black">{tr('Reversal Plan Intensity Selection', 'रिवर्सल प्लान तीव्रता चयन')}</h3>
                   <p className="text-xs text-zinc-500">{tr('Choose the intensity protocol matching your condition severity and daily readiness.', 'अपनी स्थिति की गंभीरता व दैनिक तैयारी के अनुसार तीव्रता चुनें।')}</p>
                 </div>
 

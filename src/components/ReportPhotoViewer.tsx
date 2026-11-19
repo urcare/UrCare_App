@@ -208,9 +208,9 @@ export const ReportPhotoViewer: React.FC<ReportPhotoViewerProps> = ({
                   <div className="flex items-center gap-1.5">
                     <span className="font-black text-lg tracking-tight text-zinc-950">Ur</span>
                     <span className="font-black text-lg tracking-tight text-emerald-600">Care</span>
-                    <span className="text-xs font-bold text-zinc-500 uppercase ml-2 pl-2 border-l border-zinc-300">{tr('Clinical Pathology & Diagnostics', 'क्लिनिकल पैथोलॉजी व डायग्नोस्टिक्स')}</span>
+                    <span className="text-xs font-bold text-zinc-500 uppercase ml-2 pl-2 border-l border-zinc-300">{tr('Report Summary', 'रिपोर्ट सारांश')}</span>
                   </div>
-                  <p className="text-[11px] text-zinc-500 mt-0.5">{tr('Accredited Clinical Lab • Digital Diagnostic Record Sheet', 'मान्यता प्राप्त क्लिनिकल लैब • डिजिटल डायग्नोस्टिक रिकॉर्ड शीट')}</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">{tr('Your uploaded lab report, saved in UrCare • Not issued by a lab', 'आपकी अपलोड की गई लैब रिपोर्ट, UrCare में सेव • किसी लैब द्वारा जारी नहीं')}</p>
                 </div>
 
                 <div className="text-right text-xs">
