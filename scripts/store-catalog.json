@@ -1,0 +1,150 @@
+{
+  "_comment": "The in-app store catalog, copied from urcare.org/shop (names, photos, prices, packs, stock, badges). Product claims are reworded so the app passes Play / App Store health-claim review: no cure, reversal, remission or guaranteed-result wording. Load it with: node scripts/seed-store.mjs",
+  "products": [
+    {
+      "id": "prod_type1_delayed_remission_kit",
+      "name": "UrCare Type 1 / 1.5 Diabetes Care Kit",
+      "category": "kits",
+      "image": "/store/kits/type1.webp",
+      "gallery": ["/store/kits/kit-box-front.webp", "/store/kits/type1/kit-box.webp", "/store/kits/type1/kit-jars.webp", "/store/kits/type1/kit-contains.webp", "/store/kits/kit-box-back.webp"],
+      "badge": "Bestseller",
+      "description": "For people with Type 1 or Type 1.5 (LADA) diabetes who want a more advanced, doctor-guided plan. The kit pairs UrCare herbal formulations with a personalised diet, exercise and lifestyle plan, followed under your own doctor's supervision. Never stop or change insulin or any medicine on your own.",
+      "benefits": [
+        "Personalised Type 1 / 1.5 care plan",
+        "Consultation before you start",
+        "T1 PancreReViv, GlucoLow, T1 BetaReViv and T1 ImmunoReViv",
+        "Monthly progress reviews",
+        "Meal guidance for Type 1",
+        "Exercise guidance for steady glucose",
+        "Dosage set around your condition and insulin use",
+        "UrCare app access for 3 months"
+      ],
+      "packs": [
+        { "months": 1, "price": 14500 }, { "months": 2, "price": 29000 }, { "months": 3, "price": 43500 }, { "months": 4, "price": 58000 },
+        { "months": 5, "price": 72500 }, { "months": 6, "price": 87000 }, { "months": 7, "price": 101500 }, { "months": 8, "price": 116000 }
+      ]
+    },
+    {
+      "id": "prod_type2_reversal_kit",
+      "name": "UrCare Type 2 Diabetes Care Kit",
+      "category": "kits",
+      "image": "/store/kits/type2.webp",
+      "gallery": ["/store/kits/kit-box-front.webp", "/store/kits/type2/kit-boxes.webp", "/store/kits/type2/kit-packing.webp", "/store/kits/kit-box-back.webp"],
+      "badge": "Fast Selling",
+      "description": "For people with Type 2 diabetes or pre-diabetes who want a simple, affordable, doctor-guided start. The kit combines UrCare Ayurvedic formulations with a diet and lifestyle plan that supports healthy blood sugar and insulin sensitivity. Keep taking your prescribed medicines unless your doctor changes them.",
+      "benefits": [
+        "Personalised Type 2 / pre-diabetes care plan",
+        "T2 PancreReViv, GlucoLow and T2 BetaReViv",
+        "Diabetes-friendly meal list",
+        "Consultation before you start",
+        "Monthly progress reviews"
+      ],
+      "packs": [{ "months": 1, "price": 6500 }, { "months": 2, "price": 13000 }, { "months": 3, "price": 19500 }, { "months": 4, "price": 26000 }]
+    },
+    {
+      "id": "prod_type3_cardiovascular_kit",
+      "name": "UrCare Cardiovascular Care Kit",
+      "category": "kits",
+      "image": "/store/kits/type3/kit-with-medicines.webp",
+      "gallery": ["/store/kits/type3/kit-box-open.webp", "/store/kits/type3/kit-box-closed-and-open.webp", "/store/kits/type3/kit-box-front.webp", "/store/kits/type3/kit-box-back.webp"],
+      "description": "A 3-month, doctor-designed kit for heart and circulation support. It brings together three UrCare herbal formulations and a personalised step-by-step diet, exercise and lifestyle plan, reviewed every month. Use it alongside the care your cardiologist prescribes.",
+      "benefits": [
+        "Cardiol: heart and circulation support",
+        "LVReVerse Max: liver health support",
+        "GlucoLow: healthy blood sugar support",
+        "Personalised 3-month heart-health plan",
+        "Monthly plan reviews",
+        "Vitamin and mineral guidance",
+        "Upgrade to a personalised care program anytime"
+      ],
+      "packs": [{ "months": 3, "price": 6500, "isDefault": true }]
+    },
+    {
+      "id": "prod_glucolow",
+      "name": "GlucoLow",
+      "category": "meds",
+      "image": "/store/products/glucolow.webp",
+      "badge": "Bestseller",
+      "price": 3000,
+      "description": "GlucoLow is a doctor-formulated Ayurvedic blend that supports healthy glucose metabolism and helps manage after-meal blood sugar, as part of a balanced diet and active lifestyle.",
+      "benefits": ["Supports healthy glucose metabolism", "Helps manage after-meal sugar spikes", "Supports healthy weight management", "Doctor-formulated Ayurvedic ingredients"]
+    },
+    {
+      "id": "prod_betareviv",
+      "name": "BetaReViv",
+      "category": "meds",
+      "image": "/store/products/betareviv.webp",
+      "price": 3000,
+      "description": "BetaReViv is an Ayurvedic formulation that supports pancreatic health and healthy glycemic control. It is used alongside UrCare's Type 1 and Type 1.5 care plans.",
+      "benefits": ["Supports pancreatic health", "Supports healthy glycemic control", "Complements Type 1 / 1.5 care plans", "Antioxidant herbal support"]
+    },
+    {
+      "id": "prod_pancrereviv",
+      "name": "PancreReViv",
+      "category": "meds",
+      "image": "/store/products/pancrereviv.webp",
+      "badge": "Fast Selling",
+      "price": 3000,
+      "description": "PancreReViv is an Ayurvedic blend with Gymnema (gurmar), traditionally used to support healthy sugar metabolism and pancreatic health.",
+      "benefits": ["Contains Gymnema (gurmar)", "Supports healthy sugar metabolism", "Supports pancreatic health", "Doctor-formulated"]
+    },
+    {
+      "id": "prod_cardiol",
+      "name": "UrCare Cardiol",
+      "category": "meds",
+      "image": "/store/products/cardiol.webp",
+      "badge": "Bestseller",
+      "description": "Cardiol is a polyherbal formulation that supports heart health, healthy circulation and healthy cholesterol levels, as part of a heart-healthy diet and lifestyle.",
+      "benefits": ["Supports heart health", "Supports healthy circulation", "Supports healthy cholesterol levels", "Supports healthy blood pressure"],
+      "packs": [{ "months": 1, "price": 3000 }, { "months": 2, "price": 6000 }, { "months": 3, "price": 9000, "isDefault": true }]
+    },
+    {
+      "id": "prod_kidney_protector3",
+      "name": "UrCare Kronic Kidney Protector-3",
+      "category": "meds",
+      "image": "/store/products/kronic-kidney-protector-3.webp",
+      "badge": "Fast Selling",
+      "description": "Kronic Kidney Protector-3 is a polyherbal formulation that supports kidney health and healthy urinary function. Use it only with your doctor's advice, especially if you have kidney disease.",
+      "benefits": ["Supports kidney health", "Supports healthy urinary function", "Traditional Ayurvedic herbs", "Use under your doctor's guidance"],
+      "packs": [{ "months": 1, "price": 3000, "inStock": false }, { "months": 2, "price": 6000 }, { "months": 3, "price": 9000, "isDefault": true }]
+    },
+    {
+      "id": "prod_renerve_h2t",
+      "name": "UrCare ReNerve H2T",
+      "category": "meds",
+      "image": "/store/products/renerve-h2t.webp",
+      "badge": "Fast Selling",
+      "description": "ReNerve H2T is a herbal formulation that supports nerve health and healthy blood flow to the hands and feet.",
+      "benefits": ["Supports nerve health", "Supports healthy circulation to hands and feet", "Traditional Ayurvedic herbs", "Doctor-formulated"],
+      "packs": [{ "months": 1, "price": 3000 }, { "months": 2, "price": 6000 }, { "months": 3, "price": 9000, "isDefault": true }]
+    },
+    {
+      "id": "prod_lv_reverse_max",
+      "name": "UrCare LVReVerse Max",
+      "category": "meds",
+      "image": "/store/products/lvreverse-max.webp",
+      "badge": "Bestseller",
+      "description": "LVReVerse Max is an Ayurvedic formulation (260 g) that supports liver health and healthy digestion, as part of a liver-friendly diet and lifestyle.",
+      "benefits": ["Supports liver health", "Supports healthy liver function", "Supports healthy digestion", "Traditional Ayurvedic herbs"],
+      "packs": [{ "months": 1, "price": 3000, "inStock": false }, { "months": 2, "price": 6000 }, { "months": 3, "price": 9000, "isDefault": true }]
+    },
+    {
+      "id": "prod_nutriabsorb_max",
+      "name": "UrCare NutriAbsorb Max",
+      "category": "meds",
+      "image": "/store/products/nutriabsorb-max.webp",
+      "description": "NutriAbsorb Max is a doctor-formulated Ayurvedic nutrition formula (260 g) that supports digestion, appetite and nutrient absorption, and helps with everyday energy.",
+      "benefits": ["Supports nutrient absorption", "Supports a healthy appetite", "Supports everyday energy and strength", "Supports healthy muscle"],
+      "packs": [{ "months": 1, "price": 3000, "inStock": false }, { "months": 2, "price": 6000 }, { "months": 3, "price": 9000, "isDefault": true }]
+    },
+    {
+      "id": "prod_gut_repair_complex",
+      "name": "UrCare Gut Repair Complex",
+      "category": "meds",
+      "image": "/store/products/gut-repair-complex.webp",
+      "description": "Gut Repair Complex is a doctor-formulated herbal blend (260 g) that supports digestive comfort. It helps with occasional acidity, gas and bloating, and supports regular bowel movements.",
+      "benefits": ["Helps with occasional acidity", "Helps relieve gas and bloating", "Supports regular bowel movements", "Supports digestive comfort"],
+      "packs": [{ "months": 1, "price": 3000, "inStock": false }, { "months": 2, "price": 6000 }, { "months": 3, "price": 9000, "isDefault": true }]
+    }
+  ]
+}

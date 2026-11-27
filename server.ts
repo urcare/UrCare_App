@@ -19,7 +19,9 @@ const PORT = Number(process.env.PORT) || 3000;
 // (Care Team Status images/videos) uploads as real binary via multer +
 // Supabase Storage instead (see /api/admin/status below), not through this
 // JSON body parser, so this limit stays modest.
-app.use(express.json({ limit: '25mb' }));
+// The raw bytes are kept as well: the Razorpay webhook signature is computed
+// over the exact body Razorpay sent.
+app.use(express.json({ limit: '25mb', verify: (req, _res, buf) => { (req as any).rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 // Never let a browser/WebView cache an /api/* response — the website and
@@ -2972,6 +2974,207 @@ app.patch('/api/orders/:id', requireUser(async (req, res, user) => {
 }));
 
 // ----------------------------------------------------------------------------
+// RAZORPAY CHECKOUT (cards, UPI, netbanking, wallets) for store products —
+// physical goods only, never the app-unlock product. The flow:
+//   1. POST /api/payments/razorpay/order prices the cart on the server, creates
+//      a Razorpay order for that exact amount and keeps the cart in
+//      razorpay_orders (status 'created'). No store order exists yet.
+//   2. The app opens Razorpay Checkout. When the customer pays, it sends the
+//      payment id + signature to POST /api/payments/razorpay/verify.
+//   3. The server checks the signature and the payment itself with Razorpay,
+//      then creates the store order already paid ('completed' / 'confirmed').
+// The webhook does step 3 too, so an order is still created if the app is
+// closed right after paying. Whichever arrives first creates it; the other
+// sees it already done.
+// Env: RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, optional RAZORPAY_WEBHOOK_SECRET.
+// ----------------------------------------------------------------------------
+const RAZORPAY_KEY_ID = (process.env.RAZORPAY_KEY_ID || '').trim();
+const RAZORPAY_KEY_SECRET = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+const RAZORPAY_WEBHOOK_SECRET = (process.env.RAZORPAY_WEBHOOK_SECRET || '').trim();
+const razorpayEnabled = () => !!(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET);
+
+async function razorpayApi(method: 'GET' | 'POST', pathName: string, body?: any): Promise<any> {
+  const res = await fetch(`https://api.razorpay.com/v1${pathName}`, {
+    method,
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString('base64')}`,
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json: any = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.error?.description || `Razorpay error ${res.status}`);
+  return json;
+}
+
+function safeEqualHex(a: string, b: string): boolean {
+  const x = Buffer.from(String(a)); const y = Buffer.from(String(b));
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+
+app.get('/api/payments/razorpay/config', (_req, res) => {
+  res.json({ enabled: razorpayEnabled(), keyId: razorpayEnabled() ? RAZORPAY_KEY_ID : null });
+});
+
+app.post('/api/payments/razorpay/order', requireUser(async (req, res, user) => {
+  if (!razorpayEnabled()) return res.status(503).json({ error: 'Online payment is not available right now. Please pay by UPI QR.' });
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  try {
+    const { items = [], shippingAddress, total, couponCode, usePoints } = req.body || {};
+    const addr = shippingAddress || {};
+    if (!addr.fullName || !addr.phone || !addr.streetAddress || !addr.city || !addr.pincode) {
+      return res.status(400).json({ error: 'Please fill in your delivery address first.' });
+    }
+    const priced = await priceStoreCart(supabase, items, couponCode);
+    if ('error' in priced) return res.status(400).json({ error: priced.error });
+    if (priced.lines.some((l) => l.productId === APP_ACCESS_PRODUCT_ID)) return res.status(400).json({ error: 'This item cannot be bought here.' });
+    if (couponCode && !priced.coupon?.valid) return res.status(400).json({ error: priced.coupon?.message || 'This coupon could not be applied.' });
+    let pointsUsed = 0;
+    if (usePoints) {
+      const { balance } = await referralSummary(supabase, user.id);
+      pointsUsed = pointsForCart(balance, priced.subtotal - priced.discount);
+      if (!pointsUsed) return res.status(400).json({ error: 'You do not have enough points to use on this order.' });
+      priced.total -= pointsUsed;
+    }
+    if (Number(total) !== priced.total) {
+      return res.status(409).json({ error: `Prices in your cart have changed — the correct total is ${formatInr(priced.total)}. Please go back to your cart and check out again.` });
+    }
+    if (priced.total < 1) return res.status(400).json({ error: 'Nothing to pay on this order.' });
+
+    const amount = Math.round(priced.total * 100);
+    const rzpOrder = await razorpayApi('POST', '/orders', {
+      amount, currency: 'INR', receipt: `urc_${Date.now().toString(36)}`,
+      notes: { user_id: user.id, source: 'urcare_store' },
+    });
+    const checkout = {
+      lines: priced.lines,
+      shippingAddress: addr,
+      pricing: { subtotal: priced.subtotal, discount: priced.discount, deliveryFee: priced.deliveryFee, couponCode: priced.coupon?.valid ? priced.coupon.code : null, pointsUsed },
+      total: priced.total,
+    };
+    const { error: saveErr } = await supabase.from('razorpay_orders').insert({
+      user_id: user.id, razorpay_order_id: rzpOrder.id, amount, currency: 'INR', status: 'created', raw_response: { checkout },
+    });
+    if (saveErr) throw saveErr;
+
+    const { data: profileRow } = await supabase.from('profiles').select('full_name, email').eq('user_id', user.id).maybeSingle();
+    res.json({
+      keyId: RAZORPAY_KEY_ID, razorpayOrderId: rzpOrder.id, amount, currency: 'INR',
+      prefill: { name: addr.fullName || profileRow?.full_name || '', email: profileRow?.email || user.email || '', contact: String(addr.phone || '') },
+    });
+  } catch (e: any) {
+    console.error('Razorpay order failed:', e);
+    res.status(500).json({ error: 'Could not start the payment. Please try again.' });
+  }
+}));
+
+/**
+ * Turns a paid Razorpay order into a store order (once). Checks the payment
+ * with Razorpay itself (status, order, amount) and captures it if it was only
+ * authorised. Returns the store order id.
+ */
+async function finalizeRazorpayOrder(supabase: any, razorpayOrderId: string, paymentId: string): Promise<{ orderId?: string; error?: string; status?: number }> {
+  const { data: row } = await supabase.from('razorpay_orders').select('*').eq('razorpay_order_id', razorpayOrderId).maybeSingle();
+  if (!row) return { error: 'Payment not found.', status: 404 };
+  if (row.raw_response?.orderId) return { orderId: row.raw_response.orderId };
+
+  let payment = await razorpayApi('GET', `/payments/${encodeURIComponent(paymentId)}`);
+  if (payment.order_id !== razorpayOrderId || Number(payment.amount) !== Number(row.amount)) {
+    return { error: 'This payment does not match your order. Please contact support.', status: 400 };
+  }
+  if (payment.status === 'authorized') {
+    payment = await razorpayApi('POST', `/payments/${encodeURIComponent(paymentId)}/capture`, { amount: row.amount, currency: row.currency || 'INR' });
+  }
+  if (payment.status !== 'captured') return { error: 'The payment has not gone through yet.', status: 402 };
+
+  // Claim the row so the app callback and the webhook never both create an order.
+  const { data: claimed } = await supabase.from('razorpay_orders')
+    .update({ status: 'paid', razorpay_payment_id: paymentId })
+    .eq('razorpay_order_id', razorpayOrderId).eq('status', 'created').select('id');
+  if (!claimed?.length) {
+    for (let i = 0; i < 10; i++) {
+      const { data: again } = await supabase.from('razorpay_orders').select('raw_response').eq('razorpay_order_id', razorpayOrderId).maybeSingle();
+      if (again?.raw_response?.orderId) return { orderId: again.raw_response.orderId };
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    return { error: 'Your payment is received and the order is being created. Please check My Orders in a minute.', status: 202 };
+  }
+
+  const checkout = row.raw_response?.checkout || {};
+  const { data: profileRow } = await supabase.from('profiles').select('full_name, email').eq('user_id', row.user_id).maybeSingle();
+  const now = new Date().toISOString();
+  const { data: order, error: orderErr } = await supabase.from('orders').insert({
+    user_id: row.user_id,
+    customer_name: profileRow?.full_name || checkout.shippingAddress?.fullName || 'Member',
+    customer_email: profileRow?.email || payment.email || null,
+    total_amount: checkout.total ?? row.amount / 100,
+    shipping_address: { ...(checkout.shippingAddress || {}), pricing: checkout.pricing || {}, payment: { method: 'razorpay', via: payment.method || null } },
+    payment_status: ORDER_PAYMENT.verified,
+    razorpay_order_id: razorpayOrderId,
+    razorpay_payment_id: paymentId,
+    status: 'confirmed',
+    updated_at: now,
+  }).select().single();
+  if (orderErr) {
+    await supabase.from('razorpay_orders').update({ status: 'created' }).eq('razorpay_order_id', razorpayOrderId);
+    throw orderErr;
+  }
+  const lines: PricedLine[] = Array.isArray(checkout.lines) ? checkout.lines : [];
+  if (lines.length) {
+    const { error: itemsErr } = await supabase.from('order_items').insert(lines.map((l) => ({
+      order_id: order.id, product_id: productIdToUuid(l.id), quantity: l.quantity, price: l.unitPrice, product_name: l.name, product_image: l.image,
+    })));
+    if (itemsErr) console.warn('razorpay: could not save order items:', itemsErr.message);
+  }
+  await supabase.from('razorpay_orders').update({ raw_response: { ...(row.raw_response || {}), orderId: order.id, method: payment.method || null } }).eq('razorpay_order_id', razorpayOrderId);
+  await createNotification(supabase, row.user_id, 'order', 'Payment received — order confirmed', `Order #${order.id} is confirmed. We will let you know when it ships.`, { orderId: order.id });
+  await createActivityLog(supabase, row.user_id, 'created', 'order', `Placed an order — ${formatInr(order.total_amount)}`, 'Paid online (Razorpay)', { orderId: order.id });
+  return { orderId: order.id };
+}
+
+app.post('/api/payments/razorpay/verify', requireUser(async (req, res, user) => {
+  if (!razorpayEnabled()) return res.status(503).json({ error: 'Online payment is not available right now.' });
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
+  const { razorpay_order_id: rzpOrderId, razorpay_payment_id: paymentId, razorpay_signature: signature } = req.body || {};
+  if (!rzpOrderId || !paymentId || !signature) return res.status(400).json({ error: 'Payment details are missing.' });
+  const expected = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET).update(`${rzpOrderId}|${paymentId}`).digest('hex');
+  if (!safeEqualHex(expected, signature)) return res.status(400).json({ error: 'The payment could not be verified. If money was deducted, it will be refunded automatically.' });
+  const { data: row } = await supabase.from('razorpay_orders').select('user_id').eq('razorpay_order_id', rzpOrderId).maybeSingle();
+  if (!row || row.user_id !== user.id) return res.status(404).json({ error: 'Payment not found.' });
+  try {
+    const result = await finalizeRazorpayOrder(supabase, rzpOrderId, paymentId);
+    if (result.error) return res.status(result.status || 400).json({ error: result.error });
+    const { data: order } = await supabase.from('orders').select('*, order_items(*)').eq('id', result.orderId).maybeSingle();
+    res.json({ success: true, order });
+  } catch (e: any) {
+    console.error('Razorpay verify failed:', e);
+    res.status(500).json({ error: 'Your payment is received, but the order could not be saved. Please contact support with your payment id.' });
+  }
+}));
+
+// Razorpay → server, for payments whose app callback never arrived. Set the
+// webhook in Razorpay Dashboard → Settings → Webhooks to
+// https://<server>/api/payments/razorpay/webhook with the events
+// payment.captured and order.paid, and put its secret in RAZORPAY_WEBHOOK_SECRET.
+app.post('/api/payments/razorpay/webhook', async (req, res) => {
+  if (!razorpayEnabled() || !RAZORPAY_WEBHOOK_SECRET) return res.status(503).end();
+  const raw: Buffer | undefined = (req as any).rawBody;
+  const sig = String(req.headers['x-razorpay-signature'] || '');
+  const expected = raw ? crypto.createHmac('sha256', RAZORPAY_WEBHOOK_SECRET).update(raw).digest('hex') : '';
+  if (!raw || !safeEqualHex(expected, sig)) return res.status(400).end();
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return res.status(503).end();
+  const payment = req.body?.payload?.payment?.entity;
+  if (['payment.captured', 'order.paid'].includes(req.body?.event) && payment?.order_id && payment?.id) {
+    try { await finalizeRazorpayOrder(supabase, payment.order_id, payment.id); }
+    catch (e: any) { console.error('Razorpay webhook failed:', e); return res.status(500).end(); }
+  }
+  res.json({ ok: true });
+});
+
+// ----------------------------------------------------------------------------
 // NOTIFICATIONS — real `notifications` rows only (see createNotification
 // above for where they're actually written: a prescription issued, a report
 // reviewed, an order's status/payment changed, a report/plan uploaded). These
@@ -4142,6 +4345,13 @@ app.post('/api/admin/products', requireAdmin(async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Database is not configured right now.' });
   const { id, name, category, price, discountPrice, image, description, benefits, nutritionInfo, inStock, featured, badge, packOptions } = req.body;
   if (!id || !name) return res.status(400).json({ error: 'Product id and name are required.' });
+  // Extra photos (urcare.org kit galleries). The admin form doesn't edit them,
+  // so an edit keeps whatever the product already has.
+  let gallery: string[] | undefined = Array.isArray(req.body.gallery) ? req.body.gallery.filter((g: any) => typeof g === 'string' && g).slice(0, 12) : undefined;
+  if (!gallery) {
+    const { data: existing } = await supabase.from('products').select('nutrition_info').eq('id', id).maybeSingle();
+    gallery = Array.isArray(existing?.nutrition_info?.listing?.gallery) ? existing.nutrition_info.listing.gallery : undefined;
+  }
   // Store listing extras — a badge ("Bestseller", "Fast Selling") and 1/2/3-
   // month pack options, each with its own price, MRP and stock — live in the
   // existing nutrition_info jsonb under `listing`, so no schema change is
@@ -4151,7 +4361,7 @@ app.post('/api/admin/products', requireAdmin(async (req, res) => {
     .filter((p: any) => p.months > 0 && p.price > 0)
     .sort((a: any, b: any) => a.months - b.months);
   const hasNutrition = nutritionInfo && (Number(nutritionInfo.calories) || Number(nutritionInfo.protein) || Number(nutritionInfo.carbs) || Number(nutritionInfo.fats));
-  const listing = (badge || packs.length) ? { badge: badge || null, packs } : undefined;
+  const listing = (badge || packs.length || gallery?.length) ? { badge: badge || null, packs, ...(gallery?.length ? { gallery } : {}) } : undefined;
   const nutrition_info = hasNutrition || listing ? { ...(hasNutrition ? nutritionInfo : {}), ...(listing ? { listing } : {}) } : null;
   const { data, error } = await supabase.from('products').upsert({
     id, name, category, price, discount_price: discountPrice, image, description,

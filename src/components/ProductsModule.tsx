@@ -3,13 +3,14 @@ import {
   ShoppingBag, Star, Plus, Minus, Check, ArrowRight, ShieldCheck,
   Truck, QrCode, CreditCard, Sparkles, MapPin, X, Copy, Zap,
   Package, ChevronRight, CheckCircle2, Lock, RefreshCw, Upload, Clock, Ticket
-, ShoppingCart } from 'lucide-react';
+, ShoppingCart, Phone, Mail, MessageCircle, Stethoscope } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { MyOrdersModal } from './MyOrdersModal';
 import { Product, PackOption, CartItem, ShippingAddress, Order, UserAccount } from '../types';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { saveOrderAndReceiptToSupabase, getProducts, getPaymentQrSettings, getMyOrders, checkStoreCoupon, getReferralStatus, ReferralStatus } from '../utils/supabase';
+import { saveOrderAndReceiptToSupabase, getProducts, getPaymentQrSettings, getMyOrders, checkStoreCoupon, getReferralStatus, ReferralStatus, getRazorpayEnabled, startRazorpayCheckout, verifyRazorpayPayment } from '../utils/supabase';
+import { STORE_TREATMENTS, TREATMENT_CORE_FEATURES, TREATMENT_CONTACT, TREATMENT_FOOTNOTE } from '../data/storeTreatments';
 import { getCachedAccountState, saveAccountState } from '../utils/accountState';
 import { compressImageToDataUrl } from '../utils/compressImage';
 
@@ -45,6 +46,23 @@ const maxCouponOff = (product: Product) => Math.max(0, ...(product.packOptions |
 const COUPON_STORAGE_KEY = 'urcare_store_coupon';
 const discountPercent = (mrp: number, price: number) => (mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0);
 
+/** Loads Razorpay Checkout (checkout.js) once. */
+let razorpayScript: Promise<boolean> | null = null;
+function loadRazorpay(): Promise<boolean> {
+  if ((window as any).Razorpay) return Promise.resolve(true);
+  if (!razorpayScript) {
+    razorpayScript = new Promise((resolve) => {
+      const el = document.createElement('script');
+      el.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      el.async = true;
+      el.onload = () => resolve(!!(window as any).Razorpay);
+      el.onerror = () => { razorpayScript = null; resolve(false); };
+      document.body.appendChild(el);
+    });
+  }
+  return razorpayScript;
+}
+
 export const ProductsModule: React.FC<ProductsModuleProps> = ({
   account,
   onOrderPlaced,
@@ -71,7 +89,8 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     return () => { cancelled = true; };
   }, []);
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  // Same three shelves as urcare.org/shop: Treatment · Meds · Kits.
+  const [selectedCategory, setSelectedCategory] = useState<string>('kits');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   // Pharmacy sections: the shop shelf or the member's own orders (the cart opens as a drawer).
@@ -106,6 +125,11 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   // Tapping the product photo in the details modal opens it full-screen —
   // just the same image, zoomed, nothing invented.
   const [isImageZoomed, setIsImageZoomed] = useState(false);
+  // Which photo of the product (main image + gallery) the details show.
+  const [photoIndex, setPhotoIndex] = useState(0);
+  useEffect(() => { setPhotoIndex(0); }, [selectedProductDetails]);
+  const detailPhotos = selectedProductDetails ? [selectedProductDetails.image, ...(selectedProductDetails.gallery || [])].filter(Boolean) : [];
+  const detailPhoto = detailPhotos[photoIndex] || selectedProductDetails?.image;
 
   // Checkout flow states: 'none' | 'address' | 'payment' | 'order_confirmed'
   const [checkoutStep, setCheckoutStep] = useState<'none' | 'address' | 'payment' | 'order_confirmed'>('none');
@@ -215,6 +239,11 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
   const [qrSettings, setQrSettings] = useState<{ qrImageUrl?: string; upiId?: string; payeeName?: string }>({});
   useEffect(() => { getPaymentQrSettings().then(setQrSettings); }, []);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+  // Online payment (Razorpay: UPI, cards, netbanking, wallets) when the
+  // server has it switched on; otherwise only the UPI QR + screenshot flow.
+  const [razorpayOn, setRazorpayOn] = useState(false);
+  const [payMethod, setPayMethod] = useState<'online' | 'upi'>('upi');
+  useEffect(() => { getRazorpayEnabled().then((on) => { setRazorpayOn(on); if (on) setPayMethod('online'); }); }, []);
   const [copiedUpi, setCopiedUpi] = useState(false);
 
   // Store coupon (URCARE4U). The code the shopper applied is remembered on
@@ -415,9 +444,58 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     setIsProcessingOrder(false);
   };
 
-  const categories = [
-    { id: 'all', label: tr('All Products', 'सभी उत्पाद') },
-    { id: 'protein', label: tr('Reversal Kits & Polyherbal Medicine', 'रिवर्सल किट्स व पॉलीहर्बल औषधि') },
+  // Pays the cart through Razorpay Checkout. The server prices the cart,
+  // and creates the (already paid) order only after checking the payment.
+  const handleRazorpayPay = async () => {
+    setPaymentError(null);
+    setIsProcessingOrder(true);
+    const draft = { items: [...cart], shippingAddress, total: cartTotal, couponCode: couponDiscount > 0 ? appliedCoupon : undefined, pointsUsed: pointsDiscount || undefined };
+    const [loaded, started] = await Promise.all([loadRazorpay(), startRazorpayCheckout(draft)]);
+    if (!started.ok) { setPaymentError(started.error); setIsProcessingOrder(false); return; }
+    if (!loaded) { setPaymentError(tr('Could not open the payment page. Please check your internet, or pay by UPI QR.', 'पेमेंट पेज नहीं खुला। इंटरनेट जाँचें या UPI QR से भुगतान करें।')); setIsProcessingOrder(false); return; }
+    const { keyId, razorpayOrderId, amount, currency, prefill } = started.data;
+    const rzp = new (window as any).Razorpay({
+      key: keyId,
+      order_id: razorpayOrderId,
+      amount,
+      currency,
+      name: 'UrCare',
+      description: tr('UrCare store order', 'UrCare स्टोर ऑर्डर'),
+      image: 'https://urcare-app.onrender.com/icon-512.png',
+      prefill,
+      theme: { color: '#059669' },
+      modal: { ondismiss: () => setIsProcessingOrder(false) },
+      handler: async (resp: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+        const result = await verifyRazorpayPayment(resp);
+        if (!result.ok) {
+          setPaymentError(result.error);
+          setIsProcessingOrder(false);
+          if (result.pending) { setCart([]); removeCoupon(); }
+          return;
+        }
+        const finalOrder: Order = result.order || {
+          id: resp.razorpay_order_id, userId: account.uid, userName: shippingAddress.fullName, userEmail: account.email,
+          items: draft.items, shippingAddress, subtotal: cartSubtotal, discount: couponDiscount, total: cartTotal,
+          paymentMethod: 'razorpay', paymentStatus: 'verified', orderStatus: 'confirmed', createdAt: new Date().toISOString(), estimatedDelivery: '',
+        };
+        setConfirmedOrder(finalOrder);
+        if (onOrderPlaced) onOrderPlaced(finalOrder);
+        try { confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 }, colors: ['#00a800', '#ffffff', '#008000'] }); } catch (e) {}
+        setCart([]);
+        removeCoupon();
+        setIsCartOpen(false);
+        setCheckoutStep('order_confirmed');
+        setIsProcessingOrder(false);
+      },
+    });
+    rzp.on('payment.failed', (r: any) => {
+      setPaymentError(r?.error?.description || tr('The payment failed. Please try again.', 'भुगतान नहीं हुआ। कृपया दोबारा कोशिश करें।'));
+    });
+    rzp.open();
+  };
+
+  const legacyCategories = [
+    { id: 'protein', label: tr('Kits & Herbal Formulations', 'किट्स व हर्बल फ़ॉर्मूलेशन') },
     { id: 'vitamins', label: tr('Vitamins & Micronutrient Support', 'विटामिन व सूक्ष्म पोषक सहयोग') },
     { id: 'superfoods', label: tr('Diet & Gut Support', 'आहार व गट सहयोग') },
     { id: 'snacks', label: tr('Diabetic-Friendly Snacks', 'डायबिटीज-अनुकूल स्नैक्स') },
@@ -427,6 +505,15 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
     { id: 'herbal_support', label: tr('Herbal Support', 'हर्बल सहयोग') },
     { id: 'exercises', label: tr('Exercises', 'व्यायाम') },
   ];
+  // Treatment · Meds · Kits first (as on urcare.org); any older category is
+  // shown only while some product still uses it.
+  const categories = [
+    { id: 'treatment', label: tr('Treatment', 'ट्रीटमेंट') },
+    { id: 'meds', label: tr('Meds', 'दवाइयाँ') },
+    { id: 'kits', label: tr('Kits', 'किट्स') },
+    ...legacyCategories.filter((c) => products.some((p) => p.category === c.id)),
+  ];
+  const openContact = (url: string) => { try { window.open(url, '_blank', 'noopener'); } catch { window.location.href = url; } };
 
   const filteredProducts = selectedCategory === 'all'
     ? products
@@ -456,13 +543,13 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
         <div className="max-w-xl space-y-2 relative">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 text-white text-xs font-bold">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>{tr('Doctor-Led • Root-Cause Diabetes Reversal', 'डॉक्टर-नेतृत्व वाला • रूट-कॉज़ डायबिटीज रिवर्सल')}</span>
+            <span>{tr('Doctor-led • Ayurveda + modern science', 'डॉक्टर-नेतृत्व वाला • आयुर्वेद + आधुनिक विज्ञान')}</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            {tr('UrCare Medical Pharmacy', 'UrCare मेडिकल फार्मेसी')}
+            {tr('UrCare Shop', 'UrCare शॉप')}
           </h2>
           <p className="text-xs sm:text-sm text-emerald-50/90 leading-relaxed">
-            {tr('Personalised, clinically formulated polyherbal reversal kits and doctor-led nutrition support — for Type 1, Type 1.5 (LADA), Type 2 and pre-diabetes. Built to reverse, not just manage.', 'व्यक्तिगत, क्लीनिकली फॉर्मूलेटेड पॉलीहर्बल रिवर्सल किट्स व डॉक्टर-नेतृत्व वाला पोषण सहयोग — टाइप 1, टाइप 1.5 (LADA), टाइप 2 व प्री-डायबिटीज के लिए। सिर्फ प्रबंधन नहीं, रिवर्सल के लिए बनाया गया।')}
+            {tr("Doctor-led care programs, Ayurvedic herbal formulations and care kits, for yourself and your loved ones. Use them alongside your own doctor's treatment.", 'डॉक्टर-नेतृत्व वाले केयर प्रोग्राम, आयुर्वेदिक हर्बल फ़ॉर्मूलेशन और केयर किट्स, अपने और अपनों के लिए। अपने डॉक्टर के इलाज के साथ इस्तेमाल करें।')}
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2 text-xs font-bold">
@@ -472,7 +559,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             </span>
             <span className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-lg">
               <ShieldCheck className="w-4 h-4" />
-              <span>{tr('Clinically Formulated & Doctor-Led', 'क्लीनिकली फॉर्मूलेटेड व डॉक्टर-नेतृत्व वाला')}</span>
+              <span>{tr('Doctor-formulated', 'डॉक्टर द्वारा तैयार')}</span>
             </span>
           </div>
         </div>
@@ -530,8 +617,73 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
 
       </div>
 
-      {/* Product Cards Grid */}
-      {productsLoading ? (
+      {/* Treatment shelf — the urcare.org care programs. Not sold in the app:
+          Start / WhatsApp / Call / Email reach the UrCare team directly. */}
+      {selectedCategory === 'treatment' ? (
+        <section className="space-y-4">
+          <div className={`rounded-3xl p-5 ${cardClass} space-y-2`}>
+            <div className="flex items-center gap-2 text-emerald-700">
+              <Stethoscope className="w-5 h-5" />
+              <h3 className="text-base font-black">{tr('Doctor-led care programs', 'डॉक्टर-नेतृत्व वाले केयर प्रोग्राम')}</h3>
+            </div>
+            <p className="text-xs opacity-70">{tr('Recommended by UrCare MBBS MD and BAMS MD doctors. Core features in every program:', 'UrCare के MBBS MD व BAMS MD डॉक्टरों द्वारा सुझाए गए। हर प्रोग्राम में:')}</p>
+            <ul className="space-y-1">
+              {TREATMENT_CORE_FEATURES.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-xs"><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" /><span>{f}</span></li>
+              ))}
+            </ul>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {STORE_TREATMENTS.map((t) => {
+              const ask = encodeURIComponent(`Hi UrCare, I want to start care program ${t.code}: ${t.title} (${t.duration}). Please guide me.`);
+              const question = encodeURIComponent(`Hi UrCare, I have a question about care program ${t.code}: ${t.title} (${t.duration}).`);
+              const mail = `mailto:${TREATMENT_CONTACT.email}?subject=${encodeURIComponent(`Care program ${t.code}: ${t.title}`)}&body=${encodeURIComponent(`Hi UrCare,\n\nI am interested in care program ${t.code}: ${t.title} (${t.duration}). Please share the details.\n\nName:\nPhone:\n`)}`;
+              return (
+                <div key={t.code} className={`rounded-3xl p-5 ${cardClass} flex flex-col gap-3`}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black shrink-0">{t.code}</div>
+                    <div className="min-w-0">
+                      {t.label && <span className="inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-wider mb-1">{t.label}</span>}
+                      <h4 className="text-sm font-black leading-snug">{t.title}</h4>
+                      {t.tagline && <p className="text-[11px] font-bold text-emerald-700 mt-0.5">{t.tagline}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] font-bold">
+                    <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800"><Clock className="w-3.5 h-3.5" />{t.duration}</span>
+                  </div>
+                  <p className="text-xs opacity-75 leading-relaxed">{t.summary}</p>
+                  {t.includes.length > 0 && (
+                    <details className="group">
+                      <summary className="cursor-pointer text-xs font-black text-emerald-700 list-none flex items-center gap-1"><ChevronRight className="w-4 h-4 group-open:rotate-90 transition-transform" />{tr(`Everything included · ${t.includes.length}`, `सब कुछ शामिल · ${t.includes.length}`)}</summary>
+                      <ol className="mt-2 space-y-1.5 list-decimal pl-5 text-xs opacity-80">
+                        {t.includes.map((it) => <li key={it}>{it}</li>)}
+                      </ol>
+                    </details>
+                  )}
+                  <div className="mt-auto pt-3 border-t border-zinc-200 space-y-3">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider opacity-50">{tr('One-time investment', 'एक बार का निवेश')}</div>
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-xl font-black text-emerald-600">{t.priceInr}</span>
+                        <span className="text-xs opacity-60">{t.inrApprox ? '≈ ' : ''}{t.priceUsd} USD</span>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => openContact(`https://wa.me/${TREATMENT_CONTACT.whatsapp}?text=${ask}`)} className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center justify-center gap-2 cursor-pointer">
+                      <ArrowRight className="w-4 h-4" />{tr('Start this program', 'यह प्रोग्राम शुरू करें')}
+                    </button>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button type="button" onClick={() => openContact(`https://wa.me/${TREATMENT_CONTACT.whatsapp}?text=${question}`)} className={`py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${subCardClass}`}><MessageCircle className="w-3.5 h-3.5" />WhatsApp</button>
+                      <a href={`tel:${TREATMENT_CONTACT.phone}`} className={`py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 ${subCardClass}`}><Phone className="w-3.5 h-3.5" />{tr('Call', 'कॉल')}</a>
+                      <a href={mail} className={`py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 ${subCardClass}`}><Mail className="w-3.5 h-3.5" />{tr('Email', 'ईमेल')}</a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] opacity-60 leading-relaxed px-1">{TREATMENT_FOOTNOTE}</p>
+        </section>
+      ) : productsLoading ? (
         <div className={`p-12 rounded-3xl ${cardClass} text-center text-sm font-bold opacity-60`}>{tr('Loading products...', 'उत्पाद लोड हो रहे हैं...')}</div>
       ) : filteredProducts.length === 0 ? (
         <div className={`p-12 rounded-3xl ${cardClass} text-center space-y-2`}>
@@ -673,13 +825,22 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 aria-label={tr('View full-size photo', 'पूरी फोटो देखें')}
               >
                 <img
-                  src={selectedProductDetails.image}
+                  src={detailPhoto}
                   alt={selectedProductDetails.name}
                   className="w-full h-full object-contain group-hover:scale-[1.03] transition-transform duration-300"
                 />
               </button>
 
               <div className="space-y-1.5 flex-1 min-w-0">
+                {detailPhotos.length > 1 && (
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {detailPhotos.map((src, i) => (
+                      <button key={src + i} type="button" onClick={() => setPhotoIndex(i)} className={`w-12 h-12 rounded-lg overflow-hidden bg-white border-2 shrink-0 cursor-pointer ${i === photoIndex ? 'border-emerald-500' : 'border-zinc-100'}`} aria-label={tr(`Photo ${i + 1}`, `फ़ोटो ${i + 1}`)}>
+                        <img src={src} alt="" className="w-full h-full object-contain" />
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <span className="inline-block text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   {(categories.find((c) => c.id === selectedProductDetails.category)?.label || selectedProductDetails.category).toUpperCase()}
                 </span>
@@ -831,7 +992,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
             <X className="w-6 h-6" />
           </button>
           <img
-            src={selectedProductDetails.image}
+            src={detailPhoto}
             alt={selectedProductDetails.name}
             className="max-w-full max-h-full object-contain rounded-2xl animate-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
@@ -1143,23 +1304,47 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               <p className="text-xs opacity-60">{tr('Total Payable:', 'कुल देय राशि:')} <strong className="text-emerald-500 text-sm">₹{cartTotal}</strong></p>
             </div>
 
-            {/* Payment method — UPI QR is the only live option; card /
-                netbanking via Razorpay is shown as "coming soon" and can't be
-                selected yet. */}
+            {/* Payment method — online (Razorpay: UPI, cards, netbanking,
+                wallets; confirmed instantly) when the server has it on, or
+                UPI QR + screenshot (confirmed by the team). */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border bg-emerald-500 text-white border-emerald-400 shadow-md">
-                <QrCode className="w-4 h-4" />
-                <span>{tr('UPI QR / App', 'UPI QR / ऐप')}</span>
-              </div>
-              <div
-                aria-disabled="true"
-                className={`py-2.5 px-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center border opacity-60 cursor-not-allowed ${subCardClass}`}
+              <button
+                type="button"
+                disabled={!razorpayOn}
+                onClick={() => setPayMethod('online')}
+                className={`py-2.5 px-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center border ${payMethod === 'online' ? 'bg-emerald-500 text-white border-emerald-400 shadow-md' : razorpayOn ? subCardClass + ' cursor-pointer' : subCardClass + ' opacity-60 cursor-not-allowed'}`}
               >
-                <span className="flex items-center gap-2"><CreditCard className="w-4 h-4" />{tr('Cards / NetBanking', 'कार्ड / नेटबैंकिंग')}</span>
-                <span className="text-[9px] font-black uppercase tracking-wider text-amber-500 mt-0.5">{tr('Coming soon', 'जल्द आ रहा है')}</span>
-              </div>
+                <span className="flex items-center gap-2"><CreditCard className="w-4 h-4" />{tr('Pay online', 'ऑनलाइन भुगतान')}</span>
+                <span className="text-[9px] font-black uppercase tracking-wider mt-0.5 opacity-80">{razorpayOn ? tr('UPI · Cards · NetBanking', 'UPI · कार्ड · नेटबैंकिंग') : tr('Coming soon', 'जल्द आ रहा है')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayMethod('upi')}
+                className={`py-2.5 px-2 rounded-xl text-xs font-bold flex flex-col items-center justify-center border cursor-pointer ${payMethod === 'upi' ? 'bg-emerald-500 text-white border-emerald-400 shadow-md' : subCardClass}`}
+              >
+                <span className="flex items-center gap-2"><QrCode className="w-4 h-4" />{tr('UPI QR', 'UPI QR')}</span>
+                <span className="text-[9px] font-black uppercase tracking-wider mt-0.5 opacity-80">{tr('Scan & upload screenshot', 'स्कैन करें व स्क्रीनशॉट भेजें')}</span>
+              </button>
             </div>
 
+            {payMethod === 'online' && razorpayOn ? (
+              <div className="space-y-3">
+                <div className={`p-4 rounded-2xl ${subCardClass} text-xs space-y-1`}>
+                  <div className="font-black flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-emerald-600" />{tr('Secure payment by Razorpay', 'Razorpay द्वारा सुरक्षित भुगतान')}</div>
+                  <div className="opacity-70">{tr('Pay with any UPI app, debit/credit card, netbanking or wallet. Your order is confirmed as soon as the payment goes through.', 'किसी भी UPI ऐप, डेबिट/क्रेडिट कार्ड, नेटबैंकिंग या वॉलेट से भुगतान करें। भुगतान होते ही ऑर्डर कन्फ़र्म हो जाएगा।')}</div>
+                </div>
+                {paymentError && <p className="text-xs font-bold text-rose-500">{paymentError}</p>}
+                <button
+                  id="pay-online-btn"
+                  type="button"
+                  onClick={handleRazorpayPay}
+                  disabled={isProcessingOrder}
+                  className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                >
+                  {isProcessingOrder ? <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" /> : <><Lock className="w-4 h-4" /><span>{tr(`Pay ₹${cartTotal.toLocaleString('en-IN')} securely`, `₹${cartTotal.toLocaleString('en-IN')} सुरक्षित भुगतान करें`)}</span></>}
+                </button>
+              </div>
+            ) : (
             <div className="space-y-3">
               {canOpenUpiApp && (
                 <a
@@ -1278,6 +1463,7 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
                 {tr('Your order is confirmed once our team verifies the payment (usually within a few hours).', 'हमारी टीम द्वारा भुगतान सत्यापित होते ही आपका ऑर्डर कन्फ़र्म हो जाएगा (आमतौर पर कुछ घंटों में)।')}
               </p>
             </div>
+            )}
           </div>
         </div>
       )}
@@ -1286,14 +1472,22 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
       {checkoutStep === 'order_confirmed' && confirmedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/30 backdrop-blur-sm overflow-y-auto">
           <div className={`relative w-full max-w-md ${cardClass} rounded-3xl p-6 sm:p-7 shadow-2xl text-center space-y-4`}>
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/30 flex items-center justify-center mx-auto">
-              <Clock className="w-8 h-8 stroke-[2.5]" />
-            </div>
+            {confirmedOrder.paymentStatus === 'verified' ? (
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/30 flex items-center justify-center mx-auto">
+                <Clock className="w-8 h-8 stroke-[2.5]" />
+              </div>
+            )}
 
             <div>
-              <h3 className="text-2xl font-black">{tr('Order Received!', 'ऑर्डर मिल गया!')}</h3>
+              <h3 className="text-2xl font-black">{confirmedOrder.paymentStatus === 'verified' ? tr('Order Confirmed!', 'ऑर्डर कन्फ़र्म!') : tr('Order Received!', 'ऑर्डर मिल गया!')}</h3>
               <p className="text-xs text-emerald-500 font-mono font-bold mt-1">{tr('Order', 'ऑर्डर')} #{confirmedOrder.id}</p>
-              <p className="text-xs opacity-60 mt-1">{tr('We are verifying your payment screenshot. You will get a notification as soon as your order is confirmed.', 'हम आपके भुगतान स्क्रीनशॉट की जाँच कर रहे हैं। ऑर्डर कन्फ़र्म होते ही आपको सूचना मिलेगी।')}</p>
+              <p className="text-xs opacity-60 mt-1">{confirmedOrder.paymentStatus === 'verified'
+                ? tr('Payment received. We will notify you when your order ships.', 'भुगतान मिल गया। ऑर्डर भेजे जाने पर आपको सूचना मिलेगी।')
+                : tr('We are verifying your payment screenshot. You will get a notification as soon as your order is confirmed.', 'हम आपके भुगतान स्क्रीनशॉट की जाँच कर रहे हैं। ऑर्डर कन्फ़र्म होते ही आपको सूचना मिलेगी।')}</p>
             </div>
 
             <div className={`p-4 rounded-2xl ${subCardClass} text-left text-xs space-y-1.5`}>
@@ -1307,7 +1501,9 @@ export const ProductsModule: React.FC<ProductsModuleProps> = ({
               </div>
               <div className="flex justify-between">
                 <span className="opacity-60">{tr('Status:', 'स्थिति:')}</span>
-                <span className="text-amber-500 font-bold uppercase text-[10px]">{tr('Payment verification pending', 'भुगतान सत्यापन बाकी')}</span>
+                {confirmedOrder.paymentStatus === 'verified'
+                  ? <span className="text-emerald-600 font-bold uppercase text-[10px]">{tr('Paid · Confirmed', 'भुगतान हुआ · कन्फ़र्म')}</span>
+                  : <span className="text-amber-500 font-bold uppercase text-[10px]">{tr('Payment verification pending', 'भुगतान सत्यापन बाकी')}</span>}
               </div>
             </div>
 

@@ -123,7 +123,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const moduleMenuItems = [
     { id: 'reports' as const, label: tr('My Reports', 'मेरी रिपोर्ट्स'), icon: FileText },
     { id: 'assessment' as const, label: tr('Assessment', 'असेसमेंट'), icon: ClipboardCheck },
-    { id: 'store' as const, label: tr('UrCare Medical Pharmacy', 'UrCare मेडिकल फार्मेसी'), icon: ShoppingBag },
+    { id: 'store' as const, label: tr('UrCare Shop', 'UrCare शॉप'), icon: ShoppingBag },
     { id: 'family' as const, label: tr('Health Circle', 'हेल्थ सर्कल'), icon: Heart },
     { id: 'leaderboard' as const, label: tr('Leaderboard & Rewards', 'लीडरबोर्ड व रिवॉर्ड्स'), icon: Trophy },
     // Not a tab — opens the Doctor Consult modal directly (see the drawer's

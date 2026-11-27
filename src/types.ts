@@ -722,7 +722,7 @@ export interface UserAccount {
 export interface Product {
   id: string;
   name: string;
-  category: 'protein' | 'vitamins' | 'superfoods' | 'accessories' | 'snacks' | 'plan' | 'meals' | 'herbal_support' | 'exercises';
+  category: 'kits' | 'meds' | 'protein' | 'vitamins' | 'superfoods' | 'accessories' | 'snacks' | 'plan' | 'meals' | 'herbal_support' | 'exercises';
   price: number;
   discountPrice: number;
   rating: number;
@@ -743,6 +743,8 @@ export interface Product {
   badge?: string;
   /** Duration packs (1/2/3 months…), each with its own price and stock. */
   packOptions?: PackOption[];
+  /** Extra photos shown in the product details (the main image comes first). */
+  gallery?: string[];
 }
 
 export interface PackOption {

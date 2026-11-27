@@ -85,7 +85,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
   const [productForm, setProductForm] = useState({
     id: '',
     name: '',
-    category: 'protein' as 'protein' | 'vitamins' | 'superfoods' | 'snacks' | 'accessories' | 'plan' | 'meals' | 'herbal_support' | 'exercises',
+    category: 'kits' as 'kits' | 'meds' | 'protein' | 'vitamins' | 'superfoods' | 'snacks' | 'accessories' | 'plan' | 'meals' | 'herbal_support' | 'exercises',
     price: 1999,
     discountPrice: 1499,
     image: PRESET_PRODUCT_PHOTOS[0].url,
@@ -112,7 +112,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
     setProductForm({
       id: 'prod_' + Date.now(),
       name: '',
-      category: 'protein',
+      category: 'kits',
       price: 1999,
       discountPrice: 1499,
       image: PRESET_PRODUCT_PHOTOS[0].url,
@@ -1995,7 +1995,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                 
                 {/* Category Pills */}
                 <div className="flex flex-wrap gap-1.5">
-                  {['all', 'protein', 'vitamins', 'superfoods', 'snacks', 'accessories', 'plan', 'meals', 'herbal_support', 'exercises'].map((cat) => (
+                  {['all', 'kits', 'meds', 'protein', 'vitamins', 'superfoods', 'snacks', 'accessories', 'plan', 'meals', 'herbal_support', 'exercises'].map((cat) => (
                     <button
                       key={cat}
                       type="button"
@@ -3331,6 +3331,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitAdmin }) =
                     onChange={(e) => setProductForm({ ...productForm, category: e.target.value as any })}
                     className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-900 text-xs font-bold focus:border-emerald-500 outline-none capitalize"
                   >
+                    <option value="kits">Kits</option>
+                    <option value="meds">Meds (herbal formulations)</option>
                     <option value="protein">Reversal Kits & Polyherbal Medicine</option>
                     <option value="vitamins">Vitamins & Micronutrient Support</option>
                     <option value="superfoods">Diet & Gut Support</option>

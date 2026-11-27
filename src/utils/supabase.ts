@@ -1261,6 +1261,7 @@ export async function getProducts(): Promise<Product[]> {
       nutritionInfo: p.nutrition_info && p.nutrition_info.calories != null ? p.nutrition_info : undefined,
       badge: p.nutrition_info?.listing?.badge || undefined,
       packOptions: p.nutrition_info?.listing?.packs?.length ? p.nutrition_info.listing.packs : undefined,
+      gallery: Array.isArray(p.nutrition_info?.listing?.gallery) ? p.nutrition_info.listing.gallery : undefined,
       inStock: p.in_stock,
       featured: p.featured,
     };
@@ -1321,6 +1322,37 @@ export async function saveOrderAndReceiptToSupabase(order: Order): Promise<{ suc
   const data = await res.json();
   if (!res.ok) return { success: false, orderId: order.id, error: data.error };
   return { success: true, orderId: data.order?.id || order.id };
+}
+
+// ------------------------------------------------------------- razorpay
+
+/** Is online payment (Razorpay) switched on on the server? */
+export async function getRazorpayEnabled(): Promise<boolean> {
+  try { const res = await fetch('/api/payments/razorpay/config'); const data = await jsonOrNull(res); return !!data?.enabled; } catch { return false; }
+}
+
+export interface RazorpayCheckoutStart { keyId: string; razorpayOrderId: string; amount: number; currency: string; prefill: { name: string; email: string; contact: string } }
+
+/** Prices the cart on the server and opens a Razorpay order for that amount. */
+export async function startRazorpayCheckout(order: Pick<Order, 'items' | 'shippingAddress' | 'total' | 'couponCode' | 'pointsUsed'>): Promise<{ ok: boolean; data?: RazorpayCheckoutStart; error?: string }> {
+  try {
+    const res = await authedFetch('/api/payments/razorpay/order', {
+      method: 'POST',
+      body: JSON.stringify({ items: order.items, shippingAddress: order.shippingAddress, total: order.total, couponCode: order.couponCode, usePoints: !!order.pointsUsed }),
+    });
+    const data = await jsonOrNull(res);
+    return res.ok && data?.razorpayOrderId ? { ok: true, data } : { ok: false, error: data?.error || 'Could not start the payment.' };
+  } catch { return { ok: false, error: 'Could not reach the server. Please check your internet and try again.' }; }
+}
+
+/** Sends Razorpay's success response to the server, which creates the paid order. */
+export async function verifyRazorpayPayment(payload: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }): Promise<{ ok: boolean; order?: Order | null; error?: string; pending?: boolean }> {
+  try {
+    const res = await authedFetch('/api/payments/razorpay/verify', { method: 'POST', body: JSON.stringify(payload) });
+    const data = await jsonOrNull(res);
+    if (res.ok && data?.success) return { ok: true, order: data.order ? mapOrderRow(data.order) : null };
+    return { ok: false, error: data?.error || 'The payment could not be verified.', pending: res.status === 202 };
+  } catch { return { ok: false, error: 'Could not confirm the payment. If money was deducted, check My Orders in a minute.', pending: true }; }
 }
 
 // ---------------------------------------------------------------- family
@@ -1652,7 +1684,7 @@ export function mapOrderRow(o: any): Order {
     couponCode: o.shipping_address?.pricing?.couponCode || undefined,
     pointsUsed: Number(o.shipping_address?.pricing?.pointsUsed) || undefined,
     total: o.total_amount,
-    paymentMethod: 'qr_upi',
+    paymentMethod: o.razorpay_order_id ? 'razorpay' : 'qr_upi',
     // The orders table stores a verified payment as 'completed' and a
     // rejected one as 'failed' (its CHECK constraint; see server.ts). Until
     // the payment is verified the order is shown as awaiting payment.
